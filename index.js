@@ -2,19 +2,19 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-app.use(express.json()); // Permite ler dados em formato JSON
+app.use(express.json());
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://sjwddjcsrtudbvqnmhyd.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_ZKX9qmvzwEBsfKjfMHsHdQ_edDGBtMv';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Rota de teste para ver se a API está online
+// Rota 1: Rota de saúde / teste da API
 app.get('/', (req, res) => {
   res.send('API do Vortex Food está online e a funcionar!');
 });
 
-// Rota para cadastrar um restaurante via requisição
+// Rota 2: Cadastrar Restaurante
 app.post('/restaurants', async (req, res) => {
   const restaurantName = req.body.name || 'Hamburgueria Vortex';
 
@@ -29,7 +29,43 @@ app.post('/restaurants', async (req, res) => {
   return res.status(201).json({ success: true, message: 'Restaurante cadastrado com sucesso!', data });
 });
 
-// Porta onde o servidor vai escutar (o Render define isto automaticamente)
+// Rota 3: Cadastrar Produto no Cardápio
+app.post('/products', async (req, res) => {
+  const { restaurant_id, name, price, description } = req.body;
+
+  if (!name || !price) {
+    return res.status(400).json({ success: false, error: 'Nome e preço são obrigatórios!' });
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .insert([{ 
+      restaurant_id: restaurant_id || null, 
+      name, 
+      price, 
+      description 
+    }]);
+
+  if (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+
+  return res.status(201).json({ success: true, message: 'Produto cadastrado com sucesso!', data });
+});
+
+// Rota 4: Listar todos os Produtos
+app.get('/products', async (req, res) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*');
+
+  if (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+
+  return res.status(200).json({ success: true, products: data });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor do Vortex Food a correr na porta ${PORT}`);

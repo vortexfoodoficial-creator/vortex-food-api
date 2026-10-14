@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Food - Módulo 12: Estoque e Insumos</title>
+    <style>
+        :root {
+            --bg-dark: #141c24;
+            --panel-dark: #1e272e;
+            --primary: #ff4757;
+            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --secondary: #2e86de;
+            --success: #2ed573;
+            --warning: #ffa500;
+            --danger: #ea2027;
+            --card-white: #ffffff;
+            --text-dark: #2f3542;
+            --text-muted: #747d8c;
+            --border-color: #ced6e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        aside.sidebar {
+            width: 260px;
+            background-color: var(--panel-dark);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        aside.sidebar.collapsed { margin-left: -260px; }
+
+        .sidebar-brand {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-brand img {
+            width: 100%;
+            max-width: 160px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .btn-close-sidebar {
+            background: transparent;
+            border: none;
+            color: #a4b0be;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+        }
+
+        .menu-group-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #a4b0be;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 18px 10px 8px 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #dcdde1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 71, 87, 0.15);
+            color: #ffffff;
+            border-left: 4px solid var(--primary);
+        }
+
+        main.main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100%;
+            background-color: var(--bg-dark);
+        }
+
+        header.top-header {
+            height: 60px;
+            background-color: var(--panel-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+
+        .btn-toggle-menu {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .card-container-white {
+            background: var(--card-white);
+            color: var(--text-dark) !important;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            height: fit-content;
+        }
+
+        .card-container-white h3, 
+        .card-container-white td, 
+        .card-container-white th,
+        .card-container-white label {
+            color: var(--text-dark) !important;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .stock-table th {
+            background: #f8f9fa;
+            color: var(--text-muted);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .stock-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        .badge-stock {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .stock-ok { background: rgba(46, 213, 115, 0.15); color: #27ae60; }
+        .stock-baixo { background: rgba(234, 32, 39, 0.15); color: var(--danger); }
+
+        /* MODAL CUSTOMIZADO VORTEX FOOD */
+        .vortex-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .vortex-modal-overlay.active { display: flex; }
+        .vortex-modal-card {
+            background: #ffffff !important;
+            color: #2f3542 !important;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalPop 0.25s ease-out;
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .vortex-modal-card p {
+            color: #2f3542 !important;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+        .btn-vortex-modal {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+        }
+
+        @media (max-width: 900px) {
+            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
+        }
+
+        @media (max-width: 768px) {
+            aside.sidebar {
+                position: fixed;
+                top: 0; left: 0; height: 100%;
+                margin-left: -260px;
+            }
+            aside.sidebar.mobile-open { margin-left: 0 !important; }
+            .btn-close-sidebar { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <aside id="mainSidebar" class="sidebar">
+        <div class="sidebar-brand">
+            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
+            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+        </div>
+
+        <nav class="sidebar-menu">
+            <div class="menu-group-label">Retaguarda & Suprimentos</div>
+            <div class="menu-item active">📦 Módulo 12: Estoque</div>
+            <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
+            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
+            
+            <div class="menu-group-label">Navegação</div>
+            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
+            <div style="font-weight: 800; font-size: 13px;">Módulo 12 — Gestão de Estoque & Insumos</div>
+            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
+        </header>
+
+        <div class="content-body">
+            <div class="card-container-white" style="overflow-x: auto;">
+                <h3 style="margin-bottom: 15px; font-weight: 800;">Saldo de Insumos & Embalagens</h3>
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th>Quantidade</th>
+                            <th>Unidade</th>
+                            <th>Estado</th>
+                            <th style="text-align: right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaEstoqueTable">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-container-white">
+                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Cadastrar Insumo</h3>
+                <form id="formEstoque" onsubmit="salvarInsumo(event)">
+                    <div class="form-group">
+                        <label>Nome do Insumo *</label>
+                        <input type="text" id="nomeInsumo" placeholder="Ex: Blend de Carne 160g" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade Atual *</label>
+                        <input type="number" id="qtdInsumo" placeholder="Ex: 50" step="1" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unidade de Medida *</label>
+                        <select id="unidadeInsumo">
+                            <option value="unidades">Unidades (un)</option>
+                            <option value="kg">Quilogramas (kg)</option>
+                            <option value="litros">Litros (L)</option>
+                            <option value="pacotes">Pacotes (pct)</option>
+                        </select>
+                    </div>
+                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Insumo</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
+    <div id="vortexModal" class="vortex-modal-overlay">
+        <div class="vortex-modal-card">
+            <p id="vortexModalText">Mensagem do Sistema</p>
+            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        function mostrarAviso(mensagem) {
+            document.getElementById('vortexModalText').innerText = mensagem;
+            document.getElementById('vortexModal').classList.add('active');
+        }
+
+        function fecharVortexModal() {
+            document.getElementById('vortexModal').classList.remove('active');
+        }
+
+        let estoque = JSON.parse(localStorage.getItem('vortex_estoque')) || [
+            { nome: 'Blend de Carne 160g', qtd: 42, unidade: 'unidades' },
+            { nome: 'Pão Brioche Artesanal', qtd: 15, unidade: 'unidades' },
+            { nome: 'Queijo Cheddar Fatiado', qtd: 8, unidade: 'kg' },
+            { nome: 'Batata Congelada Rústica', qtd: 25, unidade: 'kg' }
+        ];
+
+        function carregarEstoque() {
+            const tbody = document.getElementById('listaEstoqueTable');
+            tbody.innerHTML = '';
+
+            estoque.forEach((item, index) => {
+                const statusBadge = item.qtd > 10 
+                    ? '<span class="badge-stock stock-ok">Normal</span>' 
+                    : '<span class="badge-stock stock-baixo">Crítico</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${item.nome}</strong></td>
+                        <td style="font-weight: 700;">${item.qtd}</td>
+                        <td>${item.unidade}</td>
+                        <td>${statusBadge}</td>
+                        <td style="text-align: right;">
+                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerInsumo(${index})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            localStorage.setItem('vortex_estoque', JSON.stringify(estoque));
+        }
+
+        function salvarInsumo(event) {
+            event.preventDefault();
+            const nome = document.getElementById('nomeInsumo').value;
+            const qtd = parseInt(document.getElementById('qtdInsumo').value);
+            const unidade = document.getElementById('unidadeInsumo').value;
+
+            estoque.push({ nome, qtd, unidade });
+            carregarEstoque();
+            document.getElementById('formEstoque').reset();
+            mostrarAviso('Insumo cadastrado e salvo com sucesso!');
+        }
+
+        function removerInsumo(index) {
+            estoque.splice(index, 1);
+            carregarEstoque();
+            mostrarAviso('Insumo removido do estoque!');
+        }
+
+        carregarEstoque();
+    </script>
+</body>
+</html>

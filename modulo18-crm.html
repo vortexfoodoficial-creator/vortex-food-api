@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Food - Módulo 18: CRM & Fidelidade</title>
+    <style>
+        :root {
+            --bg-dark: #141c24;
+            --panel-dark: #1e272e;
+            --primary: #ff4757;
+            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --secondary: #2e86de;
+            --success: #2ed573;
+            --warning: #ffa500;
+            --danger: #ea2027;
+            --card-white: #ffffff;
+            --text-dark: #2f3542;
+            --text-muted: #747d8c;
+            --border-color: #ced6e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        aside.sidebar {
+            width: 260px;
+            background-color: var(--panel-dark);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        aside.sidebar.collapsed { margin-left: -260px; }
+
+        .sidebar-brand {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-brand img {
+            width: 100%;
+            max-width: 160px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .btn-close-sidebar {
+            background: transparent;
+            border: none;
+            color: #a4b0be;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+        }
+
+        .menu-group-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #a4b0be;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 18px 10px 8px 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #dcdde1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 71, 87, 0.15);
+            color: #ffffff;
+            border-left: 4px solid var(--primary);
+        }
+
+        main.main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100%;
+            background-color: var(--bg-dark);
+        }
+
+        header.top-header {
+            height: 60px;
+            background-color: var(--panel-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+
+        .btn-toggle-menu {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .card-container-white {
+            background: var(--card-white);
+            color: var(--text-dark) !important;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            height: fit-content;
+        }
+
+        .card-container-white h3, 
+        .card-container-white td, 
+        .card-container-white th,
+        .card-container-white label {
+            color: var(--text-dark) !important;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .crm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .crm-table th {
+            background: #f8f9fa;
+            color: var(--text-muted);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .crm-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        /* MODAL CUSTOMIZADO VORTEX FOOD */
+        .vortex-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .vortex-modal-overlay.active { display: flex; }
+        .vortex-modal-card {
+            background: #ffffff !important;
+            color: #2f3542 !important;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalPop 0.25s ease-out;
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .vortex-modal-card p {
+            color: #2f3542 !important;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+        .btn-vortex-modal {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+        }
+
+        @media (max-width: 900px) {
+            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
+        }
+
+        @media (max-width: 768px) {
+            aside.sidebar {
+                position: fixed;
+                top: 0; left: 0; height: 100%;
+                margin-left: -260px;
+            }
+            aside.sidebar.mobile-open { margin-left: 0 !important; }
+            .btn-close-sidebar { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <aside id="mainSidebar" class="sidebar">
+        <div class="sidebar-brand">
+            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
+            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+        </div>
+
+        <nav class="sidebar-menu">
+            <div class="menu-group-label">Clientes & Vendas</div>
+            <div class="menu-item active">⭐ Módulo 18: CRM & Fidelidade</div>
+            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
+            
+            <div class="menu-group-label">Navegação</div>
+            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
+            <div style="font-weight: 800; font-size: 13px;">Módulo 18 — CRM & Clube de Fidelidade</div>
+            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
+        </header>
+
+        <div class="content-body">
+            <div class="card-container-white" style="overflow-x: auto;">
+                <h3 style="margin-bottom: 15px; font-weight: 800;">Clientes Cadastrados</h3>
+                <table class="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Telefone / WhatsApp</th>
+                            <th>Pontos</th>
+                            <th style="text-align: right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaClientesTable">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-container-white">
+                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Cadastrar Cliente</h3>
+                <form id="formCliente" onsubmit="salvarCliente(event)">
+                    <div class="form-group">
+                        <label>Nome Completo *</label>
+                        <input type="text" id="nomeCliente" placeholder="Ex: Carlos Silva" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone / WhatsApp *</label>
+                        <input type="tel" id="telCliente" placeholder="(11) 99999-8888" maxlength="15" oninput="mascaraTelefone(this)" onkeydown="tratarBackspace(this, event)" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Pontos Iniciais</label>
+                        <input type="number" id="pontosCliente" placeholder="0" min="0" step="1" value="0">
+                    </div>
+                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Cliente</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
+    <div id="vortexModal" class="vortex-modal-overlay">
+        <div class="vortex-modal-card">
+            <p id="vortexModalText">Mensagem do Sistema</p>
+            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        function mostrarAviso(mensagem) {
+            document.getElementById('vortexModalText').innerText = mensagem;
+            document.getElementById('vortexModal').classList.add('active');
+        }
+
+        function fecharVortexModal() {
+            document.getElementById('vortexModal').classList.remove('active');
+        }
+
+        function tratarBackspace(input, e) {
+            if (e.key === 'Backspace') {
+                let v = input.value;
+                if (/[\-\.\/\(\)\s]$/.test(v)) {
+                    input.value = v.slice(0, -1);
+                }
+            }
+        }
+
+        function mascaraTelefone(input) {
+            let v = input.value.replace(/\D/g, "");
+            if (v.length > 11) v = v.slice(0, 11);
+
+            if (v.length === 0) {
+                input.value = "";
+            } else if (v.length > 10) {
+                input.value = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+            } else if (v.length > 6) {
+                input.value = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+            } else if (v.length > 2) {
+                input.value = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+            } else {
+                input.value = v.replace(/^(\d*)$/, "($1");
+            }
+        }
+
+        let clientes = JSON.parse(localStorage.getItem('vortex_crm')) || [
+            { nome: 'Ana Souza', tel: '(11) 98877-6655', pontos: 120 },
+            { nome: 'Lucas Mendes', tel: '(11) 97766-5544', pontos: 45 }
+        ];
+
+        function carregarClientes() {
+            const tbody = document.getElementById('listaClientesTable');
+            tbody.innerHTML = '';
+
+            clientes.forEach((c, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${c.nome}</strong></td>
+                        <td>${c.tel}</td>
+                        <td style="font-weight: 800; color: #2e86de;">⭐ ${c.pontos} pts</td>
+                        <td style="text-align: right;">
+                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerCliente(${index})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            localStorage.setItem('vortex_crm', JSON.stringify(clientes));
+        }
+
+        function salvarCliente(event) {
+            event.preventDefault();
+            const nome = document.getElementById('nomeCliente').value;
+            const tel = document.getElementById('telCliente').value;
+            const pontos = parseInt(document.getElementById('pontosCliente').value) || 0;
+
+            clientes.push({ nome, tel, pontos });
+            carregarClientes();
+            document.getElementById('formCliente').reset();
+            mostrarAviso('Cliente cadastrado com sucesso no clube de fidelidade!');
+        }
+
+        function removerCliente(index) {
+            clientes.splice(index, 1);
+            carregarClientes();
+            mostrarAviso('Cliente excluído com sucesso!');
+        }
+
+        carregarClientes();
+    </script>
+</body>
+</html>

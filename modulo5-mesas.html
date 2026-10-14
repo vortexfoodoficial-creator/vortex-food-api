@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Food - Módulo 5: Mesas & Comandas</title>
+    <style>
+        :root {
+            --bg-dark: #141c24;
+            --panel-dark: #1e272e;
+            --primary: #ff4757;
+            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --secondary: #2e86de;
+            --success: #2ed573;
+            --warning: #ffa500;
+            --danger: #ea2027;
+            --card-white: #ffffff;
+            --text-dark: #2f3542;
+            --text-muted: #747d8c;
+            --border-color: #ced6e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        aside.sidebar {
+            width: 260px;
+            background-color: var(--panel-dark);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        aside.sidebar.collapsed { margin-left: -260px; }
+
+        .sidebar-brand {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-brand img {
+            width: 100%;
+            max-width: 160px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .btn-close-sidebar {
+            background: transparent;
+            border: none;
+            color: #a4b0be;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+        }
+
+        .menu-group-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #a4b0be;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 18px 10px 8px 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #dcdde1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 71, 87, 0.15);
+            color: #ffffff;
+            border-left: 4px solid var(--primary);
+        }
+
+        main.main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100%;
+            background-color: var(--bg-dark);
+        }
+
+        header.top-header {
+            height: 60px;
+            background-color: var(--panel-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+
+        .btn-toggle-menu {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .content-body {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 15px;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        .tables-section {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tables-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .table-card {
+            background: var(--panel-dark);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .table-card:hover { transform: translateY(-2px); }
+        .table-card.free { border-color: var(--success); }
+        .table-card.busy { border-color: var(--danger); background: rgba(234, 32, 39, 0.1); }
+        .table-card.selected { box-shadow: 0 0 15px var(--primary); border-color: var(--primary); }
+
+        .table-number { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+        .table-status { font-size: 10px; font-weight: 800; text-transform: uppercase; }
+
+        .card-container-white {
+            background: var(--card-white);
+            color: var(--text-dark) !important;
+            border-radius: 16px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .card-container-white h3, 
+        .card-container-white label,
+        .card-container-white span,
+        .card-container-white strong {
+            color: var(--text-dark) !important;
+        }
+
+        .comanda-items {
+            flex: 1;
+            overflow-y: auto;
+            margin: 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .comanda-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 6px 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .form-group { margin-bottom: 10px; }
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted) !important;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        /* MODAL CUSTOMIZADO VORTEX FOOD */
+        .vortex-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .vortex-modal-overlay.active { display: flex; }
+        .vortex-modal-card {
+            background: #ffffff !important;
+            color: #2f3542 !important;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalPop 0.25s ease-out;
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .vortex-modal-card p {
+            color: #2f3542 !important;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+        .btn-vortex-modal {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+        }
+
+        @media (max-width: 900px) {
+            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
+            .card-container-white { height: auto; }
+        }
+
+        @media (max-width: 768px) {
+            aside.sidebar {
+                position: fixed;
+                top: 0; left: 0; height: 100%;
+                margin-left: -260px;
+            }
+            aside.sidebar.mobile-open { margin-left: 0 !important; }
+            .btn-close-sidebar { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <aside id="mainSidebar" class="sidebar">
+        <div class="sidebar-brand">
+            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
+            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+        </div>
+
+        <nav class="sidebar-menu">
+            <div class="menu-group-label">Operação & Salão</div>
+            <div class="menu-item active">🍽️ Módulo 5: Mesas & Comandas</div>
+            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
+            <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
+            
+            <div class="menu-group-label">Navegação</div>
+            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
+            <div style="font-weight: 800; font-size: 13px;">Módulo 5 — Mapa de Mesas & Comandas</div>
+            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
+        </header>
+
+        <div class="content-body">
+            <section class="tables-section">
+                <h3 style="margin-bottom: 12px; font-weight: 800;">Mesas do Salão</h3>
+                <div id="mesasGrid" class="tables-grid">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+            </section>
+
+            <section class="card-container-white">
+                <h3 id="tituloMesa" style="font-weight: 800; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">Mesa Selecionada: Nenhuma</h3>
+
+                <div id="painelComanda" style="display: none; flex-direction: column; flex: 1; margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Lançar Item do Cardápio</label>
+                        <select id="selectProduto">
+                        </select>
+                    </div>
+                    <button class="btn-action" style="background: var(--secondary); color: white;" onclick="adicionarItemComanda()">+ Adicionar à Comanda</button>
+
+                    <h4 style="margin-top: 15px; font-size: 13px; font-weight: 800;">Consumo Atual:</h4>
+                    <div id="listaItensComanda" class="comanda-items">
+                    </div>
+
+                    <div style="font-size: 16px; font-weight: 900; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
+                        <span>TOTAL:</span>
+                        <span id="totalComanda">R$ 0,00</span>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--primary-gradient); color: white; margin-top: 12px;" onclick="fecharMesa()">Fechar Conta / Liberar Mesa</button>
+                </div>
+
+                <div id="mensagemSemMesa" style="text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 13px;">
+                    Clique em uma mesa ao lado para gerir o consumo.
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
+    <div id="vortexModal" class="vortex-modal-overlay">
+        <div class="vortex-modal-card">
+            <p id="vortexModalText">Mensagem do Sistema</p>
+            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        function mostrarAviso(mensagem) {
+            document.getElementById('vortexModalText').innerText = mensagem;
+            document.getElementById('vortexModal').classList.add('active');
+        }
+
+        function fecharVortexModal() {
+            document.getElementById('vortexModal').classList.remove('active');
+        }
+
+        let mesaSelecionadaIndex = null;
+
+        let mesas = JSON.parse(localStorage.getItem('vortex_mesas')) || Array.from({ length: 12 }, (_, i) => ({
+            numero: i + 1,
+            status: 'livre',
+            itens: []
+        }));
+
+        function carregarMesas() {
+            const grid = document.getElementById('mesasGrid');
+            grid.innerHTML = '';
+
+            mesas.forEach((m, index) => {
+                const classeStatus = m.status === 'livre' ? 'free' : 'busy';
+                const classeSelected = index === mesaSelecionadaIndex ? 'selected' : '';
+                const textoStatus = m.status === 'livre' ? 'Livre' : 'Ocupada';
+                const corStatus = m.status === 'livre' ? 'var(--success)' : 'var(--danger)';
+
+                grid.innerHTML += `
+                    <div class="table-card ${classeStatus} ${classeSelected}" onclick="selecionarMesa(${index})">
+                        <div class="table-number">Mesa ${m.numero}</div>
+                        <div class="table-status" style="color: ${corStatus};">${textoStatus}</div>
+                    </div>
+                `;
+            });
+
+            localStorage.setItem('vortex_mesas', JSON.stringify(mesas));
+            carregarSelectProdutos();
+        }
+
+        function carregarSelectProdutos() {
+            const produtos = JSON.parse(localStorage.getItem('vortex_produtos')) || [
+                { nome: 'Vortex Burger Duplo', preco: 38.00 },
+                { nome: 'Smash Cheeseburger', preco: 26.00 },
+                { nome: 'Batata Rústica M', preco: 18.00 },
+                { nome: 'Coca-Cola 350ml', preco: 8.00 }
+            ];
+
+            const select = document.getElementById('selectProduto');
+            select.innerHTML = '';
+            produtos.forEach((p, idx) => {
+                select.innerHTML += `<option value="${idx}">${p.nome} — R$ ${p.preco.toFixed(2).replace('.', ',')}</option>`;
+            });
+        }
+
+        function selecionarMesa(index) {
+            mesaSelecionadaIndex = index;
+            const m = mesas[index];
+
+            document.getElementById('tituloMesa').innerText = `Mesa ${m.numero} (${m.status === 'livre' ? 'Livre' : 'Ocupada'})`;
+            document.getElementById('painelComanda').style.display = 'flex';
+            document.getElementById('mensagemSemMesa').style.display = 'none';
+
+            atualizarDetalhesComanda();
+            carregarMesas();
+        }
+
+        function atualizarDetalhesComanda() {
+            if (mesaSelecionadaIndex === null) return;
+            const m = mesas[mesaSelecionadaIndex];
+            const container = document.getElementById('listaItensComanda');
+            container.innerHTML = '';
+            let total = 0;
+
+            if (m.itens.length === 0) {
+                container.innerHTML = '<div style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:10px;">Nenhum consumo nesta mesa.</div>';
+            } else {
+                m.itens.forEach(item => {
+                    total += item.preco;
+                    container.innerHTML += `
+                        <div class="comanda-item">
+                            <span>${item.nome}</span>
+                            <strong>R$ ${item.preco.toFixed(2).replace('.', ',')}</strong>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('totalComanda').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        function adicionarItemComanda() {
+            if (mesaSelecionadaIndex === null) return;
+
+            const produtos = JSON.parse(localStorage.getItem('vortex_produtos')) || [];
+            const selectIdx = document.getElementById('selectProduto').value;
+            const produto = produtos[selectIdx];
+
+            if (!produto) return;
+
+            mesas[mesaSelecionadaIndex].status = 'ocupada';
+            mesas[mesaSelecionadaIndex].itens.push({ nome: produto.nome, preco: produto.preco });
+
+            // Envia o item para o KDS Cozinha
+            let kds = JSON.parse(localStorage.getItem('vortex_kds')) || [];
+            const novoId = Math.floor(100 + Math.random() * 900);
+            const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            kds.push({
+                id: novoId,
+                origem: `Mesa ${mesas[mesaSelecionadaIndex].numero}`,
+                itens: [produto.nome],
+                status: 'Pendente',
+                hora: agora
+            });
+            localStorage.setItem('vortex_kds', JSON.stringify(kds));
+
+            atualizarDetalhesComanda();
+            carregarMesas();
+            mostrarAviso(`Item "${produto.nome}" adicionado à Mesa ${mesas[mesaSelecionadaIndex].numero}!`);
+        }
+
+        function fecharMesa() {
+            if (mesaSelecionadaIndex === null) return;
+            const m = mesas[mesaSelecionadaIndex];
+
+            if (m.itens.length === 0) {
+                mostrarAviso('Esta mesa não possui itens registrados para fechamento.');
+                return;
+            }
+
+            const total = m.itens.reduce((acc, item) => acc + item.preco, 0);
+
+            // Regista a entrada no financeiro
+            let financeiro = JSON.parse(localStorage.getItem('vortex_financeiro')) || [];
+            financeiro.push({ desc: `Fechamento Mesa ${m.numero}`, tipo: 'Entrada', valor: total });
+            localStorage.setItem('vortex_financeiro', JSON.stringify(financeiro));
+
+            mostrarAviso(`Conta da Mesa ${m.numero} encerrada com sucesso!\nTotal pago: R$ ${total.toFixed(2).replace('.', ',')}`);
+
+            mesas[mesaSelecionadaIndex].status = 'livre';
+            mesas[mesaSelecionadaIndex].itens = [];
+
+            selecionarMesa(mesaSelecionadaIndex);
+        }
+
+        carregarMesas();
+    </script>
+</body>
+</html>

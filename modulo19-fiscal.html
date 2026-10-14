@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Food - Módulo 19: Fiscal & NFC-e</title>
+    <style>
+        :root {
+            --bg-dark: #141c24;
+            --panel-dark: #1e272e;
+            --primary: #ff4757;
+            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --secondary: #2e86de;
+            --success: #2ed573;
+            --warning: #ffa500;
+            --danger: #ea2027;
+            --card-white: #ffffff;
+            --text-dark: #2f3542;
+            --text-muted: #747d8c;
+            --border-color: #ced6e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        aside.sidebar {
+            width: 260px;
+            background-color: var(--panel-dark);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        aside.sidebar.collapsed { margin-left: -260px; }
+
+        .sidebar-brand {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-brand img {
+            width: 100%;
+            max-width: 160px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .btn-close-sidebar {
+            background: transparent;
+            border: none;
+            color: #a4b0be;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+        }
+
+        .menu-group-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #a4b0be;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 18px 10px 8px 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #dcdde1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 71, 87, 0.15);
+            color: #ffffff;
+            border-left: 4px solid var(--primary);
+        }
+
+        main.main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100%;
+            background-color: var(--bg-dark);
+        }
+
+        header.top-header {
+            height: 60px;
+            background-color: var(--panel-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+
+        .btn-toggle-menu {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .card-container-white {
+            background: var(--card-white);
+            color: var(--text-dark) !important;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-container-white h3, 
+        .card-container-white label {
+            color: var(--text-dark) !important;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        /* MODAL CUSTOMIZADO VORTEX FOOD */
+        .vortex-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .vortex-modal-overlay.active { display: flex; }
+        .vortex-modal-card {
+            background: #ffffff !important;
+            color: #2f3542 !important;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalPop 0.25s ease-out;
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .vortex-modal-card p {
+            color: #2f3542 !important;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+        .btn-vortex-modal {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            aside.sidebar {
+                position: fixed;
+                top: 0; left: 0; height: 100%;
+                margin-left: -260px;
+            }
+            aside.sidebar.mobile-open { margin-left: 0 !important; }
+            .btn-close-sidebar { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <aside id="mainSidebar" class="sidebar">
+        <div class="sidebar-brand">
+            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
+            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+        </div>
+
+        <nav class="sidebar-menu">
+            <div class="menu-group-label">Fiscal</div>
+            <div class="menu-item active">📄 Módulo 19: Notas Fiscais</div>
+            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
+            <div style="font-weight: 800; font-size: 13px;">Módulo 19 — Emissão de NFC-e & Configurações Fiscais</div>
+            <div style="font-size: 11px; color: var(--success);">● Sincronizado</div>
+        </header>
+
+        <div class="content-body">
+            <div class="card-container-white">
+                <h3 style="margin-bottom: 15px; font-weight: 800;">Parâmetros Fiscais (NFC-e)</h3>
+                <form id="formFiscal" onsubmit="salvarFiscal(event)">
+                    <div class="form-group">
+                        <label>CNPJ do Emissor *</label>
+                        <input type="text" id="cnpjEmissor" placeholder="00.000.000/0001-00" maxlength="18" oninput="mascaraCnpjCpf(this)" onkeydown="tratarBackspace(this, event)" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Inscrição Estadual (IE) *</label>
+                        <input type="text" id="ieEmissor" placeholder="000.000.000.000" maxlength="15" oninput="mascaraIE(this)" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ambiente de Emissão *</label>
+                        <select id="ambienteFiscal">
+                            <option value="homologacao">Homologação (Testes)</option>
+                            <option value="producao">Produção (Oficial)</option>
+                        </select>
+                    </div>
+                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Certificado e Dados</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
+    <div id="vortexModal" class="vortex-modal-overlay">
+        <div class="vortex-modal-card">
+            <p id="vortexModalText">Mensagem do Sistema</p>
+            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        function mostrarAviso(mensagem) {
+            document.getElementById('vortexModalText').innerText = mensagem;
+            document.getElementById('vortexModal').classList.add('active');
+        }
+
+        function fecharVortexModal() {
+            document.getElementById('vortexModal').classList.remove('active');
+        }
+
+        function tratarBackspace(input, e) {
+            if (e.key === 'Backspace') {
+                let v = input.value;
+                if (/[\-\.\/\(\)\s]$/.test(v)) {
+                    input.value = v.slice(0, -1);
+                }
+            }
+        }
+
+        function mascaraCnpjCpf(input) {
+            let v = input.value.replace(/\D/g, "");
+            if (v.length > 14) v = v.slice(0, 14);
+            if (v.length > 11) {
+                input.value = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/, "$1.$2.$3/$4-$5");
+            } else if (v.length > 9) {
+                input.value = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})$/, "$1.$2.$3-$4");
+            } else {
+                input.value = v;
+            }
+        }
+
+        function mascaraIE(input) {
+            let v = input.value.replace(/\D/g, "");
+            if (v.length > 12) v = v.slice(0, 12);
+            input.value = v;
+        }
+
+        const fiscalSalvo = JSON.parse(localStorage.getItem('vortex_fiscal')) || { cnpj: '12.345.678/0001-90', ie: '110493829010', ambiente: 'homologacao' };
+        document.getElementById('cnpjEmissor').value = fiscalSalvo.cnpj;
+        document.getElementById('ieEmissor').value = fiscalSalvo.ie;
+        document.getElementById('ambienteFiscal').value = fiscalSalvo.ambiente;
+
+        function salvarFiscal(e) {
+            e.preventDefault();
+            const fiscal = {
+                cnpj: document.getElementById('cnpjEmissor').value,
+                ie: document.getElementById('ieEmissor').value,
+                ambiente: document.getElementById('ambienteFiscal').value
+            };
+            localStorage.setItem('vortex_fiscal', JSON.stringify(fiscal));
+            mostrarAviso('Parâmetros fiscais salvos com sucesso!');
+        }
+    </script>
+</body>
+</html>

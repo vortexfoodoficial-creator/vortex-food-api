@@ -1,471 +1,677 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 3: PDV Caixa</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vortex Food - PDV / Caixa</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    /* Overlay escuro no mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 99;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    /* Menu Lateral */
+    .sidebar {
+      width: 260px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .logo-icon {
+      font-size: 1.5rem;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .close-sidebar-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .sidebar-nav {
+      padding: 15px 10px;
+      flex: 1;
+    }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .nav-section {
+      margin-bottom: 20px;
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .nav-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 0 10px 8px;
+      display: block;
+    }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+      font-size: 0.90rem;
+    }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .nav-link:hover, .nav-link.active {
+      background-color: rgba(249, 115, 22, 0.15);
+      color: var(--primary);
+    }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .nav-icon {
+      font-size: 1.1rem;
+    }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    /* Conteúdo Principal do PDV */
+    .main-content {
+      flex: 1;
+      margin-left: 260px;
+      padding: 20px 20px 80px 20px;
+      width: calc(100% - 260px);
+    }
 
-        .content-body {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 15px;
-            padding: 15px;
-            overflow: hidden;
-        }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+    }
 
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
+    .toggle-btn {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
 
-        .product-card {
-            background: var(--panel-dark);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 110px;
-        }
+    .header-title {
+      flex: 1;
+    }
 
-        .product-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
+    header h1 {
+      font-size: 1.5rem;
+    }
 
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
+    /* Layout do PDV em 2 Colunas */
+    .pdv-container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+    }
 
-        .card-container-white h3, 
-        .card-container-white label,
-        .card-container-white span,
-        .card-container-white strong {
-            color: var(--text-dark) !important;
-        }
+    /* Lista de Produtos Catalogo */
+    .catalog-section {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
 
-        .cart-items {
-            flex: 1;
-            overflow-y: auto;
-            margin: 10px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+    .category-tabs {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
 
-        .cart-item {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            padding: 6px 8px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            align-items: center;
-        }
+    .category-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 0.85rem;
+    }
 
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
+    .category-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
 
-        @media (max-width: 900px) {
-            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
-            .card-container-white { height: auto; }
-        }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 15px;
+    }
 
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    .product-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .product-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .product-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .product-price {
+      color: var(--primary);
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    /* Painel do Carrinho / Comanda */
+    .cart-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      height: fit-content;
+    }
+
+    .cart-header {
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cart-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .cart-item-qty {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qty-btn {
+      background: var(--border);
+      color: white;
+      border: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .payment-methods {
+      margin-top: 10px;
+    }
+
+    .payment-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .pay-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .pay-btn.selected {
+      border-color: var(--primary);
+      background: rgba(249, 115, 22, 0.15);
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .cart-total {
+      font-size: 1.3rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin: 15px 0;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+
+    .btn-finish {
+      background: var(--success);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    .btn-finish:hover {
+      background: #16a34a;
+    }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--danger);
+      border: none;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    /* Responsividade */
+    @media (max-width: 900px) {
+      .pdv-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay.open {
+        display: block;
+      }
+      .close-sidebar-btn {
+        display: block;
+      }
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px 15px 80px 15px;
+      }
+      .toggle-btn {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <!-- Overlay para fechar menu -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Operação</div>
-            <div class="menu-item active">🖥️ Módulo 3: PDV Caixa</div>
-            <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
-            <div class="menu-item" onclick="window.location.href='modulo5-mesas.html'">🍽️ Módulo 5: Mesas</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 3 — Frente de Caixa (PDV)</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
-        </header>
-
-        <div class="content-body">
-            <!-- CATÁLOGO DE PRODUTOS -->
-            <section style="display: flex; flex-direction: column; overflow: hidden;">
-                <h3 style="margin-bottom: 12px; font-weight: 800;">Catálogo de Venda</h3>
-                <div id="produtosGrid" class="products-grid">
-                    <!-- Preenchido via JavaScript -->
-                </div>
-            </section>
-
-            <!-- CARRINHO / FECHAMENTO -->
-            <section class="card-container-white">
-                <h3 style="font-weight: 800; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">Carrinho Atual</h3>
-                
-                <div id="listaCarrinho" class="cart-items">
-                    <!-- Itens do carrinho -->
-                </div>
-
-                <div style="font-size: 16px; font-weight: 900; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
-                    <span>TOTAL:</span>
-                    <span id="totalCarrinho">R$ 0,00</span>
-                </div>
-
-                <button style="width: 100%; background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-top: 12px;" onclick="finalizarVenda()">Finalizar Venda (F2)</button>
-            </section>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <!-- MENU LATERAL PADRONIZADO -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🌪️</span>
+        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <!-- BLOCO 1: OPERACIONAL -->
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="modulo3-pdv.html" class="nav-link active">
+          <span class="nav-icon">💻</span>
+          <span class="nav-text">PDV / Caixa</span>
+        </a>
+        <a href="modulo5-mesas.html" class="nav-link">
+          <span class="nav-icon">🍽️</span>
+          <span class="nav-text">Mesas & Comandas</span>
+        </a>
+        <a href="modulo21-delivery.html" class="nav-link">
+          <span class="nav-icon">🛵</span>
+          <span class="nav-text">Delivery & Entregas</span>
+        </a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link">
+          <span class="nav-icon">👨‍🍳</span>
+          <span class="nav-text">KDS / Cozinha</span>
+        </a>
+      </div>
+
+      <!-- BLOCO 2: PRODUTOS -->
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS</span>
+        <a href="modulo2-cardapio.html" class="nav-link">
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Cardápio & Produtos</span>
+        </a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link">
+          <span class="nav-icon">📖</span>
+          <span class="nav-text">Fichas Técnicas</span>
+        </a>
+      </div>
+
+      <!-- BLOCO 3: SUPRIMENTOS & CLIENTES -->
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link">
+          <span class="nav-icon">📦</span>
+          <span class="nav-text">Estoque & Insumos</span>
+        </a>
+        <a href="modulo14-compras.html" class="nav-link">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-text">Compras & Cotações</span>
+        </a>
+        <a href="modulo18-crm.html" class="nav-link">
+          <span class="nav-icon">👥</span>
+          <span class="nav-text">CRM & Clientes</span>
+        </a>
+      </div>
+
+      <!-- BLOCO 4: ADMINISTRAÇÃO -->
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link">
+          <span class="nav-icon">🔒</span>
+          <span class="nav-text">Fechamento de Caixa</span>
+        </a>
+        <a href="modulo15-financeiro.html" class="nav-link">
+          <span class="nav-icon">💰</span>
+          <span class="nav-text">Financeiro & DRE</span>
+        </a>
+        <a href="modulo16-contas.html" class="nav-link">
+          <span class="nav-icon">📄</span>
+          <span class="nav-text">Contas Pagar/Receber</span>
+        </a>
+        <a href="modulo9-equipe.html" class="nav-link">
+          <span class="nav-icon">👔</span>
+          <span class="nav-text">Equipe & Permissões</span>
+        </a>
+        <a href="modulo19-fiscal.html" class="nav-link">
+          <span class="nav-icon">🧾</span>
+          <span class="nav-text">Emissão Fiscal</span>
+        </a>
+        <a href="modulo10-relatorios.html" class="nav-link">
+          <span class="nav-icon">📈</span>
+          <span class="nav-text">Relatórios</span>
+        </a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-content">
+    <header>
+      <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+      <div class="header-title">
+        <h1>Frente de Caixa (PDV)</h1>
+      </div>
+    </header>
+
+    <div class="pdv-container">
+      <!-- Catálogo de Produtos -->
+      <div class="catalog-section">
+        <div class="category-tabs">
+          <button class="category-btn active">Todos</button>
+          <button class="category-btn">Burgers</button>
+          <button class="category-btn">Bebidas</button>
+          <button class="category-btn">Porções</button>
+          <button class="category-btn">Sobremesas</button>
+        </div>
+
+        <div class="products-grid">
+          <div class="product-card" onclick="addToCart('X-Burger Especial', 28.50)">
+            <div class="product-title">X-Burger Especial</div>
+            <div class="product-price">R$ 28,50</div>
+          </div>
+          <div class="product-card" onclick="addToCart('X-Salada Duplo', 32.00)">
+            <div class="product-title">X-Salada Duplo</div>
+            <div class="product-price">R$ 32,00</div>
+          </div>
+          <div class="product-card" onclick="addToCart('Batata frita M', 18.00)">
+            <div class="product-title">Batata Frita M</div>
+            <div class="product-price">R$ 18,00</div>
+          </div>
+          <div class="product-card" onclick="addToCart('Refrigerante Lata', 7.50)">
+            <div class="product-title">Refrigerante Lata</div>
+            <div class="product-price">R$ 7,50</div>
+          </div>
+          <div class="product-card" onclick="addToCart('Suco Natural 500ml', 10.00)">
+            <div class="product-title">Suco Natural 500ml</div>
+            <div class="product-price">R$ 10,00</div>
+          </div>
+          <div class="product-card" onclick="addToCart('Milkshake Chocolate', 16.00)">
+            <div class="product-title">Milkshake Chocolate</div>
+            <div class="product-price">R$ 16,00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carrinho e Fechamento -->
+      <div class="cart-section">
+        <div class="cart-header">
+          <span>Comanda / Pedido</span>
+          <button class="btn-clear" onclick="clearCart()">Limpar</button>
+        </div>
+
+        <div class="cart-items" id="cartItems">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">
+            Nenhum item selecionado. Clique nos produtos ao lado.
+          </div>
+        </div>
+
+        <div class="payment-methods">
+          <div class="payment-title">Forma de Pagamento:</div>
+          <div class="payment-grid">
+            <button class="pay-btn selected" onclick="selectPayment('Pix', this)">Pix</button>
+            <button class="pay-btn" onclick="selectPayment('Cartão Crédito', this)">Crédito</button>
+            <button class="pay-btn" onclick="selectPayment('Cartão Débito', this)">Débito</button>
+            <button class="pay-btn" onclick="selectPayment('Dinheiro', this)">Dinheiro</button>
+          </div>
+        </div>
+
+        <div class="cart-total">
+          <span>Total:</span>
+          <span id="cartTotal">R$ 0,00</span>
+        </div>
+
+        <button class="btn-finish" onclick="finishOrder()">FINALIZAR VENDA</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let cart = [];
+    let selectedPayment = 'Pix';
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function addToCart(name, price) {
+      const existing = cart.find(item => item.name === name);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ name, price, qty: 1 });
+      }
+      renderCart();
+    }
+
+    function changeQty(name, delta) {
+      const item = cart.find(item => item.name === name);
+      if (item) {
+        item.qty += delta;
+        if (item.qty <= 0) {
+          cart = cart.filter(i => i.name !== name);
         }
+      }
+      renderCart();
+    }
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
-        }
+    function clearCart() {
+      cart = [];
+      renderCart();
+    }
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+    function selectPayment(method, btn) {
+      selectedPayment = method;
+      document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
 
-        let carrinho = [];
+    function renderCart() {
+      const cartContainer = document.getElementById('cartItems');
+      const totalContainer = document.getElementById('cartTotal');
 
-        function carregarCatalogoPDV() {
-            const produtos = JSON.parse(localStorage.getItem('vortex_produtos')) || [
-                { nome: 'Vortex Burger Duplo', categoria: 'Burgers', preco: 38.00 },
-                { nome: 'Smash Cheeseburger', categoria: 'Burgers', preco: 26.00 },
-                { nome: 'Batata Rústica M', categoria: 'Porções', preco: 18.00 },
-                { nome: 'Coca-Cola 350ml', categoria: 'Bebidas', preco: 8.00 }
-            ];
+      if (cart.length === 0) {
+        cartContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nenhum item selecionado. Clique nos produtos ao lado.</div>`;
+        totalContainer.innerText = 'R$ 0,00';
+        return;
+      }
 
-            const grid = document.getElementById('produtosGrid');
-            grid.innerHTML = '';
+      let html = '';
+      let total = 0;
 
-            produtos.forEach((p, index) => {
-                grid.innerHTML += `
-                    <div class="product-card" onclick="adicionarAoCarrinho('${p.nome}', ${p.preco})">
-                        <div style="font-size: 13px; font-weight: 800; color: #ffffff;">${p.nome}</div>
-                        <div style="font-size: 14px; font-weight: 900; color: var(--success);">R$ ${p.preco.toFixed(2).replace('.', ',')}</div>
-                    </div>
-                `;
-            });
-        }
+      cart.forEach(item => {
+        const subtotal = item.price * item.qty;
+        total += subtotal;
+        html += `
+          <div class="cart-item">
+            <div>
+              <strong>${item.name}</strong><br>
+              <small>R$ ${item.price.toFixed(2).replace('.', ',')}</small>
+            </div>
+            <div class="cart-item-qty">
+              <button class="qty-btn" onclick="changeQty('${item.name}', -1)">-</button>
+              <span>${item.qty}</span>
+              <button class="qty-btn" onclick="changeQty('${item.name}', 1)">+</button>
+            </div>
+          </div>
+        `;
+      });
 
-        function adicionarAoCarrinho(nome, preco) {
-            carrinho.push({ nome, preco });
-            atualizarCarrinho();
-        }
+      cartContainer.innerHTML = html;
+      totalContainer.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
 
-        function atualizarCarrinho() {
-            const container = document.getElementById('listaCarrinho');
-            container.innerHTML = '';
-            let total = 0;
+    function finishOrder() {
+      if (cart.length === 0) {
+        alert('Adicione pelo menos um produto para finalizar a venda.');
+        return;
+      }
 
-            if (carrinho.length === 0) {
-                container.innerHTML = '<div style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">Carrinho vazio. Selecione os produtos ao lado.</div>';
-            } else {
-                carrinho.forEach((item, index) => {
-                    total += item.preco;
-                    container.innerHTML += `
-                        <div class="cart-item">
-                            <span>${item.nome}</span>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <strong>R$ ${item.preco.toFixed(2).replace('.', ',')}</strong>
-                                <button style="background:var(--danger); color:white; border:none; padding:2px 6px; border-radius:4px; cursor:pointer; font-size:10px;" onclick="removerItem(${index})">✕</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
+      const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+      
+      // Salva no localStorage para atualizar métricas do Dashboard
+      let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
+      currentSales += total;
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-            document.getElementById('totalCarrinho').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-        }
-
-        function removerItem(index) {
-            carrinho.splice(index, 1);
-            atualizarCarrinho();
-        }
-
-        function finalizarVenda() {
-            if (carrinho.length === 0) {
-                mostrarAviso('O carrinho está vazio. Adicione itens antes de finalizar.');
-                return;
-            }
-
-            const total = carrinho.reduce((acc, item) => acc + item.preco, 0);
-            
-            let financeiro = JSON.parse(localStorage.getItem('vortex_financeiro')) || [];
-            financeiro.push({ desc: 'Venda PDV Caixa', tipo: 'Entrada', valor: total });
-            localStorage.setItem('vortex_financeiro', JSON.stringify(financeiro));
-
-            // Envia para o KDS
-            let kds = JSON.parse(localStorage.getItem('vortex_kds')) || [];
-            const novoId = Math.floor(100 + Math.random() * 900);
-            const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            kds.push({
-                id: novoId,
-                origem: 'PDV Balcão',
-                itens: carrinho.map(c => c.nome),
-                status: 'Pendente',
-                hora: agora
-            });
-            localStorage.setItem('vortex_kds', JSON.stringify(kds));
-
-            mostrarAviso(`Venda finalizada com sucesso!\nTotal recebido: R$ ${total.toFixed(2).replace('.', ',')}`);
-            carrinho = [];
-            atualizarCarrinho();
-        }
-
-        // Atalho F2 para finalizar venda
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                finalizarVenda();
-            }
-        });
-
-        carregarCatalogoPDV();
-    </script>
+      alert(`✅ Venda de R$ ${total.toFixed(2).replace('.', ',')} realizada com sucesso!\nForma de Pagamento: ${selectedPayment}`);
+      
+      clearCart();
+    }
+  </script>
 </body>
 </html>

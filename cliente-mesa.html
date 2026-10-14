@@ -33,26 +33,26 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 30px 20px;
+      padding: 25px 20px;
       width: 100%;
       max-width: 380px;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
 
-    .logo { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
-    .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 15px 0 5px 0; }
-    .subtitle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 30px; }
+    .logo { font-size: 1.4rem; font-weight: bold; margin-bottom: 5px; }
+    .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 10px 0 5px 0; }
+    .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
 
     .btn-action-client {
       width: 100%;
-      padding: 16px;
+      padding: 15px;
       border-radius: 12px;
       border: none;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: bold;
       cursor: pointer;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -63,6 +63,60 @@
     .btn-action-client:active { transform: scale(0.98); }
     .btn-close-account { background: var(--warning); color: #000; }
     .btn-call-waiter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); }
+
+    /* Módulo de Avaliação do Cliente */
+    .rating-section {
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+
+    .rating-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .stars-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .star {
+      font-size: 1.8rem;
+      color: var(--border);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .star.active { color: var(--warning); }
+
+    .rating-comment {
+      width: 100%;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      resize: none;
+      height: 60px;
+      margin-bottom: 10px;
+    }
+
+    .btn-send-rating {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border: 1px solid var(--success);
+      padding: 8px 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+    }
 
     /* Modal de Confirmação */
     .modal-overlay {
@@ -120,7 +174,7 @@
   <div class="client-card" id="mainCard">
     <div class="logo">🌪️ VORTEX FOOD</div>
     <div class="table-title" id="tableTitleDisplay">Mesa --</div>
-    <p class="subtitle">Selecione uma opção abaixo para ser atendido:</p>
+    <p class="subtitle">Selecione uma opção abaixo para ser atendido pelo seu celular:</p>
 
     <div id="activeButtons">
       <button class="btn-action-client btn-close-account" onclick="askConfirmation('close')">
@@ -130,6 +184,20 @@
       <button class="btn-action-client btn-call-waiter" onclick="askConfirmation('waiter')">
         <span>🙋‍♂️</span> Chamar Garçom
       </button>
+
+      <!-- SEÇÃO DE AVALIAÇÃO DE SATISFAÇÃO -->
+      <div class="rating-section">
+        <div class="rating-title">Como foi a sua experiência conosco hoje?</div>
+        <div class="stars-container">
+          <span class="star" onclick="setRating(1)">★</span>
+          <span class="star" onclick="setRating(2)">★</span>
+          <span class="star" onclick="setRating(3)">★</span>
+          <span class="star" onclick="setRating(4)">★</span>
+          <span class="star" onclick="setRating(5)">★</span>
+        </div>
+        <textarea class="rating-comment" id="ratingComment" placeholder="Deixe um comentário opcional..."></textarea>
+        <button class="btn-send-rating" onclick="submitRating()">Enviar Avaliação</button>
+      </div>
     </div>
 
     <div id="disabledNotice" class="status-disabled" style="display: none;">
@@ -153,6 +221,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const tableId = urlParams.get('mesa') || '1';
     let currentActionType = null;
+    let selectedRating = 0;
 
     document.getElementById('tableTitleDisplay').innerText = `Mesa 0${tableId}`;
 
@@ -162,6 +231,38 @@
         document.getElementById('activeButtons').style.display = 'none';
         document.getElementById('disabledNotice').style.display = 'block';
       }
+    }
+
+    function setRating(stars) {
+      selectedRating = stars;
+      const starElements = document.querySelectorAll('.star');
+      starElements.forEach((el, index) => {
+        if (index < stars) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    }
+
+    function submitRating() {
+      if (selectedRating === 0) {
+        alert('Por favor, selecione pelo menos 1 estrela para avaliar.');
+        return;
+      }
+      const comment = document.getElementById('ratingComment').value;
+      
+      let reviews = JSON.parse(localStorage.getItem('vortex_reviews') || '[]');
+      reviews.push({
+        table: tableId,
+        stars: selectedRating,
+        comment: comment,
+        date: new Date().toLocaleDateString('pt-BR')
+      });
+      localStorage.setItem('vortex_reviews', JSON.stringify(reviews));
+
+      alert('⭐ Agradecemos pelo seu feedback! A sua avaliação ajuda a melhorar o nosso atendimento.');
+      document.getElementById('ratingComment').value = '';
     }
 
     function askConfirmation(type) {

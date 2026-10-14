@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atendimento - Vortex Food</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --border: #334155;
+      --success: #22c55e;
+      --warning: #eab308;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .client-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px 20px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .logo { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+    .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 15px 0 5px 0; }
+    .subtitle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 30px; }
+
+    .btn-action-client {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform 0.2s;
+    }
+
+    .btn-action-client:active { transform: scale(0.98); }
+    .btn-close-account { background: var(--warning); color: #000; }
+    .btn-call-waiter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); }
+
+    /* Modal de Confirmação */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .confirm-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 25px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+    }
+
+    .confirm-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; }
+    .confirm-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
+
+    .confirm-actions { display: flex; gap: 10px; }
+
+    .btn-confirm {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-yes { background: var(--success); color: white; }
+    .btn-no { background: var(--border); color: var(--text-main); }
+
+    .status-disabled {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="client-card" id="mainCard">
+    <div class="logo">🌪️ VORTEX FOOD</div>
+    <div class="table-title" id="tableTitleDisplay">Mesa --</div>
+    <p class="subtitle">Selecione uma opção abaixo para ser atendido:</p>
+
+    <div id="activeButtons">
+      <button class="btn-action-client btn-close-account" onclick="askConfirmation('close')">
+        <span>🧾</span> Pedir a Conta
+      </button>
+
+      <button class="btn-action-client btn-call-waiter" onclick="askConfirmation('waiter')">
+        <span>🙋‍♂️</span> Chamar Garçom
+      </button>
+    </div>
+
+    <div id="disabledNotice" class="status-disabled" style="display: none;">
+      ⚠️ O serviço de fechamento via QR Code está temporariamente desativado neste estabelecimento. Por favor, solicite ao garçom no balcão.
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação "Tem Certeza?" -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="confirm-card">
+      <div class="confirm-title" id="confirmTitleText">Tem certeza?</div>
+      <div class="confirm-desc" id="confirmDescText">Deseja solicitar o fechamento da sua conta agora?</div>
+      <div class="confirm-actions">
+        <button class="btn-confirm btn-no" onclick="closeConfirmModal()">Não</button>
+        <button class="btn-confirm btn-yes" onclick="sendSignal()">Sim</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const tableId = urlParams.get('mesa') || '1';
+    let currentActionType = null;
+
+    document.getElementById('tableTitleDisplay').innerText = `Mesa 0${tableId}`;
+
+    function checkServiceEnabled() {
+      const enabled = localStorage.getItem('vortex_qr_closing_enabled') === 'true';
+      if (!enabled) {
+        document.getElementById('activeButtons').style.display = 'none';
+        document.getElementById('disabledNotice').style.display = 'block';
+      }
+    }
+
+    function askConfirmation(type) {
+      currentActionType = type;
+      if (type === 'close') {
+        document.getElementById('confirmTitleText').innerText = 'Solicitar Conta?';
+        document.getElementById('confirmDescText').innerText = 'Um garçom trará a maquininha/comanda à sua mesa.';
+      } else {
+        document.getElementById('confirmTitleText').innerText = 'Chamar Garçom?';
+        document.getElementById('confirmDescText').innerText = 'Notificará a equipe para vir até a sua mesa.';
+      }
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+    }
+
+    function sendSignal() {
+      localStorage.setItem('vortex_qr_signal', JSON.stringify({
+        tableId: tableId,
+        type: currentActionType,
+        timestamp: new Date().getTime()
+      }));
+
+      closeConfirmModal();
+      alert('✅ Solicitação enviada! A equipe já foi notificada.');
+    }
+
+    window.addEventListener('DOMContentLoaded', checkServiceEnabled);
+  </script>
+</body>
+</html>

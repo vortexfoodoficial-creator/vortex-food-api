@@ -282,7 +282,7 @@
 
     .client-info { font-size: 0.85rem; }
     .client-name { font-weight: 600; }
-    .client-address { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
+    .client-address { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; line-height: 1.3; }
 
     .order-items {
       font-size: 0.8rem;
@@ -346,7 +346,7 @@
 
     .btn-cancel-order:hover { background: var(--danger); color: white; }
 
-    /* MODAIS CORRIGIDOS PARA DISPOSITIVOS MÓVEIS (SEM CORTES) */
+    /* Modais */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -366,7 +366,7 @@
       border-radius: 16px;
       padding: 20px 20px 30px 20px;
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       max-height: 85vh;
       overflow-y: auto;
@@ -406,6 +406,11 @@
       color: var(--text-muted);
     }
 
+    .form-group label .req {
+      color: var(--danger);
+      font-weight: bold;
+    }
+
     .form-group input, .form-group select, .form-group textarea {
       background: var(--bg-main);
       border: 1px solid var(--border);
@@ -413,6 +418,19 @@
       padding: 10px;
       border-radius: 8px;
       font-size: 0.9rem;
+    }
+
+    .form-group input:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .cep-loading-spinner {
+      font-size: 0.75rem;
+      color: var(--info);
+      margin-top: 2px;
+      display: none;
     }
 
     .form-row {
@@ -714,13 +732,13 @@
       </div>
 
       <div class="form-group">
-        <label for="clientName">Nome do Cliente:</label>
+        <label for="clientName">Nome do Cliente <span class="req">*</span></label>
         <input type="text" id="clientName" placeholder="Ex: Gabriel Andrade">
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="clientPhone">Telefone / WhatsApp:</label>
+          <label for="clientPhone">Telefone / WhatsApp <span class="req">*</span></label>
           <input type="text" id="clientPhone" placeholder="(11) 95336-5177" oninput="maskPhone(this)">
         </div>
         <div class="form-group">
@@ -729,14 +747,48 @@
         </div>
       </div>
 
+      <!-- LOCALIZAÇÃO VIA CEP -->
+      <div class="form-row">
+        <div class="form-group" style="flex: 1.2;">
+          <label for="clientCep">CEP <span class="req">*</span></label>
+          <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" oninput="maskAndFetchCep(this)">
+          <span class="cep-loading-spinner" id="cepSpinner">🔍 Localizando endereço...</span>
+        </div>
+        <div class="form-group" style="flex: 0.8;">
+          <label for="clientNumber">Número <span class="req">*</span></label>
+          <input type="text" id="clientNumber" placeholder="Ex: 590">
+        </div>
+      </div>
+
       <div class="form-group">
-        <label for="clientAddress">Endereço Completo:</label>
-        <input type="text" id="clientAddress" placeholder="Rua Cachoeira, 890 - Bairro">
+        <label for="clientStreet">Rua / Logradouro:</label>
+        <input type="text" id="clientStreet" placeholder="Preenchido automaticamente pelo CEP" disabled>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="clientNeighborhood">Bairro:</label>
+          <input type="text" id="clientNeighborhood" placeholder="Bairro" disabled>
+        </div>
+        <div class="form-group">
+          <label for="clientCity">Cidade / UF:</label>
+          <input type="text" id="clientCity" placeholder="Cidade/UF" disabled>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="clientComplement">Complemento (Opcional):</label>
+        <input type="text" id="clientComplement" placeholder="Ex: Ap 42, Bloco B, Casa nos fundos">
+      </div>
+
+      <div class="form-group">
+        <label for="clientReference">Ponto de Referência (Opcional):</label>
+        <input type="text" id="clientReference" placeholder="Ex: Próximo à padaria Estrela">
       </div>
 
       <!-- CONSTRUTOR DE MÚLTIPLOS ITENS -->
       <div class="items-builder-box">
-        <div class="items-builder-header">Itens do Pedido:</div>
+        <div class="items-builder-header">Itens do Pedido <span class="req">*</span></div>
         <div class="selected-items-list" id="builderItemsList">
           <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>
         </div>
@@ -838,9 +890,9 @@
 
   <script>
     let deliveryOrders = JSON.parse(localStorage.getItem('vortex_delivery_orders')) || [
-      { id: 101, client: 'Ana Paula', phone: '(11) 98765-4321', address: 'Av. Paulista, 1000 - Ap 42', items: [{ name: 'X-Burger Especial', price: 28.50, qty: 1 }, { name: 'Suco Natural', price: 10.00, qty: 1 }], total: 43.50, fee: 5.00, status: 'pending', time: '19:10', payment: 'Pix', change: 0 },
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 97777-8888', address: 'Rua Augusta, 500', items: [{ name: 'Pizza Calabresa G', price: 55.00, qty: 1 }, { name: 'Refrigerante 2L', price: 14.00, qty: 1 }], total: 74.00, fee: 5.00, status: 'preparing', time: '19:02', payment: 'Cartão de Crédito', change: 0 },
-      { id: 103, client: 'Mariana Costa', phone: '(11) 96666-5555', address: 'Rua Oscar Freire, 120', items: [{ name: 'X-Salada Duplo', price: 32.00, qty: 2 }, { name: 'Batata Frita M', price: 18.00, qty: 1 }], total: 87.00, fee: 5.00, status: 'delivering', time: '18:45', courier: 'João Silva (Moto 01)', payment: 'Dinheiro', change: 13.00 }
+      { id: 101, client: 'Ana Paula', phone: '(11) 98765-4321', cep: '01310-100', street: 'Av. Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo/SP', complement: 'Ap 42', reference: 'Perto do MASP', items: [{ name: 'X-Burger Especial', price: 28.50, qty: 1 }, { name: 'Suco Natural', price: 10.00, qty: 1 }], total: 43.50, fee: 5.00, status: 'pending', time: '19:10', payment: 'Pix', change: 0 },
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 97777-8888', cep: '01305-000', street: 'Rua Augusta', number: '500', neighborhood: 'Consolação', city: 'São Paulo/SP', complement: '', reference: '', items: [{ name: 'Pizza Calabresa G', price: 55.00, qty: 1 }, { name: 'Refrigerante 2L', price: 14.00, qty: 1 }], total: 74.00, fee: 5.00, status: 'preparing', time: '19:02', payment: 'Cartão de Crédito', change: 0 },
+      { id: 103, client: 'Mariana Costa', phone: '(11) 96666-5555', cep: '01414-000', street: 'Rua Oscar Freire', number: '120', neighborhood: 'Jardim Paulista', city: 'São Paulo/SP', complement: '', reference: 'Esquina com a Haddock Lobo', items: [{ name: 'X-Salada Duplo', price: 32.00, qty: 2 }, { name: 'Batata Frita M', price: 18.00, qty: 1 }], total: 87.00, fee: 5.00, status: 'delivering', time: '18:45', courier: 'João Silva (Moto 01)', payment: 'Dinheiro', change: 13.00 }
     ];
 
     let currentBuildingItems = [];
@@ -857,6 +909,43 @@
     function saveOrders() {
       localStorage.setItem('vortex_delivery_orders', JSON.stringify(deliveryOrders));
       renderBoard();
+    }
+
+    /* BUSCA DE CEP AUTOMÁTICA VIA API (ViaCEP) */
+    function maskAndFetchCep(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (value.length > 8) value = value.slice(0, 8);
+      
+      if (value.length > 5) {
+        input.value = `${value.slice(0, 5)}-${value.slice(5)}`;
+      } else {
+        input.value = value;
+      }
+
+      if (value.length === 8) {
+        const spinner = document.getElementById('cepSpinner');
+        spinner.style.display = 'block';
+
+        fetch(`https://viacep.com.br/ws/${value}/json/`)
+          .then(res => res.json())
+          .then(data => {
+            spinner.style.display = 'none';
+            if (data.erro) {
+              showNoticeModal('CEP Não Encontrado', 'Por favor, verifique o CEP digitado.', '⚠️', 'var(--warning)');
+              return;
+            }
+            document.getElementById('clientStreet').value = data.logradouro || '';
+            document.getElementById('clientNeighborhood').value = data.bairro || '';
+            document.getElementById('clientCity').value = `${data.localidade}/${data.uf}`;
+            
+            // Foco automático no número da residência
+            document.getElementById('clientNumber').focus();
+          })
+          .catch(() => {
+            spinner.style.display = 'none';
+            showNoticeModal('Erro ao Buscar CEP', 'Não foi possível buscar o CEP automaticamente. Verifique sua conexão.', '⚠️', 'var(--warning)');
+          });
+      }
     }
 
     /* MÁSCARAS E FORMATAÇÃO DE MOEDA E TELEFONE */
@@ -992,6 +1081,11 @@
           : order.items;
 
         const isCancelled = order.status === 'cancelled';
+        
+        // Formatação limpa do endereço completo
+        const fullAddressStr = order.street 
+          ? `${order.street}, ${order.number}${order.complement ? ' ('+order.complement+')' : ''} - ${order.neighborhood} [CEP ${order.cep}]` 
+          : order.address;
 
         const cardHtml = `
           <div class="delivery-card ${isCancelled ? 'cancelled-card' : ''}">
@@ -1001,7 +1095,8 @@
             </div>
             <div class="client-info">
               <div class="client-name">${order.client} (${order.phone})</div>
-              <div class="client-address">📍 ${order.address}</div>
+              <div class="client-address">📍 ${fullAddressStr}</div>
+              ${order.reference ? `<div class="client-address" style="color:var(--info); font-size:0.75rem;">🚩 Ref: ${order.reference}</div>` : ''}
             </div>
             <div class="order-items">
               <strong>Itens:</strong> ${itemsStr}<br>
@@ -1165,7 +1260,13 @@
       rawCashGiven = 0;
       document.getElementById('clientName').value = '';
       document.getElementById('clientPhone').value = '';
-      document.getElementById('clientAddress').value = '';
+      document.getElementById('clientCep').value = '';
+      document.getElementById('clientNumber').value = '';
+      document.getElementById('clientStreet').value = '';
+      document.getElementById('clientNeighborhood').value = '';
+      document.getElementById('clientCity').value = '';
+      document.getElementById('clientComplement').value = '';
+      document.getElementById('clientReference').value = '';
       document.getElementById('deliveryFee').value = 'R$ 5,00';
       document.getElementById('cashGivenInput').value = '';
       document.getElementById('paymentMethodSelect').value = 'Pix';
@@ -1179,11 +1280,30 @@
     function saveNewDeliveryOrder() {
       const client = document.getElementById('clientName').value.trim();
       const phone = document.getElementById('clientPhone').value.trim();
-      const address = document.getElementById('clientAddress').value.trim();
+      const cep = document.getElementById('clientCep').value.trim();
+      const number = document.getElementById('clientNumber').value.trim();
+      const street = document.getElementById('clientStreet').value.trim();
+      const neighborhood = document.getElementById('clientNeighborhood').value.trim();
+      const city = document.getElementById('clientCity').value.trim();
+      const complement = document.getElementById('clientComplement').value.trim();
+      const reference = document.getElementById('clientReference').value.trim();
       const payment = document.getElementById('paymentMethodSelect').value;
 
-      if (!client || !address) {
-        showNoticeModal('Campos Obrigatórios', 'Por favor, preencha o Nome e o Endereço completo do cliente.', '⚠️', 'var(--warning)');
+      // VALIDAÇÕES OBRIGATÓRIAS
+      if (!client) {
+        showNoticeModal('Nome Obrigatório', 'Por favor, preencha o Nome do cliente.', '⚠️', 'var(--warning)');
+        return;
+      }
+      if (!phone || phone.length < 14) {
+        showNoticeModal('Telefone Inválido', 'Por favor, insira um Telefone/WhatsApp válido.', '⚠️', 'var(--warning)');
+        return;
+      }
+      if (!cep || cep.length < 9) {
+        showNoticeModal('CEP Obrigatório', 'Por favor, informe o CEP para localizar o endereço.', '⚠️', 'var(--warning)');
+        return;
+      }
+      if (!number) {
+        showNoticeModal('Número Obrigatório', 'Por favor, preencha o Número da residência.', '⚠️', 'var(--warning)');
         return;
       }
 
@@ -1207,8 +1327,14 @@
       deliveryOrders.unshift({
         id: nextId,
         client: client,
-        phone: phone || '(Não informado)',
-        address: address,
+        phone: phone,
+        cep: cep,
+        street: street,
+        number: number,
+        neighborhood: neighborhood,
+        city: city,
+        complement: complement,
+        reference: reference,
         items: [...currentBuildingItems],
         total: total,
         fee: rawDeliveryFee,
@@ -1220,7 +1346,7 @@
 
       saveOrders();
       closeNewOrderModal();
-      showNoticeModal('Pedido Registrado!', `Pedido #${nextId} cadastrado e pronto para a cozinha.`, '🎉');
+      showNoticeModal('Pedido Registrado!', `Pedido #${nextId} cadastrado com sucesso!`, '🎉');
     }
 
     function showNoticeModal(title, desc, icon, color) {

@@ -41,8 +41,54 @@
     }
 
     .logo { font-size: 1.4rem; font-weight: bold; margin-bottom: 5px; }
-    .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 10px 0 5px 0; }
+    .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 5px 0 2px 0; }
     .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Caixa do Extrato da Comanda da Mesa */
+    .extrato-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .extrato-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .extrato-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    .extrato-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .extrato-total {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      color: var(--success);
+    }
 
     .btn-action-client {
       width: 100%;
@@ -118,7 +164,7 @@
       width: 100%;
     }
 
-    /* Modal de Confirmação */
+    /* Modais Profissionais do Cliente */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -132,32 +178,36 @@
 
     .modal-overlay.active { display: flex; }
 
-    .confirm-card {
+    .custom-modal-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 25px;
       width: 100%;
-      max-width: 320px;
+      max-width: 340px;
       text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
 
-    .confirm-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; }
-    .confirm-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
+    .custom-modal-icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 8px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
 
     .confirm-actions { display: flex; gap: 10px; }
 
-    .btn-confirm {
+    .btn-modal-custom {
       flex: 1;
       padding: 12px;
       border-radius: 8px;
-      border: none;
       font-weight: bold;
+      border: none;
       cursor: pointer;
+      font-size: 0.95rem;
     }
 
-    .btn-yes { background: var(--success); color: white; }
-    .btn-no { background: var(--border); color: var(--text-main); }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-modal-yes { background: var(--success); color: white; }
+    .btn-modal-no { background: var(--border); color: var(--text-main); }
 
     .status-disabled {
       background: rgba(239, 68, 68, 0.15);
@@ -174,7 +224,22 @@
   <div class="client-card" id="mainCard">
     <div class="logo">🌪️ VORTEX FOOD</div>
     <div class="table-title" id="tableTitleDisplay">Mesa --</div>
-    <p class="subtitle">Selecione uma opção abaixo para ser atendido pelo seu celular:</p>
+    <p class="subtitle">Consumo parcial da sua mesa em tempo real:</p>
+
+    <!-- EXTRATO DA COMANDA DA MESA DO CLIENTE -->
+    <div class="extrato-box">
+      <div class="extrato-title">
+        <span>Itens Pedidos</span>
+        <span>Subtotal</span>
+      </div>
+      <div class="extrato-list" id="clientExtratoList">
+        <!-- Injetado dinamicamente -->
+      </div>
+      <div class="extrato-total">
+        <span>Total Parcial:</span>
+        <span id="clientExtratoTotal">R$ 0,00</span>
+      </div>
+    </div>
 
     <div id="activeButtons">
       <button class="btn-action-client btn-close-account" onclick="askConfirmation('close')">
@@ -185,7 +250,7 @@
         <span>🙋‍♂️</span> Chamar Garçom
       </button>
 
-      <!-- SEÇÃO DE AVALIAÇÃO DE SATISFAÇÃO -->
+      <!-- AVALIAÇÃO DE SATISFAÇÃO -->
       <div class="rating-section">
         <div class="rating-title">Como foi a sua experiência conosco hoje?</div>
         <div class="stars-container">
@@ -205,15 +270,26 @@
     </div>
   </div>
 
-  <!-- Modal de Confirmação "Tem Certeza?" -->
+  <!-- Modal Profissional de Confirmação -->
   <div class="modal-overlay" id="confirmModal">
-    <div class="confirm-card">
-      <div class="confirm-title" id="confirmTitleText">Tem certeza?</div>
-      <div class="confirm-desc" id="confirmDescText">Deseja solicitar o fechamento da sua conta agora?</div>
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="confirmModalIcon">⚠️</div>
+      <div class="custom-modal-title" id="confirmTitleText">Tem certeza?</div>
+      <div class="custom-modal-desc" id="confirmDescText">Deseja prosseguir?</div>
       <div class="confirm-actions">
-        <button class="btn-confirm btn-no" onclick="closeConfirmModal()">Não</button>
-        <button class="btn-confirm btn-yes" onclick="sendSignal()">Sim</button>
+        <button class="btn-modal-custom btn-modal-no" onclick="closeConfirmModal()">Cancelar</button>
+        <button class="btn-modal-custom btn-modal-yes" onclick="sendSignal()">Sim, Enviar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Profissional de Aviso / Sucesso -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
+      <div class="custom-modal-title" id="noticeTitleText" style="color: var(--success);">Sucesso</div>
+      <div class="custom-modal-desc" id="noticeDescText">Ação realizada com sucesso!</div>
+      <button class="btn-modal-custom btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
@@ -225,11 +301,45 @@
 
     document.getElementById('tableTitleDisplay').innerText = `Mesa 0${tableId}`;
 
+    function loadTableComanda() {
+      const tables = JSON.parse(localStorage.getItem('vortex_tables') || '[]');
+      const table = tables.find(t => t.id === parseInt(tableId));
+      const listContainer = document.getElementById('clientExtratoList');
+      const totalDisplay = document.getElementById('clientExtratoTotal');
+
+      if (!table || !table.items || table.items.length === 0) {
+        listContainer.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item consumido até o momento.</div>`;
+        totalDisplay.innerText = 'R$ 0,00';
+        return;
+      }
+
+      let html = '';
+      let total = 0;
+      table.items.forEach(item => {
+        const subtotal = item.price * item.qty;
+        total += subtotal;
+        html += `
+          <div class="extrato-item">
+            <span>${item.qty}x ${item.name}</span>
+            <strong>R$ ${subtotal.toFixed(2).replace('.', ',')}</strong>
+          </div>
+        `;
+      });
+
+      listContainer.innerHTML = html;
+      totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
+
     function checkServiceEnabled() {
-      const enabled = localStorage.getItem('vortex_qr_closing_enabled') === 'true';
+      const savedConfig = localStorage.getItem('vortex_qr_closing_enabled');
+      const enabled = savedConfig === null ? true : savedConfig === 'true';
+
       if (!enabled) {
         document.getElementById('activeButtons').style.display = 'none';
         document.getElementById('disabledNotice').style.display = 'block';
+      } else {
+        document.getElementById('activeButtons').style.display = 'block';
+        document.getElementById('disabledNotice').style.display = 'none';
       }
     }
 
@@ -247,7 +357,7 @@
 
     function submitRating() {
       if (selectedRating === 0) {
-        alert('Por favor, selecione pelo menos 1 estrela para avaliar.');
+        showNoticeModal('Atenção', 'Por favor, selecione pelo menos 1 estrela para registrar a sua avaliação.', '⚠️', '#eab308');
         return;
       }
       const comment = document.getElementById('ratingComment').value;
@@ -261,24 +371,38 @@
       });
       localStorage.setItem('vortex_reviews', JSON.stringify(reviews));
 
-      alert('⭐ Agradecemos pelo seu feedback! A sua avaliação ajuda a melhorar o nosso atendimento.');
+      showNoticeModal('Avaliação Enviada', 'Agradecemos pelo seu feedback! O seu comentário nos ajuda a melhorar cada vez mais.', '⭐', 'var(--success)');
       document.getElementById('ratingComment').value = '';
     }
 
     function askConfirmation(type) {
       currentActionType = type;
       if (type === 'close') {
-        document.getElementById('confirmTitleText').innerText = 'Solicitar Conta?';
-        document.getElementById('confirmDescText').innerText = 'Um garçom trará a maquininha/comanda à sua mesa.';
+        document.getElementById('confirmModalIcon').innerText = '🧾';
+        document.getElementById('confirmTitleText').innerText = 'Solicitar Fechamento da Conta?';
+        document.getElementById('confirmDescText').innerText = 'Um garçom trará a conferência e a maquininha de cartão à sua mesa em instantes.';
       } else {
-        document.getElementById('confirmTitleText').innerText = 'Chamar Garçom?';
-        document.getElementById('confirmDescText').innerText = 'Notificará a equipe para vir até a sua mesa.';
+        document.getElementById('confirmModalIcon').innerText = '🙋‍♂️';
+        document.getElementById('confirmTitleText').innerText = 'Chamar o Garçom?';
+        document.getElementById('confirmDescText').innerText = 'Um aviso sonoro e visual será enviado para a equipe de atendimento se dirigir à sua mesa.';
       }
       document.getElementById('confirmModal').classList.add('active');
     }
 
     function closeConfirmModal() {
       document.getElementById('confirmModal').classList.remove('active');
+    }
+
+    function showNoticeModal(title, desc, icon, color) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitleText').innerText = title;
+      document.getElementById('noticeTitleText').style.color = color || 'var(--success)';
+      document.getElementById('noticeDescText').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     function sendSignal() {
@@ -289,10 +413,18 @@
       }));
 
       closeConfirmModal();
-      alert('✅ Solicitação enviada! A equipe já foi notificada.');
+
+      if (currentActionType === 'close') {
+        showNoticeModal('Conta Solicitada!', 'A sua solicitação foi enviada com sucesso para o caixa e garçons. Aguarde um momento.', '🧾', 'var(--warning)');
+      } else {
+        showNoticeModal('Garçom Chamado!', 'A sua chamada foi enviada com sucesso. Um atendente irá até a sua mesa em breve.', '🙋‍♂️', 'var(--primary)');
+      }
     }
 
-    window.addEventListener('DOMContentLoaded', checkServiceEnabled);
+    window.addEventListener('DOMContentLoaded', () => {
+      checkServiceEnabled();
+      loadTableComanda();
+    });
   </script>
 </body>
 </html>

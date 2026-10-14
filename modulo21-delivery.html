@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vortex Food - Delivery & Entregas</title>
+  <title>Vortex Food - Delivery & Gestão de Entregas</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -177,7 +177,7 @@
     /* Métricas do Delivery */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 15px;
       margin-bottom: 25px;
     }
@@ -193,20 +193,20 @@
     }
 
     .metric-icon {
-      font-size: 2rem;
+      font-size: 1.8rem;
       background: rgba(15, 23, 42, 0.6);
       padding: 10px;
       border-radius: 10px;
     }
 
     .metric-info h3 { font-size: 0.8rem; color: var(--text-muted); font-weight: normal; }
-    .metric-info p { font-size: 1.3rem; font-weight: bold; margin-top: 2px; }
+    .metric-info p { font-size: 1.25rem; font-weight: bold; margin-top: 2px; }
 
     /* Quadro Kanban */
     .kanban-board {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 15px;
       align-items: start;
     }
 
@@ -228,11 +228,11 @@
     }
 
     .column-title {
-      font-size: 0.95rem;
+      font-size: 0.90rem;
       font-weight: bold;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .column-count {
@@ -266,6 +266,11 @@
       border-color: var(--primary);
     }
 
+    .delivery-card.cancelled-card {
+      opacity: 0.75;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
     .card-top {
       display: flex;
       justify-content: space-between;
@@ -285,6 +290,15 @@
       background: rgba(30, 41, 59, 0.5);
       padding: 8px;
       border-radius: 6px;
+      line-height: 1.4;
+    }
+
+    .cancel-reason-tag {
+      color: var(--danger);
+      font-size: 0.75rem;
+      margin-top: 4px;
+      display: block;
+      font-style: italic;
     }
 
     .card-bottom {
@@ -294,15 +308,22 @@
       margin-top: 4px;
       padding-top: 8px;
       border-top: 1px solid rgba(255,255,255,0.05);
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .order-price { font-weight: bold; font-size: 0.95rem; color: var(--success); }
+
+    .card-actions-group {
+      display: flex;
+      gap: 6px;
+    }
 
     .btn-move {
       background: var(--border);
       color: var(--text-main);
       border: none;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
       font-size: 0.8rem;
       font-weight: 600;
@@ -312,12 +333,25 @@
 
     .btn-move:hover { background: var(--primary); color: white; }
 
-    /* Modais Genéricos e Específicos */
+    .btn-cancel-order {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancel-order:hover { background: var(--danger); color: white; }
+
+    /* Modais */
     .modal-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.8);
       z-index: 200;
       justify-content: center;
       align-items: center;
@@ -332,7 +366,7 @@
       border-radius: 16px;
       padding: 25px;
       width: 100%;
-      max-width: 500px;
+      max-width: 550px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       max-height: 90vh;
       overflow-y: auto;
@@ -367,7 +401,7 @@
       color: var(--text-muted);
     }
 
-    .form-group input, .form-group select {
+    .form-group input, .form-group select, .form-group textarea {
       background: var(--bg-main);
       border: 1px solid var(--border);
       color: var(--text-main);
@@ -383,6 +417,88 @@
 
     .form-row .form-group { flex: 1; }
 
+    /* Seção Dinâmica de Itens do Pedido */
+    .items-builder-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+
+    .items-builder-header {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .selected-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+
+    .item-row-added {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .btn-remove-item {
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .add-item-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-item-controls select { flex: 1; }
+    .add-item-controls input { width: 70px; }
+
+    .btn-add-item-list {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* Pagamento e Troco */
+    .cash-change-container {
+      display: none;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .cash-change-container.active { display: block; }
+
+    .change-display-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-top: 6px;
+      color: var(--success);
+    }
+
     /* Modais Profissionais Customizados */
     .custom-modal-card {
       background: var(--bg-card);
@@ -390,14 +506,14 @@
       border-radius: 16px;
       padding: 30px;
       width: 90%;
-      max-width: 400px;
+      max-width: 420px;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
 
     .custom-modal-icon { font-size: 3rem; margin-bottom: 15px; }
     .custom-modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; }
 
     .custom-modal-actions { display: flex; gap: 10px; }
 
@@ -412,6 +528,7 @@
     }
 
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-modal-danger { background: var(--danger); color: white; }
     .btn-modal-secondary { background: var(--border); color: var(--text-main); }
 
     @media (max-width: 768px) {
@@ -514,6 +631,13 @@
           <p id="metricDone">0</p>
         </div>
       </div>
+      <div class="metric-card">
+        <div class="metric-icon">🚫</div>
+        <div class="metric-info">
+          <h3>Cancelados</h3>
+          <p id="metricCancelled" style="color:var(--danger)">0</p>
+        </div>
+      </div>
     </div>
 
     <!-- QUADRO KANBAN DE PEDIDOS -->
@@ -555,6 +679,15 @@
         <div class="cards-container" id="colDone"></div>
       </div>
 
+      <!-- Coluna 5: Cancelados (Salvo para Relatórios) -->
+      <div class="kanban-column">
+        <div class="column-header">
+          <span class="column-title" style="color:var(--danger)">🚫 Cancelados</span>
+          <span class="column-count" id="countCancelled">0</span>
+        </div>
+        <div class="cards-container" id="colCancelled"></div>
+      </div>
+
     </div>
   </main>
 
@@ -568,53 +701,73 @@
 
       <div class="form-group">
         <label for="clientName">Nome do Cliente:</label>
-        <input type="text" id="clientName" placeholder="Ex: Carlos Silva">
+        <input type="text" id="clientName" placeholder="Ex: Gabriel Andrade">
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label for="clientPhone">Telefone / WhatsApp:</label>
-          <input type="text" id="clientPhone" placeholder="(11) 99999-9999">
+          <input type="text" id="clientPhone" placeholder="(11) 95336-5177" oninput="maskPhone(this)">
         </div>
         <div class="form-group">
-          <label for="deliveryFee">Taxa de Entrega (R$):</label>
-          <input type="number" id="deliveryFee" value="5.00" step="0.50">
+          <label for="deliveryFee">Taxa de Entrega:</label>
+          <input type="text" id="deliveryFee" value="R$ 5,00" oninput="maskCurrencyInput(this, calculateOrderTotal)">
         </div>
       </div>
 
       <div class="form-group">
         <label for="clientAddress">Endereço Completo:</label>
-        <input type="text" id="clientAddress" placeholder="Rua, Número, Bairro e Complemento">
+        <input type="text" id="clientAddress" placeholder="Rua Cachoeira, 890 - Bairro">
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="orderProduct">Selecione o Produto:</label>
-          <select id="orderProduct">
+      <!-- CONSTRUTOR DE MÚLTIPLOS ITENS -->
+      <div class="items-builder-box">
+        <div class="items-builder-header">Itens do Pedido:</div>
+        <div class="selected-items-list" id="builderItemsList">
+          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>
+        </div>
+
+        <div class="add-item-controls">
+          <select id="selectProductToAdd">
             <option value="X-Burger Especial|28.50">X-Burger Especial (R$ 28,50)</option>
             <option value="X-Salada Duplo|32.00">X-Salada Duplo (R$ 32,00)</option>
             <option value="Pizza Calabresa G|55.00">Pizza Calabresa G (R$ 55,00)</option>
             <option value="Batata Frita M|18.00">Batata Frita M (R$ 18,00)</option>
             <option value="Refrigerante 2L|14.00">Refrigerante 2L (R$ 14,00)</option>
+            <option value="Suco Natural 500ml|10.00">Suco Natural (R$ 10,00)</option>
           </select>
-        </div>
-        <div class="form-group" style="max-width: 90px;">
-          <label for="orderQty">Qtd:</label>
-          <input type="number" id="orderQty" value="1" min="1">
+          <input type="number" id="selectQtyToAdd" value="1" min="1">
+          <button class="btn-add-item-list" onclick="addItemToCurrentOrder()">➕ Adicionar</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="paymentMethod">Forma de Pagamento:</label>
-        <select id="paymentMethod">
-          <option value="Pix">Pix (Online / Máquina)</option>
+        <label for="paymentMethodSelect">Forma de Pagamento:</label>
+        <select id="paymentMethodSelect" onchange="toggleCashBox(this)">
+          <option value="Pix">Pix</option>
           <option value="Cartão de Crédito">Cartão de Crédito</option>
           <option value="Cartão de Débito">Cartão de Débito</option>
           <option value="Dinheiro">Dinheiro</option>
         </select>
       </div>
 
-      <button class="btn-modal-custom btn-modal-primary" style="margin-top: 15px;" onclick="saveNewDeliveryOrder()">Lançar Pedido no Delivery</button>
+      <!-- CAIXA DE DINHEIRO E TROCO -->
+      <div class="cash-change-container" id="cashChangeBox">
+        <div class="form-group">
+          <label for="cashGivenInput">Valor que o Cliente vai Pagar (Para Troco):</label>
+          <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this, calculateChange)">
+        </div>
+        <div class="change-display-row">
+          <span>Troco a Levar:</span>
+          <span id="calculatedChangeDisplay">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div style="font-size: 1.2rem; font-weight: bold; text-align: right; margin: 15px 0;">
+        Total do Pedido: <span id="finalOrderTotalDisplay" style="color:var(--primary);">R$ 5,00</span>
+      </div>
+
+      <button class="btn-modal-custom btn-modal-primary" onclick="saveNewDeliveryOrder()">Lançar Pedido no Delivery</button>
     </div>
   </div>
 
@@ -629,13 +782,32 @@
         <select id="courierSelect">
           <option value="Motoqueiro João">João Silva (Moto 01)</option>
           <option value="Motoqueiro Pedro">Pedro Santos (Moto 02)</option>
-          <option value="Entregador iFood">Parceiro iFood / Proprio</option>
+          <option value="Entregador iFood">Parceiro iFood / Próprio</option>
         </select>
       </div>
 
       <div class="custom-modal-actions">
         <button class="btn-modal-custom btn-modal-secondary" onclick="closeCourierModal()">Cancelar</button>
         <button class="btn-modal-custom btn-modal-primary" onclick="confirmDispatchOrder()">Despachar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM OBSERVAÇÃO -->
+  <div class="modal-overlay" id="cancelConfirmModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">🚫</div>
+      <div class="custom-modal-title">Cancelar Pedido?</div>
+      <div class="custom-modal-desc">O pedido será registrado nos relatórios como <strong>CANCELADO</strong> para manter o histórico correto.</div>
+      
+      <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+        <label for="cancelReasonInput">Motivo/Observação do Cancelamento (Opcional):</label>
+        <textarea id="cancelReasonInput" placeholder="Ex: Cliente desistiu, item esgotado..." style="width: 100%; height: 70px; resize: none;"></textarea>
+      </div>
+
+      <div class="custom-modal-actions">
+        <button class="btn-modal-custom btn-modal-secondary" onclick="closeCancelConfirmModal()">Voltar</button>
+        <button class="btn-modal-custom btn-modal-danger" onclick="executeCancelOrder()">Confirmar Cancelamento</button>
       </div>
     </div>
   </div>
@@ -652,12 +824,16 @@
 
   <script>
     let deliveryOrders = JSON.parse(localStorage.getItem('vortex_delivery_orders')) || [
-      { id: 101, client: 'Ana Paula', phone: '(11) 98765-4321', address: 'Av. Paulista, 1000 - Ap 42', items: '1x X-Burger Especial, 1x Suco Natural', total: 38.50, status: 'pending', time: '19:10', payment: 'Pix' },
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 97777-8888', address: 'Rua Augusta, 500', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', total: 74.00, status: 'preparing', time: '19:02', payment: 'Cartão de Crédito' },
-      { id: 103, client: 'Mariana Costa', phone: '(11) 96666-5555', address: 'Rua Oscar Freire, 120', items: '2x X-Salada Duplo, 1x Batata Frita M', total: 87.00, status: 'delivering', time: '18:45', courier: 'João Silva (Moto 01)', payment: 'Dinheiro' }
+      { id: 101, client: 'Ana Paula', phone: '(11) 98765-4321', address: 'Av. Paulista, 1000 - Ap 42', items: [{ name: 'X-Burger Especial', price: 28.50, qty: 1 }, { name: 'Suco Natural', price: 10.00, qty: 1 }], total: 43.50, fee: 5.00, status: 'pending', time: '19:10', payment: 'Pix', change: 0 },
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 97777-8888', address: 'Rua Augusta, 500', items: [{ name: 'Pizza Calabresa G', price: 55.00, qty: 1 }, { name: 'Refrigerante 2L', price: 14.00, qty: 1 }], total: 74.00, fee: 5.00, status: 'preparing', time: '19:02', payment: 'Cartão de Crédito', change: 0 },
+      { id: 103, client: 'Mariana Costa', phone: '(11) 96666-5555', address: 'Rua Oscar Freire, 120', items: [{ name: 'X-Salada Duplo', price: 32.00, qty: 2 }, { name: 'Batata Frita M', price: 18.00, qty: 1 }], total: 87.00, fee: 5.00, status: 'delivering', time: '18:45', courier: 'João Silva (Moto 01)', payment: 'Dinheiro', change: 13.00 }
     ];
 
+    let currentBuildingItems = [];
+    let rawDeliveryFee = 5.00;
+    let rawCashGiven = 0;
     let pendingDispatchOrderId = null;
+    let pendingCancelOrderId = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -669,34 +845,141 @@
       renderBoard();
     }
 
-    function showNoticeModal(title, desc, icon, color) {
-      document.getElementById('noticeIcon').innerText = icon || 'ℹ️';
-      document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeTitle').style.color = color || 'var(--success)';
-      document.getElementById('noticeDesc').innerText = desc;
-      document.getElementById('noticeModal').classList.add('active');
+    /* MÁSCARAS E FORMATAÇÃO DE MOEDA E TELEFONE */
+    function maskPhone(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (value.length > 11) value = value.slice(0, 11);
+      if (value.length > 6) {
+        input.value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+      } else if (value.length > 2) {
+        input.value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+      } else if (value.length > 0) {
+        input.value = `(${value}`;
+      } else {
+        input.value = '';
+      }
     }
 
-    function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
+    function maskCurrencyInput(input, callback) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = 'R$ 0,00';
+        if (input.id === 'deliveryFee') rawDeliveryFee = 0;
+        if (input.id === 'cashGivenInput') rawCashGiven = 0;
+        if (callback) callback();
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      if (input.id === 'deliveryFee') rawDeliveryFee = numeric;
+      if (input.id === 'cashGivenInput') rawCashGiven = numeric;
+
+      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (callback) callback();
     }
 
+    function toggleCashBox(select) {
+      const box = document.getElementById('cashChangeBox');
+      if (select.value === 'Dinheiro') {
+        box.classList.add('active');
+      } else {
+        box.classList.remove('active');
+      }
+      calculateChange();
+    }
+
+    /* GESTÃO DE MÚLTIPLOS ITENS NO PEDIDO */
+    function addItemToCurrentOrder() {
+      const select = document.getElementById('selectProductToAdd');
+      const qtyInput = document.getElementById('selectQtyToAdd');
+      const [name, priceStr] = select.value.split('|');
+      const price = parseFloat(priceStr);
+      const qty = parseInt(qtyInput.value) || 1;
+
+      const existing = currentBuildingItems.find(i => i.name === name);
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        currentBuildingItems.push({ name, price, qty });
+      }
+
+      renderBuildingItems();
+    }
+
+    function removeItemFromCurrentOrder(index) {
+      currentBuildingItems.splice(index, 1);
+      renderBuildingItems();
+    }
+
+    function renderBuildingItems() {
+      const container = document.getElementById('builderItemsList');
+      if (currentBuildingItems.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>`;
+      } else {
+        let html = '';
+        currentBuildingItems.forEach((item, idx) => {
+          html += `
+            <div class="item-row-added">
+              <span><strong>${item.qty}x</strong> ${item.name}</span>
+              <span>R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')} 
+                <button class="btn-remove-item" onclick="removeItemFromCurrentOrder(${idx})">✕</button>
+              </span>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+      calculateOrderTotal();
+    }
+
+    function calculateOrderTotal() {
+      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const total = itemsSubtotal + rawDeliveryFee;
+      document.getElementById('finalOrderTotalDisplay').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+      calculateChange();
+    }
+
+    function calculateChange() {
+      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const total = itemsSubtotal + rawDeliveryFee;
+      const display = document.getElementById('calculatedChangeDisplay');
+
+      if (rawCashGiven >= total && total > 0) {
+        const change = rawCashGiven - total;
+        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        display.style.color = 'var(--success)';
+      } else if (rawCashGiven > 0) {
+        display.innerText = 'Falta dinheiro';
+        display.style.color = 'var(--danger)';
+      } else {
+        display.innerText = 'R$ 0,00';
+      }
+    }
+
+    /* RENDERIZAÇÃO DO KANBAN DE ENTREGAS */
     function renderBoard() {
       const colPending = document.getElementById('colPending');
       const colPreparing = document.getElementById('colPreparing');
       const colDelivery = document.getElementById('colDelivery');
       const colDone = document.getElementById('colDone');
+      const colCancelled = document.getElementById('colCancelled');
 
       colPending.innerHTML = '';
       colPreparing.innerHTML = '';
       colDelivery.innerHTML = '';
       colDone.innerHTML = '';
+      colCancelled.innerHTML = '';
 
-      let countPending = 0, countPreparing = 0, countDelivery = 0, countDone = 0;
+      let countPending = 0, countPreparing = 0, countDelivery = 0, countDone = 0, countCancelled = 0;
 
       deliveryOrders.forEach(order => {
+        const itemsStr = Array.isArray(order.items) 
+          ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') 
+          : order.items;
+
+        const isCancelled = order.status === 'cancelled';
+
         const cardHtml = `
-          <div class="delivery-card">
+          <div class="delivery-card ${isCancelled ? 'cancelled-card' : ''}">
             <div class="card-top">
               <span class="order-id">#${order.id}</span>
               <span class="order-time">🕒 ${order.time}</span>
@@ -706,13 +989,17 @@
               <div class="client-address">📍 ${order.address}</div>
             </div>
             <div class="order-items">
-              <strong>Itens:</strong> ${order.items}<br>
+              <strong>Itens:</strong> ${itemsStr}<br>
               <small>Pagamento: ${order.payment}</small>
+              ${order.change ? `<br><small style="color:var(--warning)">Troco para: R$ ${(order.total + order.change).toFixed(2).replace('.', ',')}</small>` : ''}
               ${order.courier ? `<br><small style="color:var(--info)">🛵 ${order.courier}</small>` : ''}
+              ${order.cancelReason ? `<span class="cancel-reason-tag">Motivo: ${order.cancelReason}</span>` : ''}
             </div>
             <div class="card-bottom">
-              <span class="order-price">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
-              ${getActionButton(order)}
+              <span class="order-price" ${isCancelled ? 'style="color:var(--danger); text-decoration:line-through;"' : ''}>R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+              <div class="card-actions-group">
+                ${getActionButton(order)}
+              </div>
             </div>
           </div>
         `;
@@ -729,6 +1016,9 @@
         } else if (order.status === 'done') {
           colDone.innerHTML += cardHtml;
           countDone++;
+        } else if (order.status === 'cancelled') {
+          colCancelled.innerHTML += cardHtml;
+          countCancelled++;
         }
       });
 
@@ -736,22 +1026,32 @@
       document.getElementById('countPreparing').innerText = countPreparing;
       document.getElementById('countDelivery').innerText = countDelivery;
       document.getElementById('countDone').innerText = countDone;
+      document.getElementById('countCancelled').innerText = countCancelled;
 
       document.getElementById('metricPending').innerText = countPending;
       document.getElementById('metricPreparing').innerText = countPreparing;
       document.getElementById('metricDelivery').innerText = countDelivery;
       document.getElementById('metricDone').innerText = countDone;
+      document.getElementById('metricCancelled').innerText = countCancelled;
     }
 
     function getActionButton(order) {
       if (order.status === 'pending') {
-        return `<button class="btn-move" onclick="moveOrderStatus(${order.id}, 'preparing')">Aceitar e Preparar 👨‍🍳</button>`;
+        return `
+          <button class="btn-cancel-order" onclick="openCancelModal(${order.id})">🚫</button>
+          <button class="btn-move" onclick="moveOrderStatus(${order.id}, 'preparing')">Aceitar 👨‍🍳</button>
+        `;
       } else if (order.status === 'preparing') {
-        return `<button class="btn-move" onclick="openCourierModal(${order.id})">Despachar 🛵</button>`;
+        return `
+          <button class="btn-cancel-order" onclick="openCancelModal(${order.id})">🚫</button>
+          <button class="btn-move" onclick="openCourierModal(${order.id})">Despachar 🛵</button>
+        `;
       } else if (order.status === 'delivering') {
-        return `<button class="btn-move" onclick="moveOrderStatus(${order.id}, 'done')">Concluir Entrega ✅</button>`;
-      } else {
+        return `<button class="btn-move" onclick="moveOrderStatus(${order.id}, 'done')">Concluir ✅</button>`;
+      } else if (order.status === 'done') {
         return `<span style="font-size:0.8rem; color:var(--success); font-weight:bold;">Finalizado ✓</span>`;
+      } else {
+        return `<span style="font-size:0.8rem; color:var(--danger); font-weight:bold;">Cancelado ✕</span>`;
       }
     }
 
@@ -761,18 +1061,65 @@
 
       order.status = nextStatus;
 
-      // Ao concluir, soma no faturamento do dia do caixa
       if (nextStatus === 'done') {
         let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
         currentSales += order.total;
         localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-        showNoticeModal('Entrega Finalizada!', `O pedido #${order.id} do cliente ${order.client} foi marcado como entregue e somado ao faturamento.`, '🎉');
+        let salesHistory = JSON.parse(localStorage.getItem('vortex_history') || '[]');
+        const itemsSummary = Array.isArray(order.items) ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') : order.items;
+        salesHistory.unshift({
+          time: order.time,
+          items: `[Delivery #${order.id}] ${itemsSummary}`,
+          payment: order.payment,
+          total: order.total
+        });
+        localStorage.setItem('vortex_history', JSON.stringify(salesHistory));
+
+        showNoticeModal('Entrega Concluída!', `O pedido #${order.id} de ${order.client} foi marcado como entregue e somado ao faturamento do dia.`, '🎉');
       }
 
       saveOrders();
     }
 
+    /* CANCELAMENTO DE PEDIDO (COM OBSERVAÇÃO/MOTIVO) */
+    function openCancelModal(orderId) {
+      pendingCancelOrderId = orderId;
+      document.getElementById('cancelReasonInput').value = '';
+      document.getElementById('cancelConfirmModal').classList.add('active');
+    }
+
+    function closeCancelConfirmModal() {
+      document.getElementById('cancelConfirmModal').classList.remove('active');
+      pendingCancelOrderId = null;
+    }
+
+    function executeCancelOrder() {
+      if (!pendingCancelOrderId) return;
+      const order = deliveryOrders.find(o => o.id === pendingCancelOrderId);
+      const reason = document.getElementById('cancelReasonInput').value.trim();
+
+      if (order) {
+        order.status = 'cancelled';
+        order.cancelReason = reason || 'Nenhum motivo informado';
+
+        let salesHistory = JSON.parse(localStorage.getItem('vortex_history') || '[]');
+        const itemsSummary = Array.isArray(order.items) ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') : order.items;
+        salesHistory.unshift({
+          time: order.time,
+          items: `[CANCELADO Delivery #${order.id}] ${itemsSummary} ${reason ? '(Motivo: ' + reason + ')' : ''}`,
+          payment: order.payment,
+          total: 0.00
+        });
+        localStorage.setItem('vortex_history', JSON.stringify(salesHistory));
+
+        saveOrders();
+        showNoticeModal('Pedido Cancelado', `O pedido #${order.id} foi marcado como cancelado e guardado nos relatórios.`, '🚫', 'var(--danger)');
+      }
+      closeCancelConfirmModal();
+    }
+
+    /* DESPACHAR PARA MOTOQUEIRO */
     function openCourierModal(orderId) {
       pendingDispatchOrderId = orderId;
       document.getElementById('courierModal').classList.add('active');
@@ -796,26 +1143,47 @@
       showNoticeModal('Pedido Despachado!', `Pedido #${order.id} atribuído ao entregador ${order.courier}.`, '🛵', 'var(--info)');
     }
 
-    function openNewOrderModal() { document.getElementById('newOrderModal').classList.add('active'); }
+    /* ABRIR E FECHAR MODAL DE NOVO PEDIDO */
+    function openNewOrderModal() {
+      currentBuildingItems = [];
+      rawDeliveryFee = 5.00;
+      rawCashGiven = 0;
+      document.getElementById('clientName').value = '';
+      document.getElementById('clientPhone').value = '';
+      document.getElementById('clientAddress').value = '';
+      document.getElementById('deliveryFee').value = 'R$ 5,00';
+      document.getElementById('cashGivenInput').value = '';
+      document.getElementById('paymentMethodSelect').value = 'Pix';
+      document.getElementById('cashChangeBox').classList.remove('active');
+      renderBuildingItems();
+      document.getElementById('newOrderModal').classList.add('active');
+    }
+
     function closeNewOrderModal() { document.getElementById('newOrderModal').classList.remove('active'); }
 
     function saveNewDeliveryOrder() {
       const client = document.getElementById('clientName').value.trim();
       const phone = document.getElementById('clientPhone').value.trim();
       const address = document.getElementById('clientAddress').value.trim();
-      const fee = parseFloat(document.getElementById('deliveryFee').value) || 0;
-      const productSelect = document.getElementById('orderProduct').value;
-      const qty = parseInt(document.getElementById('orderQty').value) || 1;
-      const payment = document.getElementById('paymentMethod').value;
+      const payment = document.getElementById('paymentMethodSelect').value;
 
       if (!client || !address) {
-        showNoticeModal('Campos Obrigatórios', 'Por favor, preencha o Nome e o Endereço do cliente.', '⚠️', 'var(--warning)');
+        showNoticeModal('Campos Obrigatórios', 'Por favor, preencha o Nome e o Endereço completo do cliente.', '⚠️', 'var(--warning)');
         return;
       }
 
-      const [prodName, prodPrice] = productSelect.split('|');
-      const itemSubtotal = parseFloat(prodPrice) * qty;
-      const total = itemSubtotal + fee;
+      if (currentBuildingItems.length === 0) {
+        showNoticeModal('Adicione um Produto', 'Selecione pelo menos um item para o pedido do cliente.', '⚠️', 'var(--warning)');
+        return;
+      }
+
+      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const total = itemsSubtotal + rawDeliveryFee;
+
+      let change = 0;
+      if (payment === 'Dinheiro' && rawCashGiven > total) {
+        change = rawCashGiven - total;
+      }
 
       const nextId = deliveryOrders.length > 0 ? Math.max(...deliveryOrders.map(o => o.id)) + 1 : 101;
       const now = new Date();
@@ -826,22 +1194,30 @@
         client: client,
         phone: phone || '(Não informado)',
         address: address,
-        items: `${qty}x ${prodName}`,
+        items: [...currentBuildingItems],
         total: total,
+        fee: rawDeliveryFee,
         status: 'pending',
         time: timeStr,
-        payment: payment
+        payment: payment,
+        change: change
       });
 
       saveOrders();
       closeNewOrderModal();
+      showNoticeModal('Pedido Registrado!', `Pedido #${nextId} cadastrado e pronto para a cozinha.`, '🎉');
+    }
 
-      // Limpar formulário
-      document.getElementById('clientName').value = '';
-      document.getElementById('clientPhone').value = '';
-      document.getElementById('clientAddress').value = '';
+    function showNoticeModal(title, desc, icon, color) {
+      document.getElementById('noticeIcon').innerText = icon || 'ℹ️';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeTitle').style.color = color || 'var(--success)';
+      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
 
-      showNoticeModal('Pedido Registrado!', `Pedido #${nextId} cadastrado e pronto para ser preparado na cozinha.`, '🎉');
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     window.addEventListener('DOMContentLoaded', () => {

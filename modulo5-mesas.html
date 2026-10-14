@@ -352,7 +352,7 @@
     .table-total { font-size: 1.3rem; font-weight: bold; }
     .table-time { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
 
-    /* Modais */
+    /* Modais Genéricos */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -551,6 +551,52 @@
     .qr-card-title { font-weight: bold; font-size: 1.1rem; }
     .qr-card-desc { font-size: 0.75rem; color: #475569; }
 
+    /* Modais Profissionais de Confirmação e Sucesso */
+    .custom-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 15px; }
+    .custom-modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    
+    .custom-modal-details {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 15px 0;
+      text-align: left;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .custom-modal-actions { display: flex; gap: 10px; }
+
+    .btn-modal-custom {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .btn-modal-primary { background: var(--primary); color: white; }
+    .btn-modal-success { background: var(--success); color: white; }
+    .btn-modal-danger { background: var(--danger); color: white; }
+    .btn-modal-secondary { background: var(--border); color: var(--text-main); }
+
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
@@ -630,7 +676,7 @@
         </div>
         <div class="table-control-btns">
           <button class="btn-ctrl" onclick="addNewTable()">➕ Adicionar Mesa</button>
-          <button class="btn-ctrl danger" onclick="removeLastTable()">🗑️ Remover Última Mesa</button>
+          <button class="btn-ctrl danger" onclick="confirmRemoveLastTable()">🗑️ Remover Última Mesa</button>
         </div>
       </div>
 
@@ -731,6 +777,30 @@
     </div>
   </div>
 
+  <!-- MODAL PROFISSIONAL DE CONFIRMAÇÃO (Substitui confirm) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="confirmModalIcon">⚠️</div>
+      <div class="custom-modal-title" id="confirmModalTitle">Tem Certeza?</div>
+      <div class="custom-modal-desc" id="confirmModalDesc">Deseja prosseguir com esta ação?</div>
+      <div class="custom-modal-actions">
+        <button class="btn-modal-custom btn-modal-secondary" onclick="closeCustomConfirmModal()">Cancelar</button>
+        <button class="btn-modal-custom btn-modal-danger" id="confirmModalActionBtn" onclick="executeConfirmAction()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PROFISSIONAL DE SUCESSO E AVISOS (Substitui alert) -->
+  <div class="modal-overlay" id="successNoticeModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="noticeModalIcon">🎉</div>
+      <div class="custom-modal-title" id="noticeModalTitle" style="color: var(--success);">Operação Concluída</div>
+      <div class="custom-modal-desc" id="noticeModalDesc">Ação realizada com sucesso!</div>
+      <div class="custom-modal-details" id="noticeModalDetails" style="display: none;"></div>
+      <button class="btn-modal-custom btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
   <script>
     let tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
       { id: 1, name: 'Mesa 01', status: 'free', items: [], time: '' },
@@ -746,6 +816,7 @@
     let currentTableId = null;
     let selectedTablePayment = 'Pix';
     let rawTableCashGivenValue = 0;
+    let pendingConfirmCallback = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -761,6 +832,46 @@
       renderTables();
     }
 
+    /* SISTEMA DE MODAIS PROFISSIONAIS */
+    function showCustomConfirm(title, desc, icon, actionText, callback) {
+      document.getElementById('confirmModalTitle').innerText = title;
+      document.getElementById('confirmModalDesc').innerText = desc;
+      document.getElementById('confirmModalIcon').innerText = icon || '⚠️';
+      document.getElementById('confirmModalActionBtn').innerText = actionText || 'Confirmar';
+      pendingConfirmCallback = callback;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function closeCustomConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+      pendingConfirmCallback = null;
+    }
+
+    function executeConfirmAction() {
+      if (pendingConfirmCallback) pendingConfirmCallback();
+      closeCustomConfirmModal();
+    }
+
+    function showNoticeModal(title, desc, icon, detailsHtml) {
+      document.getElementById('noticeModalTitle').innerText = title;
+      document.getElementById('noticeModalDesc').innerText = desc;
+      document.getElementById('noticeModalIcon').innerText = icon || 'ℹ️';
+
+      const detailsBox = document.getElementById('noticeModalDetails');
+      if (detailsHtml) {
+        detailsBox.innerHTML = detailsHtml;
+        detailsBox.style.display = 'flex';
+      } else {
+        detailsBox.style.display = 'none';
+      }
+
+      document.getElementById('successNoticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('successNoticeModal').classList.remove('active');
+    }
+
     function addNewTable() {
       const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
       const formattedNum = String(nextId).padStart(2, '0');
@@ -774,19 +885,29 @@
       saveTables();
     }
 
-    function removeLastTable() {
+    function confirmRemoveLastTable() {
       if (tables.length === 0) return;
       const lastTable = tables[tables.length - 1];
       
       if (lastTable.status !== 'free' || lastTable.items.length > 0) {
-        alert(`⚠️ Não é possível remover a ${lastTable.name} pois ela possui consumo aberto ou está ocupada.`);
+        showNoticeModal(
+          'Mesa Ocupada',
+          `Não é possível remover a ${lastTable.name} pois ela possui consumo aberto ou está ocupada. Liberte a mesa primeiro.`,
+          '⚠️'
+        );
         return;
       }
 
-      if (confirm(`Tem certeza que deseja remover a ${lastTable.name}?`)) {
-        tables.pop();
-        saveTables();
-      }
+      showCustomConfirm(
+        'Remover Mesa',
+        `Tem certeza que deseja remover a ${lastTable.name} do salão?`,
+        '🗑️',
+        'Sim, Remover',
+        () => {
+          tables.pop();
+          saveTables();
+        }
+      );
     }
 
     function renderTables() {
@@ -952,7 +1073,7 @@
       const total = table.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
       if (selectedTablePayment === 'Dinheiro' && rawTableCashGivenValue < total) {
-        alert('⚠️ O valor pago em dinheiro é menor que o total da mesa.');
+        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro digitado é menor que o total consumido na mesa.', '⚠️');
         return;
       }
 
@@ -975,13 +1096,21 @@
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
+      const tableName = table.name;
       table.status = 'free';
       table.items = [];
       table.time = '';
 
       saveTables();
       closeModal();
-      alert(`✅ Pagamento da ${table.name} recebido com sucesso via ${selectedTablePayment}! Mesa liberada.`);
+
+      let detailsHtml = `<span><strong>Mesa:</strong> ${tableName}</span><span><strong>Total:</strong> R$ ${total.toFixed(2).replace('.', ',')}</span><span><strong>Pagamento:</strong> ${selectedTablePayment}</span>`;
+      if (selectedTablePayment === 'Dinheiro') {
+        const change = rawTableCashGivenValue - total;
+        detailsHtml += `<span><strong>Entregue:</strong> R$ ${rawTableCashGivenValue.toFixed(2).replace('.', ',')}</span><span style="color:var(--success)"><strong>Troco:</strong> R$ ${change.toFixed(2).replace('.', ',')}</span>`;
+      }
+
+      showNoticeModal('Pagamento Concluído!', `A conta da ${tableName} foi recebida e a mesa já está liberada no sistema.`, '🎉', detailsHtml);
     }
 
     function closeModal() { document.getElementById('tableModal').classList.remove('active'); }
@@ -992,7 +1121,6 @@
       let html = '';
       
       tables.forEach(table => {
-        // Cada mesa gera uma URL única com o ID exato da mesa (ex: cliente-mesa.html?mesa=1)
         const clientUrl = encodeURIComponent(`${window.location.origin}/cliente-mesa.html?mesa=${table.id}`);
         const qrImageApi = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${clientUrl}`;
         
@@ -1009,7 +1137,7 @@
       document.getElementById('printModal').classList.add('active');
     }
 
-    // Escuta solicitações em tempo real enviadas do celular do cliente
+    // Escuta notificações em tempo real enviadas do celular do cliente
     window.addEventListener('storage', (e) => {
       if (e.key === 'vortex_qr_signal') {
         const signal = JSON.parse(e.newValue);
@@ -1018,9 +1146,9 @@
           if (table) {
             if (signal.type === 'close') {
               table.status = 'closing';
-              alert(`🔔 ATENÇÃO: A ${table.name} pediu a conta pelo QR Code do celular!`);
+              showNoticeModal('Solicitação de Conta', `A ${table.name} acabou de pedir a conta pelo QR Code do celular!`, '🔔');
             } else if (signal.type === 'waiter') {
-              alert(`🙋‍♂️ ATENÇÃO: A ${table.name} está chamando o garçom!`);
+              showNoticeModal('Chamar Garçom', `A ${table.name} está solicitando um garçom na mesa!`, '🙋‍♂️');
             }
             saveTables();
           }

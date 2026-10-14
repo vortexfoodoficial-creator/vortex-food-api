@@ -71,9 +71,7 @@
       font-size: 1.2rem;
     }
 
-    .logo-icon {
-      font-size: 1.5rem;
-    }
+    .logo-icon { font-size: 1.5rem; }
 
     .close-sidebar-btn {
       display: none;
@@ -89,9 +87,7 @@
       flex: 1;
     }
 
-    .nav-section {
-      margin-bottom: 20px;
-    }
+    .nav-section { margin-bottom: 20px; }
 
     .nav-section-title {
       font-size: 0.75rem;
@@ -120,9 +116,7 @@
       color: var(--primary);
     }
 
-    .nav-icon {
-      font-size: 1.1rem;
-    }
+    .nav-icon { font-size: 1.1rem; }
 
     /* Conteúdo Principal */
     .main-content {
@@ -159,11 +153,94 @@
       cursor: pointer;
     }
 
-    header h1 {
-      font-size: 1.5rem;
+    header h1 { font-size: 1.5rem; }
+
+    /* Painel de Configurações do QR Code */
+    .config-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
     }
 
-    /* Legendas de Status das Mesas */
+    .config-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .config-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .config-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Switch Toggle */
+    .switch-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--border);
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    .btn-print-qrcodes {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Status das Mesas */
     .status-legend {
       display: flex;
       gap: 15px;
@@ -179,12 +256,7 @@
       color: var(--text-muted);
     }
 
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
     .dot.free { background: var(--success); }
     .dot.busy { background: var(--danger); }
     .dot.closing { background: var(--warning); }
@@ -218,7 +290,13 @@
 
     .table-card.free { border-color: var(--success); }
     .table-card.busy { border-color: var(--danger); }
-    .table-card.closing { border-color: var(--warning); }
+    .table-card.closing { border-color: var(--warning); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+    }
 
     .table-header {
       display: flex;
@@ -226,10 +304,7 @@
       align-items: center;
     }
 
-    .table-number {
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
+    .table-number { font-size: 1.2rem; font-weight: bold; }
 
     .table-badge {
       font-size: 0.75rem;
@@ -243,23 +318,11 @@
     .table-card.busy .table-badge { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
     .table-card.closing .table-badge { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
 
-    .table-body {
-      margin-top: 15px;
-    }
+    .table-body { margin-top: 15px; }
+    .table-total { font-size: 1.3rem; font-weight: bold; }
+    .table-time { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
 
-    .table-total {
-      font-size: 1.3rem;
-      font-weight: bold;
-      color: var(--text-main);
-    }
-
-    .table-time {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    /* Modal de Detalhes da Mesa */
+    /* Modais */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -279,7 +342,7 @@
       border-radius: 16px;
       padding: 25px;
       width: 100%;
-      max-width: 450px;
+      max-width: 500px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
 
@@ -291,8 +354,6 @@
       padding-bottom: 15px;
       margin-bottom: 15px;
     }
-
-    .modal-header h2 { font-size: 1.3rem; }
 
     .close-modal {
       background: none;
@@ -368,6 +429,32 @@
     .btn-action.pay-table { background: var(--success); color: white; }
     .btn-action.open-table { background: var(--primary); color: white; }
 
+    /* Área de Impressão de QR Codes */
+    .qr-print-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      max-height: 350px;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .qr-card {
+      background: white;
+      color: black;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qr-card img { width: 130px; height: 130px; }
+    .qr-card-title { font-weight: bold; font-size: 1.1rem; }
+    .qr-card-desc { font-size: 0.75rem; color: #475569; }
+
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
@@ -397,88 +484,33 @@
     </div>
 
     <nav class="sidebar-nav">
-      <!-- BLOCO 1: OPERACIONAL -->
       <div class="nav-section">
         <span class="nav-section-title">OPERACIONAL</span>
-        <a href="index.html" class="nav-link">
-          <span class="nav-icon">📊</span>
-          <span class="nav-text">Dashboard</span>
-        </a>
-        <a href="modulo3-pdv.html" class="nav-link">
-          <span class="nav-icon">💻</span>
-          <span class="nav-text">PDV / Caixa</span>
-        </a>
-        <a href="modulo5-mesas.html" class="nav-link active">
-          <span class="nav-icon">🍽️</span>
-          <span class="nav-text">Mesas & Comandas</span>
-        </a>
-        <a href="modulo21-delivery.html" class="nav-link">
-          <span class="nav-icon">🛵</span>
-          <span class="nav-text">Delivery & Entregas</span>
-        </a>
-        <a href="modulo7-8-kds-pedidos.html" class="nav-link">
-          <span class="nav-icon">👨‍🍳</span>
-          <span class="nav-text">KDS / Cozinha</span>
-        </a>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link active"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
       </div>
-
-      <!-- BLOCO 2: PRODUTOS -->
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS</span>
-        <a href="modulo2-cardapio.html" class="nav-link">
-          <span class="nav-icon">📋</span>
-          <span class="nav-text">Cardápio & Produtos</span>
-        </a>
-        <a href="modulo13-fichas-tecnicas.html" class="nav-link">
-          <span class="nav-icon">📖</span>
-          <span class="nav-text">Fichas Técnicas</span>
-        </a>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
       </div>
-
-      <!-- BLOCO 3: SUPRIMENTOS & CLIENTES -->
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
-        <a href="modulo12-estoque.html" class="nav-link">
-          <span class="nav-icon">📦</span>
-          <span class="nav-text">Estoque & Insumos</span>
-        </a>
-        <a href="modulo14-compras.html" class="nav-link">
-          <span class="nav-icon">🛒</span>
-          <span class="nav-text">Compras & Cotações</span>
-        </a>
-        <a href="modulo18-crm.html" class="nav-link">
-          <span class="nav-icon">👥</span>
-          <span class="nav-text">CRM & Clientes</span>
-        </a>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
       </div>
-
-      <!-- BLOCO 4: ADMINISTRAÇÃO -->
       <div class="nav-section">
         <span class="nav-section-title">ADMINISTRAÇÃO</span>
-        <a href="modulo17-caixa-turno.html" class="nav-link">
-          <span class="nav-icon">🔒</span>
-          <span class="nav-text">Fechamento de Caixa</span>
-        </a>
-        <a href="modulo15-financeiro.html" class="nav-link">
-          <span class="nav-icon">💰</span>
-          <span class="nav-text">Financeiro & DRE</span>
-        </a>
-        <a href="modulo16-contas.html" class="nav-link">
-          <span class="nav-icon">📄</span>
-          <span class="nav-text">Contas Pagar/Receber</span>
-        </a>
-        <a href="modulo9-equipe.html" class="nav-link">
-          <span class="nav-icon">👔</span>
-          <span class="nav-text">Equipe & Permissões</span>
-        </a>
-        <a href="modulo19-fiscal.html" class="nav-link">
-          <span class="nav-icon">🧾</span>
-          <span class="nav-text">Emissão Fiscal</span>
-        </a>
-        <a href="modulo10-relatorios.html" class="nav-link">
-          <span class="nav-icon">📈</span>
-          <span class="nav-text">Relatórios</span>
-        </a>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
       </div>
     </nav>
   </aside>
@@ -491,6 +523,21 @@
         <h1>Salão de Mesas & Comandas</h1>
       </div>
     </header>
+
+    <!-- PAINEL DE CONFIGURAÇÃO DE QR CODE -->
+    <div class="config-panel">
+      <div class="config-info">
+        <span class="config-title">Ativar fechamento de conta da mesa via QR Code</span>
+        <span class="config-desc">Permite que o cliente leia o QR Code na mesa com o telemóvel para solicitar a conta ou chamar o garçom.</span>
+      </div>
+      <div class="switch-group">
+        <label class="switch">
+          <input type="checkbox" id="qrCodeConfigToggle" onchange="toggleQrCodeService(this)">
+          <span class="slider"></span>
+        </label>
+        <button class="btn-print-qrcodes" onclick="openPrintModal()">🖨️ Gerar/Imprimir QR Codes</button>
+      </div>
+    </div>
 
     <div class="status-legend">
       <div class="legend-item"><span class="dot free"></span> Livre</div>
@@ -524,23 +571,32 @@
           <button class="btn-add-item" onclick="addItemToTable()">Lançar</button>
         </div>
 
-        <div class="comanda-items" id="comandaItemsList">
-          <!-- Itens da mesa -->
-        </div>
+        <div class="comanda-items" id="comandaItemsList"></div>
 
         <div style="font-size: 1.2rem; font-weight: bold; text-align: right; margin: 15px 0;">
           Total: <span id="modalTableTotal" style="color: var(--primary);">R$ 0,00</span>
         </div>
 
-        <div class="modal-actions" id="modalActions">
-          <!-- Botões de ação dinâmicos -->
-        </div>
+        <div class="modal-actions" id="modalActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE IMPRESSÃO DE QR CODES -->
+  <div class="modal-overlay" id="printModal">
+    <div class="modal-card" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>QR Codes para Mesas (Pronto para Imprimir)</h2>
+        <button class="close-modal" onclick="closePrintModal()">✕</button>
+      </div>
+      <div class="qr-print-grid" id="qrPrintGrid"></div>
+      <div style="margin-top: 15px; text-align: right;">
+        <button class="btn-action pay-table" onclick="window.print()">Imprimir Etiquetas</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Estrutura inicial das Mesas
     let tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
       { id: 1, name: 'Mesa 01', status: 'free', items: [], time: '' },
       { id: 2, name: 'Mesa 02', status: 'busy', items: [{ name: 'X-Burger Especial', price: 28.50, qty: 2 }, { name: 'Refrigerante Lata', price: 7.50, qty: 2 }], time: '18:15' },
@@ -557,6 +613,10 @@
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function toggleQrCodeService(toggle) {
+      localStorage.setItem('vortex_qr_closing_enabled', toggle.checked);
     }
 
     function saveTables() {
@@ -595,7 +655,6 @@
       currentTableId = tableId;
       const table = tables.find(t => t.id === tableId);
       document.getElementById('modalTableTitle').innerText = table.name;
-
       renderComandaItems(table);
       document.getElementById('tableModal').classList.add('active');
     }
@@ -626,7 +685,6 @@
         listContainer.innerHTML = html;
       }
 
-      // Renderiza botões de ação conforme o status da mesa
       if (table.status === 'free') {
         actionsContainer.innerHTML = `<button class="btn-action open-table" onclick="startTable()">Abrir Mesa</button>`;
       } else if (table.status === 'busy') {
@@ -649,11 +707,7 @@
       }
 
       const existing = table.items.find(i => i.name === name);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        table.items.push({ name, price, qty: 1 });
-      }
+      if (existing) { existing.qty += 1; } else { table.items.push({ name, price, qty: 1 }); }
 
       saveTables();
       renderComandaItems(table);
@@ -678,12 +732,10 @@
       const table = tables.find(t => t.id === currentTableId);
       const total = table.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
-      // Soma ao faturamento do Dashboard no localStorage
       let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // Reseta a mesa
       table.status = 'free';
       table.items = [];
       table.time = '';
@@ -692,11 +744,52 @@
       closeModal();
     }
 
-    function closeModal() {
-      document.getElementById('tableModal').classList.remove('active');
+    function closeModal() { document.getElementById('tableModal').classList.remove('active'); }
+    function closePrintModal() { document.getElementById('printModal').classList.remove('active'); }
+
+    function openPrintModal() {
+      const qrGrid = document.getElementById('qrPrintGrid');
+      let html = '';
+      
+      tables.forEach(table => {
+        const clientUrl = encodeURIComponent(`${window.location.origin}/cliente-mesa.html?mesa=${table.id}`);
+        const qrImageApi = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${clientUrl}`;
+        
+        html += `
+          <div class="qr-card">
+            <div class="qr-card-title">${table.name}</div>
+            <img src="${qrImageApi}" alt="QR Code ${table.name}">
+            <div class="qr-card-desc">Deseja fechar a sua conta ou chamar o garçom? Leia o QR Code acima.</div>
+          </div>
+        `;
+      });
+
+      qrGrid.innerHTML = html;
+      document.getElementById('printModal').classList.add('active');
     }
 
+    // Escuta requisições em tempo real enviadas do telemóvel do cliente
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'vortex_qr_signal') {
+        const signal = JSON.parse(e.newValue);
+        if (signal && signal.tableId) {
+          const table = tables.find(t => t.id === parseInt(signal.tableId));
+          if (table) {
+            if (signal.type === 'close') {
+              table.status = 'closing';
+              alert(`🔔 ATENÇÃO: A ${table.name} acabou de pedir a conta pelo QR Code!`);
+            } else if (signal.type === 'waiter') {
+              alert(`🙋‍♂️ ATENÇÃO: A ${table.name} está chamando o garçom!`);
+            }
+            saveTables();
+          }
+        }
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
+      const qrEnabled = localStorage.getItem('vortex_qr_closing_enabled') === 'true';
+      document.getElementById('qrCodeConfigToggle').checked = qrEnabled;
       renderTables();
     });
   </script>

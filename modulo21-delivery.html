@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Delivery & Gestão de Entregas</title>
   <style>
     :root {
@@ -346,7 +346,7 @@
 
     .btn-cancel-order:hover { background: var(--danger); color: white; }
 
-    /* Modais */
+    /* MODAIS CORRIGIDOS PARA DISPOSITIVOS MÓVEIS (SEM CORTES) */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -355,7 +355,7 @@
       z-index: 200;
       justify-content: center;
       align-items: center;
-      padding: 15px;
+      padding: 10px;
     }
 
     .modal-overlay.active { display: flex; }
@@ -364,12 +364,13 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 25px;
+      padding: 20px 20px 30px 20px;
       width: 100%;
-      max-width: 550px;
+      max-width: 520px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      max-height: 90vh;
+      max-height: 85vh;
       overflow-y: auto;
+      margin: auto;
     }
 
     .modal-header {
@@ -377,8 +378,12 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
+      padding-bottom: 12px;
       margin-bottom: 15px;
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      z-index: 10;
     }
 
     .close-modal {
@@ -458,15 +463,17 @@
       color: var(--danger);
       cursor: pointer;
       font-weight: bold;
+      padding: 0 5px;
     }
 
     .add-item-controls {
       display: flex;
-      gap: 8px;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
-    .add-item-controls select { flex: 1; }
-    .add-item-controls input { width: 70px; }
+    .add-item-controls select { flex: 1; min-width: 140px; }
+    .add-item-controls input { width: 60px; }
 
     .btn-add-item-list {
       background: var(--primary);
@@ -496,7 +503,7 @@
       justify-content: space-between;
       font-weight: bold;
       margin-top: 6px;
-      color: var(--success);
+      font-size: 0.95rem;
     }
 
     /* Modais Profissionais Customizados */
@@ -504,15 +511,17 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 30px;
-      width: 90%;
+      padding: 25px;
+      width: 100%;
       max-width: 420px;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      max-height: 85vh;
+      overflow-y: auto;
     }
 
-    .custom-modal-icon { font-size: 3rem; margin-bottom: 15px; }
-    .custom-modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
     .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; }
 
     .custom-modal-actions { display: flex; gap: 10px; }
@@ -539,9 +548,14 @@
       .main-content {
         margin-left: 0;
         width: 100%;
-        padding: 20px 15px 80px 15px;
+        padding: 15px 15px 100px 15px;
       }
       .toggle-btn { display: block; }
+      
+      .modal-card {
+        padding: 15px 15px 30px 15px;
+        max-height: 88vh;
+      }
     }
   </style>
 </head>
@@ -763,11 +777,11 @@
         </div>
       </div>
 
-      <div style="font-size: 1.2rem; font-weight: bold; text-align: right; margin: 15px 0;">
+      <div style="font-size: 1.2rem; font-weight: bold; text-align: right; margin: 15px 0 20px 0;">
         Total do Pedido: <span id="finalOrderTotalDisplay" style="color:var(--primary);">R$ 5,00</span>
       </div>
 
-      <button class="btn-modal-custom btn-modal-primary" onclick="saveNewDeliveryOrder()">Lançar Pedido no Delivery</button>
+      <button class="btn-modal-custom btn-modal-primary" style="margin-bottom: 15px;" onclick="saveNewDeliveryOrder()">Lançar Pedido no Delivery</button>
     </div>
   </div>
 
@@ -952,6 +966,7 @@
         display.style.color = 'var(--danger)';
       } else {
         display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
       }
     }
 

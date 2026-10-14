@@ -33,7 +33,6 @@
       overflow-x: hidden;
     }
 
-    /* Overlay escuro no mobile */
     .sidebar-overlay {
       display: none;
       position: fixed;
@@ -165,14 +164,12 @@
       font-size: 1.5rem;
     }
 
-    /* Layout do PDV em 2 Colunas */
     .pdv-container {
       display: grid;
       grid-template-columns: 1fr 380px;
       gap: 20px;
     }
 
-    /* Lista de Produtos Catalogo */
     .catalog-section {
       display: flex;
       flex-direction: column;
@@ -238,7 +235,6 @@
       font-size: 1.1rem;
     }
 
-    /* Painel do Carrinho / Comanda */
     .cart-section {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -330,6 +326,50 @@
       font-weight: bold;
     }
 
+    /* Campo Dinâmico de Troco */
+    .cash-change-box {
+      display: none;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+
+    .cash-change-box.active {
+      display: block;
+    }
+
+    .cash-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .cash-input-group label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .cash-input-group input {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    .change-result {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--success);
+      display: flex;
+      justify-content: space-between;
+    }
+
     .cart-total {
       font-size: 1.3rem;
       font-weight: bold;
@@ -365,7 +405,6 @@
       cursor: pointer;
     }
 
-    /* Responsividade */
     @media (max-width: 900px) {
       .pdv-container {
         grid-template-columns: 1fr;
@@ -398,7 +437,6 @@
 </head>
 <body>
 
-  <!-- Overlay para fechar menu -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
   <!-- MENU LATERAL PADRONIZADO -->
@@ -527,7 +565,7 @@
             <div class="product-title">X-Salada Duplo</div>
             <div class="product-price">R$ 32,00</div>
           </div>
-          <div class="product-card" onclick="addToCart('Batata frita M', 18.00)">
+          <div class="product-card" onclick="addToCart('Batata Frita M', 18.00)">
             <div class="product-title">Batata Frita M</div>
             <div class="product-price">R$ 18,00</div>
           </div>
@@ -566,6 +604,18 @@
             <button class="pay-btn" onclick="selectPayment('Cartão Crédito', this)">Crédito</button>
             <button class="pay-btn" onclick="selectPayment('Cartão Débito', this)">Débito</button>
             <button class="pay-btn" onclick="selectPayment('Dinheiro', this)">Dinheiro</button>
+          </div>
+        </div>
+
+        <!-- Painel de Troco (Aparece apenas se Dinheiro estiver selecionado) -->
+        <div class="cash-change-box" id="cashChangeBox">
+          <div class="cash-input-group">
+            <label for="cashGiven">Valor Entregue pelo Cliente (R$):</label>
+            <input type="number" id="cashGiven" placeholder="0,00" step="0.50" oninput="calculateChange()">
+          </div>
+          <div class="change-result">
+            <span>Troco a devolver:</span>
+            <span id="changeDisplay">R$ 0,00</span>
           </div>
         </div>
 
@@ -611,6 +661,8 @@
 
     function clearCart() {
       cart = [];
+      document.getElementById('cashGiven').value = '';
+      document.getElementById('changeDisplay').innerText = 'R$ 0,00';
       renderCart();
     }
 
@@ -618,6 +670,32 @@
       selectedPayment = method;
       document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+
+      const cashBox = document.getElementById('cashChangeBox');
+      if (method === 'Dinheiro') {
+        cashBox.classList.add('active');
+        calculateChange();
+      } else {
+        cashBox.classList.remove('active');
+      }
+    }
+
+    function calculateChange() {
+      const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+      const cashGivenInput = parseFloat(document.getElementById('cashGiven').value || 0);
+      const changeDisplay = document.getElementById('changeDisplay');
+
+      if (cashGivenInput > 0 && cashGivenInput >= total) {
+        const change = cashGivenInput - total;
+        changeDisplay.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        changeDisplay.style.color = 'var(--success)';
+      } else if (cashGivenInput > 0 && cashGivenInput < total) {
+        changeDisplay.innerText = 'Falta dinheiro';
+        changeDisplay.style.color = 'var(--danger)';
+      } else {
+        changeDisplay.innerText = 'R$ 0,00';
+        changeDisplay.style.color = 'var(--success)';
+      }
     }
 
     function renderCart() {
@@ -627,6 +705,7 @@
       if (cart.length === 0) {
         cartContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nenhum item selecionado. Clique nos produtos ao lado.</div>`;
         totalContainer.innerText = 'R$ 0,00';
+        calculateChange();
         return;
       }
 
@@ -653,6 +732,7 @@
 
       cartContainer.innerHTML = html;
       totalContainer.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+      calculateChange();
     }
 
     function finishOrder() {
@@ -662,14 +742,24 @@
       }
 
       const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-      
-      // Salva no localStorage para atualizar métricas do Dashboard
+      const cashGiven = parseFloat(document.getElementById('cashGiven').value || 0);
+
+      if (selectedPayment === 'Dinheiro') {
+        if (cashGiven < total) {
+          alert(`⚠️ O valor pago (R$ ${cashGiven.toFixed(2).replace('.', ',')}) é menor que o total do pedido (R$ ${total.toFixed(2).replace('.', ',')}).`);
+          return;
+        }
+        const change = cashGiven - total;
+        alert(`✅ Venda de R$ ${total.toFixed(2).replace('.', ',')} realizada com sucesso!\n\nPagamento: Dinheiro\nEntregue: R$ ${cashGiven.toFixed(2).replace('.', ',')}\nTroco: R$ ${change.toFixed(2).replace('.', ',')}`);
+      } else {
+        alert(`✅ Venda de R$ ${total.toFixed(2).replace('.', ',')} realizada com sucesso!\nForma de Pagamento: ${selectedPayment}`);
+      }
+
+      // Salva faturamento no localStorage
       let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      alert(`✅ Venda de R$ ${total.toFixed(2).replace('.', ',')} realizada com sucesso!\nForma de Pagamento: ${selectedPayment}`);
-      
       clearCart();
     }
   </script>

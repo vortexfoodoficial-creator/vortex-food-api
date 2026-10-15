@@ -226,7 +226,6 @@
       outline: none;
     }
 
-    /* Campos Bloqueados / Automáticos */
     input:read-only {
       background: rgba(30, 41, 59, 0.5);
       color: var(--text-muted);
@@ -236,29 +235,29 @@
 
     textarea {
       resize: none;
-      height: 55px;
+      height: 50px;
     }
 
     input:focus, select:focus, textarea:focus {
       border-color: var(--primary);
     }
 
-    /* Seletor Rápido de Produtos para Delivery */
+    /* Seletor Rápido de Produtos */
     .product-selector-box {
       background: var(--bg-main);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
     }
 
     .products-mini-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      max-height: 160px;
+      gap: 6px;
+      max-height: 130px;
       overflow-y: auto;
-      margin-top: 8px;
+      margin-top: 6px;
       padding-right: 4px;
     }
 
@@ -266,7 +265,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 9px;
+      padding: 8px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
@@ -280,13 +279,13 @@
     }
 
     .delivery-cart-list {
-      max-height: 120px;
+      max-height: 100px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 8px;
-      margin-bottom: 8px;
+      gap: 5px;
+      margin-top: 6px;
+      margin-bottom: 6px;
     }
 
     .delivery-cart-row {
@@ -297,8 +296,86 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.83rem;
+      font-size: 0.82rem;
     }
+
+    /* Grade de Pagamento no Delivery */
+    .payment-methods-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin: 6px 0;
+    }
+
+    .pay-method-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 7px 4px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .pay-method-btn.active {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    /* Caixa de Dinheiro e Troco */
+    .cash-change-box {
+      display: none;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+
+    .cash-change-box.active { display: block; }
+
+    .cash-change-box label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .cash-change-box input {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 100%;
+      padding: 7px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .change-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 0.82rem;
+      margin-top: 5px;
+    }
+
+    .total-display-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.05rem;
+      font-weight: bold;
+      margin: 8px 0;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+    }
+
+    .total-display-row span:last-child { color: var(--success); }
 
     .btn-primary {
       background: var(--primary);
@@ -321,7 +398,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: 580px;
+      max-height: 650px;
       overflow-y: auto;
     }
 
@@ -518,18 +595,44 @@
             <label>Itens do Pedido (Clique para adicionar) *:</label>
             <div class="product-selector-box">
               <div style="font-size:0.75rem; color:var(--text-muted);">Cardápio Rápido:</div>
-              <div class="products-mini-grid" id="productsMiniGrid">
-                <!-- Renderizado via JS -->
-              </div>
-              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Itens Selecionados:</div>
+              <div class="products-mini-grid" id="productsMiniGrid"></div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">Itens Selecionados:</div>
               <div class="delivery-cart-list" id="deliveryCartList">
                 <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>
               </div>
             </div>
           </div>
 
-          <!-- CAMPO OBSERVAÇÃO DO DELIVERY -->
+          <!-- TOTAL E FORMA DE PAGAMENTO -->
+          <div class="total-display-row">
+            <span>Total do Pedido:</span>
+            <span id="deliveryTotalDisplay">R$ 0,00</span>
+          </div>
+
           <div class="form-group">
+            <label>Forma de Pagamento *:</label>
+            <div class="payment-methods-grid">
+              <div class="pay-method-btn active" onclick="setPaymentMethod('Pix', this)">Pix</div>
+              <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Débito', this)">Débito</div>
+              <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Crédito', this)">Crédito</div>
+              <div class="pay-method-btn" onclick="setPaymentMethod('Vale Refeição (VR)', this)">Vale VR</div>
+              <div class="pay-method-btn" onclick="setPaymentMethod('Vale Alimentação (VA)', this)">Vale VA</div>
+              <div class="pay-method-btn" onclick="setPaymentMethod('Dinheiro', this)">Dinheiro</div>
+            </div>
+          </div>
+
+          <!-- CAIXA DE DINHEIRO E TROCO -->
+          <div class="cash-change-box" id="cashChangeBox">
+            <label for="cashGivenInput">Valor Recebido do Cliente:</label>
+            <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
+            <div class="change-row">
+              <span>Troco a Devolver:</span>
+              <span id="calculatedChangeDisplay">R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- CAMPO OBSERVAÇÃO -->
+          <div class="form-group" style="margin-top: 8px;">
             <label for="clientObservation">Observação do Pedido (Opcional):</label>
             <textarea id="clientObservation" placeholder="Ex: Retirar cebola, interfone quebrado..."></textarea>
           </div>
@@ -541,9 +644,7 @@
       <!-- Coluna 2: Lista de Entregas Ativas -->
       <div class="card-box">
         <div class="card-title">🛵 Entregas em Andamento</div>
-        <div class="delivery-list" id="deliveryListContainer">
-          <!-- Renderizado via JS -->
-        </div>
+        <div class="delivery-list" id="deliveryListContainer"></div>
       </div>
 
     </div>
@@ -572,8 +673,10 @@
     ];
 
     let deliveryCart = [];
+    let currentPayment = 'Pix';
+    let rawCashGiven = 0;
     let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', payment: 'Pix', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
     ];
 
     function toggleMenu() {
@@ -581,7 +684,6 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    // Máscara Automática de Telefone: (00) 00000-0000
     function maskPhone(input) {
       let v = input.value.replace(/\D/g, '');
       if (v.length > 11) v = v.slice(0, 11);
@@ -596,7 +698,6 @@
       }
     }
 
-    // Renderiza o cardápio rápido no formulário
     function renderProductsMiniGrid() {
       const grid = document.getElementById('productsMiniGrid');
       grid.innerHTML = '';
@@ -604,7 +705,7 @@
         grid.innerHTML += `
           <div class="mini-product-card" onclick="addDeliveryItem('${p.name}', ${p.price}, '${p.type}')">
             <span style="font-weight:600; font-size:0.8rem; color:var(--text-main);">${p.name}</span>
-            <span style="color:var(--success); font-size:0.75rem; font-weight:bold; margin-top:4px;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+            <span style="color:var(--success); font-size:0.75rem; font-weight:bold; margin-top:3px;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
           </div>
         `;
       });
@@ -630,28 +731,82 @@
 
     function renderDeliveryCart() {
       const list = document.getElementById('deliveryCartList');
+      const totalDisplay = document.getElementById('deliveryTotalDisplay');
+
       if (deliveryCart.length === 0) {
         list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>`;
+        totalDisplay.innerText = 'R$ 0,00';
+        calculateChange();
         return;
       }
 
       let html = '';
+      let subtotal = 0;
       deliveryCart.forEach((item, idx) => {
+        subtotal += item.price * item.qty;
         html += `
           <div class="delivery-cart-row">
             <span><strong>${item.qty}x</strong> ${item.name}</span>
             <div style="display:flex; align-items:center; gap:6px;">
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
-              <span style="font-weight:bold; width:18px; text-align:center;">${item.qty}</span>
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <span style="font-weight:bold; width:16px; text-align:center;">${item.qty}</span>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
             </div>
           </div>
         `;
       });
       list.innerHTML = html;
+      totalDisplay.innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+      calculateChange();
     }
 
-    // Máscara e Busca Automática ViaCEP
+    function setPaymentMethod(method, btn) {
+      currentPayment = method;
+      document.querySelectorAll('.pay-method-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const cashBox = document.getElementById('cashChangeBox');
+      if (method === 'Dinheiro') {
+        cashBox.classList.add('active');
+      } else {
+        cashBox.classList.remove('active');
+      }
+      calculateChange();
+    }
+
+    function maskCurrencyInput(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = 'R$ 0,00';
+        rawCashGiven = 0;
+        calculateChange();
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      rawCashGiven = numeric;
+      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      calculateChange();
+    }
+
+    function calculateChange() {
+      const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const display = document.getElementById('calculatedChangeDisplay');
+
+      if (currentPayment !== 'Dinheiro') return;
+
+      if (rawCashGiven >= total && total > 0) {
+        const change = rawCashGiven - total;
+        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        display.style.color = 'var(--success)';
+      } else if (rawCashGiven > 0) {
+        display.innerText = 'Falta dinheiro';
+        display.style.color = 'var(--danger)';
+      } else {
+        display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
+      }
+    }
+
     async function maskAndSearchCep(input) {
       let v = input.value.replace(/\D/g, '');
       if (v.length > 8) v = v.slice(0, 8);
@@ -699,6 +854,7 @@
             <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
             <div style="font-size:0.85rem;">📍 ${del.address}</div>
             <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${del.items}</div>
+            <div style="font-size:0.78rem; color:var(--success);">💳 Pagamento: ${del.payment}</div>
             ${del.observation ? `<div style="font-size:0.8rem; color:var(--warning); background:rgba(234,179,8,0.1); padding:4px 8px; border-radius:6px;">⚠️ Obs: ${del.observation}</div>` : ''}
           </div>
         `;
@@ -710,6 +866,13 @@
 
       if (deliveryCart.length === 0) {
         showNoticeModal('Carrinho Vazio', 'Selecione pelo menos um produto do cardápio rápido para o pedido de delivery.', '⚠️');
+        return;
+      }
+
+      const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+
+      if (currentPayment === 'Dinheiro' && rawCashGiven < total) {
+        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro recebido pelo cliente é menor que o total do pedido.', '⚠️');
         return;
       }
 
@@ -735,12 +898,18 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
 
-      // 1. Adiciona nas entregas ativas
+      // 1. Salva no Faturamento do Dia
+      let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
+      currentSales += total;
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
+
+      // 2. Adiciona nas entregas ativas
       const newDel = {
         id: newDeliveryId,
         client,
         phone,
         address: fullAddress,
+        payment: currentPayment,
         observation,
         items: itemsText,
         time: timeStr,
@@ -750,7 +919,7 @@
       deliveries.unshift(newDel);
       localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-      // 2. Envia para a Cozinha (KDS)
+      // 3. Envia para a Cozinha (KDS)
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -771,11 +940,13 @@
       document.getElementById('clientNeighborhood').value = '';
       document.getElementById('clientCity').value = '';
       document.getElementById('clientState').value = '';
+      document.getElementById('cashGivenInput').value = '';
       deliveryCart = [];
+      rawCashGiven = 0;
       renderDeliveryCart();
       renderDeliveries();
 
-      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha!`, '🎉');
+      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha e registrado no caixa!`, '🎉');
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -789,7 +960,6 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
-    // Atualiza relógio do topo
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');

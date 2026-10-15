@@ -222,7 +222,7 @@
     <div class="custom-modal-card">
       <div class="custom-modal-icon">❌</div>
       <div class="custom-modal-title">Cancelar Pedido?</div>
-      <div class="custom-modal-desc" id="cancelKdsDesc">Deseja realmente remover este pedido da cozinha?</div>
+      <div class="custom-modal-desc" id="cancelKdsDesc">Deseja realmente cancelar e remover este pedido da cozinha?</div>
       <button class="btn-modal-danger" onclick="confirmKdsCancel()">Sim, Cancelar Pedido</button>
       <button class="btn-modal-secondary" onclick="closeKdsCancelModal()">Manter Pedido</button>
     </div>
@@ -404,20 +404,32 @@
       document.getElementById('cancelKdsModal').classList.remove('active');
     }
 
+    /* CONFIRMAR CANCELAMENTO E SUBTRAIR DO DASHBOARD */
     function confirmKdsCancel() {
       if (selectedCancelOrderId) {
         let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         const o = orders.find(item => item.id === selectedCancelOrderId);
-        if (o) {
+        
+        if (o && o.status !== 'cancelled') {
           o.status = 'cancelled';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+
+          // Subtrai o valor do pedido do faturamento do Dashboard (vortex_vendas_hoje)
+          if (o.total && o.total > 0) {
+            let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+            let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+            let currentSales = parseFloat(cleanedSalesStr) || 0;
+
+            currentSales = Math.max(0, currentSales - o.total);
+            localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+          }
         }
+
         closeKdsCancelModal();
         renderKds();
       }
     }
 
-    /* IMPRESSÃO DE COMANDA DA COZINHA (KDS) */
     function printKdsTicket(orderId) {
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = orders.find(item => item.id === orderId);

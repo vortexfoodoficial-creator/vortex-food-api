@@ -381,25 +381,47 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    function loadDashboardData() {
-      // 1. Faturamento de Hoje (Calculado apenas sobre pedidos ativos/concluídos)
-      const salesRaw = localStorage.getItem('vortex_vendas_hoje');
-      let salesVal = 0;
+    function calculateRealSales() {
+      // Valor base inicial de vendas no caixa
+      let totalSales = 0;
 
-      if (salesRaw !== null) {
-        salesVal = parseFloat(salesRaw.replace('.', '').replace(',', '.'));
-      } else {
-        salesVal = 1450.00;
+      // 1. Soma entregas ativas do Delivery (ignora 'Cancelado')
+      const deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
+      deliveries.forEach(del => {
+        if (del.status !== 'Cancelado') {
+          totalSales += parseFloat(del.total || 0);
+        }
+      });
+
+      // 2. Soma pedidos do KDS que não vieram do Delivery e não estão cancelados
+      const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      kdsOrders.forEach(kds => {
+        if (kds.status !== 'cancelled' && (!kds.origin || !kds.origin.includes('Delivery'))) {
+          totalSales += parseFloat(kds.total || 0);
+        }
+      });
+
+      // Se não houver pedidos no histórico, usa o padrão mínimo
+      if (deliveries.length === 0 && kdsOrders.length === 0) {
+        totalSales = 1450.00;
       }
 
-      document.getElementById('dashboardSalesDisplay').innerText = `R$ ${salesVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      // Atualiza no localStorage o valor real líquido recalculado
+      localStorage.setItem('vortex_vendas_hoje', totalSales.toFixed(2).replace('.', ','));
+      return totalSales;
+    }
 
-      // 2. Pedidos Ativos (soma do KDS pendentes/em preparo, desconsiderando cancelados)
+    function loadDashboardData() {
+      // Recalcula as vendas excluindo cancelados
+      const totalSales = calculateRealSales();
+      document.getElementById('dashboardSalesDisplay').innerText = `R$ ${totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // Pedidos Ativos (Cozinha pendente/preparo desconsiderando cancelados)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const activeKds = kdsOrders.filter(o => o.status !== 'ready' && o.status !== 'cancelled').length;
       document.getElementById('dashboardActiveOrders').innerText = activeKds;
 
-      // 3. Mesas Ocupadas
+      // Mesas Ocupadas
       const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
         { id: 1, number: '01', status: 'free' },
         { id: 2, number: '02', status: 'occupied' },

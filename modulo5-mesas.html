@@ -53,7 +53,7 @@
       z-index: 99;
     }
 
-    /* Menu Lateral Padronizado */
+    /* Menu Lateral */
     .sidebar {
       width: 260px;
       background-color: var(--bg-sidebar);
@@ -167,9 +167,81 @@
 
     header h1 { font-size: 1.5rem; }
 
+    /* Barra de Gerenciamento das Mesas */
+    .management-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .management-bar-title {
+      font-size: 1rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .management-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-manage {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn-manage:hover { background: var(--primary-hover); }
+
+    .btn-manage-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-manage-danger:hover { background: var(--danger); color: white; }
+
+    .qr-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: var(--bg-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
     .tables-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 15px;
     }
 
@@ -181,8 +253,8 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      cursor: pointer;
       transition: all 0.2s;
+      position: relative;
     }
 
     .table-card:hover {
@@ -203,8 +275,44 @@
     .table-header { display: flex; justify-content: space-between; align-items: center; }
     .table-number { font-size: 1.1rem; font-weight: bold; }
     .table-status { font-size: 0.8rem; font-weight: bold; }
-    .table-info { font-size: 0.82rem; color: var(--text-muted); }
+    .table-info { font-size: 0.82rem; color: var(--text-muted); flex: 1; }
 
+    .table-card-footer {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .btn-table-click {
+      flex: 1;
+      background: var(--border);
+      color: var(--text-main);
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-table-click:hover { background: var(--primary); color: white; }
+
+    .btn-qr-click {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--info);
+      border: 1px solid var(--info);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-qr-click:hover { background: var(--info); color: white; }
+
+    /* Modais Customizados */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -216,6 +324,7 @@
       padding: 15px;
     }
     .modal-overlay.active { display: flex; }
+    
     .custom-modal-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -224,6 +333,7 @@
       width: 100%;
       max-width: 440px;
     }
+
     .custom-modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; }
     
     .btn-modal-close {
@@ -335,6 +445,23 @@
       </div>
     </header>
 
+    <!-- BARRA DE GERENCIAMENTO DE MESAS -->
+    <div class="management-bar">
+      <div class="management-bar-title">
+        <span>🍽️ Layout do Salão</span>
+        <span style="font-size: 0.8rem; color: var(--text-muted);" id="tablesCountBadge">(0 Mesas)</span>
+      </div>
+
+      <div class="management-actions">
+        <label class="qr-toggle-label">
+          <input type="checkbox" id="qrOrderingToggle" onchange="toggleQrOrdering(this)">
+          📱 Pedido / Fechamento por QR Code
+        </label>
+        <button class="btn-manage" onclick="addNewTable()">➕ Adicionar Mesa</button>
+        <button class="btn-manage-danger" onclick="removeLastTable()">➖ Remover Mesa</button>
+      </div>
+    </div>
+
     <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
@@ -345,6 +472,21 @@
       <div id="tableModalBody" style="font-size:0.9rem; margin-bottom:15px;"></div>
       <div id="tableModalActions"></div>
       <button class="btn-modal-close" onclick="closeTableModal()">Fechar</button>
+    </div>
+  </div>
+
+  <!-- MODAL QR CODE MESA -->
+  <div class="modal-overlay" id="qrModal">
+    <div class="custom-modal-card" style="text-align:center;">
+      <div class="custom-modal-title" id="qrModalTitle">QR Code da Mesa</div>
+      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Posicione este QR Code na mesa para que o cliente acesse o cardápio ou solicite o fechamento da conta.</p>
+      
+      <div id="qrCodeContainer" style="background:white; padding:15px; border-radius:12px; display:inline-block; margin-bottom:15px; border:1px solid var(--border);">
+        <img id="qrCodeImage" src="" alt="QR Code Mesa" style="width:180px; height:180px; display:block;">
+      </div>
+
+      <button class="btn-modal-action" onclick="printTableQrCode()">🖨️ Imprimir Placa QR Code</button>
+      <button class="btn-modal-close" onclick="closeQrModal()">Voltar</button>
     </div>
   </div>
 
@@ -363,6 +505,8 @@
       { id: 11, number: '11', status: 'free', client: '', items: [], total: 0 },
       { id: 12, number: '12', status: 'free', client: '', items: [], total: 0 }
     ];
+
+    let currentQrTable = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -385,13 +529,20 @@
         localStorage.setItem('vortex_tables', JSON.stringify(tables));
       }
 
+      // Sincroniza estado do QR Code
+      const qrEnabled = localStorage.getItem('vortex_qr_ordering_enabled') === 'true';
+      const toggleEl = document.getElementById('qrOrderingToggle');
+      if (toggleEl) toggleEl.checked = qrEnabled;
+
+      document.getElementById('tablesCountBadge').innerText = `(${tables.length} Mesas)`;
+
       const container = document.getElementById('tablesGridContainer');
       container.innerHTML = '';
 
       tables.forEach(t => {
         const isOccupied = t.status === 'occupied';
         container.innerHTML += `
-          <div class="table-card ${isOccupied ? 'occupied' : 'free'}" onclick="openTableModal(${t.id})">
+          <div class="table-card ${isOccupied ? 'occupied' : 'free'}">
             <div class="table-header">
               <span class="table-number">Mesa ${t.number}</span>
               <span class="table-status" style="color: ${isOccupied ? 'var(--danger)' : 'var(--success)'};">
@@ -399,11 +550,47 @@
               </span>
             </div>
             <div class="table-info">
-              ${isOccupied ? `👤 Client: <strong>${t.client || 'Cliente'}</strong><br>💰 Total: <strong>R$ ${t.total.toFixed(2).replace('.', ',')}</strong>` : 'Clique para abrir comanda'}
+              ${isOccupied ? `👤 Cliente: <strong>${t.client || 'Cliente'}</strong><br>💰 Total: <strong>R$ ${t.total.toFixed(2).replace('.', ',')}</strong>` : 'Mesa pronta para atendimento.'}
+            </div>
+            <div class="table-card-footer">
+              <button class="btn-table-click" onclick="openTableModal(${t.id})">Comanda 📝</button>
+              <button class="btn-qr-click" onclick="openQrModal(${t.id})" title="Imprimir QR Code da Mesa">📱 QR Code</button>
             </div>
           </div>
         `;
       });
+    }
+
+    function toggleQrOrdering(checkbox) {
+      localStorage.setItem('vortex_qr_ordering_enabled', checkbox.checked ? 'true' : 'false');
+    }
+
+    function addNewTable() {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
+      const nextNum = nextId < 10 ? `0${nextId}` : `${nextId}`;
+
+      tables.push({ id: nextId, number: nextNum, status: 'free', client: '', items: [], total: 0 });
+      localStorage.setItem('vortex_tables', JSON.stringify(tables));
+      loadTables();
+    }
+
+    function removeLastTable() {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      if (tables.length <= 1) {
+        alert('O salão precisa ter pelo menos 1 mesa!');
+        return;
+      }
+
+      const lastTable = tables[tables.length - 1];
+      if (lastTable.status === 'occupied') {
+        alert(`A Mesa ${lastTable.number} está ocupada e não pode ser removida agora!`);
+        return;
+      }
+
+      tables.pop();
+      localStorage.setItem('vortex_tables', JSON.stringify(tables));
+      loadTables();
     }
 
     function openTableModal(id) {
@@ -419,7 +606,7 @@
         const itemsList = t.items.map(i => `<li>${i.qty}x ${i.name} - R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</li>`).join('');
         body.innerHTML = `
           <p style="margin-bottom:8px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
-          <p style="margin-bottom:8px;"><strong>Consumo:</strong></p>
+          <p style="margin-bottom:8px;"><strong>Consumo Atual:</strong></p>
           <ul style="padding-left:20px; color:var(--text-main); font-size:0.85rem; margin-bottom:10px;">${itemsList || 'Nenhum item consumido.'}</ul>
           <p style="font-size:1.1rem; font-weight:bold; color:var(--success);">Total: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
         `;
@@ -479,6 +666,64 @@
 
     function closeTableModal() {
       document.getElementById('tableModal').classList.remove('active');
+    }
+
+    /* SISTEMA DE QR CODE */
+    function openQrModal(id) {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const t = tables.find(item => item.id === id);
+      if (!t) return;
+
+      currentQrTable = t;
+      document.getElementById('qrModalTitle').innerText = `QR Code - Mesa ${t.number}`;
+      
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'Vortex Food' };
+      const qrData = encodeURIComponent(`https://vortexfood.app/mesa/${t.number}?store=${encodeURIComponent(storeSettings.storeName)}`);
+      const qrUrl = `https://quickchart.io/qr?text=${qrData}&size=200`;
+
+      document.getElementById('qrCodeImage').src = qrUrl;
+      document.getElementById('qrModal').classList.add('active');
+    }
+
+    function closeQrModal() {
+      currentQrTable = null;
+      document.getElementById('qrModal').classList.remove('active');
+    }
+
+    function printTableQrCode() {
+      if (!currentQrTable) return;
+
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'Vortex Food' };
+      const qrImgSrc = document.getElementById('qrCodeImage').src;
+
+      const printWindow = window.open('', '_blank', 'width=400,height=550');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Placa QR Code - Mesa ${currentQrTable.number}</title>
+            <style>
+              body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; color: #000; background: #fff; }
+              .card { border: 3px solid #f97316; border-radius: 16px; padding: 20px; max-width: 280px; margin: 0 auto; }
+              h2 { margin: 5px 0; color: #f97316; font-size: 22px; }
+              h3 { margin: 5px 0 15px 0; font-size: 18px; }
+              img { width: 180px; height: 180px; margin: 10px 0; }
+              p { font-size: 12px; color: #555; margin-top: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>${storeSettings.storeName}</h2>
+              <h3>MESA ${currentQrTable.number}</h3>
+              <img src="${qrImgSrc}" alt="QR Code">
+              <p>📱 Aponte a câmera do seu celular para ver o cardápio e fazer o pedido!</p>
+            </div>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
 
     setInterval(() => {

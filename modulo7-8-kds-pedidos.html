@@ -20,6 +20,15 @@
       --info: #38bdf8;
     }
 
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -33,6 +42,7 @@
       display: flex;
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
@@ -54,7 +64,7 @@
       top: 0; bottom: 0; left: 0;
       z-index: 100;
       overflow-y: auto;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, background-color 0.3s;
     }
 
     .sidebar-header {
@@ -202,6 +212,7 @@
       padding: 15px;
       display: flex;
       flex-direction: column;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     .column-header {
@@ -230,24 +241,21 @@
       border: 1px solid var(--border);
     }
 
-    /* Container de cartões com altura ideal para 2 a 3 pedidos visíveis */
     .cards-container {
       display: flex;
       flex-direction: column;
       gap: 12px;
       overflow-y: auto;
       padding-right: 4px;
-      /* Define altura garantida para exibir 2 a 3 cartões sem cortar */
       max-height: 520px;
       min-height: 180px;
     }
 
-    /* Estilização elegante da barra de rolagem */
     .cards-container::-webkit-scrollbar {
       width: 6px;
     }
     .cards-container::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.5);
+      background: rgba(15, 23, 42, 0.2);
       border-radius: 4px;
     }
     .cards-container::-webkit-scrollbar-thumb {
@@ -267,7 +275,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      transition: transform 0.2s, border-color 0.2s;
+      transition: transform 0.2s, border-color 0.2s, background-color 0.3s;
       flex-shrink: 0;
     }
 
@@ -308,7 +316,7 @@
     .kds-observation-box {
       background: rgba(234, 179, 8, 0.15);
       border: 1px solid var(--warning);
-      color: #fef08a;
+      color: var(--text-main);
       padding: 6px 8px;
       border-radius: 6px;
       font-size: 0.8rem;
@@ -316,7 +324,7 @@
     }
 
     .kds-items-box {
-      background: rgba(30, 41, 59, 0.6);
+      background: rgba(30, 41, 59, 0.3);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 8px;
@@ -360,7 +368,7 @@
       gap: 4px;
       transition: background 0.2s;
     }
-    .btn-print-kds:hover { background: var(--primary); }
+    .btn-print-kds:hover { background: var(--primary); color: white; }
 
     .btn-cancel-kds {
       background: rgba(239, 68, 68, 0.15);
@@ -418,12 +426,11 @@
       width: 100%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
     }
 
     .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
     .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
 
     .modal-actions-row {
       display: flex;
@@ -439,7 +446,6 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-size: 0.9rem;
     }
 
     .btn-modal-confirm-danger {
@@ -451,10 +457,8 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-size: 0.9rem;
     }
 
-    /* RESPONSIVIDADE MOBILE (CELULAR) */
     @media (max-width: 900px) {
       .main-content {
         margin-left: 0;
@@ -472,7 +476,6 @@
         gap: 20px;
       }
 
-      /* No Celular: Garante de 2 a 3 pedidos visíveis por seção sem cortar */
       .cards-container {
         max-height: 380px;
         min-height: 150px;
@@ -522,6 +525,7 @@
         <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
   </aside>
@@ -545,7 +549,7 @@
       <button class="filter-btn" onclick="setKdsFilter('bar', this)">🍹 Bar (Bebidas)</button>
     </div>
 
-    <!-- QUADRO KANBAN KDS COM ROLAGEM DE 2 A 3 PEDIDOS COMPLETO -->
+    <!-- QUADRO KANBAN KDS -->
     <div class="kanban-board">
       
       <!-- Coluna 1: Novos / Pendentes -->
@@ -601,6 +605,14 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
     function setKdsFilter(filter, btn) {
       currentFilter = filter;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -647,7 +659,7 @@
             <div class="kds-items-box">
               ${filteredItems.map(i => `
                 <div class="kds-item-row">
-                  <span><span class="kds-item-qty">${i.qty}x</span>${i.name}</span>
+                  <span><span class="kds-item-qty">${i.qty}x</span> ${i.name}</span>
                 </div>
               `).join('')}
             </div>
@@ -700,7 +712,6 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-        // Dedução automática do valor no faturamento do dia
         if (order.total) {
           let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
           let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
@@ -797,6 +808,7 @@
     }, 1000);
 
     window.onload = function() {
+      applyTheme();
       renderKdsBoard();
     };
   </script>

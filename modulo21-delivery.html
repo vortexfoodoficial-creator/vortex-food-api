@@ -346,7 +346,7 @@
 
     .btn-cancel-order:hover { background: var(--danger); color: white; }
 
-    /* ESTILIZAÇÃO DOS MODAIS E SELETORES MODERNOS */
+    /* ESTILIZAÇÃO COMPLETA DOS MODAIS ESCUROS E SEM MENUS BRANCOS NATIVOS */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -413,12 +413,8 @@
       margin-left: 3px;
     }
 
-    /* Formulários e Seletores Modernos e Escuros */
     .form-group input, 
-    .form-group select, 
-    .form-group textarea,
-    .add-item-controls select,
-    .add-item-controls input {
+    .form-group textarea {
       background-color: var(--bg-main) !important;
       border: 1px solid var(--border) !important;
       color: var(--text-main) !important;
@@ -429,9 +425,7 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    .form-group input:focus, 
-    .form-group select:focus, 
-    .add-item-controls select:focus {
+    .form-group input:focus {
       border-color: var(--primary) !important;
       box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
     }
@@ -456,89 +450,83 @@
 
     .form-row .form-group { flex: 1; }
 
-    /* Seção Sofisticada de Adição de Produtos */
-    .items-builder-box {
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 15px;
-    }
-
-    .items-builder-header {
-      font-size: 0.85rem;
-      font-weight: bold;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    .selected-items-list {
+    /* NOVO SELETOR CUSTOMIZADO DE PRODUTOS (SEM TELA BRANCA NATIVA) */
+    .products-selection-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      max-height: 140px;
+      gap: 8px;
+      max-height: 180px;
       overflow-y: auto;
-      margin-bottom: 12px;
+      margin-top: 8px;
+      padding-right: 4px;
     }
 
-    .item-row-added {
+    .product-select-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
     }
 
-    .btn-remove-item {
-      background: none;
-      border: none;
-      color: var(--danger);
-      cursor: pointer;
-      font-weight: bold;
-      padding: 0 5px;
-      font-size: 1.1rem;
-    }
-
-    .add-item-controls {
+    .product-select-info {
       display: flex;
-      gap: 8px;
-      align-items: center;
+      flex-direction: column;
     }
 
-    .add-item-controls select {
-      flex: 1;
-      cursor: pointer;
+    .product-select-name {
+      font-size: 0.85rem;
+      font-weight: 600;
     }
 
-    .add-item-controls input {
-      width: 70px;
-      text-align: center;
+    .product-select-price {
+      font-size: 0.8rem;
+      color: var(--primary);
+      font-weight: bold;
     }
 
-    .btn-add-item-list {
+    .btn-add-quick {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 12px 16px;
-      border-radius: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-weight: bold;
+      font-size: 0.8rem;
       cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.2s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
-    .btn-add-item-list:hover {
-      background: var(--primary-hover);
+    .btn-add-quick:active {
+      transform: scale(0.95);
     }
 
-    .btn-add-item-list:active {
-      transform: scale(0.97);
+    /* Pagamento em Botões Customizados */
+    .payment-options-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .payment-btn-option {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .payment-btn-option.active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
     /* Pagamento e Troco */
@@ -548,6 +536,7 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px;
+      margin-top: 10px;
       margin-bottom: 12px;
     }
 
@@ -610,14 +599,6 @@
       .modal-card {
         padding: 15px 15px 30px 15px;
         max-height: 88vh;
-      }
-
-      .add-item-controls {
-        flex-wrap: wrap;
-      }
-
-      .add-item-controls select {
-        width: 100%;
       }
     }
   </style>
@@ -768,7 +749,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE NOVO PEDIDO DE DELIVERY -->
+  <!-- MODAL DE NOVO PEDIDO DE DELIVERY (100% REFORMULADO) -->
   <div class="modal-overlay" id="newOrderModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -792,12 +773,12 @@
         </div>
       </div>
 
-      <!-- LOCALIZAÇÃO VIA CEP -->
+      <!-- LOCALIZAÇÃO VIA CEP AUTOMÁTICA -->
       <div class="form-row">
         <div class="form-group" style="flex: 1.2;">
           <label for="clientCep">CEP <span class="req">*</span></label>
           <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" oninput="maskAndFetchCep(this)">
-          <span class="cep-loading-spinner" id="cepSpinner">🔍 Localizando endereço...</span>
+          <span class="cep-loading-spinner" id="cepSpinner">🔍 Buscando CEP...</span>
         </div>
         <div class="form-group" style="flex: 0.8;">
           <label for="clientNumber">Número <span class="req">*</span></label>
@@ -807,7 +788,7 @@
 
       <div class="form-group">
         <label for="clientStreet">Rua / Logradouro:</label>
-        <input type="text" id="clientStreet" placeholder="Preenchido automaticamente pelo CEP" disabled>
+        <input type="text" id="clientStreet" placeholder="Preenchido via CEP" disabled>
       </div>
 
       <div class="form-row">
@@ -823,43 +804,80 @@
 
       <div class="form-group">
         <label for="clientComplement">Complemento (Opcional):</label>
-        <input type="text" id="clientComplement" placeholder="Ex: Ap 42, Bloco B, Casa nos fundos">
+        <input type="text" id="clientComplement" placeholder="Ex: Ap 42, Bloco B">
       </div>
 
       <div class="form-group">
         <label for="clientReference">Ponto de Referência (Opcional):</label>
-        <input type="text" id="clientReference" placeholder="Ex: Próximo à padaria Estrela">
+        <input type="text" id="clientReference" placeholder="Ex: Próximo à padaria">
       </div>
 
-      <!-- CONSTRUTOR DE MÚLTIPLOS ITENS COM SELETORES MODERNOS -->
-      <div class="items-builder-box">
-        <div class="items-builder-header">Itens do Pedido <span class="req">*</span></div>
-        <div class="selected-items-list" id="builderItemsList">
+      <!-- CONSTRUTOR DE ITENS - LISTA CUSTOMIZADA (SEM TELA BRANCA NATIVA DO ANDROID) -->
+      <div style="margin-bottom: 15px;">
+        <label style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Selecione os Produtos do Cardápio: <span class="req">*</span></label>
+        <div class="products-selection-list">
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">X-Burger Especial</span>
+              <span class="product-select-price">R$ 28,50</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('X-Burger Especial', 28.50)">+ Adicionar</button>
+          </div>
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">X-Salada Duplo</span>
+              <span class="product-select-price">R$ 32,00</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('X-Salada Duplo', 32.00)">+ Adicionar</button>
+          </div>
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">Pizza Calabresa G</span>
+              <span class="product-select-price">R$ 55,00</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('Pizza Calabresa G', 55.00)">+ Adicionar</button>
+          </div>
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">Batata Frita M</span>
+              <span class="product-select-price">R$ 18,00</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('Batata Frita M', 18.00)">+ Adicionar</button>
+          </div>
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">Refrigerante 2L</span>
+              <span class="product-select-price">R$ 14,00</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('Refrigerante 2L', 14.00)">+ Adicionar</button>
+          </div>
+          <div class="product-select-card">
+            <div class="product-select-info">
+              <span class="product-select-name">Suco Natural 500ml</span>
+              <span class="product-select-price">R$ 10,00</span>
+            </div>
+            <button class="btn-add-quick" onclick="addDirectItem('Suco Natural 500ml', 10.00)">+ Adicionar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LISTA DE ITENS INCLUÍDOS NO PEDIDO -->
+      <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+        <div style="font-size:0.85rem; font-weight:bold; color:var(--text-muted); margin-bottom:8px;">Itens Selecionados no Pedido:</div>
+        <div id="builderItemsList" style="display:flex; flex-direction:column; gap:6px;">
           <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>
         </div>
-
-        <div class="add-item-controls">
-          <select id="selectProductToAdd">
-            <option value="X-Burger Especial|28.50">X-Burger Especial (R$ 28,50)</option>
-            <option value="X-Salada Duplo|32.00">X-Salada Duplo (R$ 32,00)</option>
-            <option value="Pizza Calabresa G|55.00">Pizza Calabresa G (R$ 55,00)</option>
-            <option value="Batata Frita M|18.00">Batata Frita M (R$ 18,00)</option>
-            <option value="Refrigerante 2L|14.00">Refrigerante 2L (R$ 14,00)</option>
-            <option value="Suco Natural 500ml|10.00">Suco Natural (R$ 10,00)</option>
-          </select>
-          <input type="number" id="selectQtyToAdd" value="1" min="1">
-          <button class="btn-add-item-list" onclick="addItemToCurrentOrder()">➕ Adicionar</button>
-        </div>
       </div>
 
+      <!-- FORMA DE PAGAMENTO EM BOTÕES CUSTOMIZADOS -->
       <div class="form-group">
-        <label for="paymentMethodSelect">Forma de Pagamento:</label>
-        <select id="paymentMethodSelect" onchange="toggleCashBox(this)">
-          <option value="Pix">Pix</option>
-          <option value="Cartão de Crédito">Cartão de Crédito</option>
-          <option value="Cartão de Débito">Cartão de Débito</option>
-          <option value="Dinheiro">Dinheiro</option>
-        </select>
+        <label>Forma de Pagamento:</label>
+        <div class="payment-options-grid">
+          <div class="payment-btn-option active" onclick="selectPaymentMethod('Pix', this)">Pix</div>
+          <div class="payment-btn-option" onclick="selectPaymentMethod('Cartão de Crédito', this)">Crédito</div>
+          <div class="payment-btn-option" onclick="selectPaymentMethod('Cartão de Débito', this)">Débito</div>
+          <div class="payment-btn-option" onclick="selectPaymentMethod('Dinheiro', this)">Dinheiro</div>
+        </div>
       </div>
 
       <!-- CAIXA DE DINHEIRO E TROCO -->
@@ -890,7 +908,7 @@
       <div class="custom-modal-desc">Selecione o motoqueiro responsável por este pedido:</div>
       
       <div class="form-group" style="margin-bottom: 20px;">
-        <select id="courierSelect">
+        <select id="courierSelect" style="background:var(--bg-main); color:white; padding:10px; border-radius:8px; border:1px solid var(--border); width:100%;">
           <option value="Motoqueiro João">João Silva (Moto 01)</option>
           <option value="Motoqueiro Pedro">Pedro Santos (Moto 02)</option>
           <option value="Entregador iFood">Parceiro iFood / Próprio</option>
@@ -943,6 +961,7 @@
     let currentBuildingItems = [];
     let rawDeliveryFee = 5.00;
     let rawCashGiven = 0;
+    let currentPaymentMethod = 'Pix';
     let pendingDispatchOrderId = null;
     let pendingCancelOrderId = null;
 
@@ -983,12 +1002,11 @@
             document.getElementById('clientNeighborhood').value = data.bairro || '';
             document.getElementById('clientCity').value = `${data.localidade}/${data.uf}`;
             
-            // Foco automático no número da residência
             document.getElementById('clientNumber').focus();
           })
           .catch(() => {
             spinner.style.display = 'none';
-            showNoticeModal('Erro ao Buscar CEP', 'Não foi possível buscar o CEP automaticamente. Verifique sua conexão.', '⚠️', 'var(--warning)');
+            showNoticeModal('Erro ao Buscar CEP', 'Não foi possível buscar o CEP automaticamente.', '⚠️', 'var(--warning)');
           });
       }
     }
@@ -1025,31 +1043,28 @@
       if (callback) callback();
     }
 
-    function toggleCashBox(select) {
-      const box = document.getElementById('cashChangeBox');
-      if (select.value === 'Dinheiro') {
-        box.classList.add('active');
+    function selectPaymentMethod(method, element) {
+      currentPaymentMethod = method;
+      document.querySelectorAll('.payment-btn-option').forEach(btn => btn.classList.remove('active'));
+      element.classList.add('active');
+
+      const cashBox = document.getElementById('cashChangeBox');
+      if (method === 'Dinheiro') {
+        cashBox.classList.add('active');
       } else {
-        box.classList.remove('active');
+        cashBox.classList.remove('active');
       }
       calculateChange();
     }
 
-    /* GESTÃO DE MÚLTIPLOS ITENS NO PEDIDO */
-    function addItemToCurrentOrder() {
-      const select = document.getElementById('selectProductToAdd');
-      const qtyInput = document.getElementById('selectQtyToAdd');
-      const [name, priceStr] = select.value.split('|');
-      const price = parseFloat(priceStr);
-      const qty = parseInt(qtyInput.value) || 1;
-
+    /* GESTÃO DE MÚLTIPLOS ITENS DIRETO POR CARDS */
+    function addDirectItem(name, price) {
       const existing = currentBuildingItems.find(i => i.name === name);
       if (existing) {
-        existing.qty += qty;
+        existing.qty += 1;
       } else {
-        currentBuildingItems.push({ name, price, qty });
+        currentBuildingItems.push({ name, price, qty: 1 });
       }
-
       renderBuildingItems();
     }
 
@@ -1066,10 +1081,10 @@
         let html = '';
         currentBuildingItems.forEach((item, idx) => {
           html += `
-            <div class="item-row-added">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); border:1px solid var(--border); padding:8px 10px; border-radius:8px; font-size:0.85rem;">
               <span><strong>${item.qty}x</strong> ${item.name}</span>
               <span>R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')} 
-                <button class="btn-remove-item" onclick="removeItemFromCurrentOrder(${idx})">✕</button>
+                <button style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; margin-left:8px;" onclick="removeItemFromCurrentOrder(${idx})">✕</button>
               </span>
             </div>
           `;
@@ -1127,7 +1142,6 @@
 
         const isCancelled = order.status === 'cancelled';
         
-        // Formatação limpa do endereço completo
         const fullAddressStr = order.street 
           ? `${order.street}, ${order.number}${order.complement ? ' ('+order.complement+')' : ''} - ${order.neighborhood} [CEP ${order.cep}]` 
           : order.address;
@@ -1303,6 +1317,7 @@
       currentBuildingItems = [];
       rawDeliveryFee = 5.00;
       rawCashGiven = 0;
+      currentPaymentMethod = 'Pix';
       document.getElementById('clientName').value = '';
       document.getElementById('clientPhone').value = '';
       document.getElementById('clientCep').value = '';
@@ -1314,7 +1329,6 @@
       document.getElementById('clientReference').value = '';
       document.getElementById('deliveryFee').value = 'R$ 5,00';
       document.getElementById('cashGivenInput').value = '';
-      document.getElementById('paymentMethodSelect').value = 'Pix';
       document.getElementById('cashChangeBox').classList.remove('active');
       renderBuildingItems();
       document.getElementById('newOrderModal').classList.add('active');
@@ -1332,7 +1346,6 @@
       const city = document.getElementById('clientCity').value.trim();
       const complement = document.getElementById('clientComplement').value.trim();
       const reference = document.getElementById('clientReference').value.trim();
-      const payment = document.getElementById('paymentMethodSelect').value;
 
       // VALIDAÇÕES OBRIGATÓRIAS
       if (!client) {
@@ -1361,7 +1374,7 @@
       const total = itemsSubtotal + rawDeliveryFee;
 
       let change = 0;
-      if (payment === 'Dinheiro' && rawCashGiven > total) {
+      if (currentPaymentMethod === 'Dinheiro' && rawCashGiven > total) {
         change = rawCashGiven - total;
       }
 
@@ -1385,7 +1398,7 @@
         fee: rawDeliveryFee,
         status: 'pending',
         time: timeStr,
-        payment: payment,
+        payment: currentPaymentMethod,
         change: change
       });
 

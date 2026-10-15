@@ -276,6 +276,17 @@
       color: var(--text-main);
     }
 
+    /* Caixa de Observação Destacada */
+    .kds-observation-box {
+      background: rgba(234, 179, 8, 0.15);
+      border: 1px solid var(--warning);
+      color: #fef08a;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      line-height: 1.3;
+    }
+
     .kds-items-box {
       background: rgba(30, 41, 59, 0.6);
       border: 1px solid var(--border);
@@ -325,47 +336,6 @@
       background: var(--success);
     }
     .btn-kds-done:hover { background: #16a34a; }
-
-    /* Modais Customizados */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-    }
-
-    .modal-overlay.active { display: flex; }
-
-    .custom-modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 25px;
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-    }
-
-    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
-    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
-
-    .btn-modal-primary {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -479,22 +449,10 @@
     </div>
   </main>
 
-  <!-- MODAL DE NOTIFICAÇÃO -->
-  <div class="modal-overlay" id="noticeModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
-      <div class="custom-modal-title" id="noticeTitle">Aviso</div>
-      <div class="custom-modal-desc" id="noticeDesc">Mensagem do sistema.</div>
-      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
-    </div>
-  </div>
-
   <script>
-    // Carrega pedidos unificados do localStorage (ou simula dados padrão caso vazio)
     let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [
-      { id: 201, origin: 'Mesa 04', client: 'Carlos Silva', items: [{ name: 'X-Burger Especial', qty: 2, type: 'kitchen' }, { name: 'Coca-Cola Lata', qty: 2, type: 'bar' }], status: 'new', time: '19:20' },
-      { id: 202, origin: 'Delivery #102', client: 'Lucas Mendes', items: [{ name: 'Pizza Calabresa G', qty: 1, type: 'kitchen' }, { name: 'Refrigerante 2L', qty: 1, type: 'bar' }], status: 'preparing', time: '19:12' },
-      { id: 203, origin: 'Balcão / PDV', client: 'Juliana Rocha', items: [{ name: 'Batata Frita M', qty: 1, type: 'kitchen' }, { name: 'Suco Natural', qty: 1, type: 'bar' }], status: 'ready', time: '19:05' }
+      { id: 201, origin: 'Mesa 04', client: 'Carlos Silva', observation: 'Sem cebola', items: [{ name: 'X-Burger Especial', qty: 2, type: 'kitchen' }, { name: 'Coca-Cola Lata', qty: 2, type: 'bar' }], status: 'new', time: '19:20' },
+      { id: 202, origin: 'Delivery #102', client: 'Lucas Mendes', observation: '', items: [{ name: 'Pizza Calabresa G', qty: 1, type: 'kitchen' }, { name: 'Refrigerante 2L', qty: 1, type: 'bar' }], status: 'preparing', time: '19:12' }
     ];
 
     let currentFilter = 'all';
@@ -528,14 +486,13 @@
       let countNew = 0, countPreparing = 0, countReady = 0;
 
       kdsOrders.forEach(order => {
-        // Filtra itens pelo setor escolhido se necessário
         const filteredItems = order.items.filter(item => {
           if (currentFilter === 'kitchen') return item.type === 'kitchen' || !item.type;
           if (currentFilter === 'bar') return item.type === 'bar';
           return true;
         });
 
-        if (filteredItems.length === 0) return; // Se não tem itens do setor neste pedido, oculta
+        if (filteredItems.length === 0) return;
 
         const cardHtml = `
           <div class="kds-card">
@@ -544,6 +501,7 @@
               <span class="kds-timer">🕒 ${order.time}</span>
             </div>
             <div class="kds-client">${order.client}</div>
+            ${order.observation ? `<div class="kds-observation-box">⚠️ <strong>Obs:</strong> ${order.observation}</div>` : ''}
             <div class="kds-items-box">
               ${filteredItems.map(i => `
                 <div class="kds-item-row">
@@ -590,17 +548,6 @@
         order.status = newStatus;
         saveKdsOrders();
       }
-    }
-
-    function showNoticeModal(title, desc, icon) {
-      document.getElementById('noticeIcon').innerText = icon || '🎉';
-      document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerText = desc;
-      document.getElementById('noticeModal').classList.add('active');
-    }
-
-    function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
     }
 
     // Atualiza o relógio do topo em tempo real

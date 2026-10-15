@@ -29,480 +29,111 @@
       --border: #cbd5e1;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
-      transition: background-color 0.3s, color 0.3s;
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 99;
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
     .sidebar {
-      width: 260px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      z-index: 100;
-      overflow-y: auto;
-      transition: transform 0.3s ease, background-color 0.3s;
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
     }
 
     .sidebar-header {
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
     }
 
-    .logo-icon { font-size: 1.5rem; }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-    .close-sidebar-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .sidebar-nav {
-      padding: 15px 10px;
-      flex: 1;
-    }
-
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
     .nav-section { margin-bottom: 20px; }
-
-    .nav-section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0 10px 8px;
-      display: block;
-    }
-
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      transition: all 0.2s ease;
-      font-size: 0.90rem;
-    }
-
-    .nav-link:hover, .nav-link.active {
-      background-color: rgba(249, 115, 22, 0.15);
-      color: var(--primary);
-    }
-
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal */
-    .main-content {
-      flex: 1;
-      margin-left: 260px;
-      padding: 20px;
-      width: calc(100% - 260px);
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      flex-wrap: wrap;
-    }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .toggle-btn {
-      display: none;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    header h1 { font-size: 1.5rem; }
-
-    /* Barra de Gerenciamento das Mesas */
     .management-bar {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;
     }
+    .management-bar-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .management-bar-title { font-size: 1rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .management-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-    .management-bar-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .management-bar-title {
-      font-size: 1rem;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .management-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .btn-manage {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-    }
+    .btn-manage { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
     .btn-manage:hover { background: var(--primary-hover); }
+    .btn-manage-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
 
-    .btn-manage-danger {
-      background: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-manage-danger:hover { background: var(--danger); color: white; }
+    .qr-toggle-box { background: var(--bg-main); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+    .qr-toggle-label { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600; color: var(--text-main); cursor: pointer; }
+    .qr-toggle-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.3; margin-left: 24px; }
 
-    .qr-toggle-box {
-      background: var(--bg-main);
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .qr-toggle-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: var(--text-main);
-      cursor: pointer;
-    }
-
-    .qr-toggle-desc {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      line-height: 1.3;
-      margin-left: 24px;
-    }
-
-    .tables-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 15px;
-    }
-
-    .table-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: all 0.2s;
-      position: relative;
-    }
-
-    .table-card:hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
-    }
-
-    .table-card.occupied {
-      border-color: var(--danger);
-      background: rgba(239, 68, 68, 0.08);
-    }
-
-    .table-card.free {
-      border-color: var(--success);
-      background: rgba(34, 197, 94, 0.08);
-    }
+    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+    .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; transition: all 0.2s; position: relative; }
+    .table-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .table-card.occupied { border-color: var(--danger); background: rgba(239, 68, 68, 0.08); }
+    .table-card.free { border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
 
     .table-header { display: flex; justify-content: space-between; align-items: center; }
     .table-number { font-size: 1.1rem; font-weight: bold; }
     .table-status { font-size: 0.8rem; font-weight: bold; }
     .table-info { font-size: 0.82rem; color: var(--text-muted); flex: 1; }
 
-    .table-card-footer {
-      display: flex;
-      gap: 6px;
-      margin-top: 6px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
+    .table-card-footer { display: flex; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .btn-table-click { flex: 1; background: var(--border); color: var(--text-main); border: none; padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+    .btn-qr-click { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
 
-    .btn-table-click {
-      flex: 1;
-      background: var(--border);
-      color: var(--text-main);
-      border: none;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-table-click:hover { background: var(--primary); color: white; }
-
-    .btn-qr-click {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--info);
-      border: 1px solid var(--info);
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-qr-click:hover { background: var(--info); color: white; }
-
-    /* CARDÁPIO EMBUTIDO NO MODAL COM ROLAGEM INDEPENDENTE */
-    .modal-menu-section {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      margin: 12px 0;
-    }
-
-    .modal-menu-title {
-      font-size: 0.8rem;
-      font-weight: bold;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-menu-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      max-height: 140px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .modal-menu-grid::-webkit-scrollbar {
-      width: 5px;
-    }
-    .modal-menu-grid::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 4px;
-    }
-
-    .mini-menu-item {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: all 0.2s;
-    }
-
-    .mini-menu-item:hover {
-      border-color: var(--primary);
-      background: rgba(249, 115, 22, 0.1);
-    }
-
+    .modal-menu-section { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin: 12px 0; }
+    .modal-menu-title { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 140px; overflow-y: auto; padding-right: 4px; }
+    .mini-menu-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; }
     .mini-menu-name { font-size: 0.78rem; font-weight: 600; color: var(--text-main); }
     .mini-menu-price { font-size: 0.75rem; font-weight: bold; color: var(--success); margin-top: 4px; }
 
-    /* FORMA DE PAGAMENTO E TROCO NO FECHAMENTO DA MESA */
-    .payment-select-box {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 10px;
-    }
-
-    .payment-select-box label {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-
-    .payment-select-box select, .payment-select-box input {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      width: 100%;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      outline: none;
-    }
-
-    .cash-change-table-box {
-      display: none;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px dashed var(--border);
-    }
-
+    .payment-select-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 10px; margin-bottom: 10px; }
+    .payment-select-box select, .payment-select-box input { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 8px; border-radius: 8px; font-size: 0.85rem; outline: none; }
+    .cash-change-table-box { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
     .cash-change-table-box.active { display: block; }
+    .table-change-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.82rem; margin-top: 6px; }
 
-    .table-change-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-      font-size: 0.82rem;
-      margin-top: 6px;
-    }
-
-    /* Modais Customizados */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-    }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    
-    .custom-modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 22px;
-      width: 100%;
-      max-width: 440px;
-    }
-
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 440px; }
     .custom-modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; }
     
-    .btn-modal-close {
-      background: var(--border);
-      color: var(--text-main);
-      width: 100%;
-      padding: 11px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-
-    .btn-modal-action {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-
-    .btn-modal-danger {
-      background: var(--danger);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      margin-top: 10px;
-    }
+    .btn-modal-close { background: var(--border); color: var(--text-main); width: 100%; padding: 11px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 8px; }
+    .btn-modal-action { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
+    .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
       .close-sidebar-btn { display: block; }
-      .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 15px 15px 80px 15px;
-      }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
       .toggle-btn { display: block; }
     }
   </style>
@@ -511,12 +142,11 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="logo">
-        <span class="logo-icon">🌪️</span>
-        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
       </div>
       <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
@@ -552,9 +182,13 @@
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
@@ -566,7 +200,6 @@
       </div>
     </header>
 
-    <!-- BARRA DE GERENCIAMENTO DE MESAS -->
     <div class="management-bar">
       <div class="management-bar-top">
         <div class="management-bar-title">
@@ -594,7 +227,6 @@
     <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
-  <!-- MODAL DETALHE DA MESA / COMANDA COM CARDÁPIO EMBUTIDO -->
   <div class="modal-overlay" id="tableModal">
     <div class="custom-modal-card">
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
@@ -604,7 +236,6 @@
     </div>
   </div>
 
-  <!-- MODAL QR CODE MESA -->
   <div class="modal-overlay" id="qrModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div class="custom-modal-title" id="qrModalTitle">QR Code da Mesa</div>
@@ -647,7 +278,6 @@
     ];
 
     let currentQrTable = null;
-    let currentActiveTableId = null;
     let rawTableCashGiven = 0;
 
     function toggleMenu() {
@@ -663,8 +293,23 @@
       }
     }
 
-    function loadTables() {
+    function loadStoreSettings() {
       applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+    }
+
+    function loadTables() {
+      loadStoreSettings();
       let tables = JSON.parse(localStorage.getItem('vortex_tables'));
       if (!tables || tables.length === 0 || !tables[0].number) {
         tables = defaultTables;
@@ -734,9 +379,7 @@
       loadTables();
     }
 
-    /* MODAL DE MESA E COMANDA COM CARDÁPIO INTEGRADO E PAGAMENTO */
     function openTableModal(id) {
-      currentActiveTableId = id;
       rawTableCashGiven = 0;
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -763,7 +406,6 @@
             ${itemsList || '<li>Nenhum item consumido.</li>'}
           </ul>
 
-          <!-- CARDÁPIO EMBUTIDO LIMPO SEM EMOJI -->
           <div class="modal-menu-section">
             <div class="modal-menu-title">
               <span>Adicionar do Cardápio:</span>
@@ -776,7 +418,6 @@
 
           <p style="font-size:1.05rem; font-weight:bold; color:var(--success); margin-top:6px;">Total Acumulado: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
 
-          <!-- SELEÇÃO DE FORMA DE PAGAMENTO -->
           <div class="payment-select-box">
             <label for="tablePaymentMethod">Forma de Pagamento para Fechamento:</label>
             <select id="tablePaymentMethod" onchange="handleTablePaymentChange(this.value, ${t.total})">
@@ -819,11 +460,8 @@
 
     function handleTablePaymentChange(method, total) {
       const box = document.getElementById('tableCashBox');
-      if (method === 'Dinheiro') {
-        box.classList.add('active');
-      } else {
-        box.classList.remove('active');
-      }
+      if (method === 'Dinheiro') box.classList.add('active');
+      else box.classList.remove('active');
       calculateTableChange(total);
     }
 
@@ -867,30 +505,20 @@
       if (!t) return;
 
       const existing = t.items.find(i => i.name === name);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        t.items.push({ name, qty: 1, price });
-      }
+      if (existing) existing.qty += 1;
+      else t.items.push({ name, qty: 1, price });
 
       t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
       localStorage.setItem('vortex_tables', JSON.stringify(tables));
 
-      // Envia automaticamente para o KDS/Cozinha
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
       kdsOrders.unshift({
-        id: nextKdsId,
-        origin: `Mesa ${t.number}`,
-        client: t.client || `Mesa ${t.number}`,
-        payment: 'Comanda Aberta',
-        items: [{ name, qty: 1, price, type }],
-        total: price,
-        status: 'new',
-        time: timeStr
+        id: nextKdsId, origin: `Mesa ${t.number}`, client: t.client || `Mesa ${t.number}`,
+        payment: 'Comanda Aberta', items: [{ name, qty: 1, price, type }], total: price, status: 'new', time: timeStr
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
@@ -913,13 +541,11 @@
       }
     }
 
-    /* FECHAMENTO DA MESA E ENVIO PARA FATURAMENTO */
     function closeTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
       if (t) {
         const method = document.getElementById('tablePaymentMethod')?.value || 'Pix';
-        
         if (method === 'Dinheiro' && t.total > 0 && rawTableCashGiven < t.total) {
           alert('O valor em dinheiro recebido é menor que o total da comanda!');
           return;
@@ -943,11 +569,9 @@
     }
 
     function closeTableModal() {
-      currentActiveTableId = null;
       document.getElementById('tableModal').classList.remove('active');
     }
 
-    /* SISTEMA DE QR CODE */
     function openQrModal(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -956,7 +580,7 @@
       currentQrTable = t;
       document.getElementById('qrModalTitle').innerText = `QR Code - Mesa ${t.number}`;
       
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'Vortex Food' };
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       const qrData = encodeURIComponent(`https://vortexfood.app/mesa/${t.number}?store=${encodeURIComponent(storeSettings.storeName)}`);
       const qrUrl = `https://quickchart.io/qr?text=${qrData}&size=200`;
 
@@ -971,8 +595,7 @@
 
     function printTableQrCode() {
       if (!currentQrTable) return;
-
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'Vortex Food' };
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       const qrImgSrc = document.getElementById('qrCodeImage').src;
 
       const printWindow = window.open('', '_blank', 'width=400,height=550');

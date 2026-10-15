@@ -331,23 +331,39 @@
       gap: 4px;
       transition: background 0.2s;
     }
-
     .btn-print-kds:hover { background: var(--primary); }
+
+    .btn-cancel-kds {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-cancel-kds:hover { background: var(--danger); color: white; }
+
+    .kds-actions-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
 
     .btn-kds-action {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 8px 14px;
+      padding: 8px 12px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
     }
-
     .btn-kds-action:hover { background: var(--primary-hover); }
-
     .btn-kds-done { background: var(--success); }
     .btn-kds-done:hover { background: #16a34a; }
 
@@ -369,7 +385,7 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL PADRONIZADO -->
+  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo">
@@ -497,6 +513,8 @@
       let countNew = 0, countPreparing = 0, countReady = 0;
 
       kdsOrders.forEach(order => {
+        if (order.status === 'cancelled') return; // Não exibe pedidos cancelados no Kanban ativo
+
         const filteredItems = order.items.filter(item => {
           if (currentFilter === 'kitchen') return item.type === 'kitchen' || !item.type;
           if (currentFilter === 'bar') return item.type === 'bar';
@@ -521,14 +539,19 @@
             <div class="kds-items-box">
               ${filteredItems.map(i => `
                 <div class="kds-item-row">
-                  <span><span class="kds-item-qty">${i.qty}x</span>${i.name}</span>
+                  <span><span class="kds-item-qty">${i.qty}x</span> ${i.name}</span>
                 </div>
               `).join('')}
             </div>
             ${paymentHtml ? `<div style="font-size:0.78rem; color:var(--success);">${paymentHtml}</div>` : ''}
             <div class="kds-card-bottom">
-              <button class="btn-print-kds" onclick="printKdsOrder(${order.id})" title="Imprimir Comanda">🖨️ Comanda</button>
-              ${getKdsActionButton(order)}
+              <div style="display:flex; gap:6px;">
+                <button class="btn-print-kds" onclick="printKdsOrder(${order.id})" title="Imprimir Comanda">🖨️ Comanda</button>
+                <button class="btn-cancel-kds" onclick="cancelKdsOrder(${order.id})" title="Cancelar Pedido">❌ Cancelar</button>
+              </div>
+              <div class="kds-actions-right">
+                ${getKdsActionButton(order)}
+              </div>
             </div>
           </div>
         `;
@@ -550,7 +573,27 @@
       document.getElementById('countReady').innerText = countReady;
     }
 
-    // Impressão Térmica (80mm) Ajustada para Cozinha
+    function cancelKdsOrder(id) {
+      if (!confirm(`Deseja realmente cancelar o pedido #${id}?`)) return;
+
+      const order = kdsOrders.find(o => o.id === id);
+      if (order) {
+        order.status = 'cancelled';
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+        // Atualiza também no delivery se for um pedido de delivery
+        let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
+        deliveries.forEach(del => {
+          if (`Delivery #${del.id}` === order.origin) {
+            del.status = 'Cancelado';
+          }
+        });
+        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
+
+        renderKdsBoard();
+      }
+    }
+
     function printKdsOrder(id) {
       const order = kdsOrders.find(o => o.id === id);
       if (!order) return;

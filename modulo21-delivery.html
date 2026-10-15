@@ -733,7 +733,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (ESTILO MODERNO) -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
   <div class="modal-overlay" id="confirmCancelModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon">⚠️</div>
@@ -1043,9 +1043,15 @@
       if (!pendingCancelId) return;
 
       const del = deliveries.find(d => d.id === pendingCancelId);
-      if (del) {
+      if (del && del.status !== 'Cancelado') {
         del.status = 'Cancelado';
         localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
+
+        // Dedução automática do valor do pedido cancelado no faturamento do dia
+        let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+        let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
+        currentSales = Math.max(0, currentSales - (del.total || 0));
+        localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
         let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         kdsOrders.forEach(k => {
@@ -1160,7 +1166,8 @@
       const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
 
       // 1. Salva no Faturamento do Dia
-      let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
+      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
+      let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 

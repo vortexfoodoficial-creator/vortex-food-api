@@ -438,7 +438,7 @@
           </div>
           <div class="form-group">
             <label for="pdvClientPhone">Telefone (Opcional):</label>
-            <input type="text" id="pdvClientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)">
+            <input type="text" id="pdvClientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
           </div>
         </div>
 
@@ -448,7 +448,6 @@
             <option value="Pix">Pix</option>
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Cartão de Crédito">Cartão de Crédito</option>
-
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
@@ -503,6 +502,7 @@
 
     let pdvCart = [];
     let rawCashGiven = 0;
+    let isDeletingPhone = false;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -517,17 +517,40 @@
       }
     }
 
-    function maskPhone(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 11) v = v.slice(0, 11);
-      if (v.length > 6) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-      } else if (v.length > 2) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
-      } else if (v.length > 0) {
-        input.value = `(${v}`;
+    /* MÁSCARA DE TELEFONE FLUIDA (EVITA FICAR PRESO NO TRAÇO) */
+    function handlePhoneKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        isDeletingPhone = true;
+        let v = input.value;
+        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '');
+          digits = digits.slice(0, -1);
+          formatAndSetPhone(input, digits);
+        }
       } else {
+        isDeletingPhone = false;
+      }
+    }
+
+    function handlePhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetPhone(input, digits);
+    }
+
+    function formatAndSetPhone(input, digits) {
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      
+      if (digits.length === 0) {
         input.value = '';
+      } else if (digits.length <= 2) {
+        input.value = `(${digits}`;
+      } else if (digits.length <= 6) {
+        input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      } else if (digits.length <= 10) {
+        input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      } else {
+        input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
       }
     }
 
@@ -664,13 +687,11 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Atualiza faturamento diário
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
       let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // Envia Pedido Completo ao KDS
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 

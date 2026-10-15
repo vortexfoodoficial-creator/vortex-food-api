@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Dashboard Geral</title>
+  <title>Vortex Food - Dashboard</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -53,7 +53,7 @@
       z-index: 99;
     }
 
-    /* Menu Lateral Padronizado */
+    /* MENU LATERAL */
     .sidebar {
       width: 260px;
       background-color: var(--bg-sidebar);
@@ -68,21 +68,34 @@
     }
 
     .sidebar-header {
-      padding: 20px;
+      padding: 18px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
     }
 
-    .logo {
+    /* NOME DO ESTABELECIMENTO E LOGO NO TOPO */
+    .store-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      word-break: break-word;
+      max-width: 190px;
     }
 
-    .logo-icon { font-size: 1.5rem; }
+    .store-brand-logo {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      border-radius: 6px;
+      display: none;
+    }
 
     .close-sidebar-btn {
       display: none;
@@ -129,11 +142,24 @@
 
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal */
+    /* RODAPÉ DO MENU COM BRANDING VORTEX FOOD */
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* CONTEÚDO PRINCIPAL */
     .main-content {
       flex: 1;
       margin-left: 260px;
-      padding: 20px 20px 80px 20px;
+      padding: 20px;
       width: calc(100% - 260px);
     }
 
@@ -142,7 +168,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 15px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 15px;
       flex-wrap: wrap;
@@ -167,87 +193,93 @@
 
     header h1 { font-size: 1.5rem; }
 
-    /* Cards de Estatísticas */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-
-    .stat-title {
-      font-size: 0.8rem;
+    /* DESTAQUE DO NOME DO ESTABELECIMENTO NO CABEÇALHO DO DASHBOARD */
+    .dashboard-store-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--primary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-muted);
-      font-weight: 600;
     }
 
-    .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: var(--primary);
-    }
-
-    .stat-footer {
-      font-size: 0.82rem;
-      color: var(--success);
-      font-weight: 600;
-    }
-
-    /* Atalhos Operacionais */
-    .section-subtitle {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 15px;
-    }
-
-    .shortcuts-grid {
+    /* CARDS DO DASHBOARD */
+    .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 15px;
+      gap: 16px;
+      margin-bottom: 24px;
     }
 
-    .shortcut-card {
+    .dash-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 18px;
       display: flex;
-      align-items: center;
-      gap: 14px;
-      text-decoration: none;
-      color: var(--text-main);
-      transition: all 0.2s;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .shortcut-card:hover {
+    .dash-card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .dash-card-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .dash-card-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .quick-access-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin-top: 15px;
+    }
+
+    .quick-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+
+    .quick-card:hover {
       border-color: var(--primary);
-      background: rgba(249, 115, 22, 0.08);
       transform: translateY(-2px);
     }
 
-    .shortcut-icon {
-      font-size: 2rem;
+    .quick-card-icon {
+      font-size: 1.6rem;
       background: var(--bg-main);
       padding: 10px;
       border-radius: 10px;
-      border: 1px solid var(--border);
     }
 
-    .shortcut-info h3 { font-size: 0.95rem; margin-bottom: 3px; }
-    .shortcut-info p { font-size: 0.78rem; color: var(--text-muted); }
+    .quick-card-info h3 {
+      font-size: 0.92rem;
+      margin-bottom: 2px;
+    }
+
+    .quick-card-info p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -270,9 +302,9 @@
   <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="logo">
-        <span class="logo-icon">🌪️</span>
-        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
       </div>
       <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
@@ -308,6 +340,12 @@
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
+
+    <!-- LOGOTIPO DA SISTEMA VORTEX FOOD MOVIDO PARA O RODAPÉ DO MENU -->
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
   </aside>
 
   <!-- CONTEÚDO PRINCIPAL -->
@@ -315,75 +353,71 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Dashboard Geral</h1>
+        <div>
+          <h1>Dashboard Geral</h1>
+          <div class="dashboard-store-name" id="dashboardStoreName">BESTBURGUERS</div>
+        </div>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
-        <span id="displayStoreName">Restaurante Matriz</span> | 🕒 <span id="currentTimeHeader">--:--:--</span>
+        🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <!-- CARDS DE ESTATÍSTICAS REAIS -->
-    <div class="stats-grid">
-      
-      <!-- Faturamento Hoje -->
-      <div class="stat-card">
-        <div class="stat-title">Vendas Hoje</div>
-        <div class="stat-value" id="dashboardSalesDisplay">R$ 0,00</div>
-        <div class="stat-footer">📈 Líquido (Exclui cancelados)</div>
+    <!-- METRICAS PRINCIPAIS -->
+    <div class="dashboard-grid">
+      <div class="dash-card">
+        <div class="dash-card-title">Vendas Hoje</div>
+        <div class="dash-card-value" id="dashSalesValue">R$ 0,00</div>
+        <div class="dash-card-sub" style="color:var(--success);">📈 Líquido (Exclui cancelados)</div>
       </div>
 
-      <!-- Pedidos Ativos -->
-      <div class="stat-card">
-        <div class="stat-title">Pedidos Ativos</div>
-        <div class="stat-value" id="dashboardActiveOrders">0</div>
-        <div class="stat-footer" style="color: var(--info);">⚡ Cozinha & Delivery</div>
+      <div class="dash-card">
+        <div class="dash-card-title">Pedidos Ativos</div>
+        <div class="dash-card-value" id="dashOrdersValue">0</div>
+        <div class="dash-card-sub" style="color:var(--info);">⚡ Cozinha & Delivery</div>
       </div>
 
-      <!-- Mesas Ocupadas -->
-      <div class="stat-card">
-        <div class="stat-title">Mesas Ocupadas</div>
-        <div class="stat-value" id="dashboardTablesDisplay">0 / 0</div>
-        <div class="stat-footer" id="dashboardTablePct" style="color: var(--success);">0% de ocupação</div>
+      <div class="dash-card">
+        <div class="dash-card-title">Mesas Ocupadas</div>
+        <div class="dash-card-value" id="dashTablesValue">0 / 0</div>
+        <div class="dash-card-sub" id="dashTablesSub" style="color:var(--warning);">0% de ocupação</div>
       </div>
-
     </div>
 
-    <!-- ATALHOS OPERACIONAIS -->
-    <div class="section-subtitle">Acesso Operacional Rápido</div>
-    <div class="shortcuts-grid">
-      
-      <a href="modulo3-pdv.html" class="shortcut-card">
-        <div class="shortcut-icon">💻</div>
-        <div class="shortcut-info">
+    <!-- ATALHOS RÁPIDOS -->
+    <h2 style="font-size:1.1rem; margin-bottom:12px;">Acesso Operacional Rápido</h2>
+    <div class="quick-access-grid">
+      <a href="modulo3-pdv.html" class="quick-card">
+        <div class="quick-card-icon">💻</div>
+        <div class="quick-card-info">
           <h3>PDV / Caixa</h3>
           <p>Abrir frente de caixa e registrar vendas</p>
         </div>
       </a>
 
-      <a href="modulo5-mesas.html" class="shortcut-card">
-        <div class="shortcut-icon">🍽️</div>
-        <div class="shortcut-info">
+      <a href="modulo5-mesas.html" class="quick-card">
+        <div class="quick-card-icon">🍽️</div>
+        <div class="quick-card-info">
           <h3>Mesas & Comandas</h3>
-          <p>Gerenciar salão, mesas e consumo local</p>
+          <p>Gerenciar consumo do salão</p>
         </div>
       </a>
 
-      <a href="modulo21-delivery.html" class="shortcut-card">
-        <div class="shortcut-icon">🛵</div>
-        <div class="shortcut-info">
-          <h3>Delivery & Entregas</h3>
-          <p>Cadastrar e acompanhar pedidos de entrega</p>
+      <a href="modulo21-delivery.html" class="quick-card">
+        <div class="quick-card-icon">🛵</div>
+        <div class="quick-card-info">
+          <h3>Delivery</h3>
+          <p>Acompanhar entregas</p>
         </div>
       </a>
 
-      <a href="modulo7-8-kds-pedidos.html" class="shortcut-card">
-        <div class="shortcut-icon">👨‍🍳</div>
-        <div class="shortcut-info">
+      <a href="modulo7-8-kds-pedidos.html" class="quick-card">
+        <div class="quick-card-icon">👨‍🍳</div>
+        <div class="quick-card-info">
           <h3>KDS / Cozinha</h3>
-          <p>Acompanhar preparo de pratos e bebidas</p>
+          <p>Painel de preparo de pedidos</p>
         </div>
       </a>
-
     </div>
   </main>
 
@@ -401,68 +435,52 @@
       }
     }
 
-    function calculateRealSales() {
-      let totalSales = 0;
+    function loadStoreSettings() {
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { 
+        storeName: 'BESTBURGUERS' 
+      };
+      
+      const storeName = storeSettings.storeName || 'ESTABELECIMENTO';
+      
+      // Atualiza o nome no topo do menu lateral
+      document.getElementById('sidebarStoreName').innerText = storeName;
+      
+      // Atualiza o nome destacado no Dashboard (cabeçalho)
+      document.getElementById('dashboardStoreName').innerText = storeName;
 
-      const deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
-      deliveries.forEach(del => {
-        if (del.status !== 'Cancelado') {
-          totalSales += parseFloat(del.total || 0);
-        }
-      });
-
-      const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      kdsOrders.forEach(kds => {
-        if (kds.status !== 'cancelled' && (!kds.origin || !kds.origin.includes('Delivery'))) {
-          totalSales += parseFloat(kds.total || 0);
-        }
-      });
-
-      if (deliveries.length === 0 && kdsOrders.length === 0) {
-        totalSales = 1450.00;
+      // Carrega o logotipo personalizado se houver
+      const logoImg = document.getElementById('sidebarStoreLogo');
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      
+      if (savedLogo) {
+        logoImg.src = savedLogo;
+        logoImg.style.display = 'block';
+      } else {
+        logoImg.style.display = 'none';
       }
-
-      localStorage.setItem('vortex_vendas_hoje', totalSales.toFixed(2).replace('.', ','));
-      return totalSales;
     }
 
-    function loadDashboardData() {
+    function loadDashboardMetrics() {
       applyTheme();
+      loadStoreSettings();
 
-      // Nome do estabelecimento das configurações
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings'));
-      if (settings && settings.storeName) {
-        document.getElementById('displayStoreName').innerText = settings.storeName;
-      }
+      // Carrega faturamento do dia
+      const sales = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      document.getElementById('dashSalesValue').innerText = `R$ ${sales}`;
 
-      const totalSales = calculateRealSales();
-      document.getElementById('dashboardSalesDisplay').innerText = `R$ ${totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+      // Carrega pedidos ativos do KDS
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const activeKds = kdsOrders.filter(o => o.status !== 'ready' && o.status !== 'cancelled').length;
-      document.getElementById('dashboardActiveOrders').innerText = activeKds;
+      const activeOrders = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
+      document.getElementById('dashOrdersValue').innerText = activeOrders;
 
-      const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
-        { id: 1, number: '01', status: 'free' },
-        { id: 2, number: '02', status: 'occupied' },
-        { id: 3, number: '03', status: 'free' },
-        { id: 4, number: '04', status: 'occupied' },
-        { id: 5, number: '05', status: 'free' },
-        { id: 6, number: '06', status: 'free' },
-        { id: 7, number: '07', status: 'occupied' },
-        { id: 8, number: '08', status: 'free' },
-        { id: 9, number: '09', status: 'free' },
-        { id: 10, number: '10', status: 'free' },
-        { id: 11, number: '11', status: 'free' },
-        { id: 12, number: '12', status: 'free' }
-      ];
-
+      // Carrega estatísticas das mesas
+      const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [];
       const totalTables = tables.length;
       const occupiedTables = tables.filter(t => t.status === 'occupied').length;
-      const occupancyRate = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
+      const occPercent = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
 
-      document.getElementById('dashboardTablesDisplay').innerText = `${occupiedTables} /${totalTables}`;
-      document.getElementById('dashboardTablePct').innerText = `${occupancyRate}% de ocupação`;
+      document.getElementById('dashTablesValue').innerText = `${occupiedTables} / ${totalTables}`;
+      document.getElementById('dashTablesSub').innerText = `${occPercent}% de ocupação`;
     }
 
     setInterval(() => {
@@ -471,7 +489,7 @@
     }, 1000);
 
     window.onload = function() {
-      loadDashboardData();
+      loadDashboardMetrics();
     };
   </script>
 </body>

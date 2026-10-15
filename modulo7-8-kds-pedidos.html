@@ -27,12 +27,15 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
+    html, body {
+      height: 100%;
+      overflow: hidden; /* Impede a rolagem geral da página */
+    }
+
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
       display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
     }
 
     .sidebar-overlay {
@@ -119,12 +122,15 @@
 
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal */
+    /* Conteúdo Principal Flexível */
     .main-content {
       flex: 1;
       margin-left: 260px;
-      padding: 20px 20px 80px 20px;
+      padding: 20px;
       width: calc(100% - 260px);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
     header {
@@ -132,10 +138,10 @@
       align-items: center;
       justify-content: space-between;
       gap: 15px;
-      margin-bottom: 25px;
+      margin-bottom: 15px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      flex-wrap: wrap;
+      padding-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .header-left {
@@ -155,13 +161,14 @@
       cursor: pointer;
     }
 
-    header h1 { font-size: 1.5rem; }
+    header h1 { font-size: 1.4rem; }
 
-    /* Filtros de Setor do KDS */
+    /* Filtros de Setor */
     .kds-filters {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
+      flex-shrink: 0;
       flex-wrap: wrap;
     }
 
@@ -172,7 +179,7 @@
       padding: 8px 16px;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       cursor: pointer;
       transition: all 0.2s;
     }
@@ -183,12 +190,13 @@
       border-color: var(--primary);
     }
 
-    /* Quadro Kanban do KDS */
+    /* Quadro Kanban Ajustado */
     .kanban-board {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      align-items: start;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      flex: 1;
+      min-height: 0; /* Essencial para permitir que as colunas controlem sua própria rolagem */
     }
 
     .kanban-column {
@@ -196,16 +204,20 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 15px;
-      min-height: 550px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
     }
 
     .column-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 12px;
-      margin-bottom: 15px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     .column-title {
@@ -224,10 +236,30 @@
       border: 1px solid var(--border);
     }
 
+    /* Container de cartões com rolagem independente */
     .cards-container {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
+      overflow-y: auto;
+      flex: 1;
+      padding-right: 4px;
+    }
+
+    /* Estilização elegante da barra de rolagem */
+    .cards-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .cards-container::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 4px;
+    }
+    .cards-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    .cards-container::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
     }
 
     /* Cartão do Pedido no KDS */
@@ -235,11 +267,12 @@
       background: var(--bg-main);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 15px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       transition: transform 0.2s, border-color 0.2s;
+      flex-shrink: 0;
     }
 
     .kds-card:hover {
@@ -271,7 +304,7 @@
     }
 
     .kds-client {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: bold;
       color: var(--text-main);
     }
@@ -280,26 +313,26 @@
       background: rgba(234, 179, 8, 0.15);
       border: 1px solid var(--warning);
       color: #fef08a;
-      padding: 8px 10px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      line-height: 1.3;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.2;
     }
 
     .kds-items-box {
       background: rgba(30, 41, 59, 0.6);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .kds-item-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
     }
 
     .kds-item-qty {
@@ -312,8 +345,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 5px;
-      padding-top: 8px;
+      margin-top: 4px;
+      padding-top: 6px;
       border-top: 1px solid rgba(255,255,255,0.05);
     }
 
@@ -356,9 +389,9 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 8px 12px;
+      padding: 7px 11px;
       border-radius: 8px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
@@ -425,7 +458,11 @@
       font-size: 0.9rem;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
+      html, body { overflow: auto; }
+      .main-content { height: auto; overflow: visible; }
+      .kanban-board { grid-template-columns: 1fr; }
+      .cards-container { max-height: 450px; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -504,7 +541,7 @@
       <button class="filter-btn" onclick="setKdsFilter('bar', this)">🍹 Bar (Bebidas)</button>
     </div>
 
-    <!-- QUADRO KANBAN KDS -->
+    <!-- QUADRO KANBAN KDS COM SCROLL INDEPENDENTE -->
     <div class="kanban-board">
       
       <!-- Coluna 1: Novos / Pendentes -->

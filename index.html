@@ -12,11 +12,8 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #f97316;
-      --primary-hover: #ea580c;
       --border: #334155;
       --success: #22c55e;
-      --danger: #ef4444;
-      --warning: #eab308;
       --info: #38bdf8;
     }
 
@@ -29,268 +26,64 @@
       --border: #cbd5e1;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
-      transition: background-color 0.3s, color 0.3s;
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 99;
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* MENU LATERAL */
     .sidebar {
-      width: 260px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      z-index: 100;
-      overflow-y: auto;
-      transition: transform 0.3s ease, background-color 0.3s;
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
     }
 
     .sidebar-header {
-      padding: 18px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
     }
 
-    /* NOME DO ESTABELECIMENTO E LOGO NO TOPO */
     .store-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: var(--text-main);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      word-break: break-word;
-      max-width: 190px;
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
     }
 
-    .store-brand-logo {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-      border-radius: 6px;
-      display: none;
-    }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-    .close-sidebar-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .sidebar-nav {
-      padding: 15px 10px;
-      flex: 1;
-    }
-
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
     .nav-section { margin-bottom: 20px; }
-
-    .nav-section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0 10px 8px;
-      display: block;
-    }
-
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      transition: all 0.2s ease;
-      font-size: 0.90rem;
-    }
-
-    .nav-link:hover, .nav-link.active {
-      background-color: rgba(249, 115, 22, 0.15);
-      color: var(--primary);
-    }
-
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
     .nav-icon { font-size: 1.1rem; }
 
-    /* RODAPÉ DO MENU COM BRANDING VORTEX FOOD */
     .sidebar-footer {
-      padding: 14px 16px;
-      border-top: 1px solid var(--border);
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      background: rgba(0,0,0,0.1);
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
     }
 
-    /* CONTEÚDO PRINCIPAL */
-    .main-content {
-      flex: 1;
-      margin-left: 260px;
-      padding: 20px;
-      width: calc(100% - 260px);
-    }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      flex-wrap: wrap;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .toggle-btn {
-      display: none;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    header h1 { font-size: 1.5rem; }
-
-    /* DESTAQUE DO NOME DO ESTABELECIMENTO NO CABEÇALHO DO DASHBOARD */
-    .dashboard-store-name {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: var(--primary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    /* CARDS DO DASHBOARD */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .dash-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .dash-card-title {
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .dash-card-value {
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--primary);
-    }
-
-    .dash-card-sub {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .quick-access-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 14px;
-      margin-top: 15px;
-    }
-
-    .quick-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      text-decoration: none;
-      color: var(--text-main);
-      transition: all 0.2s ease;
-    }
-
-    .quick-card:hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
-    }
-
-    .quick-card-icon {
-      font-size: 1.6rem;
-      background: var(--bg-main);
-      padding: 10px;
-      border-radius: 10px;
-    }
-
-    .quick-card-info h3 {
-      font-size: 0.92rem;
-      margin-bottom: 2px;
-    }
-
-    .quick-card-info p {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 25px; }
+    .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .metric-title { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .metric-value { font-size: 1.5rem; font-weight: bold; color: var(--text-main); }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
       .close-sidebar-btn { display: block; }
-      .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 15px 15px 80px 15px;
-      }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
       .toggle-btn { display: block; }
     }
   </style>
@@ -299,7 +92,6 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -341,83 +133,36 @@
       </div>
     </nav>
 
-    <!-- LOGOTIPO DA SISTEMA VORTEX FOOD MOVIDO PARA O RODAPÉ DO MENU -->
     <div class="sidebar-footer">
       <span>🌪️</span>
       <span>VORTEX <strong>FOOD</strong></span>
     </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <div>
-          <h1>Dashboard Geral</h1>
-          <div class="dashboard-store-name" id="dashboardStoreName">BESTBURGUERS</div>
-        </div>
+        <h1>Visão Geral do Estabelecimento</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <!-- METRICAS PRINCIPAIS -->
-    <div class="dashboard-grid">
-      <div class="dash-card">
-        <div class="dash-card-title">Vendas Hoje</div>
-        <div class="dash-card-value" id="dashSalesValue">R$ 0,00</div>
-        <div class="dash-card-sub" style="color:var(--success);">📈 Líquido (Exclui cancelados)</div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Vendas de Hoje (Todas as Origens)</span>
+        <span class="metric-value" style="color:var(--success);" id="dashVendas">R$ 0,00</span>
       </div>
-
-      <div class="dash-card">
-        <div class="dash-card-title">Pedidos Ativos</div>
-        <div class="dash-card-value" id="dashOrdersValue">0</div>
-        <div class="dash-card-sub" style="color:var(--info);">⚡ Cozinha & Delivery</div>
+      <div class="metric-card">
+        <span class="metric-title">Pedidos Ativos na Cozinha</span>
+        <span class="metric-value" style="color:var(--info);" id="dashPedidosKds">0</span>
       </div>
-
-      <div class="dash-card">
-        <div class="dash-card-title">Mesas Ocupadas</div>
-        <div class="dash-card-value" id="dashTablesValue">0 / 0</div>
-        <div class="dash-card-sub" id="dashTablesSub" style="color:var(--warning);">0% de ocupação</div>
+      <div class="metric-card">
+        <span class="metric-title">Mesas Ocupadas / Total</span>
+        <span class="metric-value" id="dashMesasStatus">0 / 10</span>
       </div>
-    </div>
-
-    <!-- ATALHOS RÁPIDOS -->
-    <h2 style="font-size:1.1rem; margin-bottom:12px;">Acesso Operacional Rápido</h2>
-    <div class="quick-access-grid">
-      <a href="modulo3-pdv.html" class="quick-card">
-        <div class="quick-card-icon">💻</div>
-        <div class="quick-card-info">
-          <h3>PDV / Caixa</h3>
-          <p>Abrir frente de caixa e registrar vendas</p>
-        </div>
-      </a>
-
-      <a href="modulo5-mesas.html" class="quick-card">
-        <div class="quick-card-icon">🍽️</div>
-        <div class="quick-card-info">
-          <h3>Mesas & Comandas</h3>
-          <p>Gerenciar consumo do salão</p>
-        </div>
-      </a>
-
-      <a href="modulo21-delivery.html" class="quick-card">
-        <div class="quick-card-icon">🛵</div>
-        <div class="quick-card-info">
-          <h3>Delivery</h3>
-          <p>Acompanhar entregas</p>
-        </div>
-      </a>
-
-      <a href="modulo7-8-kds-pedidos.html" class="quick-card">
-        <div class="quick-card-icon">👨‍🍳</div>
-        <div class="quick-card-info">
-          <h3>KDS / Cozinha</h3>
-          <p>Painel de preparo de pedidos</p>
-        </div>
-      </a>
     </div>
   </main>
 
@@ -435,61 +180,50 @@
       }
     }
 
-    function loadStoreSettings() {
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { 
-        storeName: 'BESTBURGUERS' 
-      };
-      
-      const storeName = storeSettings.storeName || 'ESTABELECIMENTO';
-      
-      // Atualiza o nome no topo do menu lateral
-      document.getElementById('sidebarStoreName').innerText = storeName;
-      
-      // Atualiza o nome destacado no Dashboard (cabeçalho)
-      document.getElementById('dashboardStoreName').innerText = storeName;
-
-      // Carrega o logotipo personalizado se houver
-      const logoImg = document.getElementById('sidebarStoreLogo');
-      const savedLogo = localStorage.getItem('vortex_store_logo');
-      
-      if (savedLogo) {
-        logoImg.src = savedLogo;
-        logoImg.style.display = 'block';
-      } else {
-        logoImg.style.display = 'none';
-      }
-    }
-
-    function loadDashboardMetrics() {
+    function loadDashboardData() {
       applyTheme();
-      loadStoreSettings();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
 
-      // Carrega faturamento do dia
-      const sales = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      document.getElementById('dashSalesValue').innerText = `R$ ${sales}`;
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
 
-      // Carrega pedidos ativos do KDS
+      // Faturamento do Dia (Soma Delivery, PDV e Mesas)
+      const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      document.getElementById('dashVendas').innerText = `R$ ${salesRaw}`;
+
+      // Pedidos na Cozinha (KDS)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const activeOrders = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
-      document.getElementById('dashOrdersValue').innerText = activeOrders;
+      const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
+      document.getElementById('dashPedidosKds').innerText = activeKds;
 
-      // Carrega estatísticas das mesas
-      const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [];
-      const totalTables = tables.length;
-      const occupiedTables = tables.filter(t => t.status === 'occupied').length;
-      const occPercent = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
+      // Leituras Dinâmicas de Mesas em Tempo Real
+      const totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
+      const tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      
+      let occupiedCount = 0;
+      Object.keys(tableCarts).forEach(k => {
+        if (tableCarts[k] && tableCarts[k].items && tableCarts[k].items.length > 0) {
+          occupiedCount++;
+        }
+      });
 
-      document.getElementById('dashTablesValue').innerText = `${occupiedTables} / ${totalTables}`;
-      document.getElementById('dashTablesSub').innerText = `${occPercent}% de ocupação`;
+      document.getElementById('dashMesasStatus').innerText = `${occupiedCount} / ${totalTables}`;
     }
 
     setInterval(() => {
-      const now = new Date();
-      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+      loadDashboardData();
     }, 1000);
 
     window.onload = function() {
-      loadDashboardMetrics();
+      loadDashboardData();
     };
   </script>
 </body>

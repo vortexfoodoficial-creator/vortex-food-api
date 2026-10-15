@@ -387,6 +387,52 @@
     .mini-menu-name { font-size: 0.78rem; font-weight: 600; color: var(--text-main); }
     .mini-menu-price { font-size: 0.75rem; font-weight: bold; color: var(--success); margin-top: 4px; }
 
+    /* FORMA DE PAGAMENTO E TROCO NO FECHAMENTO DA MESA */
+    .payment-select-box {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    .payment-select-box label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .payment-select-box select, .payment-select-box input {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .cash-change-table-box {
+      display: none;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .cash-change-table-box.active { display: block; }
+
+    .table-change-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 0.82rem;
+      margin-top: 6px;
+    }
+
     /* Modais Customizados */
     .modal-overlay {
       display: none;
@@ -554,7 +600,7 @@
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
       <div id="tableModalBody" style="font-size:0.9rem;"></div>
       <div id="tableModalActions"></div>
-      <button class="btn-modal-close" onclick="closeTableModal()">Fechar Window</button>
+      <button class="btn-modal-close" onclick="closeTableModal()">Fechar</button>
     </div>
   </div>
 
@@ -602,6 +648,7 @@
 
     let currentQrTable = null;
     let currentActiveTableId = null;
+    let rawTableCashGiven = 0;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -687,9 +734,10 @@
       loadTables();
     }
 
-    /* MODAL DE MESA E COMANDA COM CARDÁPIO INTEGRADO */
+    /* MODAL DE MESA E COMANDA COM CARDÁPIO INTEGRADO E PAGAMENTO */
     function openTableModal(id) {
       currentActiveTableId = id;
+      rawTableCashGiven = 0;
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
       if (!t) return;
@@ -715,10 +763,10 @@
             ${itemsList || '<li>Nenhum item consumido.</li>'}
           </ul>
 
-          <!-- CARDÁPIO EMBUTIDO COM ROLAGEM INDEPENDENTE -->
+          <!-- CARDÁPIO EMBUTIDO LIMPO SEM EMOJI -->
           <div class="modal-menu-section">
             <div class="modal-menu-title">
-              <span>🍔 Adicionar do Cardápio:</span>
+              <span>Adicionar do Cardápio:</span>
               <span style="font-size:0.7rem; color:var(--primary);">(Clique para lançar)</span>
             </div>
             <div class="modal-menu-grid">
@@ -726,7 +774,29 @@
             </div>
           </div>
 
-          <p style="font-size:1.1rem; font-weight:bold; color:var(--success); margin-top:8px;">Total Acumulado: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
+          <p style="font-size:1.05rem; font-weight:bold; color:var(--success); margin-top:6px;">Total Acumulado: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
+
+          <!-- SELEÇÃO DE FORMA DE PAGAMENTO -->
+          <div class="payment-select-box">
+            <label for="tablePaymentMethod">Forma de Pagamento para Fechamento:</label>
+            <select id="tablePaymentMethod" onchange="handleTablePaymentChange(this.value, ${t.total})">
+              <option value="Pix">Pix</option>
+              <option value="Cartão de Débito">Cartão de Débito</option>
+              <option value="Cartão de Crédito">Cartão de Crédito</option>
+              <option value="Vale Refeição (VR)">Vale Refeição (VR)</option>
+              <option value="Vale Alimentação (VA)">Vale Alimentação (VA)</option>
+              <option value="Dinheiro">Dinheiro</option>
+            </select>
+
+            <div class="cash-change-table-box" id="tableCashBox">
+              <label for="tableCashGivenInput" style="margin-top:6px;">Valor Recebido:</label>
+              <input type="text" id="tableCashGivenInput" placeholder="R$ 0,00" oninput="maskTableCurrencyInput(this, ${t.total})">
+              <div class="table-change-row">
+                <span>Troco:</span>
+                <span id="tableChangeDisplay">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
         `;
 
         actions.innerHTML = `
@@ -745,6 +815,50 @@
       }
 
       document.getElementById('tableModal').classList.add('active');
+    }
+
+    function handleTablePaymentChange(method, total) {
+      const box = document.getElementById('tableCashBox');
+      if (method === 'Dinheiro') {
+        box.classList.add('active');
+      } else {
+        box.classList.remove('active');
+      }
+      calculateTableChange(total);
+    }
+
+    function maskTableCurrencyInput(input, total) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = 'R$ 0,00';
+        rawTableCashGiven = 0;
+        calculateTableChange(total);
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      rawTableCashGiven = numeric;
+      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      calculateTableChange(total);
+    }
+
+    function calculateTableChange(total) {
+      const display = document.getElementById('tableChangeDisplay');
+      if (!display) return;
+
+      const method = document.getElementById('tablePaymentMethod')?.value;
+      if (method !== 'Dinheiro') return;
+
+      if (rawTableCashGiven >= total && total > 0) {
+        const change = rawTableCashGiven - total;
+        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        display.style.color = 'var(--success)';
+      } else if (rawTableCashGiven > 0) {
+        display.innerText = 'Falta dinheiro';
+        display.style.color = 'var(--danger)';
+      } else {
+        display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
+      }
     }
 
     function addItemToTableComanda(tableId, name, price, type) {
@@ -780,7 +894,6 @@
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Atualiza o modal e o salão
       openTableModal(tableId);
       loadTables();
     }
@@ -805,6 +918,13 @@
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
       if (t) {
+        const method = document.getElementById('tablePaymentMethod')?.value || 'Pix';
+        
+        if (method === 'Dinheiro' && t.total > 0 && rawTableCashGiven < t.total) {
+          alert('O valor em dinheiro recebido é menor que o total da comanda!');
+          return;
+        }
+
         if (t.total > 0) {
           let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
           let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Configurações do Estabelecimento</title>
+  <title>Vortex Food - Configurações</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -16,8 +16,6 @@
       --border: #334155;
       --success: #22c55e;
       --danger: #ef4444;
-      --warning: #eab308;
-      --info: #38bdf8;
     }
 
     body.light-theme {
@@ -29,12 +27,7 @@
       --border: #cbd5e1;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
     body {
       background-color: var(--bg-main);
@@ -46,305 +39,68 @@
     }
 
     .sidebar-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 99;
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
     .sidebar {
-      width: 260px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      z-index: 100;
-      overflow-y: auto;
-      transition: transform 0.3s ease, background-color 0.3s;
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
     }
 
     .sidebar-header {
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
     }
 
-    .logo-icon { font-size: 1.5rem; }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-    .close-sidebar-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .sidebar-nav {
-      padding: 15px 10px;
-      flex: 1;
-    }
-
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
     .nav-section { margin-bottom: 20px; }
-
-    .nav-section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0 10px 8px;
-      display: block;
-    }
-
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      transition: all 0.2s ease;
-      font-size: 0.90rem;
-    }
-
-    .nav-link:hover, .nav-link.active {
-      background-color: rgba(249, 115, 22, 0.15);
-      color: var(--primary);
-    }
-
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal */
-    .main-content {
-      flex: 1;
-      margin-left: 260px;
-      padding: 20px 20px 80px 20px;
-      width: calc(100% - 260px);
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 25px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      flex-wrap: wrap;
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+
+    .config-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 20px; max-width: 600px;
+    }
+    .config-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    .form-group { margin-bottom: 15px; }
+    label { font-size: 0.82rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; }
+    input[type="text"], input[type="file"] {
+      background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none;
     }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    .logo-preview-box {
+      display: flex; align-items: center; gap: 15px; margin-top: 10px; background: var(--bg-main); padding: 10px; border-radius: 10px; border: 1px solid var(--border);
     }
-
-    .toggle-btn {
-      display: none;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    header h1 { font-size: 1.5rem; }
-
-    .config-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
-    }
-
-    .card-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 15px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 600;
-    }
-
-    input, select {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.2s, background-color 0.3s;
-    }
-
-    input:read-only {
-      background: rgba(30, 41, 59, 0.2);
-      color: var(--text-muted);
-      cursor: not-allowed;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--primary);
-    }
-
-    .theme-toggle-box {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      padding: 15px;
-      border-radius: 12px;
-      margin-top: 10px;
-    }
-
-    .theme-option {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 26px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: var(--border);
-      transition: .4s;
-      border-radius: 34px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: var(--primary);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
+    .logo-preview-img { width: 50px; height: 50px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid var(--border); }
 
     .btn-save {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 15px;
-      transition: background 0.2s;
+      background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.95rem; width: 100%; transition: background 0.2s;
     }
-
     .btn-save:hover { background: var(--primary-hover); }
 
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-    }
-
-    .modal-overlay.active { display: flex; }
-
-    .custom-modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 25px;
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-    }
-
-    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
-    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
-
-    .btn-modal-primary {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
+    .btn-remove-logo {
+      background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
     }
 
     @media (max-width: 768px) {
@@ -352,11 +108,7 @@
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
       .close-sidebar-btn { display: block; }
-      .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 15px 15px 80px 15px;
-      }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
       .toggle-btn { display: block; }
     }
   </style>
@@ -365,12 +117,11 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="logo">
-        <span class="logo-icon">🌪️</span>
-        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
       </div>
       <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
@@ -406,266 +157,119 @@
         <a href="modulo-configuracoes.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Configurações do Estabelecimento</h1>
+        <h1>Configurações da Loja</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <div class="config-grid">
-      
-      <!-- Card 1: Aparência & Tema -->
-      <div class="card-box">
-        <div class="card-title">🎨 Aparência do Sistema</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Alterne entre o tema escuro padrão e o tema claro para todas as telas do painel.</p>
+    <div class="config-card">
+      <div class="config-title">⚙️ Identidade do Estabelecimento</div>
 
-        <div class="theme-toggle-box">
-          <div class="theme-option">
-            <span id="themeLabelIcon">🌙</span>
-            <span id="themeLabelText">Tema Escuro</span>
+      <div class="form-group">
+        <label for="storeNameInput">Nome do Estabelecimento:</label>
+        <input type="text" id="storeNameInput" placeholder="Ex: BESTBURGUERS">
+      </div>
+
+      <div class="form-group">
+        <label for="storeLogoInput">Logotipo do Estabelecimento (Aparecerá no menu lateral):</label>
+        <input type="file" id="storeLogoInput" accept="image/*" onchange="handleLogoUpload(this)">
+        
+        <div class="logo-preview-box" id="logoPreviewBox" style="display:none;">
+          <img id="logoPreviewImg" src="" alt="Prévia" class="logo-preview-img">
+          <div>
+            <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Logotipo carregado</span>
+            <button type="button" class="btn-remove-logo" onclick="removeStoreLogo()">Remover Logo</button>
           </div>
-          <label class="switch">
-            <input type="checkbox" id="themeSwitch" onchange="toggleTheme(this)">
-            <span class="slider"></span>
-          </label>
         </div>
       </div>
 
-      <!-- Card 2: Dados do Estabelecimento com CEP e Máscaras -->
-      <div class="card-box">
-        <div class="card-title">🏬 Dados da Empresa & Endereço</div>
-        <form id="storeForm" onsubmit="saveStoreSettings(event)">
-          <div class="form-group">
-            <label for="storeName">Nome do Estabelecimento *:</label>
-            <input type="text" id="storeName" placeholder="Ex: Vortex Food Matriz" required>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="ownerName">Nome do Proprietário *:</label>
-              <input type="text" id="ownerName" placeholder="Ex: Gabriel Gustavo" required>
-            </div>
-            <div class="form-group">
-              <label for="storeCnpj">CNPJ / CPF *:</label>
-              <input type="text" id="storeCnpj" placeholder="00.000.000/0001-00" maxlength="18" oninput="maskCnpjCpf(this)" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="storePhone">Telefone / WhatsApp *:</label>
-              <input type="text" id="storePhone" placeholder="(11) 99999-9999" maxlength="15" oninput="maskPhone(this)" required>
-            </div>
-            <div class="form-group">
-              <label for="storeCep">CEP *:</label>
-              <input type="text" id="storeCep" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="storeStreet">Endereço / Rua (Automático):</label>
-              <input type="text" id="storeStreet" placeholder="Aguardando CEP..." readonly required>
-            </div>
-            <div class="form-group">
-              <label for="storeNumber">Número *:</label>
-              <input type="text" id="storeNumber" placeholder="Ex: 100" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="storeNeighborhood">Bairro (Automático):</label>
-              <input type="text" id="storeNeighborhood" placeholder="Aguardando CEP..." readonly required>
-            </div>
-            <div class="form-group">
-              <label for="storeCity">Cidade / UF (Automático):</label>
-              <input type="text" id="storeCity" placeholder="Aguardando CEP..." readonly required>
-            </div>
-          </div>
-
-          <button type="submit" class="btn-save">Salvar Alterações 💾</button>
-        </form>
-      </div>
-
+      <button class="btn-save" onclick="saveStoreSettings()">Salvar Alterações 💾</button>
     </div>
   </main>
 
-  <!-- MODAL AVISO -->
-  <div class="modal-overlay" id="noticeModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
-      <div class="custom-modal-title" id="noticeTitle">Sucesso!</div>
-      <div class="custom-modal-desc" id="noticeDesc">Configurações salvas.</div>
-      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
-    </div>
-  </div>
-
   <script>
+    let tempLogoBase64 = null;
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    function applySavedTheme() {
-      const savedTheme = localStorage.getItem('vortex_theme') || 'dark';
-      const switchEl = document.getElementById('themeSwitch');
-      
-      if (savedTheme === 'light') {
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
         document.body.classList.add('light-theme');
-        if (switchEl) switchEl.checked = true;
-        updateThemeLabels(true);
       } else {
         document.body.classList.remove('light-theme');
-        if (switchEl) switchEl.checked = false;
-        updateThemeLabels(false);
-      }
-    }
-
-    function toggleTheme(checkbox) {
-      if (checkbox.checked) {
-        document.body.classList.add('light-theme');
-        localStorage.setItem('vortex_theme', 'light');
-        updateThemeLabels(true);
-      } else {
-        document.body.classList.remove('light-theme');
-        localStorage.setItem('vortex_theme', 'dark');
-        updateThemeLabels(false);
-      }
-    }
-
-    function updateThemeLabels(isLight) {
-      const icon = document.getElementById('themeLabelIcon');
-      const text = document.getElementById('themeLabelText');
-      if (icon && text) {
-        if (isLight) {
-          icon.innerText = '☀️';
-          text.innerText = 'Tema Claro';
-        } else {
-          icon.innerText = '🌙';
-          text.innerText = 'Tema Escuro';
-        }
-      }
-    }
-
-    function maskPhone(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 11) v = v.slice(0, 11);
-      if (v.length > 6) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-      } else if (v.length > 2) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
-      } else if (v.length > 0) {
-        input.value = `(${v}`;
-      } else {
-        input.value = '';
-      }
-    }
-
-    function maskCnpjCpf(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 14) v = v.slice(0, 14);
-      if (v.length > 11) {
-        // CNPJ: 00.000.000/0000-00
-        input.value = `${v.slice(0,2)}.${v.slice(2,5)}.${v.slice(5,8)}/${v.slice(8,12)}-${v.slice(12)}`;
-      } else if (v.length > 9) {
-        // CPF com máscara parcial
-        input.value = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
-      } else if (v.length > 6) {
-        input.value = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
-      } else if (v.length > 3) {
-        input.value = `${v.slice(0,3)}.${v.slice(3)}`;
-      } else {
-        input.value = v;
-      }
-    }
-
-    async function maskAndSearchCep(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 8) v = v.slice(0, 8);
-      if (v.length > 5) {
-        input.value = `${v.slice(0, 5)}-${v.slice(5)}`;
-      } else {
-        input.value = v;
-      }
-
-      if (v.length === 8) {
-        try {
-          const response = await fetch(`https://viacep.com.br/ws/${v}/json/`);
-          const data = await response.json();
-          if (!data.erro) {
-            document.getElementById('storeStreet').value = data.logradouro || 'Endereço não especificado';
-            document.getElementById('storeNeighborhood').value = data.bairro || 'Centro';
-            document.getElementById('storeCity').value = `${data.localidade} / ${data.uf}`;
-            document.getElementById('storeNumber').focus();
-          } else {
-            showNoticeModal('CEP não encontrado', 'Verifique o CEP digitado.', '⚠️');
-          }
-        } catch (err) {
-          console.error('Erro ViaCEP:', err);
-        }
       }
     }
 
     function loadStoreSettings() {
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {
-        storeName: 'Vortex Food',
-        ownerName: 'Gabriel Gustavo',
-        storeCnpj: '',
-        storePhone: '',
-        storeCep: '',
-        storeStreet: 'Guarulhos',
-        storeNumber: '10',
-        storeNeighborhood: 'Centro',
-        storeCity: 'Guarulhos / SP'
-      };
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('storeNameInput').value = settings.storeName || 'BESTBURGUERS';
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
 
-      document.getElementById('storeName').value = settings.storeName || '';
-      document.getElementById('ownerName').value = settings.ownerName || '';
-      document.getElementById('storeCnpj').value = settings.storeCnpj || '';
-      document.getElementById('storePhone').value = settings.storePhone || '';
-      document.getElementById('storeCep').value = settings.storeCep || '';
-      document.getElementById('storeStreet').value = settings.storeStreet || '';
-      document.getElementById('storeNumber').value = settings.storeNumber || '';
-      document.getElementById('storeNeighborhood').value = settings.storeNeighborhood || '';
-      document.getElementById('storeCity').value = settings.storeCity || '';
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      const previewBox = document.getElementById('logoPreviewBox');
+      const previewImg = document.getElementById('logoPreviewImg');
+
+      if (savedLogo) {
+        tempLogoBase64 = savedLogo;
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+        previewImg.src = savedLogo;
+        previewBox.style.display = 'flex';
+      } else {
+        sidebarLogo.style.display = 'none';
+        previewBox.style.display = 'none';
+      }
     }
 
-    function saveStoreSettings(e) {
-      e.preventDefault();
-      const settings = {
-        storeName: document.getElementById('storeName').value.trim(),
-        ownerName: document.getElementById('ownerName').value.trim(),
-        storeCnpj: document.getElementById('storeCnpj').value.trim(),
-        storePhone: document.getElementById('storePhone').value.trim(),
-        storeCep: document.getElementById('storeCep').value.trim(),
-        storeStreet: document.getElementById('storeStreet').value.trim(),
-        storeNumber: document.getElementById('storeNumber').value.trim(),
-        storeNeighborhood: document.getElementById('storeNeighborhood').value.trim(),
-        storeCity: document.getElementById('storeCity').value.trim()
-      };
-
-      localStorage.setItem('vortex_store_settings', JSON.stringify(settings));
-      showNoticeModal('Salvo com Sucesso!', 'Os dados do seu estabelecimento foram atualizados.', '✅');
+    function handleLogoUpload(input) {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          tempLogoBase64 = e.target.result;
+          document.getElementById('logoPreviewImg').src = tempLogoBase64;
+          document.getElementById('logoPreviewBox').style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      }
     }
 
-    function showNoticeModal(title, desc, icon) {
-      document.getElementById('noticeIcon').innerText = icon || '🎉';
-      document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerText = desc;
-      document.getElementById('noticeModal').classList.add('active');
+    function removeStoreLogo() {
+      tempLogoBase64 = null;
+      localStorage.removeItem('vortex_store_logo');
+      document.getElementById('storeLogoInput').value = '';
+      document.getElementById('logoPreviewBox').style.display = 'none';
+      document.getElementById('sidebarStoreLogo').style.display = 'none';
     }
 
-    function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
+    function saveStoreSettings() {
+      const newName = document.getElementById('storeNameInput').value.trim() || 'BESTBURGUERS';
+      localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: newName }));
+
+      if (tempLogoBase64) {
+        localStorage.setItem('vortex_store_logo', tempLogoBase64);
+      }
+
+      loadStoreSettings();
+      alert('Configurações salvas com sucesso!');
     }
 
     setInterval(() => {
@@ -674,7 +278,6 @@
     }, 1000);
 
     window.onload = function() {
-      applySavedTheme();
       loadStoreSettings();
     };
   </script>

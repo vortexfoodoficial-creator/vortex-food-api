@@ -41,7 +41,6 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -107,12 +106,9 @@
     .btn-table-click { flex: 1; background: var(--border); color: var(--text-main); border: none; padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
     .btn-qr-click { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
 
-    /* LISTA DE CONSUMO COM BOTÃO DE CANCELAMENTO POR ITEM */
     .comanda-items-list { list-style: none; padding: 0; max-height: 110px; overflow-y: auto; margin-top: 4px; }
     .comanda-item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.85rem; }
-    .comanda-item-info { display: flex; align-items: center; gap: 6px; }
-    .btn-cancel-item { background: rgba(239, 68, 68, 0.18); color: var(--danger); border: 1px solid var(--danger); border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-    .btn-cancel-item:hover { background: var(--danger); color: white; }
+    .btn-cancel-item { background: rgba(239, 68, 68, 0.18); color: var(--danger); border: 1px solid var(--danger); border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; cursor: pointer; font-weight: bold; }
 
     .modal-menu-section { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin: 12px 0; }
     .modal-menu-title { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -150,7 +146,6 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -198,7 +193,6 @@
     </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
@@ -237,7 +231,6 @@
     <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
-  <!-- MODAL COMANDA DA MESA -->
   <div class="modal-overlay" id="tableModal">
     <div class="custom-modal-card">
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
@@ -247,7 +240,6 @@
     </div>
   </div>
 
-  <!-- MODAL QR CODE MESA -->
   <div class="modal-overlay" id="qrModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div class="custom-modal-title" id="qrModalTitle">QR Code da Mesa</div>
@@ -408,7 +400,7 @@
         } else {
           itemsListHtml = t.items.map((item, index) => `
             <li class="comanda-item-row">
-              <div class="comanda-item-info">
+              <div>
                 <span>• <strong>${item.qty}x</strong> ${item.name} - R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
               </div>
               <button class="btn-cancel-item" onclick="removeItemFromTableComanda(${t.id}, ${index})" title="Cancelar / Remover Item">🗑️</button>
@@ -535,14 +527,21 @@
       t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
       localStorage.setItem('vortex_tables', JSON.stringify(tables));
 
+      // Envia Pedido de preparo para o KDS
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
       kdsOrders.unshift({
-        id: nextKdsId, origin: `Mesa ${t.number}`, client: t.client || `Mesa ${t.number}`,
-        payment: 'Comanda Aberta', items: [{ name, qty: 1, price, type }], total: price, status: 'new', time: timeStr
+        id: nextKdsId,
+        origin: `Mesa ${t.number}`,
+        client: t.client || `Mesa ${t.number}`,
+        payment: 'Comanda Aberta',
+        items: [{ name, qty: 1, price, type }],
+        total: price,
+        status: 'new',
+        time: timeStr
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
@@ -550,11 +549,13 @@
       loadTables();
     }
 
-    /* REMOVER / CANCELAR ITEM DA MESA */
+    /* SINCRONIZAÇÃO COMPLETA DE REMOÇÃO DE ITEM COM A COZINHA (KDS) */
     function removeItemFromTableComanda(tableId, itemIndex) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === tableId);
       if (!t || !t.items[itemIndex]) return;
+
+      const removedItemName = t.items[itemIndex].name;
 
       if (t.items[itemIndex].qty > 1) {
         t.items[itemIndex].qty -= 1;
@@ -564,6 +565,16 @@
 
       t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
       localStorage.setItem('vortex_tables', JSON.stringify(tables));
+
+      // Remove a via pendente na Cozinha (KDS) para não acumular
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const tableOriginName = `Mesa ${t.number}`;
+      
+      const kdsIdx = kdsOrders.findIndex(o => o.origin === tableOriginName && o.items.some(i => i.name === removedItemName) && o.status !== 'finished');
+      if (kdsIdx !== -1) {
+        kdsOrders.splice(kdsIdx, 1);
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      }
 
       openTableModal(tableId);
       loadTables();
@@ -584,7 +595,6 @@
       }
     }
 
-    /* FECHAMENTO DA MESA E ATUALIZAÇÃO SEGURA DO FATURAMENTO NO DASHBOARD */
     function closeTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -604,6 +614,12 @@
 
           localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
+
+        // Limpa também do KDS pedidos pendentes dessa mesa
+        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        const tableOriginName = `Mesa ${t.number}`;
+        kdsOrders = kdsOrders.filter(o => o.origin !== tableOriginName || o.status === 'finished');
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
         t.status = 'free';
         t.client = '';

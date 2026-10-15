@@ -420,32 +420,53 @@
     }
 
     .tag-status {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--info);
       padding: 2px 8px;
       border-radius: 6px;
       font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .status-preparing { background: rgba(234, 179, 8, 0.15); color: var(--warning); }
+    .status-ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-dispatch { background: rgba(56, 189, 248, 0.15); color: var(--info); }
+
+    /* Botões de Ação no Card */
+    .card-actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
 
-    /* Botão de Impressão */
     .btn-print {
       background: var(--border);
       color: var(--text-main);
       border: none;
-      padding: 6px 10px;
+      padding: 5px 9px;
       border-radius: 6px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: bold;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       transition: background 0.2s;
     }
+    .btn-print:hover { background: var(--primary); }
 
-    .btn-print:hover {
-      background: var(--primary);
+    .btn-dispatch {
+      background: var(--success);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
     }
+    .btn-dispatch:hover { background: #16a34a; }
 
     /* Modais Customizados */
     .modal-overlay {
@@ -694,9 +715,7 @@
     let deliveryCart = [];
     let currentPayment = 'Pix';
     let rawCashGiven = 0;
-    let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', payment: 'Pix', cashGiven: '', change: '', observation: 'Tocar campainha', items: [{ qty: 1, name: 'Pizza Calabresa G' }, { qty: 1, name: 'Refrigerante 2L' }], total: 69.00, time: '19:12', status: 'Em Preparo' }
-    ];
+    let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -854,7 +873,29 @@
       }
     }
 
+    // Sincroniza status do KDS com o Delivery
+    function syncDeliveriesWithKds() {
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let updated = false;
+
+      deliveries.forEach(del => {
+        const correspondingKds = kdsOrders.find(k => k.origin === `Delivery #${del.id}`);
+        if (correspondingKds) {
+          if (correspondingKds.status === 'ready' && del.status === 'Em Preparo') {
+            del.status = 'Pronto p/ Entrega';
+            updated = true;
+          }
+        }
+      });
+
+      if (updated) {
+        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
+      }
+    }
+
     function renderDeliveries() {
+      syncDeliveriesWithKds();
+      deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
       const container = document.getElementById('deliveryListContainer');
       container.innerHTML = '';
 
@@ -873,6 +914,19 @@
           ? del.items.map(i => `${i.qty}x ${i.name}`).join(', ')
           : del.items;
 
+        let statusClass = 'status-preparing';
+        if (del.status === 'Pronto p/ Entrega') statusClass = 'status-ready';
+        if (del.status === 'Em Rota de Entrega') statusClass = 'status-dispatch';
+
+        let actionButtonHtml = '';
+        if (del.status === 'Pronto p/ Entrega') {
+          actionButtonHtml = `<button class="btn-dispatch" onclick="dispatchOrder(${del.id})">Despachar p/ Entrega 🛵</button>`;
+        } else if (del.status === 'Em Rota de Entrega') {
+          actionButtonHtml = `<span style="font-size:0.8rem; color:var(--info); font-weight:bold;">Em rota 🚀</span>`;
+        } else {
+          actionButtonHtml = `<span style="font-size:0.8rem; color:var(--warning); font-weight:bold;">Na Cozinha...</span>`;
+        }
+
         container.innerHTML += `
           <div class="delivery-item">
             <div class="delivery-item-top">
@@ -880,21 +934,31 @@
                 <div style="font-weight:bold; font-size:0.95rem;">${del.client}</div>
                 <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
               </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="tag-status">${del.status}</span>
-                <button class="btn-print" onclick="printDeliveryOrder(${del.id})" title="Imprimir Comanda">🖨️ Imprimir</button>
-              </div>
+              <span class="tag-status ${statusClass}">${del.status}</span>
             </div>
             <div style="font-size:0.85rem;">📍 ${del.address}</div>
             <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${itemsFormatted}</div>
             <div style="font-size:0.8rem; color:var(--success);">${paymentInfo}</div>
             ${del.observation ? `<div style="font-size:0.8rem; color:var(--warning); background:rgba(234,179,8,0.1); padding:4px 8px; border-radius:6px;">⚠️ Obs: ${del.observation}</div>` : ''}
+            <div class="card-actions-row">
+              <button class="btn-print" onclick="printDeliveryOrder(${del.id})" title="Imprimir Comanda">🖨️ Comanda</button>
+              ${actionButtonHtml}
+            </div>
           </div>
         `;
       });
     }
 
-    // Função de Impressão Ajustada para Mini Impressora Térmica (80mm)
+    function dispatchOrder(id) {
+      const del = deliveries.find(d => d.id === id);
+      if (del) {
+        del.status = 'Em Rota de Entrega';
+        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
+        renderDeliveries();
+      }
+    }
+
+    // Impressão Térmica (80mm)
     function printDeliveryOrder(id) {
       const del = deliveries.find(d => d.id === id);
       if (!del) return;
@@ -999,7 +1063,7 @@
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // 2. Adiciona nas entregas ativas
+      // 2. Adiciona nas entregas ativas (Inicia como 'Em Preparo')
       const newDel = {
         id: newDeliveryId,
         client,
@@ -1018,7 +1082,7 @@
       deliveries.unshift(newDel);
       localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-      // 3. Envia para a Cozinha (KDS) com a informação de pagamento e troco
+      // 3. Envia para a Cozinha (KDS)
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 

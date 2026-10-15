@@ -102,7 +102,7 @@
     .btn-submit { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
     .btn-submit:hover { background: var(--primary-hover); }
 
-    .delivery-orders-list { display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; }
+    .delivery-orders-list { display: flex; flex-direction: column; gap: 12px; max-height: 540px; overflow-y: auto; }
     .order-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
     .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
     .order-id { font-weight: bold; color: var(--primary); }
@@ -119,6 +119,8 @@
     }
     .btn-dispatch { background: var(--primary); color: white; }
     .btn-deliver { background: var(--success); color: white; }
+    .btn-print-ticket { background: var(--border); color: var(--text-main); margin-top: 6px; width: 100%; padding: 8px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+    .btn-print-ticket:hover { background: #475569; }
 
     .code-input-row { display: flex; gap: 6px; margin-top: 6px; }
     .code-input { flex: 1; text-align: center; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 8px; }
@@ -497,7 +499,6 @@
       }
     }
 
-    /* GERA CÓDIGO ALEATÓRIO DE 4 DÍGITOS PARA CONFIRMAÇÃO DE ENTREGA (MOTOBOY) */
     function generateDeliveryCode() {
       return Math.floor(1000 + Math.random() * 9000).toString();
     }
@@ -525,16 +526,16 @@
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('paymentMethodSelect').value;
 
-      let cashGivenStr = '';
-      let changeStr = '';
+      let cashGivenVal = 0;
+      let changeVal = 0;
 
       if (payment === 'Dinheiro') {
         if (rawCashGiven < total) {
           showNoticeModal('Valor Insuficiente', 'O valor informado para o troco é menor que o total.', '⚠️');
           return;
         }
-        cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
-        changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
+        cashGivenVal = rawCashGiven;
+        changeVal = rawCashGiven - total;
       }
 
       let fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
@@ -544,7 +545,7 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Soma no Faturamento do Dashboard
+      // Atualiza Faturamento no Dashboard
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
@@ -562,8 +563,8 @@
         client: `${clientName} (${clientPhone})`,
         address: fullAddress,
         payment: payment,
-        cashGiven: cashGivenStr,
-        change: changeStr,
+        cashGiven: cashGivenVal,
+        change: changeVal,
         observation: observation,
         items: [...deliveryCart],
         total: total,
@@ -575,7 +576,7 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa campos do formulário
+      // Reset dos campos
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -591,10 +592,9 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} enviado p/ Cozinha!<br>🔑 Código de Entrega p/ Motoboy: <strong>${deliveryCode}</strong>`, '🛵');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado e enviado ao KDS!`, '🛵');
     }
 
-    /* CARREGA PEDIDOS COM FLUXO SINCRONIZADO */
     function loadActiveOrders() {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status !== 'cancelled');
@@ -614,7 +614,7 @@
         if (o.status === 'new') {
           statusClass = 'status-new';
           statusText = 'Novo / Na Fila';
-          actionAreaHtml = `<div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:4px;">Aguardando aceite ou início na cozinha...</div>`;
+          actionAreaHtml = `<div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:4px;">Aguardando aceite na cozinha...</div>`;
         } else if (o.status === 'preparing') {
           statusClass = 'status-preparing';
           statusText = 'Em Preparo na Cozinha ⏳';
@@ -629,10 +629,10 @@
           actionAreaHtml = `
             <div style="margin-top:6px;">
               <div class="code-input-row">
-                <input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Cód: ${o.code || '----'}" maxlength="4">
-                <button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 14px;" onclick="confirmDeliveryWithCode(${o.id})">Confirmar Código ✅</button>
+                <input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Digitar Código" maxlength="4">
+                <button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode(${o.id})">Validar Código ✅</button>
               </div>
-              <button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder(${o.id})">Marcar como Entregue Manually ✅</button>
+              <button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder(${o.id})">Marcar como Entregue ✅</button>
             </div>
           `;
         } else if (o.status === 'finished') {
@@ -642,6 +642,12 @@
         }
 
         const itemsText = o.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+
+        // Formatação das informações de Troco
+        let changeInfoHtml = '';
+        if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
+          changeInfoHtml = `<br>💵 Troco para: <strong>R$ ${o.cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">R$ ${(o.change || 0).toFixed(2).replace('.', ',')}</strong>`;
+        }
 
         container.innerHTML += `
           <div class="order-card">
@@ -653,16 +659,16 @@
               📍 ${o.address}<br>
               🍔 ${itemsText}<br>
               ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
-              🔑 Código da Entrega: <strong style="color:var(--primary);">${o.code || 'N/A'}</strong><br>
-              💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})
+              🔒 Código de Validação: <strong style="color:var(--info);">**** (Apenas o cliente possui)</strong><br>
+              💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
             </div>
             ${actionAreaHtml}
+            <button class="btn-print-ticket" onclick="printDeliveryTicket(${o.id})">🖨️ Imprimir Comanda Delivery</button>
           </div>
         `;
       });
     }
 
-    /* ENVIAR PARA ENTREGA */
     function dispatchOrder(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => item.id === orderId);
@@ -673,7 +679,6 @@
       }
     }
 
-    /* CONFIRMAR ENTREGA MANUALLMENTE */
     function finishDeliveryOrder(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => item.id === orderId);
@@ -681,25 +686,77 @@
         o.status = 'finished';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         loadActiveOrders();
-        showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído e finalizado no KDS.`, '✅');
+        showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
       }
     }
 
-    /* CONFIRMAR ENTREGA VIA CÓDIGO (MOTOBOY) */
     function confirmDeliveryWithCode(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => item.id === orderId);
       if (o) {
         const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
-        if (inputVal === o.code || inputVal === '') {
+        if (inputVal === o.code) {
           o.status = 'finished';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
           loadActiveOrders();
           showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
         } else {
-          showNoticeModal('Código Incorreto', `O código informado (${inputVal}) não confere com o código do cliente (${o.code}).`, '⚠️');
+          showNoticeModal('Código Incorreto', `O código digitado (${inputVal}) não confere com o código do cliente.`, '⚠️');
         }
       }
+    }
+
+    /* IMPRESSÃO DE COMANDA TÉRMICA DO DELIVERY */
+    function printDeliveryTicket(orderId) {
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const o = kdsOrders.find(item => item.id === orderId);
+      if (!o) return;
+
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      const itemsHtml = o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('');
+
+      let trocoPrintHtml = '';
+      if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
+        trocoPrintHtml = `<p>Troco para: R$ ${o.cashGiven.toFixed(2).replace('.', ',')}<br><strong>LEVAR TROCO: R$ ${(o.change || 0).toFixed(2).replace('.', ',')}</strong></p>`;
+      }
+
+      const printWin = window.open('', '_blank', 'width=380,height=600');
+      printWin.document.write(`
+        <html>
+          <head>
+            <title>Comanda Delivery #${o.id}</title>
+            <style>
+              body { font-family: monospace; font-size: 12px; color: #000; width: 280px; margin: 0 auto; padding: 10px; }
+              .text-center { text-align: center; }
+              .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+              table { width: 100%; font-size: 12px; }
+              h2, h3 { margin: 4px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="text-center">
+              <h2>${storeSettings.storeName}</h2>
+              <h3>PEDIDO DELIVERY #${o.id}</h3>
+              <p>Horário: ${o.time || '--:--'}</p>
+            </div>
+            <div class="line"></div>
+            <p><strong>CLIENTE:</strong> ${o.client}<br><strong>ENDEREÇO:</strong> ${o.address}</p>
+            <div class="line"></div>
+            <table>
+              <tbody>${itemsHtml}</tbody>
+            </table>
+            <div class="line"></div>
+            ${o.observation ? `<p><strong>OBSERVAÇÃO:</strong> ${o.observation}</p><div class="line"></div>` : ''}
+            <p><strong>PAGAMENTO:</strong> ${o.payment}</p>
+            ${trocoPrintHtml}
+            <p style="font-size: 14px;"><strong>TOTAL: R$ ${o.total.toFixed(2).replace('.', ',')}</strong></p>
+            <div class="line"></div>
+            <p class="text-center">VORTEX FOOD - Sistema de Gestão</p>
+            <script>window.onload = function() { window.print(); window.close(); }<\/script>
+          </body>
+        </html>
+      `);
+      printWin.document.close();
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -716,7 +773,7 @@
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
-      loadActiveOrders(); // Atualiza em tempo real caso o status mude na cozinha
+      loadActiveOrders();
     }, 2000);
 
     window.onload = function() {

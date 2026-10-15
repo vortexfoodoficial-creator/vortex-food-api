@@ -76,61 +76,36 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .management-bar {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;
-    }
-    .management-bar-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-    .management-bar-title { font-size: 1rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-    .management-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .mesas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 25px; }
+    .mesa-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 8px; }
+    .mesa-card:hover { border-color: var(--primary); }
+    .mesa-card.occupied { border-left: 5px solid var(--success); }
+    .mesa-card.free { border-left: 5px solid var(--text-muted); }
 
-    .btn-manage { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
-    .btn-manage:hover { background: var(--primary-hover); }
-    .btn-manage-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-    .qr-toggle-box { background: var(--bg-main); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
-    .qr-toggle-label { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600; color: var(--text-main); cursor: pointer; }
-    .qr-toggle-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.3; margin-left: 24px; }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
+    input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
 
-    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-    .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; transition: all 0.2s; position: relative; }
-    .table-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-    .table-card.occupied { border-color: var(--danger); background: rgba(239, 68, 68, 0.08); }
-    .table-card.free { border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
+    .menu-select-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 160px; overflow-y: auto; margin-bottom: 12px; padding-right: 4px; }
+    .mini-menu-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; transition: all 0.2s; }
+    .mini-menu-card:hover { border-color: var(--primary); }
+    .mini-menu-title { font-size: 0.8rem; font-weight: bold; }
+    .mini-menu-price { font-size: 0.75rem; color: var(--success); font-weight: bold; }
 
-    .table-header { display: flex; justify-content: space-between; align-items: center; }
-    .table-number { font-size: 1.1rem; font-weight: bold; }
-    .table-status { font-size: 0.8rem; font-weight: bold; }
-    .table-info { font-size: 0.82rem; color: var(--text-muted); flex: 1; }
+    .table-cart-list { max-height: 120px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .cart-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
 
-    .table-card-footer { display: flex; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
-    .btn-table-click { flex: 1; background: var(--border); color: var(--text-main); border: none; padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
-    .btn-qr-click { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
-
-    .comanda-items-list { list-style: none; padding: 0; max-height: 110px; overflow-y: auto; margin-top: 4px; }
-    .comanda-item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.85rem; }
-    .btn-cancel-item { background: rgba(239, 68, 68, 0.18); color: var(--danger); border: 1px solid var(--danger); border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; cursor: pointer; font-weight: bold; }
-
-    .modal-menu-section { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin: 12px 0; }
-    .modal-menu-title { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .modal-menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 140px; overflow-y: auto; padding-right: 4px; }
-    .mini-menu-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; }
-    .mini-menu-name { font-size: 0.78rem; font-weight: 600; color: var(--text-main); }
-    .mini-menu-price { font-size: 0.75rem; font-weight: bold; color: var(--success); margin-top: 4px; }
-
-    .payment-select-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 10px; margin-bottom: 10px; }
-    .payment-select-box select, .payment-select-box input { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 8px; border-radius: 8px; font-size: 0.85rem; outline: none; }
-    .cash-change-table-box { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
-    .cash-change-table-box.active { display: block; }
-    .table-change-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.82rem; margin-top: 6px; }
+    .btn-submit { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+    .btn-submit:hover { background: var(--primary-hover); }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 440px; }
-    .custom-modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; }
-    
-    .btn-modal-close { background: var(--border); color: var(--text-main); width: 100%; padding: 11px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 8px; }
-    .btn-modal-action { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
-    .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -204,85 +179,59 @@
       </div>
     </header>
 
-    <div class="management-bar">
-      <div class="management-bar-top">
-        <div class="management-bar-title">
-          <span>🍽️ Layout do Salão</span>
-          <span style="font-size: 0.8rem; color: var(--text-muted);" id="tablesCountBadge">(0 Mesas)</span>
-        </div>
-
-        <div class="management-actions">
-          <button class="btn-manage" onclick="addNewTable()">➕ Adicionar Mesa</button>
-          <button class="btn-manage-danger" onclick="removeLastTable()">➖ Remover Mesa</button>
-        </div>
-      </div>
-
-      <div class="qr-toggle-box">
-        <label class="qr-toggle-label">
-          <input type="checkbox" id="qrOrderingToggle" onchange="toggleQrOrdering(this)">
-          📱 Pedido / Fechamento por QR Code
-        </label>
-        <div class="qr-toggle-desc">
-          Ativando essa função, você permite que o cliente peça ou solicite o fechamento da conta lendo o QR Code disponível na mesa. Há um QR Code único para cada mesa para você imprimir gratuitamente e colar nas mesas.
-        </div>
-      </div>
+    <div class="card-box" style="margin-bottom: 20px;">
+      <div class="card-title">🍽️ Visão Geral das Mesas</div>
+      <div class="mesas-grid" id="mesasGrid"></div>
     </div>
-
-    <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
-  <div class="modal-overlay" id="tableModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
-      <div id="tableModalBody" style="font-size:0.9rem;"></div>
-      <div id="tableModalActions"></div>
-      <button class="btn-modal-close" onclick="closeTableModal()">Fechar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="qrModal">
-    <div class="custom-modal-card" style="text-align:center;">
-      <div class="custom-modal-title" id="qrModalTitle">QR Code da Mesa</div>
-      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Posicione este QR Code na mesa para que o cliente acesse o cardápio ou solicite o fechamento da conta.</p>
-      
-      <div id="qrCodeContainer" style="background:white; padding:15px; border-radius:12px; display:inline-block; margin-bottom:15px; border:1px solid var(--border);">
-        <img id="qrCodeImage" src="" alt="QR Code Mesa" style="width:180px; height:180px; display:block;">
+  <!-- MODAL DE LANÇAR PEDIDO NA MESA -->
+  <div class="modal-overlay" id="mesaModal">
+    <div class="custom-modal-card" style="text-align: left;">
+      <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="modalMesaTitle">Mesa 01</span>
+        <button onclick="closeMesaModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
 
-      <button class="btn-modal-action" onclick="printTableQrCode()">🖨️ Imprimir Placa QR Code</button>
-      <button class="btn-modal-close" onclick="closeQrModal()">Voltar</button>
+      <div class="form-group">
+        <label>Adicionar Itens do Cardápio:</label>
+        <div class="menu-select-grid" id="tableMenuGrid"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Itens na Comanda:</label>
+        <div class="table-cart-list" id="tableCartList">
+          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item na comanda.</div>
+        </div>
+      </div>
+
+      <!-- NOVO: CAMPO DE OBSERVAÇÃO DA MESA -->
+      <div class="form-group">
+        <label for="tableObsInput">Observação da Comanda (Enviada p/ Cozinha):</label>
+        <input type="text" id="tableObsInput" placeholder="Ex: Ponto da carne mal passado, sem cebola...">
+      </div>
+
+      <div style="display:flex; justify-content:space-between; font-size:1.05rem; font-weight:bold; margin:12px 0;">
+        <span>Total da Mesa:</span>
+        <span id="tableTotalDisplay" style="color:var(--success);">R$ 0,00</span>
+      </div>
+
+      <button class="btn-modal-primary" onclick="submitTableOrder()">Enviar Pedido p/ Cozinha 👨‍🍳</button>
     </div>
   </div>
 
   <script>
     const catalogProducts = [
-      { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
-      { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
-      { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
-      { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
-      { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
-      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
-      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
-      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+      { id: 1, name: 'X-Burger Especial', price: 28.50 },
+      { id: 2, name: 'X-Salada Duplo', price: 32.00 },
+      { id: 3, name: 'Pizza Calabresa G', price: 55.00 },
+      { id: 4, name: 'Batata Frita M', price: 18.00 },
+      { id: 5, name: 'Refrigerante 2L', price: 14.00 },
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00 }
     ];
 
-    let defaultTables = [
-      { id: 1, number: '01', status: 'free', client: '', items: [], total: 0 },
-      { id: 2, number: '02', status: 'occupied', client: 'Rafael', items: [{ name: 'X-Salada Duplo', qty: 2, price: 32.0 }], total: 64.0 },
-      { id: 3, number: '03', status: 'free', client: '', items: [], total: 0 },
-      { id: 4, number: '04', status: 'occupied', client: 'Camila', items: [{ name: 'Pizza Calabresa G', qty: 1, price: 55.0 }], total: 55.0 },
-      { id: 5, number: '05', status: 'free', client: '', items: [], total: 0 },
-      { id: 6, number: '06', status: 'free', client: '', items: [], total: 0 },
-      { id: 7, number: '07', status: 'occupied', client: 'Lucas', items: [{ name: 'Batata Frita M', qty: 1, price: 18.0 }], total: 18.0 },
-      { id: 8, number: '08', status: 'free', client: '', items: [], total: 0 },
-      { id: 9, number: '09', status: 'free', client: '', items: [], total: 0 },
-      { id: 10, number: '10', status: 'free', client: '', items: [], total: 0 },
-      { id: 11, number: '11', status: 'free', client: '', items: [], total: 0 },
-      { id: 12, number: '12', status: 'free', client: '', items: [], total: 0 }
-    ];
-
-    let currentQrTable = null;
-    let rawTableCashGiven = 0;
+    let activeTableId = null;
+    let tableCarts = {}; // Armazena itens por mesa
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -312,392 +261,162 @@
       }
     }
 
-    function loadTables() {
+    function renderMesas() {
       loadStoreSettings();
-      let tables = JSON.parse(localStorage.getItem('vortex_tables'));
-      if (!tables || tables.length === 0 || !tables[0].number) {
-        tables = defaultTables;
-        localStorage.setItem('vortex_tables', JSON.stringify(tables));
+      const grid = document.getElementById('mesasGrid');
+      grid.innerHTML = '';
+
+      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+
+      for (let i = 1; i <= 10; i++) {
+        let tData = tableCarts[i];
+        let isOccupied = tData && tData.items && tData.items.length > 0;
+        let totalVal = isOccupied ? tData.items.reduce((acc, item) => acc + (item.price * item.qty), 0) : 0;
+
+        grid.innerHTML += `
+          <div class="mesa-card ${isOccupied ? 'occupied' : 'free'}" onclick="openMesaModal(${i})">
+            <div style="font-weight:bold; font-size:1rem;">Mesa ${i < 10 ? '0' + i : i}</div>
+            <div style="font-size:0.8rem; color:${isOccupied ? 'var(--success)' : 'var(--text-muted)'}; font-weight:bold;">
+              ${isOccupied ? '🟢 Ocupada' : '⚪ Livre'}
+            </div>
+            <div style="font-size:0.85rem; margin-top:4px;">
+              ${isOccupied ? `Total: R$ ${totalVal.toFixed(2).replace('.', ',')}` : 'Sem consumo'}
+            </div>
+          </div>
+        `;
       }
+    }
 
-      const qrEnabled = localStorage.getItem('vortex_qr_ordering_enabled') === 'true';
-      const toggleEl = document.getElementById('qrOrderingToggle');
-      if (toggleEl) toggleEl.checked = qrEnabled;
+    function openMesaModal(mesaNum) {
+      activeTableId = mesaNum;
+      document.getElementById('modalMesaTitle').innerText = `Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
+      document.getElementById('tableObsInput').value = '';
+      renderTableCatalog();
+      renderTableCart();
+      document.getElementById('mesaModal').classList.add('active');
+    }
 
-      document.getElementById('tablesCountBadge').innerText = `(${tables.length} Mesas)`;
+    function closeMesaModal() {
+      activeTableId = null;
+      document.getElementById('mesaModal').classList.remove('active');
+    }
 
-      const container = document.getElementById('tablesGridContainer');
-      container.innerHTML = '';
-
-      tables.forEach(t => {
-        const isOccupied = t.status === 'occupied';
-        container.innerHTML += `
-          <div class="table-card ${isOccupied ? 'occupied' : 'free'}">
-            <div class="table-header">
-              <span class="table-number">Mesa ${t.number}</span>
-              <span class="table-status" style="color: ${isOccupied ? 'var(--danger)' : 'var(--success)'};">
-                ${isOccupied ? '🔴 Ocupada' : '🟢 Livre'}
-              </span>
-            </div>
-            <div class="table-info">
-              ${isOccupied ? `👤 Cliente: <strong>${t.client || 'Cliente'}</strong><br>💰 Total: <strong>R$ ${t.total.toFixed(2).replace('.', ',')}</strong>` : 'Mesa pronta para atendimento.'}
-            </div>
-            <div class="table-card-footer">
-              <button class="btn-table-click" onclick="openTableModal(${t.id})">Comanda 📝</button>
-              <button class="btn-qr-click" onclick="openQrModal(${t.id})" title="Imprimir QR Code da Mesa">📱 QR Code</button>
-            </div>
+    function renderTableCatalog() {
+      const grid = document.getElementById('tableMenuGrid');
+      grid.innerHTML = '';
+      catalogProducts.forEach(p => {
+        grid.innerHTML += `
+          <div class="mini-menu-card" onclick="addToTableCart('${p.name}', ${p.price})">
+            <div class="mini-menu-title">${p.name}</div>
+            <div class="mini-menu-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>
         `;
       });
     }
 
-    function toggleQrOrdering(checkbox) {
-      localStorage.setItem('vortex_qr_ordering_enabled', checkbox.checked ? 'true' : 'false');
-    }
-
-    function addNewTable() {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
-      const nextNum = nextId < 10 ? `0${nextId}` : `${nextId}`;
-
-      tables.push({ id: nextId, number: nextNum, status: 'free', client: '', items: [], total: 0 });
-      localStorage.setItem('vortex_tables', JSON.stringify(tables));
-      loadTables();
-    }
-
-    function removeLastTable() {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      if (tables.length <= 1) {
-        alert('O salão precisa ter pelo menos 1 mesa!');
-        return;
+    function addToTableCart(name, price) {
+      if (!tableCarts[activeTableId]) {
+        tableCarts[activeTableId] = { items: [], obs: '' };
       }
-
-      const lastTable = tables[tables.length - 1];
-      if (lastTable.status === 'occupied') {
-        alert(`A Mesa ${lastTable.number} está ocupada e não pode ser removida agora!`);
-        return;
-      }
-
-      tables.pop();
-      localStorage.setItem('vortex_tables', JSON.stringify(tables));
-      loadTables();
-    }
-
-    function openTableModal(id) {
-      rawTableCashGiven = 0;
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === id);
-      if (!t) return;
-
-      document.getElementById('tableModalTitle').innerText = `Mesa ${t.number}`;
-      const body = document.getElementById('tableModalBody');
-      const actions = document.getElementById('tableModalActions');
-
-      if (t.status === 'occupied') {
-        let itemsListHtml = '';
-        if (t.items.length === 0) {
-          itemsListHtml = '<li style="color:var(--text-muted); font-size:0.8rem; list-style:none;">Nenhum item consumido.</li>';
-        } else {
-          itemsListHtml = t.items.map((item, index) => `
-            <li class="comanda-item-row">
-              <div>
-                <span>• <strong>${item.qty}x</strong> ${item.name} - R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
-              </div>
-              <button class="btn-cancel-item" onclick="removeItemFromTableComanda(${t.id}, ${index})" title="Cancelar / Remover Item">🗑️</button>
-            </li>
-          `).join('');
-        }
-
-        const catalogHtml = catalogProducts.map(p => `
-          <div class="mini-menu-item" onclick="addItemToTableComanda(${t.id}, '${p.name}', ${p.price}, '${p.type}')">
-            <span class="mini-menu-name">${p.name}</span>
-            <span class="mini-menu-price">+ R$ ${p.price.toFixed(2).replace('.', ',')}</span>
-          </div>
-        `).join('');
-
-        body.innerHTML = `
-          <p style="margin-bottom:6px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
-          <p style="margin-bottom:4px;"><strong>Consumo Atual:</strong></p>
-          <ul class="comanda-items-list">
-            ${itemsListHtml}
-          </ul>
-
-          <div class="modal-menu-section">
-            <div class="modal-menu-title">
-              <span>Adicionar do Cardápio:</span>
-              <span style="font-size:0.7rem; color:var(--primary);">(Clique para lançar)</span>
-            </div>
-            <div class="modal-menu-grid">
-              ${catalogHtml}
-            </div>
-          </div>
-
-          <p style="font-size:1.05rem; font-weight:bold; color:var(--success); margin-top:6px;">Total Acumulado: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
-
-          <div class="payment-select-box">
-            <label for="tablePaymentMethod">Forma de Pagamento para Fechamento:</label>
-            <select id="tablePaymentMethod" onchange="handleTablePaymentChange(this.value, ${t.total})">
-              <option value="Pix">Pix</option>
-              <option value="Cartão de Débito">Cartão de Débito</option>
-              <option value="Cartão de Crédito">Cartão de Crédito</option>
-              <option value="Vale Refeição (VR)">Vale Refeição (VR)</option>
-              <option value="Vale Alimentação (VA)">Vale Alimentação (VA)</option>
-              <option value="Dinheiro">Dinheiro</option>
-            </select>
-
-            <div class="cash-change-table-box" id="tableCashBox">
-              <label for="tableCashGivenInput" style="margin-top:6px;">Valor Recebido:</label>
-              <input type="text" id="tableCashGivenInput" placeholder="R$ 0,00" oninput="maskTableCurrencyInput(this, ${t.total})">
-              <div class="table-change-row">
-                <span>Troco:</span>
-                <span id="tableChangeDisplay">R$ 0,00</span>
-              </div>
-            </div>
-          </div>
-        `;
-
-        actions.innerHTML = `
-          <button class="btn-modal-danger" onclick="closeTableComanda(${t.id})">Fechar Comanda & Liberar Mesa 💳</button>
-        `;
-      } else {
-        body.innerHTML = `
-          <div style="margin-bottom:12px;">
-            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Nome do Cliente:</label>
-            <input type="text" id="openTableClientInput" placeholder="Ex: Lucas Mendes" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:9px; border-radius:8px;">
-          </div>
-        `;
-        actions.innerHTML = `
-          <button class="btn-modal-action" onclick="openTableComanda(${t.id})">Abrir Comanda 🍽️</button>
-        `;
-      }
-
-      document.getElementById('tableModal').classList.add('active');
-    }
-
-    function handleTablePaymentChange(method, total) {
-      const box = document.getElementById('tableCashBox');
-      if (method === 'Dinheiro') box.classList.add('active');
-      else box.classList.remove('active');
-      calculateTableChange(total);
-    }
-
-    function maskTableCurrencyInput(input, total) {
-      let value = input.value.replace(/\D/g, '');
-      if (!value) {
-        input.value = 'R$ 0,00';
-        rawTableCashGiven = 0;
-        calculateTableChange(total);
-        return;
-      }
-      const numeric = parseFloat(value) / 100;
-      rawTableCashGiven = numeric;
-      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      calculateTableChange(total);
-    }
-
-    function calculateTableChange(total) {
-      const display = document.getElementById('tableChangeDisplay');
-      if (!display) return;
-
-      const method = document.getElementById('tablePaymentMethod')?.value;
-      if (method !== 'Dinheiro') return;
-
-      if (rawTableCashGiven >= total && total > 0) {
-        const change = rawTableCashGiven - total;
-        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
-        display.style.color = 'var(--success)';
-      } else if (rawTableCashGiven > 0) {
-        display.innerText = 'Falta dinheiro';
-        display.style.color = 'var(--danger)';
-      } else {
-        display.innerText = 'R$ 0,00';
-        display.style.color = 'var(--text-main)';
-      }
-    }
-
-    function addItemToTableComanda(tableId, name, price, type) {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === tableId);
-      if (!t) return;
-
-      const existing = t.items.find(i => i.name === name);
+      let existing = tableCarts[activeTableId].items.find(i => i.name === name);
       if (existing) existing.qty += 1;
-      else t.items.push({ name, qty: 1, price });
+      else tableCarts[activeTableId].items.push({ name, price, qty: 1 });
+      renderTableCart();
+    }
 
-      t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      localStorage.setItem('vortex_tables', JSON.stringify(tables));
+    function changeTableQty(idx, delta) {
+      if (!tableCarts[activeTableId]) return;
+      tableCarts[activeTableId].items[idx].qty += delta;
+      if (tableCarts[activeTableId].items[idx].qty <= 0) {
+        tableCarts[activeTableId].items.splice(idx, 1);
+      }
+      renderTableCart();
+    }
 
-      // Envia Pedido de preparo para o KDS
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+    function renderTableCart() {
+      const list = document.getElementById('tableCartList');
+      const totalDisplay = document.getElementById('tableTotalDisplay');
+
+      let currentData = tableCarts[activeTableId];
+      if (!currentData || currentData.items.length === 0) {
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item na comanda.</div>`;
+        totalDisplay.innerText = 'R$ 0,00';
+        return;
+      }
+
+      let html = '';
+      let total = 0;
+      currentData.items.forEach((item, idx) => {
+        total += item.price * item.qty;
+        html += `
+          <div class="cart-item-row">
+            <span><strong>${item.qty}x</strong> ${item.name}</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button type="button" onclick="changeTableQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <span>${item.qty}</span>
+              <button type="button" onclick="changeTableQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+            </div>
+          </div>
+        `;
+      });
+      list.innerHTML = html;
+      totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
+
+    /* ENVIAR PEDIDO DA MESA PARA A COZINHA E ATUALIZAR DASHBOARD */
+    function submitTableOrder() {
+      let currentData = tableCarts[activeTableId];
+      if (!currentData || currentData.items.length === 0) {
+        alert('Adicione itens à comanda da mesa.');
+        return;
+      }
+
+      const observation = document.getElementById('tableObsInput').value.trim();
+      currentData.obs = observation;
+
+      const total = currentData.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      // Atualiza o Faturamento no Dashboard (vortex_vendas_hoje)
+      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+      let currentSales = parseFloat(cleanedSalesStr) || 0;
+      currentSales += total;
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+      // Envia para o KDS (Cozinha)
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      kdsOrders.unshift({
+      const newOrder = {
         id: nextKdsId,
-        origin: `Mesa ${t.number}`,
-        client: t.client || `Mesa ${t.number}`,
-        payment: 'Comanda Aberta',
-        items: [{ name, qty: 1, price, type }],
-        total: price,
+        origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
+        client: `Mesa ${activeTableId}`,
+        address: 'Consumo Local',
+        payment: 'Comanda de Mesa',
+        observation: observation,
+        items: [...currentData.items],
+        total: total,
         status: 'new',
         time: timeStr
-      });
+      };
+
+      kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
 
-      openTableModal(tableId);
-      loadTables();
-    }
-
-    /* SINCRONIZAÇÃO COMPLETA DE REMOÇÃO DE ITEM COM A COZINHA (KDS) */
-    function removeItemFromTableComanda(tableId, itemIndex) {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === tableId);
-      if (!t || !t.items[itemIndex]) return;
-
-      const removedItemName = t.items[itemIndex].name;
-
-      if (t.items[itemIndex].qty > 1) {
-        t.items[itemIndex].qty -= 1;
-      } else {
-        t.items.splice(itemIndex, 1);
-      }
-
-      t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      localStorage.setItem('vortex_tables', JSON.stringify(tables));
-
-      // Remove a via pendente na Cozinha (KDS) para não acumular
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const tableOriginName = `Mesa ${t.number}`;
-      
-      const kdsIdx = kdsOrders.findIndex(o => o.origin === tableOriginName && o.items.some(i => i.name === removedItemName) && o.status !== 'finished');
-      if (kdsIdx !== -1) {
-        kdsOrders.splice(kdsIdx, 1);
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-      }
-
-      openTableModal(tableId);
-      loadTables();
-    }
-
-    function openTableComanda(id) {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === id);
-      if (t) {
-        const clientName = document.getElementById('openTableClientInput').value.trim() || 'Cliente';
-        t.status = 'occupied';
-        t.client = clientName;
-        t.items = [];
-        t.total = 0.0;
-        localStorage.setItem('vortex_tables', JSON.stringify(tables));
-        closeTableModal();
-        loadTables();
-      }
-    }
-
-    function closeTableComanda(id) {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === id);
-      if (t) {
-        const method = document.getElementById('tablePaymentMethod')?.value || 'Pix';
-        if (method === 'Dinheiro' && t.total > 0 && rawTableCashGiven < t.total) {
-          alert('O valor em dinheiro recebido é menor que o total da comanda!');
-          return;
-        }
-
-        if (t.total > 0) {
-          let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-          let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-          let currentSales = parseFloat(cleanedSalesStr) || 0;
-
-          currentSales += t.total;
-
-          localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        }
-
-        // Limpa também do KDS pedidos pendentes dessa mesa
-        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        const tableOriginName = `Mesa ${t.number}`;
-        kdsOrders = kdsOrders.filter(o => o.origin !== tableOriginName || o.status === 'finished');
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
-        t.status = 'free';
-        t.client = '';
-        t.items = [];
-        t.total = 0.0;
-        localStorage.setItem('vortex_tables', JSON.stringify(tables));
-        closeTableModal();
-        loadTables();
-      }
-    }
-
-    function closeTableModal() {
-      document.getElementById('tableModal').classList.remove('active');
-    }
-
-    function openQrModal(id) {
-      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
-      const t = tables.find(item => item.id === id);
-      if (!t) return;
-
-      currentQrTable = t;
-      document.getElementById('qrModalTitle').innerText = `QR Code - Mesa ${t.number}`;
-      
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      const qrData = encodeURIComponent(`https://vortexfood.app/mesa/${t.number}?store=${encodeURIComponent(storeSettings.storeName)}`);
-      const qrUrl = `https://quickchart.io/qr?text=${qrData}&size=200`;
-
-      document.getElementById('qrCodeImage').src = qrUrl;
-      document.getElementById('qrModal').classList.add('active');
-    }
-
-    function closeQrModal() {
-      currentQrTable = null;
-      document.getElementById('qrModal').classList.remove('active');
-    }
-
-    function printTableQrCode() {
-      if (!currentQrTable) return;
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      const qrImgSrc = document.getElementById('qrCodeImage').src;
-
-      const printWindow = window.open('', '_blank', 'width=400,height=550');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Placa QR Code - Mesa ${currentQrTable.number}</title>
-            <style>
-              body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; color: #000; background: #fff; }
-              .card { border: 3px solid #f97316; border-radius: 16px; padding: 20px; max-width: 280px; margin: 0 auto; }
-              h2 { margin: 5px 0; color: #f97316; font-size: 22px; }
-              h3 { margin: 5px 0 15px 0; font-size: 18px; }
-              img { width: 180px; height: 180px; margin: 10px 0; }
-              p { font-size: 12px; color: #555; margin-top: 10px; }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <h2>${storeSettings.storeName}</h2>
-              <h3>MESA ${currentQrTable.number}</h3>
-              <img src="${qrImgSrc}" alt="QR Code">
-              <p>📱 Aponte a câmera do seu celular para ver o cardápio e fazer o pedido!</p>
-            </div>
-            <script>
-              window.onload = function() { window.print(); window.close(); }
-            <\/script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
+      closeMesaModal();
+      renderMesas();
+      alert(`Pedido #${nextKdsId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha!`);
     }
 
     setInterval(() => {
-      const now = new Date();
-      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
     window.onload = function() {
-      loadTables();
+      renderMesas();
     };
   </script>
 </body>

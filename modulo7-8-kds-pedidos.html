@@ -76,63 +76,46 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .filter-tabs-container {
-      display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid var(--border);
-    }
-    .filter-tab-btn {
-      background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 9px 16px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; transition: all 0.2s;
-    }
-    .filter-tab-btn:hover, .filter-tab-btn.active {
-      background: var(--primary); color: white; border-color: var(--primary);
-    }
+    /* FILTROS DE ABAS DA COZINHA */
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 6px; }
+    .tab-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 9px 16px; border-radius: 10px; font-weight: bold; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+    .tab-btn:hover, .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-    .kds-section-block { margin-bottom: 25px; }
-    .kds-section-title {
-      font-size: 1.05rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--border);
-    }
-
+    /* GRID DE CARDS DO KDS */
     .kds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .kds-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
-    .kds-card.status-new { border-left: 5px solid var(--info); }
-    .kds-card.status-preparing { border-left: 5px solid var(--warning); }
-    .kds-card.status-ready { border-left: 5px solid var(--success); }
-    .kds-card.status-delivering { border-left: 5px solid var(--primary); }
-    .kds-card.status-finished { border-left: 5px solid var(--text-muted); opacity: 0.75; }
-    .kds-card.status-cancelled { border-left: 5px solid var(--danger); opacity: 0.65; }
-
-    .kds-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-    .kds-id { font-weight: bold; font-size: 1rem; color: var(--primary); }
-    .kds-time { font-size: 0.8rem; color: var(--text-muted); }
-
-    .kds-body { display: flex; flex-direction: column; gap: 8px; }
-    .kds-origin { font-size: 0.88rem; font-weight: bold; }
-    .kds-client { font-size: 0.8rem; color: var(--text-muted); }
-
-    .kds-items-list { list-style: none; padding: 0; background: var(--bg-main); border-radius: 8px; padding: 8px 12px; max-height: 140px; overflow-y: auto; }
-    .kds-items-list li { font-size: 0.85rem; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
-
-    .obs-box { background: rgba(234, 179, 8, 0.12); border: 1px solid var(--warning); color: #fef08a; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
-
-    .kds-actions-row { display: flex; gap: 8px; margin-top: 4px; }
-    .btn-status-action { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; transition: background 0.2s; }
-    .btn-start { background: var(--warning); color: #000; }
-    .btn-finish { background: var(--success); color: white; }
+    .kds-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; border-top: 5px solid var(--border); }
     
-    .btn-cancel-kds { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
-    .btn-cancel-kds:hover { background: var(--danger); color: white; }
+    .kds-card.status-new { border-top-color: var(--warning); }
+    .kds-card.status-preparing { border-top-color: var(--info); }
+    .kds-card.status-ready { border-top-color: var(--success); }
+    .kds-card.status-finished { border-top-color: var(--text-muted); opacity: 0.75; }
+    .kds-card.status-cancelled { border-top-color: var(--danger); opacity: 0.6; }
 
-    .btn-print-kds { background: var(--border); color: var(--text-main); border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; width: 100%; margin-top: 4px; }
-    .btn-print-kds:hover { background: #475569; }
+    .kds-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .order-id-tag { font-weight: bold; font-size: 1.1rem; }
+    .order-origin { font-size: 0.78rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--text-main); }
+    
+    .order-client { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-top: 2px; }
+    .order-time { font-size: 0.78rem; color: var(--text-muted); }
+
+    .items-list { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
+    .item-row { font-size: 0.85rem; display: flex; justify-content: space-between; font-weight: 600; }
+    .order-obs { font-size: 0.78rem; color: var(--warning); background: rgba(234, 179, 8, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid var(--warning); margin-top: 4px; }
+
+    .kds-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .btn-action-kds { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; transition: opacity 0.2s; }
+    .btn-action-kds:hover { opacity: 0.9; }
+
+    .btn-start { background: var(--info); color: #000; }
+    .btn-ready { background: var(--success); color: white; }
+    .btn-finish { background: var(--primary); color: white; }
+    .btn-print { background: var(--border); color: var(--text-main); }
+    .btn-cancel { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
-    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
-    
-    .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; margin-bottom: 8px; }
-    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 440px; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -199,38 +182,37 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>KDS / Monitor de Pedidos</h1>
+        <h1>KDS - Monitor da Cozinha</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <div class="filter-tabs-container">
-      <button class="filter-tab-btn active" onclick="setKdsFilter('all', this)">📋 Todos os Pedidos</button>
-      <button class="filter-tab-btn" onclick="setKdsFilter('new', this)">🟡 Novos Pedidos</button>
-      <button class="filter-tab-btn" onclick="setKdsFilter('preparing', this)">⏳ Em Preparo</button>
-      <button class="filter-tab-btn" onclick="setKdsFilter('ready', this)">🟢 Prontos</button>
-      <button class="filter-tab-btn" onclick="setKdsFilter('finished', this)">✅ Finalizados</button>
-      <button class="filter-tab-btn" onclick="setKdsFilter('cancelled', this)">❌ Cancelados</button>
+    <div class="filter-tabs">
+      <button class="tab-btn active" onclick="setFilter('all', this)">📋 Todos</button>
+      <button class="tab-btn" onclick="setFilter('new', this)">🟡 Novos / Pendentes</button>
+      <button class="tab-btn" onclick="setFilter('preparing', this)">🔵 Em Preparo</button>
+      <button class="tab-btn" onclick="setFilter('ready', this)">🟢 Prontos</button>
+      <button class="tab-btn" onclick="setFilter('finished', this)">🏁 Finalizados</button>
+      <button class="tab-btn" onclick="setFilter('cancelled', this)">🔴 Cancelados</button>
     </div>
 
-    <div id="kdsSectionsWrapper"></div>
+    <div class="kds-grid" id="kdsContainer"></div>
   </main>
 
-  <div class="modal-overlay" id="cancelKdsModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon">❌</div>
-      <div class="custom-modal-title">Cancelar Pedido?</div>
-      <div class="custom-modal-desc" id="cancelKdsDesc">Deseja realmente cancelar e remover este pedido da cozinha?</div>
-      <button class="btn-modal-danger" onclick="confirmKdsCancel()">Sim, Cancelar Pedido</button>
-      <button class="btn-modal-secondary" onclick="closeKdsCancelModal()">Manter Pedido</button>
+  <!-- MODAL DE NOTIFICAÇÃO MODERNA -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card" style="text-align:center;">
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Ação realizada.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
-    let activeKdsFilter = 'all';
-    let selectedCancelOrderId = null;
+    let activeFilter = 'all';
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -260,212 +242,174 @@
       }
     }
 
-    function setKdsFilter(filterKey, btnElement) {
-      activeKdsFilter = filterKey;
-      document.querySelectorAll('.filter-tab-btn').forEach(b => b.classList.remove('active'));
-      btnElement.classList.add('active');
+    function setFilter(filter, btn) {
+      activeFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       renderKds();
     }
 
     function renderKds() {
       loadStoreSettings();
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const wrapper = document.getElementById('kdsSectionsWrapper');
-      wrapper.innerHTML = '';
-
-      if (orders.length === 0) {
-        wrapper.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:40px;">Nenhum pedido cadastrado no momento.</div>`;
-        return;
-      }
+      const container = document.getElementById('kdsContainer');
+      container.innerHTML = '';
 
       let filteredOrders = orders;
-      if (activeKdsFilter === 'new') filteredOrders = orders.filter(o => o.status === 'new');
-      else if (activeKdsFilter === 'preparing') filteredOrders = orders.filter(o => o.status === 'preparing');
-      else if (activeKdsFilter === 'ready') filteredOrders = orders.filter(o => o.status === 'ready' || o.status === 'delivering');
-      else if (activeKdsFilter === 'finished') filteredOrders = orders.filter(o => o.status === 'finished');
-      else if (activeKdsFilter === 'cancelled') filteredOrders = orders.filter(o => o.status === 'cancelled');
+      if (activeFilter !== 'all') {
+        filteredOrders = orders.filter(o => o.status === activeFilter);
+      }
 
       if (filteredOrders.length === 0) {
-        wrapper.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:40px;">Nenhum pedido encontrado para o filtro selecionado.</div>`;
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px; font-weight: bold;">
+            Nenhum pedido encontrado nesta seção.
+          </div>
+        `;
         return;
       }
 
-      const sectionsConfig = [
-        { key: 'new', title: '🟡 Novos Pedidos (Aguardando Aceite)', color: 'var(--info)' },
-        { key: 'preparing', title: '⏳ Pedidos em Preparo', color: 'var(--warning)' },
-        { key: 'ready', title: '🟢 Pedidos Prontos (Prontos / Em Entrega)', color: 'var(--success)' },
-        { key: 'finished', title: '✅ Pedidos Finalizados', color: 'var(--text-muted)' },
-        { key: 'cancelled', title: '❌ Pedidos Cancelados', color: 'var(--danger)' }
-      ];
+      filteredOrders.forEach(order => {
+        let statusClass = `status-${order.status}`;
+        let statusLabel = '';
+        if (order.status === 'new') statusLabel = '🟡 NOVO';
+        else if (order.status === 'preparing') statusLabel = '🔵 EM PREPARO';
+        else if (order.status === 'ready') statusLabel = '🟢 PRONTO';
+        else if (order.status === 'finished') statusLabel = '🏁 FINALIZADO';
+        else if (order.status === 'cancelled') statusLabel = '🔴 CANCELADO';
 
-      sectionsConfig.forEach(section => {
-        let sectionOrders = [];
-        if (section.key === 'ready') {
-          sectionOrders = filteredOrders.filter(o => o.status === 'ready' || o.status === 'delivering');
-        } else {
-          sectionOrders = filteredOrders.filter(o => o.status === section.key);
-        }
+        let itemsHtml = order.items.map(i => `
+          <div class="item-row">
+            <span>${i.qty}x ${i.name}</span>
+            <span>R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</span>
+          </div>
+        `).join('');
 
-        if (sectionOrders.length > 0) {
-          let sectionHtml = `
-            <div class="kds-section-block">
-              <div class="kds-section-title" style="color:${section.color}">
-                ${section.title} (${sectionOrders.length})
-              </div>
-              <div class="kds-grid">
+        let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
+
+        let actionsHtml = '';
+        if (order.status === 'new') {
+          actionsHtml = `
+            <button class="btn-action-kds btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">👨‍🍳 Iniciar Preparo</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
           `;
-
-          sectionOrders.forEach(o => {
-            let statusClass = `status-${o.status}`;
-            let buttonText = 'Aceitar / Iniciar Preparo ⏳';
-            let buttonActionClass = 'btn-start';
-            let showActions = true;
-
-            if (o.status === 'preparing') {
-              buttonText = 'Marcar como Pronto 🟢';
-              buttonActionClass = 'btn-finish';
-            } else if (o.status === 'ready' || o.status === 'delivering') {
-              buttonText = o.status === 'delivering' ? 'Em Rota de Entrega 🛵' : 'Pronto p/ Retirada/Entrega 🟢';
-              showActions = false;
-            } else if (o.status === 'finished' || o.status === 'cancelled') {
-              showActions = false;
-            }
-
-            const itemsList = o.items.map(i => `<li><strong>${i.qty}x</strong> ${i.name}</li>`).join('');
-
-            sectionHtml += `
-              <div class="kds-card ${statusClass}">
-                <div class="kds-header">
-                  <span class="kds-id">#${o.id}</span>
-                  <span class="kds-time">🕒 ${o.time || '--:--'}</span>
-                </div>
-
-                <div class="kds-body">
-                  <div class="kds-origin">📍 ${o.origin || 'Balcão'}</div>
-                  <div class="kds-client">👤 ${o.client || 'Cliente'}</div>
-                  
-                  <ul class="kds-items-list">
-                    ${itemsList}
-                  </ul>
-
-                  ${o.observation ? `<div class="obs-box">⚠️ Obs: ${o.observation}</div>` : ''}
-                </div>
-
-                ${showActions ? `
-                  <div class="kds-actions-row">
-                    <button class="btn-status-action ${buttonActionClass}" onclick="advanceOrderStatus(${o.id})">
-                      ${buttonText}
-                    </button>
-                    <button class="btn-cancel-kds" onclick="promptKdsCancel(${o.id})" title="Cancelar Pedido">
-                      ❌
-                    </button>
-                  </div>
-                ` : `
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                    <span style="font-size:0.78rem; color:var(--text-muted); font-weight:bold;">Status: ${o.status.toUpperCase()}</span>${o.status !== 'finished' && o.status !== 'cancelled' ? `
-                      <button class="btn-cancel-kds" style="padding:6px 10px;" onclick="promptKdsCancel(${o.id})" title="Cancelar">❌</button>
-                    ` : ''}
-                  </div>
-                `}
-
-                <button class="btn-print-kds" onclick="printKdsTicket(${o.id})">🖨️ Comanda Cozinha</button>
-              </div>
-            `;
-          });
-
-          sectionHtml += `</div></div>`;
-          wrapper.innerHTML += sectionHtml;
+        } else if (order.status === 'preparing') {
+          actionsHtml = `
+            <button class="btn-action-kds btn-ready" onclick="updateOrderStatus(${order.id}, 'ready')">✅ Marcar como Pronto</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
+          `;
+        } else if (order.status === 'ready') {
+          actionsHtml = `
+            <button class="btn-action-kds btn-finish" onclick="updateOrderStatus(${order.id}, 'finished')">🎯 Finalizar / Entregar Pedido</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
+          `;
+        } else {
+          actionsHtml = `
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
+          `;
         }
+
+        container.innerHTML += `
+          <div class="kds-card ${statusClass}">
+            <div>
+              <div class="kds-card-header">
+                <span class="order-id-tag">#${order.id}</span>
+                <span class="order-origin">${order.origin || 'Balcão'}</span>
+              </div>
+              <div class="order-client">👤 ${order.client || 'Cliente'}</div>
+              <div class="order-time">🕒 Horário: ${order.time} | <strong>Status: ${statusLabel}</strong></div>
+              <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+              
+              <div class="items-list">${itemsHtml}</div>
+              ${obsHtml}
+              
+              <div style="font-weight:bold; font-size:0.9rem; margin-top:10px; color:var(--success);">
+                Total: R$ ${order.total.toFixed(2).replace('.', ',')}
+              </div>
+            </div>
+
+            <div class="kds-actions">${actionsHtml}</div>
+          </div>
+        `;
       });
     }
 
-    function advanceOrderStatus(orderId) {
+    function updateOrderStatus(id, newStatus) {
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = orders.find(item => item.id === orderId);
-      if (o) {
-        if (o.status === 'new') {
-          o.status = 'preparing';
-        } else if (o.status === 'preparing') {
-          o.status = 'ready';
-        }
+      let order = orders.find(o => o.id === id);
+
+      if (order) {
+        order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         renderKds();
+
+        let msg = '';
+        if (newStatus === 'preparing') msg = `Pedido #${id} em preparo.`;
+        else if (newStatus === 'ready') msg = `Pedido #${id} marcado como PRONTO!`;
+        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e movido para a seção de encerrados.`;
+
+        showNoticeModal('Atualização do Pedido', msg, '👨‍🍳');
       }
     }
 
-    function promptKdsCancel(orderId) {
-      selectedCancelOrderId = orderId;
-      document.getElementById('cancelKdsDesc').innerText = `Deseja realmente cancelar e remover o pedido #${orderId}?`;
-      document.getElementById('cancelKdsModal').classList.add('active');
-    }
-
-    function closeKdsCancelModal() {
-      selectedCancelOrderId = null;
-      document.getElementById('cancelKdsModal').classList.remove('active');
-    }
-
-    /* CONFIRMAR CANCELAMENTO E SUBTRAIR DO DASHBOARD */
-    function confirmKdsCancel() {
-      if (selectedCancelOrderId) {
-        let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        const o = orders.find(item => item.id === selectedCancelOrderId);
-        
-        if (o && o.status !== 'cancelled') {
-          o.status = 'cancelled';
-          localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-
-          // Subtrai o valor do pedido do faturamento do Dashboard (vortex_vendas_hoje)
-          if (o.total && o.total > 0) {
-            let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-            let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-            let currentSales = parseFloat(cleanedSalesStr) || 0;
-
-            currentSales = Math.max(0, currentSales - o.total);
-            localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-          }
-        }
-
-        closeKdsCancelModal();
-        renderKds();
-      }
-    }
-
-    function printKdsTicket(orderId) {
+    function cancelOrder(id) {
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = orders.find(item => item.id === orderId);
-      if (!o) return;
+      let order = orders.find(o => o.id === id);
 
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      const itemsHtml = o.items.map(i => `<tr><td style="font-size:16px;"><strong>${i.qty}x</strong> ${i.name}</td></tr>`).join('');
+      if (order && order.status !== 'cancelled') {
+        order.status = 'cancelled';
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-      const printWin = window.open('', '_blank', 'width=380,height=500');
+        // Subtrai do faturamento do dia se já havia sido somado
+        let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+        let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+        let currentSales = parseFloat(cleanedSalesStr) || 0;
+        currentSales = Math.max(0, currentSales - order.total);
+
+        localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        renderKds();
+        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado e o valor de R$ ${order.total.toFixed(2).replace('.', ',')} foi abatido do Dashboard.`, '🔴');
+      }
+    }
+
+    function printOrderTicket(id) {
+      let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let order = orders.find(o => o.id === id);
+      if (!order) return;
+
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      const printWin = window.open('', '_blank', 'width=380,height=600');
+
+      let itemsTxt = order.items.map(i => `
+        <tr>
+          <td style="text-align:left;">${i.qty}x ${i.name}</td>
+          <td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td>
+        </tr>
+      `).join('');
+
       printWin.document.write(`
         <html>
-          <head>
-            <title>Comanda Cozinha #${o.id}</title>
-            <style>
-              body { font-family: monospace; font-size: 14px; color: #000; width: 280px; margin: 0 auto; padding: 10px; }
-              .text-center { text-align: center; }
-              .line { border-bottom: 2px solid #000; margin: 8px 0; }
-              table { width: 100%; }
-              h2, h3 { margin: 4px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="text-center">
-              <h2>${storeSettings.storeName}</h2>
-              <h3>COZINHA / PRODUÇÃO #${o.id}</h3>
-              <p>Horário: ${o.time || '--:--'}</p>
-            </div>
-            <div class="line"></div>
-            <p><strong>ORIGEM:</strong> ${o.origin}<br><strong>CLIENTE:</strong> ${o.client}</p>
-            <div class="line"></div>
-            <table>
-              <tbody>${itemsHtml}</tbody>
+          <head><title>Comanda - Pedido #${order.id}</title></head>
+          <body style="font-family:monospace; font-size:12px; width:280px; padding:10px; margin:0 auto;">
+            <h2 style="text-align:center; margin:0;">${settings.storeName || 'VORTEX FOOD'}</h2>
+            <p style="text-align:center; margin:4px 0 10px 0;">COMANDA DE PRODUÇÃO</p>
+            <hr>
+            <p><strong>PEDIDO #${order.id}</strong></p>
+            <p>Origem: ${order.origin || 'Balcão'}</p>
+            <p>Cliente: ${order.client || 'Cliente'}</p>
+            <p>Horário: ${order.time}</p>
+            <hr>
+            <table style="width:100%; border-collapse:collapse;">
+              ${itemsTxt}
             </table>
-            <div class="line"></div>
-            ${o.observation ? `<p style="font-size:14px; font-weight:bold;">⚠️ OBS: ${o.observation}</p><div class="line"></div>` : ''}
-            <p class="text-center">VORTEX FOOD - KDS</p>
+            ${order.observation ? `<hr><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
+            <hr>
+            <p style="text-align:right; font-size:14px;"><strong>TOTAL: R$ ${order.total.toFixed(2).replace('.', ',')}</strong></p>
+            <p style="text-align:center; margin-top:20px;">🌪️ Vortex Food System</p>
             <script>window.onload = function() { window.print(); window.close(); }<\/script>
           </body>
         </html>
@@ -473,11 +417,21 @@
       printWin.document.close();
     }
 
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
+
     setInterval(() => {
-      const now = new Date();
-      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
       renderKds();
-    }, 2500);
+    }, 2000);
 
     window.onload = function() {
       renderKds();

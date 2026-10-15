@@ -160,7 +160,7 @@
     /* Layout do Delivery */
     .delivery-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.2fr 1fr;
       gap: 20px;
     }
 
@@ -198,7 +198,7 @@
 
     /* Formulário */
     .form-group {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .form-row {
@@ -208,10 +208,10 @@
     }
 
     label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       font-weight: 600;
     }
 
@@ -220,19 +220,84 @@
       border: 1px solid var(--border);
       color: var(--text-main);
       width: 100%;
-      padding: 10px;
+      padding: 9px;
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       outline: none;
+    }
+
+    /* Campos Bloqueados / Automáticos */
+    input:read-only {
+      background: rgba(30, 41, 59, 0.5);
+      color: var(--text-muted);
+      border-color: rgba(51, 65, 85, 0.5);
+      cursor: not-allowed;
     }
 
     textarea {
       resize: none;
-      height: 60px;
+      height: 55px;
     }
 
     input:focus, select:focus, textarea:focus {
       border-color: var(--primary);
+    }
+
+    /* Seletor Rápido de Produtos para Delivery */
+    .product-selector-box {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .products-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      max-height: 140px;
+      overflow-y: auto;
+      margin-top: 8px;
+      padding-right: 4px;
+    }
+
+    .mini-product-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .mini-product-card:hover {
+      border-color: var(--primary);
+      background: rgba(249, 115, 22, 0.1);
+    }
+
+    .delivery-cart-list {
+      max-height: 110px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    .delivery-cart-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.83rem;
     }
 
     .btn-primary {
@@ -246,7 +311,7 @@
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
-      margin-top: 10px;
+      margin-top: 5px;
     }
 
     .btn-primary:hover { background: var(--primary-hover); }
@@ -256,7 +321,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: 500px;
+      max-height: 550px;
       overflow-y: auto;
     }
 
@@ -395,45 +460,77 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label for="clientName">Nome do Cliente:</label>
+              <label for="clientName">Nome do Cliente *:</label>
               <input type="text" id="clientName" placeholder="Ex: Lucas Mendes" required>
             </div>
             <div class="form-group">
-              <label for="clientPhone">Telefone / WhatsApp:</label>
+              <label for="clientPhone">Telefone / WhatsApp *:</label>
               <input type="text" id="clientPhone" placeholder="(00) 00000-0000" required>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="clientCep">CEP:</label>
-              <input type="text" id="clientCep" placeholder="00000-000" onblur="searchCep(this.value)" required>
+              <label for="clientCep">CEP *:</label>
+              <input type="text" id="clientCep" placeholder="00000-000" oninput="maskAndSearchCep(this)" required>
             </div>
             <div class="form-group">
-              <label for="clientNumber">Número:</label>
+              <label for="clientNumber">Número da Residência *:</label>
               <input type="text" id="clientNumber" placeholder="Ex: 142" required>
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="clientStreet">Endereço / Rua:</label>
-            <input type="text" id="clientStreet" placeholder="Preenchimento automático pelo CEP" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="clientStreet">Endereço / Rua (Automático):</label>
+              <input type="text" id="clientStreet" placeholder="Aguardando CEP..." readonly required>
+            </div>
+            <div class="form-group">
+              <label for="clientNeighborhood">Bairro (Automático):</label>
+              <input type="text" id="clientNeighborhood" placeholder="Aguardando CEP..." readonly required>
+            </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="clientNeighborhood">Bairro:</label>
-              <input type="text" id="clientNeighborhood" placeholder="Bairro" required>
+              <label for="clientCity">Cidade (Automático):</label>
+              <input type="text" id="clientCity" placeholder="Aguardando CEP..." readonly required>
             </div>
             <div class="form-group">
-              <label for="orderItemDesc">Itens do Pedido:</label>
-              <input type="text" id="orderItemDesc" placeholder="Ex: 1x Pizza Calabresa G" required>
+              <label for="clientState">Estado (Automático):</label>
+              <input type="text" id="clientState" placeholder="UF" readonly required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="clientComplement">Complemento (Opcional):</label>
+              <input type="text" id="clientComplement" placeholder="Ex: Apto 32B">
+            </div>
+            <div class="form-group">
+              <label for="clientReference">Ponto de Referência (Opcional):</label>
+              <input type="text" id="clientReference" placeholder="Ex: Próximo à praça">
+            </div>
+          </div>
+
+          <!-- SELETOR INTELIGENTE DE PRODUTOS -->
+          <div class="form-group">
+            <label>Itens do Pedido (Clique para adicionar):</label>
+            <div class="product-selector-box">
+              <div style="font-size:0.75rem; color:var(--text-muted);">Cardápio Rápido:</div>
+              <div class="products-mini-grid" id="productsMiniGrid">
+                <!-- Renderizado via JS -->
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">Itens Selecionados:</div>
+              <div class="delivery-cart-list" id="deliveryCartList">
+                <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>
+              </div>
             </div>
           </div>
 
           <!-- CAMPO OBSERVAÇÃO DO DELIVERY -->
           <div class="form-group">
-            <label for="clientObservation">Observação do Pedido:</label>
+            <label for="clientObservation">Observação do Pedido (Opcional):</label>
             <textarea id="clientObservation" placeholder="Ex: Retirar cebola, interfone quebrado..."></textarea>
           </div>
 
@@ -452,19 +549,31 @@
     </div>
   </main>
 
-  <!-- MODAL DE SUCESSO -->
+  <!-- MODAL DE AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="noticeIcon">🎉</div>
       <div class="custom-modal-title" id="noticeTitle">Sucesso!</div>
-      <div class="custom-modal-desc" id="noticeDesc">Pedido de delivery registrado e enviado para a cozinha.</div>
+      <div class="custom-modal-desc" id="noticeDesc">Pedido de delivery registrado.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
+    const catalogProducts = [
+      { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
+      { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
+      { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
+      { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
+      { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
+      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
+      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+    ];
+
+    let deliveryCart = [];
     let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
     ];
 
     function toggleMenu() {
@@ -472,21 +581,79 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    // ViaCEP API Automática
-    async function searchCep(cep) {
-      const cleanCep = cep.replace(/\D/g, '');
-      if (cleanCep.length !== 8) return;
+    function renderProductsMiniGrid() {
+      const grid = document.getElementById('productsMiniGrid');
+      grid.innerHTML = '';
+      catalogProducts.forEach(p => {
+        grid.innerHTML += `
+          <div class="mini-product-card" onclick="addDeliveryItem('${p.name}', ${p.price}, '${p.type}')">
+            <span style="font-weight:600; font-size:0.8rem;">${p.name}</span>
+            <span style="color:var(--success); font-size:0.75rem;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+          </div>
+        `;
+      });
+    }
 
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const data = await response.json();
-        if (!data.erro) {
-          document.getElementById('clientStreet').value = data.logradouro;
-          document.getElementById('clientNeighborhood').value = data.bairro;
-          document.getElementById('clientNumber').focus();
+    function addDeliveryItem(name, price, type) {
+      const existing = deliveryCart.find(i => i.name === name);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        deliveryCart.push({ name, price, type, qty: 1 });
+      }
+      renderDeliveryCart();
+    }
+
+    function changeDeliveryCartQty(index, delta) {
+      deliveryCart[index].qty += delta;
+      if (deliveryCart[index].qty <= 0) {
+        deliveryCart.splice(index, 1);
+      }
+      renderDeliveryCart();
+    }
+
+    function renderDeliveryCart() {
+      const list = document.getElementById('deliveryCartList');
+      if (deliveryCart.length === 0) {
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>`;
+        return;
+      }
+
+      let html = '';
+      deliveryCart.forEach((item, idx) => {
+        html += `
+          <div class="delivery-cart-row">
+            <span><strong>${item.qty}x</strong> ${item.name}</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer;">-</button>
+              <span style="font-weight:bold; width:15px; text-align:center;">${item.qty}</span>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer;">+</button>
+            </div>
+          </div>
+        `;
+      });
+      list.innerHTML = html;
+    }
+
+    // Busca Automática ViaCEP
+    async function maskAndSearchCep(input) {
+      const cep = input.value.replace(/\D/g, '');
+      if (cep.length === 8) {
+        try {
+          const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          const data = await response.json();
+          if (!data.erro) {
+            document.getElementById('clientStreet').value = data.logradouro;
+            document.getElementById('clientNeighborhood').value = data.bairro;
+            document.getElementById('clientCity').value = data.localidade;
+            document.getElementById('clientState').value = data.uf;
+            document.getElementById('clientNumber').focus();
+          } else {
+            showNoticeModal('CEP não encontrado', 'Verifique o CEP digitado.', '⚠️');
+          }
+        } catch (err) {
+          console.error('Erro ViaCEP:', err);
         }
-      } catch (err) {
-        console.error('Erro ao buscar CEP:', err);
       }
     }
 
@@ -518,22 +685,34 @@
     function registerDeliveryOrder(event) {
       event.preventDefault();
 
+      if (deliveryCart.length === 0) {
+        showNoticeModal('Carrinho Vazio', 'Selecione pelo menos um produto para o pedido de delivery.', '⚠️');
+        return;
+      }
+
       const client = document.getElementById('clientName').value.trim();
       const phone = document.getElementById('clientPhone').value.trim();
       const cep = document.getElementById('clientCep').value.trim();
       const number = document.getElementById('clientNumber').value.trim();
       const street = document.getElementById('clientStreet').value.trim();
       const neighborhood = document.getElementById('clientNeighborhood').value.trim();
-      const itemsText = document.getElementById('orderItemDesc').value.trim();
+      const city = document.getElementById('clientCity').value.trim();
+      const state = document.getElementById('clientState').value.trim();
+      const complement = document.getElementById('clientComplement').value.trim();
+      const reference = document.getElementById('clientReference').value.trim();
       const observation = document.getElementById('clientObservation').value.trim();
 
-      const fullAddress = `${street}, ${number} - ${neighborhood} (CEP: ${cep})`;
+      let fullAddress = `${street}, ${number}`;
+      if (complement) fullAddress += `, ${complement}`;
+      fullAddress += ` - ${neighborhood}, ${city}/${state} (CEP: ${cep})`;
+      if (reference) fullAddress += ` [Ref: ${reference}]`;
+
+      const itemsText = deliveryCart.map(i => `${i.qty}x ${i.name}`).join(', ');
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
       const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
 
-      // 1. Adiciona na lista de entregas locais
+      // 1. Adiciona nas entregas ativas
       const newDel = {
         id: newDeliveryId,
         client,
@@ -548,35 +727,32 @@
       deliveries.unshift(newDel);
       localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-      // 2. ENVIA AUTOMATICAMENTE PARA A COZINHA (KDS) COM A OBSERVAÇÃO
+      // 2. Envia para a Cozinha (KDS)
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
-
-      // Transforma o texto de itens num array estruturado para o KDS
-      const parsedItems = itemsText.split(',').map(part => {
-        const clean = part.trim();
-        const match = clean.match(/^(\d+)x\s*(.*)$/);
-        if (match) {
-          return { qty: parseInt(match[1]), name: match[2], type: 'kitchen' };
-        }
-        return { qty: 1, name: clean, type: 'kitchen' };
-      });
 
       kdsOrders.unshift({
         id: nextKdsId,
         origin: `Delivery #${newDeliveryId}`,
         client: client,
         observation: observation,
-        items: parsedItems,
+        items: [...deliveryCart],
         status: 'new',
         time: timeStr
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa o formulário e atualiza a tela
+      // Limpa formulário e carrinho
       document.getElementById('deliveryForm').reset();
+      document.getElementById('clientStreet').value = '';
+      document.getElementById('clientNeighborhood').value = '';
+      document.getElementById('clientCity').value = '';
+      document.getElementById('clientState').value = '';
+      deliveryCart = [];
+      renderDeliveryCart();
       renderDeliveries();
-      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha (KDS).`, '🎉');
+
+      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha!`, '🎉');
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -587,16 +763,17 @@
     }
 
     function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
+      document.getElementById('noticeModal'].classList.remove('active');
     }
 
-    // Atualiza o relógio do topo em tempo real
+    // Atualiza relógio do topo
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
     }, 1000);
 
     window.addEventListener('DOMContentLoaded', () => {
+      renderProductsMiniGrid();
       renderDeliveries();
     });
   </script>

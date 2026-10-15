@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Delivery & Gestão de Entregas</title>
+  <title>Vortex Food - Delivery & Entregas</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -123,7 +123,7 @@
     .main-content {
       flex: 1;
       margin-left: 260px;
-      padding: 20px 20px 80px 20px;
+      padding: 20px;
       width: calc(100% - 260px);
     }
 
@@ -157,434 +157,15 @@
 
     header h1 { font-size: 1.5rem; }
 
-    .btn-new-order {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.95rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.2s;
-    }
-
-    .btn-new-order:hover { background: var(--primary-hover); }
-
-    /* Métricas do Delivery */
-    .metrics-grid {
+    /* Layout do Delivery */
+    .delivery-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
     }
 
-    .metric-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .metric-icon {
-      font-size: 1.8rem;
-      background: rgba(15, 23, 42, 0.6);
-      padding: 10px;
-      border-radius: 10px;
-    }
-
-    .metric-info h3 { font-size: 0.8rem; color: var(--text-muted); font-weight: normal; }
-    .metric-info p { font-size: 1.25rem; font-weight: bold; margin-top: 2px; }
-
-    /* Quadro Kanban */
-    .kanban-board {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 15px;
-      align-items: start;
-    }
-
-    .kanban-column {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 15px;
-      min-height: 500px;
-    }
-
-    .column-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 12px;
-      margin-bottom: 15px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .column-title {
-      font-size: 0.90rem;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .column-count {
-      background: var(--bg-main);
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      border: 1px solid var(--border);
-    }
-
-    .cards-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    /* Cartão do Pedido */
-    .delivery-card {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .delivery-card:hover {
-      transform: translateY(-2px);
-      border-color: var(--primary);
-    }
-
-    .delivery-card.cancelled-card {
-      opacity: 0.75;
-      border-color: rgba(239, 68, 68, 0.4);
-    }
-
-    .card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .order-id { font-weight: bold; font-size: 0.95rem; color: var(--primary); }
-    .order-time { font-size: 0.75rem; color: var(--text-muted); }
-
-    .client-info { font-size: 0.85rem; }
-    .client-name { font-weight: 600; }
-    .client-address { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; line-height: 1.3; }
-
-    .order-items {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      background: rgba(30, 41, 59, 0.5);
-      padding: 8px;
-      border-radius: 6px;
-      line-height: 1.4;
-    }
-
-    .cancel-reason-tag {
-      color: var(--danger);
-      font-size: 0.75rem;
-      margin-top: 4px;
-      display: block;
-      font-style: italic;
-    }
-
-    .card-bottom {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .order-price { font-weight: bold; font-size: 0.95rem; color: var(--success); }
-
-    .card-actions-group {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-move {
-      background: var(--border);
-      color: var(--text-main);
-      border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-move:hover { background: var(--primary); color: white; }
-
-    .btn-cancel-order {
-      background: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .btn-cancel-order:hover { background: var(--danger); color: white; }
-
-    /* ESTILIZAÇÃO COMPLETA DOS MODAIS ESCUROS E SEM MENUS BRANCOS NATIVOS */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-      padding: 10px;
-    }
-
-    .modal-overlay.active { display: flex; }
-
-    .modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px 20px 30px 20px;
-      width: 100%;
-      max-width: 540px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-      max-height: 85vh;
-      overflow-y: auto;
-      margin: auto;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 12px;
-      margin-bottom: 15px;
-      position: sticky;
-      top: 0;
-      background: var(--bg-card);
-      z-index: 10;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 14px;
-    }
-
-    .form-group label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .form-group label .req {
-      color: var(--danger);
-      font-weight: bold;
-      margin-left: 3px;
-    }
-
-    .form-group input, 
-    .form-group textarea {
-      background-color: var(--bg-main) !important;
-      border: 1px solid var(--border) !important;
-      color: var(--text-main) !important;
-      padding: 12px !important;
-      border-radius: 10px !important;
-      font-size: 0.9rem !important;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .form-group input:focus {
-      border-color: var(--primary) !important;
-      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
-    }
-
-    .form-group input:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background-color: #0b1120 !important;
-    }
-
-    .cep-loading-spinner {
-      font-size: 0.75rem;
-      color: var(--info);
-      margin-top: 2px;
-      display: none;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .form-row .form-group { flex: 1; }
-
-    /* NOVO SELETOR CUSTOMIZADO DE PRODUTOS (SEM TELA BRANCA NATIVA) */
-    .products-selection-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 180px;
-      overflow-y: auto;
-      margin-top: 8px;
-      padding-right: 4px;
-    }
-
-    .product-select-card {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      padding: 10px 12px;
-      border-radius: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .product-select-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .product-select-name {
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-
-    .product-select-price {
-      font-size: 0.8rem;
-      color: var(--primary);
-      font-weight: bold;
-    }
-
-    .btn-add-quick {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    .btn-add-quick:active {
-      transform: scale(0.95);
-    }
-
-    /* Pagamento em Botões Customizados */
-    .payment-options-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-top: 6px;
-    }
-
-    .payment-btn-option {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 10px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
-    }
-
-    .payment-btn-option.active {
-      background: rgba(249, 115, 22, 0.15);
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    /* Pagamento e Troco */
-    .cash-change-container {
-      display: none;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      margin-top: 10px;
-      margin-bottom: 12px;
-    }
-
-    .cash-change-container.active { display: block; }
-
-    .change-display-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-      margin-top: 6px;
-      font-size: 0.95rem;
-    }
-
-    /* Modais Profissionais Customizados */
-    .custom-modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 25px;
-      width: 100%;
-      max-width: 420px;
-      text-align: center;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-      max-height: 85vh;
-      overflow-y: auto;
-    }
-
-    .custom-modal-icon { font-size: 2.8rem; margin-bottom: 12px; }
-    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; }
-
-    .custom-modal-actions { display: flex; gap: 10px; }
-
-    .btn-modal-custom {
-      flex: 1;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; }
-    .btn-modal-danger { background: var(--danger); color: white; }
-    .btn-modal-secondary { background: var(--border); color: var(--text-main); }
-
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
+      .delivery-grid { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -592,14 +173,158 @@
       .main-content {
         margin-left: 0;
         width: 100%;
-        padding: 15px 15px 100px 15px;
+        padding: 15px 15px 80px 15px;
       }
       .toggle-btn { display: block; }
-      
-      .modal-card {
-        padding: 15px 15px 30px 15px;
-        max-height: 88vh;
-      }
+    }
+
+    .card-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Formulário */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    input, select, textarea {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    textarea {
+      resize: none;
+      height: 60px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    /* Lista de Entregas Ativas */
+    .delivery-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .delivery-item {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .delivery-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .tag-status {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--info);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+    }
+
+    /* Modais Customizados */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .custom-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 25px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+
+    .btn-modal-primary {
+      background: var(--primary);
+      color: white;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
     }
   </style>
 </head>
@@ -654,763 +379,209 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Delivery & Gestão de Entregas</h1>
+        <h1>Delivery & Entregas</h1>
       </div>
-      <button class="btn-new-order" onclick="openNewOrderModal()">➕ Novo Pedido de Delivery</button>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
     </header>
 
-    <!-- MÉTRICAS -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-icon">📥</div>
-        <div class="metric-info">
-          <h3>Pendentes</h3>
-          <p id="metricPending">0</p>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon">👨‍🍳</div>
-        <div class="metric-info">
-          <h3>Em Preparo</h3>
-          <p id="metricPreparing">0</p>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon">🛵</div>
-        <div class="metric-info">
-          <h3>Em Trânsito</h3>
-          <p id="metricDelivery">0</p>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon">✅</div>
-        <div class="metric-info">
-          <h3>Concluídos Hoje</h3>
-          <p id="metricDone">0</p>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon">🚫</div>
-        <div class="metric-info">
-          <h3>Cancelados</h3>
-          <p id="metricCancelled" style="color:var(--danger)">0</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- QUADRO KANBAN DE PEDIDOS -->
-    <div class="kanban-board">
+    <div class="delivery-grid">
       
-      <!-- Coluna 1: Recebidos -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <span class="column-title">📥 Recebidos</span>
-          <span class="column-count" id="countPending">0</span>
-        </div>
-        <div class="cards-container" id="colPending"></div>
+      <!-- Coluna 1: Cadastrar Novo Pedido de Delivery -->
+      <div class="card-box">
+        <div class="card-title">📝 Novo Pedido de Delivery</div>
+        <form id="deliveryForm" onsubmit="registerDeliveryOrder(event)">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="clientName">Nome do Cliente:</label>
+              <input type="text" id="clientName" placeholder="Ex: Lucas Mendes" required>
+            </div>
+            <div class="form-group">
+              <label for="clientPhone">Telefone / WhatsApp:</label>
+              <input type="text" id="clientPhone" placeholder="(00) 00000-0000" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="clientCep">CEP:</label>
+              <input type="text" id="clientCep" placeholder="00000-000" onblur="searchCep(this.value)" required>
+            </div>
+            <div class="form-group">
+              <label for="clientNumber">Número:</label>
+              <input type="text" id="clientNumber" placeholder="Ex: 142" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="clientStreet">Endereço / Rua:</label>
+            <input type="text" id="clientStreet" placeholder="Preenchimento automático pelo CEP" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="clientNeighborhood">Bairro:</label>
+              <input type="text" id="clientNeighborhood" placeholder="Bairro" required>
+            </div>
+            <div class="form-group">
+              <label for="orderItemDesc">Itens do Pedido:</label>
+              <input type="text" id="orderItemDesc" placeholder="Ex: 1x Pizza Calabresa G" required>
+            </div>
+          </div>
+
+          <!-- CAMPO OBSERVAÇÃO DO DELIVERY -->
+          <div class="form-group">
+            <label for="clientObservation">Observação do Pedido:</label>
+            <textarea id="clientObservation" placeholder="Ex: Retirar cebola, interfone quebrado..."></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary">Cadastrar & Enviar p/ Cozinha 🛵</button>
+        </form>
       </div>
 
-      <!-- Coluna 2: Em Preparo -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <span class="column-title">👨‍🍳 Em Preparo</span>
-          <span class="column-count" id="countPreparing">0</span>
+      <!-- Coluna 2: Lista de Entregas Ativas -->
+      <div class="card-box">
+        <div class="card-title">🛵 Entregas em Andamento</div>
+        <div class="delivery-list" id="deliveryListContainer">
+          <!-- Renderizado via JS -->
         </div>
-        <div class="cards-container" id="colPreparing"></div>
-      </div>
-
-      <!-- Coluna 3: Saiu para Entrega -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <span class="column-title">🛵 Saiu p/ Entrega</span>
-          <span class="column-count" id="countDelivery">0</span>
-        </div>
-        <div class="cards-container" id="colDelivery"></div>
-      </div>
-
-      <!-- Coluna 4: Entregues / Concluídos -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <span class="column-title">✅ Concluídos</span>
-          <span class="column-count" id="countDone">0</span>
-        </div>
-        <div class="cards-container" id="colDone"></div>
-      </div>
-
-      <!-- Coluna 5: Cancelados (Salvo para Relatórios) -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <span class="column-title" style="color:var(--danger)">🚫 Cancelados</span>
-          <span class="column-count" id="countCancelled">0</span>
-        </div>
-        <div class="cards-container" id="colCancelled"></div>
       </div>
 
     </div>
   </main>
 
-  <!-- MODAL DE NOVO PEDIDO DE DELIVERY (100% REFORMULADO) -->
-  <div class="modal-overlay" id="newOrderModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2>Novo Pedido de Delivery</h2>
-        <button class="close-modal" onclick="closeNewOrderModal()">✕</button>
-      </div>
-
-      <div class="form-group">
-        <label for="clientName">Nome do Cliente <span class="req">*</span></label>
-        <input type="text" id="clientName" placeholder="Ex: Gabriel Andrade">
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="clientPhone">Telefone / WhatsApp <span class="req">*</span></label>
-          <input type="text" id="clientPhone" placeholder="(11) 95336-5177" oninput="maskPhone(this)">
-        </div>
-        <div class="form-group">
-          <label for="deliveryFee">Taxa de Entrega:</label>
-          <input type="text" id="deliveryFee" value="R$ 5,00" oninput="maskCurrencyInput(this, calculateOrderTotal)">
-        </div>
-      </div>
-
-      <!-- LOCALIZAÇÃO VIA CEP AUTOMÁTICA -->
-      <div class="form-row">
-        <div class="form-group" style="flex: 1.2;">
-          <label for="clientCep">CEP <span class="req">*</span></label>
-          <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" oninput="maskAndFetchCep(this)">
-          <span class="cep-loading-spinner" id="cepSpinner">🔍 Buscando CEP...</span>
-        </div>
-        <div class="form-group" style="flex: 0.8;">
-          <label for="clientNumber">Número <span class="req">*</span></label>
-          <input type="text" id="clientNumber" placeholder="Ex: 590">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="clientStreet">Rua / Logradouro:</label>
-        <input type="text" id="clientStreet" placeholder="Preenchido via CEP" disabled>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="clientNeighborhood">Bairro:</label>
-          <input type="text" id="clientNeighborhood" placeholder="Bairro" disabled>
-        </div>
-        <div class="form-group">
-          <label for="clientCity">Cidade / UF:</label>
-          <input type="text" id="clientCity" placeholder="Cidade/UF" disabled>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="clientComplement">Complemento (Opcional):</label>
-        <input type="text" id="clientComplement" placeholder="Ex: Ap 42, Bloco B">
-      </div>
-
-      <div class="form-group">
-        <label for="clientReference">Ponto de Referência (Opcional):</label>
-        <input type="text" id="clientReference" placeholder="Ex: Próximo à padaria">
-      </div>
-
-      <!-- CONSTRUTOR DE ITENS - LISTA CUSTOMIZADA (SEM TELA BRANCA NATIVA DO ANDROID) -->
-      <div style="margin-bottom: 15px;">
-        <label style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Selecione os Produtos do Cardápio: <span class="req">*</span></label>
-        <div class="products-selection-list">
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">X-Burger Especial</span>
-              <span class="product-select-price">R$ 28,50</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('X-Burger Especial', 28.50)">+ Adicionar</button>
-          </div>
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">X-Salada Duplo</span>
-              <span class="product-select-price">R$ 32,00</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('X-Salada Duplo', 32.00)">+ Adicionar</button>
-          </div>
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">Pizza Calabresa G</span>
-              <span class="product-select-price">R$ 55,00</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('Pizza Calabresa G', 55.00)">+ Adicionar</button>
-          </div>
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">Batata Frita M</span>
-              <span class="product-select-price">R$ 18,00</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('Batata Frita M', 18.00)">+ Adicionar</button>
-          </div>
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">Refrigerante 2L</span>
-              <span class="product-select-price">R$ 14,00</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('Refrigerante 2L', 14.00)">+ Adicionar</button>
-          </div>
-          <div class="product-select-card">
-            <div class="product-select-info">
-              <span class="product-select-name">Suco Natural 500ml</span>
-              <span class="product-select-price">R$ 10,00</span>
-            </div>
-            <button class="btn-add-quick" onclick="addDirectItem('Suco Natural 500ml', 10.00)">+ Adicionar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- LISTA DE ITENS INCLUÍDOS NO PEDIDO -->
-      <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 15px;">
-        <div style="font-size:0.85rem; font-weight:bold; color:var(--text-muted); margin-bottom:8px;">Itens Selecionados no Pedido:</div>
-        <div id="builderItemsList" style="display:flex; flex-direction:column; gap:6px;">
-          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>
-        </div>
-      </div>
-
-      <!-- FORMA DE PAGAMENTO EM BOTÕES CUSTOMIZADOS -->
-      <div class="form-group">
-        <label>Forma de Pagamento:</label>
-        <div class="payment-options-grid">
-          <div class="payment-btn-option active" onclick="selectPaymentMethod('Pix', this)">Pix</div>
-          <div class="payment-btn-option" onclick="selectPaymentMethod('Cartão de Crédito', this)">Crédito</div>
-          <div class="payment-btn-option" onclick="selectPaymentMethod('Cartão de Débito', this)">Débito</div>
-          <div class="payment-btn-option" onclick="selectPaymentMethod('Dinheiro', this)">Dinheiro</div>
-        </div>
-      </div>
-
-      <!-- CAIXA DE DINHEIRO E TROCO -->
-      <div class="cash-change-container" id="cashChangeBox">
-        <div class="form-group">
-          <label for="cashGivenInput">Valor que o Cliente vai Pagar (Para Troco):</label>
-          <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this, calculateChange)">
-        </div>
-        <div class="change-display-row">
-          <span>Troco a Levar:</span>
-          <span id="calculatedChangeDisplay">R$ 0,00</span>
-        </div>
-      </div>
-
-      <div style="font-size: 1.2rem; font-weight: bold; text-align: right; margin: 15px 0 20px 0;">
-        Total do Pedido: <span id="finalOrderTotalDisplay" style="color:var(--primary);">R$ 5,00</span>
-      </div>
-
-      <button class="btn-modal-custom btn-modal-primary" style="margin-bottom: 15px;" onclick="saveNewDeliveryOrder()">Lançar Pedido no Delivery</button>
-    </div>
-  </div>
-
-  <!-- MODAL DE SELEÇÃO DE ENTREGADOR -->
-  <div class="modal-overlay" id="courierModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon">🛵</div>
-      <div class="custom-modal-title">Atribuir Entregador</div>
-      <div class="custom-modal-desc">Selecione o motoqueiro responsável por este pedido:</div>
-      
-      <div class="form-group" style="margin-bottom: 20px;">
-        <select id="courierSelect" style="background:var(--bg-main); color:white; padding:10px; border-radius:8px; border:1px solid var(--border); width:100%;">
-          <option value="Motoqueiro João">João Silva (Moto 01)</option>
-          <option value="Motoqueiro Pedro">Pedro Santos (Moto 02)</option>
-          <option value="Entregador iFood">Parceiro iFood / Próprio</option>
-        </select>
-      </div>
-
-      <div class="custom-modal-actions">
-        <button class="btn-modal-custom btn-modal-secondary" onclick="closeCourierModal()">Cancelar</button>
-        <button class="btn-modal-custom btn-modal-primary" onclick="confirmDispatchOrder()">Despachar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM OBSERVAÇÃO -->
-  <div class="modal-overlay" id="cancelConfirmModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon">🚫</div>
-      <div class="custom-modal-title">Cancelar Pedido?</div>
-      <div class="custom-modal-desc">O pedido será registrado nos relatórios como <strong>CANCELADO</strong> para manter o histórico correto.</div>
-      
-      <div class="form-group" style="text-align: left; margin-bottom: 20px;">
-        <label for="cancelReasonInput">Motivo/Observação do Cancelamento (Opcional):</label>
-        <textarea id="cancelReasonInput" placeholder="Ex: Cliente desistiu, item esgotado..." style="width: 100%; height: 70px; resize: none;"></textarea>
-      </div>
-
-      <div class="custom-modal-actions">
-        <button class="btn-modal-custom btn-modal-secondary" onclick="closeCancelConfirmModal()">Voltar</button>
-        <button class="btn-modal-custom btn-modal-danger" onclick="executeCancelOrder()">Confirmar Cancelamento</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL PROFISSIONAL DE NOTIFICAÇÃO -->
+  <!-- MODAL DE SUCESSO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="noticeIcon">🎉</div>
-      <div class="custom-modal-title" id="noticeTitle" style="color: var(--success);">Sucesso</div>
-      <div class="custom-modal-desc" id="noticeDesc">Operação concluída com sucesso!</div>
-      <button class="btn-modal-custom btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+      <div class="custom-modal-title" id="noticeTitle">Sucesso!</div>
+      <div class="custom-modal-desc" id="noticeDesc">Pedido de delivery registrado e enviado para a cozinha.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
-    let deliveryOrders = JSON.parse(localStorage.getItem('vortex_delivery_orders')) || [
-      { id: 101, client: 'Ana Paula', phone: '(11) 98765-4321', cep: '01310-100', street: 'Av. Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo/SP', complement: 'Ap 42', reference: 'Perto do MASP', items: [{ name: 'X-Burger Especial', price: 28.50, qty: 1 }, { name: 'Suco Natural', price: 10.00, qty: 1 }], total: 43.50, fee: 5.00, status: 'pending', time: '19:10', payment: 'Pix', change: 0 },
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 97777-8888', cep: '01305-000', street: 'Rua Augusta', number: '500', neighborhood: 'Consolação', city: 'São Paulo/SP', complement: '', reference: '', items: [{ name: 'Pizza Calabresa G', price: 55.00, qty: 1 }, { name: 'Refrigerante 2L', price: 14.00, qty: 1 }], total: 74.00, fee: 5.00, status: 'preparing', time: '19:02', payment: 'Cartão de Crédito', change: 0 },
-      { id: 103, client: 'Mariana Costa', phone: '(11) 96666-5555', cep: '01414-000', street: 'Rua Oscar Freire', number: '120', neighborhood: 'Jardim Paulista', city: 'São Paulo/SP', complement: '', reference: 'Esquina com a Haddock Lobo', items: [{ name: 'X-Salada Duplo', price: 32.00, qty: 2 }, { name: 'Batata Frita M', price: 18.00, qty: 1 }], total: 87.00, fee: 5.00, status: 'delivering', time: '18:45', courier: 'João Silva (Moto 01)', payment: 'Dinheiro', change: 13.00 }
+    let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
     ];
-
-    let currentBuildingItems = [];
-    let rawDeliveryFee = 5.00;
-    let rawCashGiven = 0;
-    let currentPaymentMethod = 'Pix';
-    let pendingDispatchOrderId = null;
-    let pendingCancelOrderId = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    function saveOrders() {
-      localStorage.setItem('vortex_delivery_orders', JSON.stringify(deliveryOrders));
-      renderBoard();
-    }
+    // ViaCEP API Automática
+    async function searchCep(cep) {
+      const cleanCep = cep.replace(/\D/g, '');
+      if (cleanCep.length !== 8) return;
 
-    /* BUSCA DE CEP AUTOMÁTICA VIA API (ViaCEP) */
-    function maskAndFetchCep(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (value.length > 8) value = value.slice(0, 8);
-      
-      if (value.length > 5) {
-        input.value = `${value.slice(0, 5)}-${value.slice(5)}`;
-      } else {
-        input.value = value;
-      }
-
-      if (value.length === 8) {
-        const spinner = document.getElementById('cepSpinner');
-        spinner.style.display = 'block';
-
-        fetch(`https://viacep.com.br/ws/${value}/json/`)
-          .then(res => res.json())
-          .then(data => {
-            spinner.style.display = 'none';
-            if (data.erro) {
-              showNoticeModal('CEP Não Encontrado', 'Por favor, verifique o CEP digitado.', '⚠️', 'var(--warning)');
-              return;
-            }
-            document.getElementById('clientStreet').value = data.logradouro || '';
-            document.getElementById('clientNeighborhood').value = data.bairro || '';
-            document.getElementById('clientCity').value = `${data.localidade}/${data.uf}`;
-            
-            document.getElementById('clientNumber').focus();
-          })
-          .catch(() => {
-            spinner.style.display = 'none';
-            showNoticeModal('Erro ao Buscar CEP', 'Não foi possível buscar o CEP automaticamente.', '⚠️', 'var(--warning)');
-          });
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          document.getElementById('clientStreet').value = data.logradouro;
+          document.getElementById('clientNeighborhood').value = data.bairro;
+          document.getElementById('clientNumber').focus();
+        }
+      } catch (err) {
+        console.error('Erro ao buscar CEP:', err);
       }
     }
 
-    /* MÁSCARAS E FORMATAÇÃO DE MOEDA E TELEFONE */
-    function maskPhone(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (value.length > 11) value = value.slice(0, 11);
-      if (value.length > 6) {
-        input.value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-      } else if (value.length > 2) {
-        input.value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-      } else if (value.length > 0) {
-        input.value = `(${value}`;
-      } else {
-        input.value = '';
-      }
-    }
+    function renderDeliveries() {
+      const container = document.getElementById('deliveryListContainer');
+      container.innerHTML = '';
 
-    function maskCurrencyInput(input, callback) {
-      let value = input.value.replace(/\D/g, '');
-      if (!value) {
-        input.value = 'R$ 0,00';
-        if (input.id === 'deliveryFee') rawDeliveryFee = 0;
-        if (input.id === 'cashGivenInput') rawCashGiven = 0;
-        if (callback) callback();
+      if (deliveries.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhuma entrega ativa no momento.</div>`;
         return;
       }
-      const numeric = parseFloat(value) / 100;
-      if (input.id === 'deliveryFee') rawDeliveryFee = numeric;
-      if (input.id === 'cashGivenInput') rawCashGiven = numeric;
 
-      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      if (callback) callback();
-    }
-
-    function selectPaymentMethod(method, element) {
-      currentPaymentMethod = method;
-      document.querySelectorAll('.payment-btn-option').forEach(btn => btn.classList.remove('active'));
-      element.classList.add('active');
-
-      const cashBox = document.getElementById('cashChangeBox');
-      if (method === 'Dinheiro') {
-        cashBox.classList.add('active');
-      } else {
-        cashBox.classList.remove('active');
-      }
-      calculateChange();
-    }
-
-    /* GESTÃO DE MÚLTIPLOS ITENS DIRETO POR CARDS */
-    function addDirectItem(name, price) {
-      const existing = currentBuildingItems.find(i => i.name === name);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        currentBuildingItems.push({ name, price, qty: 1 });
-      }
-      renderBuildingItems();
-    }
-
-    function removeItemFromCurrentOrder(index) {
-      currentBuildingItems.splice(index, 1);
-      renderBuildingItems();
-    }
-
-    function renderBuildingItems() {
-      const container = document.getElementById('builderItemsList');
-      if (currentBuildingItems.length === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding: 5px;">Nenhum item adicionado ainda.</div>`;
-      } else {
-        let html = '';
-        currentBuildingItems.forEach((item, idx) => {
-          html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); border:1px solid var(--border); padding:8px 10px; border-radius:8px; font-size:0.85rem;">
-              <span><strong>${item.qty}x</strong> ${item.name}</span>
-              <span>R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')} 
-                <button style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; margin-left:8px;" onclick="removeItemFromCurrentOrder(${idx})">✕</button>
-              </span>
+      deliveries.forEach(del => {
+        container.innerHTML += `
+          <div class="delivery-item">
+            <div class="delivery-item-header">
+              <span>${del.client}</span>
+              <span class="tag-status">${del.status}</span>
             </div>
-          `;
-        });
-        container.innerHTML = html;
-      }
-      calculateOrderTotal();
-    }
-
-    function calculateOrderTotal() {
-      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const total = itemsSubtotal + rawDeliveryFee;
-      document.getElementById('finalOrderTotalDisplay').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-      calculateChange();
-    }
-
-    function calculateChange() {
-      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const total = itemsSubtotal + rawDeliveryFee;
-      const display = document.getElementById('calculatedChangeDisplay');
-
-      if (rawCashGiven >= total && total > 0) {
-        const change = rawCashGiven - total;
-        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
-        display.style.color = 'var(--success)';
-      } else if (rawCashGiven > 0) {
-        display.innerText = 'Falta dinheiro';
-        display.style.color = 'var(--danger)';
-      } else {
-        display.innerText = 'R$ 0,00';
-        display.style.color = 'var(--text-main)';
-      }
-    }
-
-    /* RENDERIZAÇÃO DO KANBAN DE ENTREGAS */
-    function renderBoard() {
-      const colPending = document.getElementById('colPending');
-      const colPreparing = document.getElementById('colPreparing');
-      const colDelivery = document.getElementById('colDelivery');
-      const colDone = document.getElementById('colDone');
-      const colCancelled = document.getElementById('colCancelled');
-
-      colPending.innerHTML = '';
-      colPreparing.innerHTML = '';
-      colDelivery.innerHTML = '';
-      colDone.innerHTML = '';
-      colCancelled.innerHTML = '';
-
-      let countPending = 0, countPreparing = 0, countDelivery = 0, countDone = 0, countCancelled = 0;
-
-      deliveryOrders.forEach(order => {
-        const itemsStr = Array.isArray(order.items) 
-          ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') 
-          : order.items;
-
-        const isCancelled = order.status === 'cancelled';
-        
-        const fullAddressStr = order.street 
-          ? `${order.street}, ${order.number}${order.complement ? ' ('+order.complement+')' : ''} - ${order.neighborhood} [CEP ${order.cep}]` 
-          : order.address;
-
-        const cardHtml = `
-          <div class="delivery-card ${isCancelled ? 'cancelled-card' : ''}">
-            <div class="card-top">
-              <span class="order-id">#${order.id}</span>
-              <span class="order-time">🕒 ${order.time}</span>
-            </div>
-            <div class="client-info">
-              <div class="client-name">${order.client} (${order.phone})</div>
-              <div class="client-address">📍 ${fullAddressStr}</div>
-              ${order.reference ? `<div class="client-address" style="color:var(--info); font-size:0.75rem;">🚩 Ref: ${order.reference}</div>` : ''}
-            </div>
-            <div class="order-items">
-              <strong>Itens:</strong> ${itemsStr}<br>
-              <small>Pagamento: ${order.payment}</small>
-              ${order.change ? `<br><small style="color:var(--warning)">Troco para: R$ ${(order.total + order.change).toFixed(2).replace('.', ',')}</small>` : ''}
-              ${order.courier ? `<br><small style="color:var(--info)">🛵 ${order.courier}</small>` : ''}
-              ${order.cancelReason ? `<span class="cancel-reason-tag">Motivo: ${order.cancelReason}</span>` : ''}
-            </div>
-            <div class="card-bottom">
-              <span class="order-price" ${isCancelled ? 'style="color:var(--danger); text-decoration:line-through;"' : ''}>R$ ${order.total.toFixed(2).replace('.', ',')}</span>
-              <div class="card-actions-group">
-                ${getActionButton(order)}
-              </div>
-            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
+            <div style="font-size:0.85rem;">📍 ${del.address}</div>
+            <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${del.items}</div>
+            ${del.observation ? `<div style="font-size:0.8rem; color:var(--warning); background:rgba(234,179,8,0.1); padding:4px 8px; border-radius:6px;">⚠️ Obs: ${del.observation}</div>` : ''}
           </div>
         `;
-
-        if (order.status === 'pending') {
-          colPending.innerHTML += cardHtml;
-          countPending++;
-        } else if (order.status === 'preparing') {
-          colPreparing.innerHTML += cardHtml;
-          countPreparing++;
-        } else if (order.status === 'delivering') {
-          colDelivery.innerHTML += cardHtml;
-          countDelivery++;
-        } else if (order.status === 'done') {
-          colDone.innerHTML += cardHtml;
-          countDone++;
-        } else if (order.status === 'cancelled') {
-          colCancelled.innerHTML += cardHtml;
-          countCancelled++;
-        }
       });
-
-      document.getElementById('countPending').innerText = countPending;
-      document.getElementById('countPreparing').innerText = countPreparing;
-      document.getElementById('countDelivery').innerText = countDelivery;
-      document.getElementById('countDone').innerText = countDone;
-      document.getElementById('countCancelled').innerText = countCancelled;
-
-      document.getElementById('metricPending').innerText = countPending;
-      document.getElementById('metricPreparing').innerText = countPreparing;
-      document.getElementById('metricDelivery').innerText = countDelivery;
-      document.getElementById('metricDone').innerText = countDone;
-      document.getElementById('metricCancelled').innerText = countCancelled;
     }
 
-    function getActionButton(order) {
-      if (order.status === 'pending') {
-        return `
-          <button class="btn-cancel-order" onclick="openCancelModal(${order.id})">🚫</button>
-          <button class="btn-move" onclick="moveOrderStatus(${order.id}, 'preparing')">Aceitar 👨‍🍳</button>
-        `;
-      } else if (order.status === 'preparing') {
-        return `
-          <button class="btn-cancel-order" onclick="openCancelModal(${order.id})">🚫</button>
-          <button class="btn-move" onclick="openCourierModal(${order.id})">Despachar 🛵</button>
-        `;
-      } else if (order.status === 'delivering') {
-        return `<button class="btn-move" onclick="moveOrderStatus(${order.id}, 'done')">Concluir ✅</button>`;
-      } else if (order.status === 'done') {
-        return `<span style="font-size:0.8rem; color:var(--success); font-weight:bold;">Finalizado ✓</span>`;
-      } else {
-        return `<span style="font-size:0.8rem; color:var(--danger); font-weight:bold;">Cancelado ✕</span>`;
-      }
-    }
+    function registerDeliveryOrder(event) {
+      event.preventDefault();
 
-    function moveOrderStatus(orderId, nextStatus) {
-      const order = deliveryOrders.find(o => o.id === orderId);
-      if (!order) return;
-
-      order.status = nextStatus;
-
-      if (nextStatus === 'done') {
-        let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
-        currentSales += order.total;
-        localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
-
-        let salesHistory = JSON.parse(localStorage.getItem('vortex_history') || '[]');
-        const itemsSummary = Array.isArray(order.items) ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') : order.items;
-        salesHistory.unshift({
-          time: order.time,
-          items: `[Delivery #${order.id}] ${itemsSummary}`,
-          payment: order.payment,
-          total: order.total
-        });
-        localStorage.setItem('vortex_history', JSON.stringify(salesHistory));
-
-        showNoticeModal('Entrega Concluída!', `O pedido #${order.id} de ${order.client} foi marcado como entregue e somado ao faturamento do dia.`, '🎉');
-      }
-
-      saveOrders();
-    }
-
-    /* CANCELAMENTO DE PEDIDO (COM OBSERVAÇÃO/MOTIVO) */
-    function openCancelModal(orderId) {
-      pendingCancelOrderId = orderId;
-      document.getElementById('cancelReasonInput').value = '';
-      document.getElementById('cancelConfirmModal').classList.add('active');
-    }
-
-    function closeCancelConfirmModal() {
-      document.getElementById('cancelConfirmModal').classList.remove('active');
-      pendingCancelOrderId = null;
-    }
-
-    function executeCancelOrder() {
-      if (!pendingCancelOrderId) return;
-      const order = deliveryOrders.find(o => o.id === pendingCancelOrderId);
-      const reason = document.getElementById('cancelReasonInput').value.trim();
-
-      if (order) {
-        order.status = 'cancelled';
-        order.cancelReason = reason || 'Nenhum motivo informado';
-
-        let salesHistory = JSON.parse(localStorage.getItem('vortex_history') || '[]');
-        const itemsSummary = Array.isArray(order.items) ? order.items.map(i => `${i.qty}x ${i.name}`).join(', ') : order.items;
-        salesHistory.unshift({
-          time: order.time,
-          items: `[CANCELADO Delivery #${order.id}] ${itemsSummary} ${reason ? '(Motivo: ' + reason + ')' : ''}`,
-          payment: order.payment,
-          total: 0.00
-        });
-        localStorage.setItem('vortex_history', JSON.stringify(salesHistory));
-
-        saveOrders();
-        showNoticeModal('Pedido Cancelado', `O pedido #${order.id} foi marcado como cancelado e guardado nos relatórios.`, '🚫', 'var(--danger)');
-      }
-      closeCancelConfirmModal();
-    }
-
-    /* DESPACHAR PARA MOTOQUEIRO */
-    function openCourierModal(orderId) {
-      pendingDispatchOrderId = orderId;
-      document.getElementById('courierModal').classList.add('active');
-    }
-
-    function closeCourierModal() {
-      document.getElementById('courierModal').classList.remove('active');
-      pendingDispatchOrderId = null;
-    }
-
-    function confirmDispatchOrder() {
-      if (!pendingDispatchOrderId) return;
-      const order = deliveryOrders.find(o => o.id === pendingDispatchOrderId);
-      const courierSelect = document.getElementById('courierSelect');
-      
-      order.courier = courierSelect.value;
-      order.status = 'delivering';
-      
-      closeCourierModal();
-      saveOrders();
-      showNoticeModal('Pedido Despachado!', `Pedido #${order.id} atribuído ao entregador ${order.courier}.`, '🛵', 'var(--info)');
-    }
-
-    /* ABRIR E FECHAR MODAL DE NOVO PEDIDO */
-    function openNewOrderModal() {
-      currentBuildingItems = [];
-      rawDeliveryFee = 5.00;
-      rawCashGiven = 0;
-      currentPaymentMethod = 'Pix';
-      document.getElementById('clientName').value = '';
-      document.getElementById('clientPhone').value = '';
-      document.getElementById('clientCep').value = '';
-      document.getElementById('clientNumber').value = '';
-      document.getElementById('clientStreet').value = '';
-      document.getElementById('clientNeighborhood').value = '';
-      document.getElementById('clientCity').value = '';
-      document.getElementById('clientComplement').value = '';
-      document.getElementById('clientReference').value = '';
-      document.getElementById('deliveryFee').value = 'R$ 5,00';
-      document.getElementById('cashGivenInput').value = '';
-      document.getElementById('cashChangeBox').classList.remove('active');
-      renderBuildingItems();
-      document.getElementById('newOrderModal').classList.add('active');
-    }
-
-    function closeNewOrderModal() { document.getElementById('newOrderModal').classList.remove('active'); }
-
-    function saveNewDeliveryOrder() {
       const client = document.getElementById('clientName').value.trim();
       const phone = document.getElementById('clientPhone').value.trim();
       const cep = document.getElementById('clientCep').value.trim();
       const number = document.getElementById('clientNumber').value.trim();
       const street = document.getElementById('clientStreet').value.trim();
       const neighborhood = document.getElementById('clientNeighborhood').value.trim();
-      const city = document.getElementById('clientCity').value.trim();
-      const complement = document.getElementById('clientComplement').value.trim();
-      const reference = document.getElementById('clientReference').value.trim();
+      const itemsText = document.getElementById('orderItemDesc').value.trim();
+      const observation = document.getElementById('clientObservation').value.trim();
 
-      // VALIDAÇÕES OBRIGATÓRIAS
-      if (!client) {
-        showNoticeModal('Nome Obrigatório', 'Por favor, preencha o Nome do cliente.', '⚠️', 'var(--warning)');
-        return;
-      }
-      if (!phone || phone.length < 14) {
-        showNoticeModal('Telefone Inválido', 'Por favor, insira um Telefone/WhatsApp válido com DDD.', '⚠️', 'var(--warning)');
-        return;
-      }
-      if (!cep || cep.length < 9) {
-        showNoticeModal('CEP Obrigatório', 'Por favor, informe o CEP para localizar o endereço.', '⚠️', 'var(--warning)');
-        return;
-      }
-      if (!number) {
-        showNoticeModal('Número Obrigatório', 'Por favor, preencha o Número da residência.', '⚠️', 'var(--warning)');
-        return;
-      }
-
-      if (currentBuildingItems.length === 0) {
-        showNoticeModal('Adicione um Produto', 'Selecione pelo menos um item para o pedido do cliente.', '⚠️', 'var(--warning)');
-        return;
-      }
-
-      const itemsSubtotal = currentBuildingItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const total = itemsSubtotal + rawDeliveryFee;
-
-      let change = 0;
-      if (currentPaymentMethod === 'Dinheiro' && rawCashGiven > total) {
-        change = rawCashGiven - total;
-      }
-
-      const nextId = deliveryOrders.length > 0 ? Math.max(...deliveryOrders.map(o => o.id)) + 1 : 101;
+      const fullAddress = `${street}, ${number} - ${neighborhood} (CEP: ${cep})`;
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      deliveryOrders.unshift({
-        id: nextId,
-        client: client,
-        phone: phone,
-        cep: cep,
-        street: street,
-        number: number,
-        neighborhood: neighborhood,
-        city: city,
-        complement: complement,
-        reference: reference,
-        items: [...currentBuildingItems],
-        total: total,
-        fee: rawDeliveryFee,
-        status: 'pending',
+      const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
+
+      // 1. Adiciona na lista de entregas locais
+      const newDel = {
+        id: newDeliveryId,
+        client,
+        phone,
+        address: fullAddress,
+        observation,
+        items: itemsText,
         time: timeStr,
-        payment: currentPaymentMethod,
-        change: change
+        status: 'Em Preparo'
+      };
+
+      deliveries.unshift(newDel);
+      localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
+
+      // 2. ENVIA AUTOMATICAMENTE PARA A COZINHA (KDS) COM A OBSERVAÇÃO
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
+
+      // Transforma o texto de itens num array estruturado para o KDS
+      const parsedItems = itemsText.split(',').map(part => {
+        const clean = part.trim();
+        const match = clean.match(/^(\d+)x\s*(.*)$/);
+        if (match) {
+          return { qty: parseInt(match[1]), name: match[2], type: 'kitchen' };
+        }
+        return { qty: 1, name: clean, type: 'kitchen' };
       });
 
-      saveOrders();
-      closeNewOrderModal();
-      showNoticeModal('Pedido Registrado!', `Pedido #${nextId} cadastrado com sucesso!`, '🎉');
+      kdsOrders.unshift({
+        id: nextKdsId,
+        origin: `Delivery #${newDeliveryId}`,
+        client: client,
+        observation: observation,
+        items: parsedItems,
+        status: 'new',
+        time: timeStr
+      });
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+      // Limpa o formulário e atualiza a tela
+      document.getElementById('deliveryForm').reset();
+      renderDeliveries();
+      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha (KDS).`, '🎉');
     }
 
-    function showNoticeModal(title, desc, icon, color) {
-      document.getElementById('noticeIcon').innerText = icon || 'ℹ️';
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeTitle').style.color = color || 'var(--success)';
       document.getElementById('noticeDesc').innerText = desc;
       document.getElementById('noticeModal').classList.add('active');
     }
@@ -1419,8 +590,14 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
+    // Atualiza o relógio do topo em tempo real
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+    }, 1000);
+
     window.addEventListener('DOMContentLoaded', () => {
-      renderBoard();
+      renderDeliveries();
     });
   </script>
 </body>

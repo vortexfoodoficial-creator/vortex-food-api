@@ -410,14 +410,13 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
+      position: relative;
     }
 
-    .delivery-item-header {
+    .delivery-item-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-weight: bold;
-      font-size: 0.95rem;
+      align-items: flex-start;
     }
 
     .tag-status {
@@ -426,6 +425,26 @@
       padding: 2px 8px;
       border-radius: 6px;
       font-size: 0.75rem;
+    }
+
+    /* Botão de Impressão */
+    .btn-print {
+      background: var(--border);
+      color: var(--text-main);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.2s;
+    }
+
+    .btn-print:hover {
+      background: var(--primary);
     }
 
     /* Modais Customizados */
@@ -676,7 +695,7 @@
     let currentPayment = 'Pix';
     let rawCashGiven = 0;
     let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [
-      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', payment: 'Pix', observation: 'Tocar campainha', items: '1x Pizza Calabresa G, 1x Refrigerante 2L', time: '19:12', status: 'Em Preparo' }
+      { id: 102, client: 'Lucas Mendes', phone: '(11) 98888-7777', address: 'Rua das Flores, 142 - Centro (São Paulo - SP)', payment: 'Pix', cashGiven: '', change: '', observation: 'Tocar campainha', items: [{ qty: 1, name: 'Pizza Calabresa G' }, { qty: 1, name: 'Refrigerante 2L' }], total: 69.00, time: '19:12', status: 'Em Preparo' }
     ];
 
     function toggleMenu() {
@@ -845,20 +864,91 @@
       }
 
       deliveries.forEach(del => {
+        let paymentInfo = `💳 Pagamento: ${del.payment}`;
+        if (del.payment === 'Dinheiro' && del.cashGiven) {
+          paymentInfo += ` (Recebe: R$ ${del.cashGiven} | Troco: <strong>R$ ${del.change}</strong>)`;
+        }
+
+        const itemsFormatted = Array.isArray(del.items) 
+          ? del.items.map(i => `${i.qty}x ${i.name}`).join(', ')
+          : del.items;
+
         container.innerHTML += `
           <div class="delivery-item">
-            <div class="delivery-item-header">
-              <span>${del.client}</span>
-              <span class="tag-status">${del.status}</span>
+            <div class="delivery-item-top">
+              <div>
+                <div style="font-weight:bold; font-size:0.95rem;">${del.client}</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="tag-status">${del.status}</span>
+                <button class="btn-print" onclick="printDeliveryOrder(${del.id})" title="Imprimir Comanda">🖨️ Imprimir</button>
+              </div>
             </div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
             <div style="font-size:0.85rem;">📍 ${del.address}</div>
-            <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${del.items}</div>
-            <div style="font-size:0.78rem; color:var(--success);">💳 Pagamento: ${del.payment}</div>
+            <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${itemsFormatted}</div>
+            <div style="font-size:0.8rem; color:var(--success);">${paymentInfo}</div>
             ${del.observation ? `<div style="font-size:0.8rem; color:var(--warning); background:rgba(234,179,8,0.1); padding:4px 8px; border-radius:6px;">⚠️ Obs: ${del.observation}</div>` : ''}
           </div>
         `;
       });
+    }
+
+    // Função de Impressão de Comanda Térmica
+    function printDeliveryOrder(id) {
+      const del = deliveries.find(d => d.id === id);
+      if (!del) return;
+
+      const itemsFormatted = Array.isArray(del.items) 
+        ? del.items.map(i => `<tr><td>${i.qty}x ${i.name}</td></tr>`).join('')
+        : `<tr><td>${del.items}</td></tr>`;
+
+      let paymentText = del.payment;
+      if (del.payment === 'Dinheiro' && del.cashGiven) {
+        paymentText += ` (Dinheiro - Levou R$ ${del.cashGiven} | Troco: R$ ${del.change})`;
+      }
+
+      const printWindow = window.open('', '_blank', 'width=350,height=600');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Comanda - Delivery #${del.id}</title>
+            <style>
+              body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
+              h3, h4, p { margin: 4px 0; }
+              .center { text-align: center; }
+              .divider { border-top: 1px dashed #000; margin: 8px 0; }
+              table { width: 100%; border-collapse: collapse; }
+              td { padding: 3px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>VORTEX FOOD</h3>
+              <p>*** COMANDA DELIVERY #${del.id} ***</p>
+            </div>
+            <div class="divider"></div>
+            <p><strong>Cliente:</strong> ${del.client}</p>
+            <p><strong>Telefone:</strong> ${del.phone}</p>
+            <p><strong>Endereço:</strong> ${del.address}</p>
+            <div class="divider"></div>
+            <h4>ITENS DO PEDIDO:</h4>
+            <table>
+              ${itemsFormatted}
+            </table>
+            <div class="divider"></div>
+            <p><strong>Pagamento:</strong> ${paymentText}</p>
+            <p><strong>Total:</strong> R$ ${(del.total || 0).toFixed(2).replace('.', ',')}</p>
+            ${del.observation ? `<div class="divider"></div><p><strong>OBS:</strong> ${del.observation}</p>` : ''}
+            <div class="divider"></div>
+            <p class="center">Hora: ${del.time}</p>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
 
     function registerDeliveryOrder(event) {
@@ -870,10 +960,16 @@
       }
 
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      let cashGivenStr = '';
+      let changeStr = '';
 
-      if (currentPayment === 'Dinheiro' && rawCashGiven < total) {
-        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro recebido pelo cliente é menor que o total do pedido.', '⚠️');
-        return;
+      if (currentPayment === 'Dinheiro') {
+        if (rawCashGiven < total) {
+          showNoticeModal('Valor Insuficiente', 'O valor em dinheiro recebido pelo cliente é menor que o total do pedido.', '⚠️');
+          return;
+        }
+        cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
+        changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
       }
 
       const client = document.getElementById('clientName').value.trim();
@@ -893,7 +989,6 @@
       fullAddress += ` - ${neighborhood}, ${city}/${state} (CEP: ${cep})`;
       if (reference) fullAddress += ` [Ref: ${reference}]`;
 
-      const itemsText = deliveryCart.map(i => `${i.qty}x ${i.name}`).join(', ');
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
@@ -910,8 +1005,11 @@
         phone,
         address: fullAddress,
         payment: currentPayment,
+        cashGiven: cashGivenStr,
+        change: changeStr,
         observation,
-        items: itemsText,
+        items: [...deliveryCart],
+        total: total,
         time: timeStr,
         status: 'Em Preparo'
       };
@@ -919,7 +1017,7 @@
       deliveries.unshift(newDel);
       localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-      // 3. Envia para a Cozinha (KDS)
+      // 3. Envia para a Cozinha (KDS) com a informação de pagamento e troco
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -927,8 +1025,12 @@
         id: nextKdsId,
         origin: `Delivery #${newDeliveryId}`,
         client: client,
+        payment: currentPayment,
+        cashGiven: cashGivenStr,
+        change: changeStr,
         observation: observation,
         items: [...deliveryCart],
+        total: total,
         status: 'new',
         time: timeStr
       });
@@ -946,7 +1048,7 @@
       renderDeliveryCart();
       renderDeliveries();
 
-      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha e registrado no caixa!`, '🎉');
+      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha!`, '🎉');
     }
 
     function showNoticeModal(title, desc, icon) {

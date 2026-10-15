@@ -259,12 +259,12 @@
       color: var(--primary);
     }
 
-    /* Campo Nome do Cliente */
-    .client-input-box {
-      margin-bottom: 10px;
+    /* Campos de Entrada (Nome e Observação) */
+    .input-box {
+      margin-bottom: 8px;
     }
 
-    .client-input-box label {
+    .input-box label {
       font-size: 0.78rem;
       color: var(--text-muted);
       display: block;
@@ -272,28 +272,35 @@
       font-weight: 600;
     }
 
-    .client-input-box input {
+    .input-box input,
+    .input-box textarea {
       background: var(--bg-main);
       border: 1px solid var(--border);
       color: var(--text-main);
       width: 100%;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       font-size: 0.85rem;
       outline: none;
     }
 
-    .client-input-box input:focus {
+    .input-box textarea {
+      resize: none;
+      height: 45px;
+    }
+
+    .input-box input:focus,
+    .input-box textarea:focus {
       border-color: var(--primary);
     }
 
     .cart-items-list {
-      max-height: 120px;
+      max-height: 100px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       padding-right: 4px;
     }
 
@@ -326,16 +333,16 @@
 
     .cart-summary {
       border-top: 1px solid var(--border);
-      padding-top: 10px;
+      padding-top: 8px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
     }
 
     .summary-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
     }
 
@@ -348,21 +355,21 @@
 
     .summary-row.total span:last-child { color: var(--success); }
 
-    /* Grade Completa de Pagamento (Pix, Débito, Crédito, VR, VA, Dinheiro) */
+    /* Grade Completa de Pagamento */
     .payment-methods-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 5px;
-      margin: 6px 0;
+      margin: 4px 0;
     }
 
     .pay-method-btn {
       background: var(--bg-main);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 7px 4px;
+      padding: 6px 4px;
       border-radius: 6px;
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-weight: 600;
       cursor: pointer;
       text-align: center;
@@ -381,7 +388,7 @@
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px;
+      padding: 6px;
       margin-top: 4px;
       margin-bottom: 4px;
     }
@@ -389,10 +396,10 @@
     .cash-change-box.active { display: block; }
 
     .cash-change-box label {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       display: block;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
 
     .cash-change-box input {
@@ -400,9 +407,9 @@
       border: 1px solid var(--border);
       color: var(--text-main);
       width: 100%;
-      padding: 7px;
+      padding: 6px;
       border-radius: 6px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       outline: none;
     }
 
@@ -410,15 +417,15 @@
       display: flex;
       justify-content: space-between;
       font-weight: bold;
-      font-size: 0.82rem;
-      margin-top: 5px;
+      font-size: 0.8rem;
+      margin-top: 4px;
     }
 
     .btn-checkout {
       background: var(--success);
       color: white;
       border: none;
-      padding: 11px;
+      padding: 10px;
       border-radius: 10px;
       font-size: 0.9rem;
       font-weight: bold;
@@ -550,13 +557,19 @@
       </div>
 
       <!-- CAMPO NOME DO CLIENTE -->
-      <div class="client-input-box">
+      <div class="input-box">
         <label for="pdvClientName">Nome do Cliente:</label>
         <input type="text" id="pdvClientName" placeholder="Ex: Carlos Silva">
       </div>
 
+      <!-- CAMPO OBSERVAÇÃO DO PEDIDO -->
+      <div class="input-box">
+        <label for="pdvObservation">Observação (Opcional):</label>
+        <textarea id="pdvObservation" placeholder="Ex: Sem maionese, carne ao ponto..."></textarea>
+      </div>
+
       <div class="cart-items-list" id="cartItemsList">
-        <div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhum produto adicionado.</div>
+        <div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:15px;">Nenhum produto adicionado.</div>
       </div>
 
       <div class="cart-summary">
@@ -569,7 +582,7 @@
           <span id="cartTotal">R$ 0,00</span>
         </div>
 
-        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">Forma de Pagamento:</div>
+        <div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">Forma de Pagamento:</div>
         <div class="payment-methods-grid">
           <div class="pay-method-btn active" onclick="setPaymentMethod('Pix', this)">Pix</div>
           <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Débito', this)">Débito</div>
@@ -724,7 +737,7 @@
     function renderCart() {
       const list = document.getElementById('cartItemsList');
       if (cart.length === 0) {
-        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhum produto adicionado.</div>`;
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:15px;">Nenhum produto adicionado.</div>`;
         document.getElementById('cartItemCount').innerText = '0 itens';
         document.getElementById('cartSubtotal').innerText = 'R$ 0,00';
         document.getElementById('cartTotal').innerText = 'R$ 0,00';
@@ -776,6 +789,7 @@
 
       const clientInput = document.getElementById('pdvClientName').value.trim();
       const clientName = clientInput || (currentOrderType === 'Balcão / Viagem' ? 'Cliente Balcão' : 'Mesa PDV');
+      const observation = document.getElementById('pdvObservation').value.trim();
 
       // 1. Salva no Faturamento do Dia
       let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
@@ -790,13 +804,13 @@
       
       history.unshift({
         time: timeStr,
-        items: `[PDV - ${currentOrderType}] (${clientName}) ${itemsSummary}`,
+        items: `[PDV - ${currentOrderType}] (${clientName}) ${itemsSummary} ${observation ? '- Obs: ' + observation : ''}`,
         payment: currentPayment,
         total: total
       });
       localStorage.setItem('vortex_history', JSON.stringify(history));
 
-      // 3. ENVIA AUTOMATICAMENTE PARA A COZINHA (KDS)
+      // 3. ENVIA AUTOMATICAMENTE PARA A COZINHA (KDS) COM OBSERVAÇÃO
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -804,16 +818,18 @@
         id: nextKdsId,
         origin: currentOrderType,
         client: clientName,
+        observation: observation,
         items: [...cart],
         status: 'new',
         time: timeStr
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa carrinho e formulário, e exibe sucesso
+      // Limpa carrinho, campos e exibe sucesso
       cart = [];
       rawCashGiven = 0;
       document.getElementById('pdvClientName').value = '';
+      document.getElementById('pdvObservation').value = '';
       document.getElementById('cashGivenInput').value = '';
       renderCart();
       showNoticeModal('Venda Finalizada!', `Pedido de ${clientName} enviado com sucesso para a cozinha!`, '🎉');

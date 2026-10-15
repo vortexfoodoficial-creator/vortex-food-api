@@ -256,7 +256,7 @@
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
-      max-height: 140px;
+      max-height: 160px;
       overflow-y: auto;
       margin-top: 8px;
       padding-right: 4px;
@@ -266,7 +266,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px;
+      padding: 9px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
@@ -280,7 +280,7 @@
     }
 
     .delivery-cart-list {
-      max-height: 110px;
+      max-height: 120px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -321,7 +321,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: 550px;
+      max-height: 580px;
       overflow-y: auto;
     }
 
@@ -465,14 +465,14 @@
             </div>
             <div class="form-group">
               <label for="clientPhone">Telefone / WhatsApp *:</label>
-              <input type="text" id="clientPhone" placeholder="(00) 00000-0000" required>
+              <input type="text" id="clientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)" required>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="clientCep">CEP *:</label>
-              <input type="text" id="clientCep" placeholder="00000-000" oninput="maskAndSearchCep(this)" required>
+              <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)" required>
             </div>
             <div class="form-group">
               <label for="clientNumber">Número da Residência *:</label>
@@ -515,13 +515,13 @@
 
           <!-- SELETOR INTELIGENTE DE PRODUTOS -->
           <div class="form-group">
-            <label>Itens do Pedido (Clique para adicionar):</label>
+            <label>Itens do Pedido (Clique para adicionar) *:</label>
             <div class="product-selector-box">
               <div style="font-size:0.75rem; color:var(--text-muted);">Cardápio Rápido:</div>
               <div class="products-mini-grid" id="productsMiniGrid">
                 <!-- Renderizado via JS -->
               </div>
-              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">Itens Selecionados:</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Itens Selecionados:</div>
               <div class="delivery-cart-list" id="deliveryCartList">
                 <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>
               </div>
@@ -581,14 +581,30 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
+    // Máscara Automática de Telefone: (00) 00000-0000
+    function maskPhone(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.slice(0, 11);
+      if (v.length > 6) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      } else if (v.length > 2) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      } else if (v.length > 0) {
+        input.value = `(${v}`;
+      } else {
+        input.value = '';
+      }
+    }
+
+    // Renderiza o cardápio rápido no formulário
     function renderProductsMiniGrid() {
       const grid = document.getElementById('productsMiniGrid');
       grid.innerHTML = '';
       catalogProducts.forEach(p => {
         grid.innerHTML += `
           <div class="mini-product-card" onclick="addDeliveryItem('${p.name}', ${p.price}, '${p.type}')">
-            <span style="font-weight:600; font-size:0.8rem;">${p.name}</span>
-            <span style="color:var(--success); font-size:0.75rem;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+            <span style="font-weight:600; font-size:0.8rem; color:var(--text-main);">${p.name}</span>
+            <span style="color:var(--success); font-size:0.75rem; font-weight:bold; margin-top:4px;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
           </div>
         `;
       });
@@ -625,9 +641,9 @@
           <div class="delivery-cart-row">
             <span><strong>${item.qty}x</strong> ${item.name}</span>
             <div style="display:flex; align-items:center; gap:6px;">
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer;">-</button>
-              <span style="font-weight:bold; width:15px; text-align:center;">${item.qty}</span>
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer;">+</button>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <span style="font-weight:bold; width:18px; text-align:center;">${item.qty}</span>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
             </div>
           </div>
         `;
@@ -635,16 +651,23 @@
       list.innerHTML = html;
     }
 
-    // Busca Automática ViaCEP
+    // Máscara e Busca Automática ViaCEP
     async function maskAndSearchCep(input) {
-      const cep = input.value.replace(/\D/g, '');
-      if (cep.length === 8) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 8) v = v.slice(0, 8);
+      if (v.length > 5) {
+        input.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+      } else {
+        input.value = v;
+      }
+
+      if (v.length === 8) {
         try {
-          const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          const response = await fetch(`https://viacep.com.br/ws/${v}/json/`);
           const data = await response.json();
           if (!data.erro) {
-            document.getElementById('clientStreet').value = data.logradouro;
-            document.getElementById('clientNeighborhood').value = data.bairro;
+            document.getElementById('clientStreet').value = data.logradouro || 'Endereço não especificado';
+            document.getElementById('clientNeighborhood').value = data.bairro || 'Centro';
             document.getElementById('clientCity').value = data.localidade;
             document.getElementById('clientState').value = data.uf;
             document.getElementById('clientNumber').focus();
@@ -686,7 +709,7 @@
       event.preventDefault();
 
       if (deliveryCart.length === 0) {
-        showNoticeModal('Carrinho Vazio', 'Selecione pelo menos um produto para o pedido de delivery.', '⚠️');
+        showNoticeModal('Carrinho Vazio', 'Selecione pelo menos um produto do cardápio rápido para o pedido de delivery.', '⚠️');
         return;
       }
 
@@ -763,7 +786,7 @@
     }
 
     function closeNoticeModal() {
-      document.getElementById('noticeModal'].classList.remove('active');
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     // Atualiza relógio do topo

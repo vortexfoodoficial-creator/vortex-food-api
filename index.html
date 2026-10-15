@@ -316,8 +316,8 @@
       <!-- Faturamento Hoje -->
       <div class="stat-card">
         <div class="stat-title">Vendas Hoje</div>
-        <div class="stat-value" id="dashboardSalesDisplay">R$ 1.450,00</div>
-        <div class="stat-footer">📈 Atualizado em tempo real</div>
+        <div class="stat-value" id="dashboardSalesDisplay">R$ 0,00</div>
+        <div class="stat-footer">📈 Líquido (Exclui cancelados)</div>
       </div>
 
       <!-- Pedidos Ativos -->
@@ -382,16 +382,24 @@
     }
 
     function loadDashboardData() {
-      // 1. Faturamento de Hoje
-      const sales = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
-      document.getElementById('dashboardSalesDisplay').innerText = `R$ ${sales}`;
+      // 1. Faturamento de Hoje (Calculado apenas sobre pedidos ativos/concluídos)
+      const salesRaw = localStorage.getItem('vortex_vendas_hoje');
+      let salesVal = 0;
 
-      // 2. Pedidos Ativos (soma do KDS pendentes/em preparo + entregas ativas)
+      if (salesRaw !== null) {
+        salesVal = parseFloat(salesRaw.replace('.', '').replace(',', '.'));
+      } else {
+        salesVal = 1450.00;
+      }
+
+      document.getElementById('dashboardSalesDisplay').innerText = `R$ ${salesVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // 2. Pedidos Ativos (soma do KDS pendentes/em preparo, desconsiderando cancelados)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const activeKds = kdsOrders.filter(o => o.status !== 'ready').length;
+      const activeKds = kdsOrders.filter(o => o.status !== 'ready' && o.status !== 'cancelled').length;
       document.getElementById('dashboardActiveOrders').innerText = activeKds;
 
-      // 3. Mesas Ocupadas (Lê do localStorage de mesas ou padrão)
+      // 3. Mesas Ocupadas
       const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
         { id: 1, number: '01', status: 'free' },
         { id: 2, number: '02', status: 'occupied' },

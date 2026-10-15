@@ -107,6 +107,13 @@
     .btn-table-click { flex: 1; background: var(--border); color: var(--text-main); border: none; padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
     .btn-qr-click { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
 
+    /* LISTA DE CONSUMO COM BOTÃO DE CANCELAMENTO POR ITEM */
+    .comanda-items-list { list-style: none; padding: 0; max-height: 110px; overflow-y: auto; margin-top: 4px; }
+    .comanda-item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.85rem; }
+    .comanda-item-info { display: flex; align-items: center; gap: 6px; }
+    .btn-cancel-item { background: rgba(239, 68, 68, 0.18); color: var(--danger); border: 1px solid var(--danger); border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+    .btn-cancel-item:hover { background: var(--danger); color: white; }
+
     .modal-menu-section { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin: 12px 0; }
     .modal-menu-title { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .modal-menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 140px; overflow-y: auto; padding-right: 4px; }
@@ -395,8 +402,20 @@
       const actions = document.getElementById('tableModalActions');
 
       if (t.status === 'occupied') {
-        const itemsList = t.items.map(i => `<li>${i.qty}x ${i.name} - R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</li>`).join('');
-        
+        let itemsListHtml = '';
+        if (t.items.length === 0) {
+          itemsListHtml = '<li style="color:var(--text-muted); font-size:0.8rem; list-style:none;">Nenhum item consumido.</li>';
+        } else {
+          itemsListHtml = t.items.map((item, index) => `
+            <li class="comanda-item-row">
+              <div class="comanda-item-info">
+                <span>• <strong>${item.qty}x</strong> ${item.name} - R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
+              </div>
+              <button class="btn-cancel-item" onclick="removeItemFromTableComanda(${t.id}, ${index})" title="Cancelar / Remover Item">🗑️</button>
+            </li>
+          `).join('');
+        }
+
         const catalogHtml = catalogProducts.map(p => `
           <div class="mini-menu-item" onclick="addItemToTableComanda(${t.id}, '${p.name}', ${p.price}, '${p.type}')">
             <span class="mini-menu-name">${p.name}</span>
@@ -406,9 +425,9 @@
 
         body.innerHTML = `
           <p style="margin-bottom:6px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
-          <p style="margin-bottom:6px;"><strong>Consumo Atual:</strong></p>
-          <ul style="padding-left:20px; color:var(--text-main); font-size:0.85rem; max-height:80px; overflow-y:auto;">
-            ${itemsList || '<li>Nenhum item consumido.</li>'}
+          <p style="margin-bottom:4px;"><strong>Consumo Atual:</strong></p>
+          <ul class="comanda-items-list">
+            ${itemsListHtml}
           </ul>
 
           <div class="modal-menu-section">
@@ -531,6 +550,25 @@
       loadTables();
     }
 
+    /* REMOVER / CANCELAR ITEM DA MESA */
+    function removeItemFromTableComanda(tableId, itemIndex) {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const t = tables.find(item => item.id === tableId);
+      if (!t || !t.items[itemIndex]) return;
+
+      if (t.items[itemIndex].qty > 1) {
+        t.items[itemIndex].qty -= 1;
+      } else {
+        t.items.splice(itemIndex, 1);
+      }
+
+      t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      localStorage.setItem('vortex_tables', JSON.stringify(tables));
+
+      openTableModal(tableId);
+      loadTables();
+    }
+
     function openTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -558,14 +596,12 @@
         }
 
         if (t.total > 0) {
-          // Lê faturamento e converte para número de forma segura
           let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
           let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
           let currentSales = parseFloat(cleanedSalesStr) || 0;
 
           currentSales += t.total;
 
-          // Salva formatado com vírgula para manter compatibilidade total
           localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
 

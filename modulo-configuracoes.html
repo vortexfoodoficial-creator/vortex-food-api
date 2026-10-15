@@ -222,6 +222,12 @@
       transition: border-color 0.2s, background-color 0.3s;
     }
 
+    input:read-only {
+      background: rgba(30, 41, 59, 0.2);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
     input:focus, select:focus {
       border-color: var(--primary);
     }
@@ -303,7 +309,6 @@
 
     .btn-save:hover { background: var(--primary-hover); }
 
-    /* Modal Notice */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -434,40 +439,57 @@
         </div>
       </div>
 
-      <!-- Card 2: Dados do Estabelecimento -->
+      <!-- Card 2: Dados do Estabelecimento com CEP e Máscaras -->
       <div class="card-box">
-        <div class="card-title">🏬 Dados da Empresa</div>
+        <div class="card-title">🏬 Dados da Empresa & Endereço</div>
         <form id="storeForm" onsubmit="saveStoreSettings(event)">
           <div class="form-group">
-            <label for="storeName">Nome do Estabelecimento:</label>
+            <label for="storeName">Nome do Estabelecimento *:</label>
             <input type="text" id="storeName" placeholder="Ex: Vortex Food Matriz" required>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="ownerName">Nome do Proprietário:</label>
+              <label for="ownerName">Nome do Proprietário *:</label>
               <input type="text" id="ownerName" placeholder="Ex: Gabriel Gustavo" required>
             </div>
             <div class="form-group">
-              <label for="storeCnpj">CNPJ / CPF:</label>
-              <input type="text" id="storeCnpj" placeholder="00.000.000/0001-00">
+              <label for="storeCnpj">CNPJ / CPF *:</label>
+              <input type="text" id="storeCnpj" placeholder="00.000.000/0001-00" maxlength="18" oninput="maskCnpjCpf(this)" required>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="storePhone">Telefone / WhatsApp:</label>
-              <input type="text" id="storePhone" placeholder="(11) 99999-9999">
+              <label for="storePhone">Telefone / WhatsApp *:</label>
+              <input type="text" id="storePhone" placeholder="(11) 99999-9999" maxlength="15" oninput="maskPhone(this)" required>
             </div>
             <div class="form-group">
-              <label for="storeCity">Cidade / UF:</label>
-              <input type="text" id="storeCity" placeholder="Guarulhos / SP">
+              <label for="storeCep">CEP *:</label>
+              <input type="text" id="storeCep" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)" required>
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="storeAddress">Endereço Completo:</label>
-            <input type="text" id="storeAddress" placeholder="Rua, Número, Bairro">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="storeStreet">Endereço / Rua (Automático):</label>
+              <input type="text" id="storeStreet" placeholder="Aguardando CEP..." readonly required>
+            </div>
+            <div class="form-group">
+              <label for="storeNumber">Número *:</label>
+              <input type="text" id="storeNumber" placeholder="Ex: 100" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="storeNeighborhood">Bairro (Automático):</label>
+              <input type="text" id="storeNeighborhood" placeholder="Aguardando CEP..." readonly required>
+            </div>
+            <div class="form-group">
+              <label for="storeCity">Cidade / UF (Automático):</label>
+              <input type="text" id="storeCity" placeholder="Aguardando CEP..." readonly required>
+            </div>
           </div>
 
           <button type="submit" class="btn-save">Salvar Alterações 💾</button>
@@ -493,7 +515,6 @@
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    // Gerenciamento do Tema
     function applySavedTheme() {
       const savedTheme = localStorage.getItem('vortex_theme') || 'dark';
       const switchEl = document.getElementById('themeSwitch');
@@ -535,23 +556,87 @@
       }
     }
 
-    // Salvar Dados da Empresa
+    function maskPhone(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.slice(0, 11);
+      if (v.length > 6) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      } else if (v.length > 2) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      } else if (v.length > 0) {
+        input.value = `(${v}`;
+      } else {
+        input.value = '';
+      }
+    }
+
+    function maskCnpjCpf(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 14) v = v.slice(0, 14);
+      if (v.length > 11) {
+        // CNPJ: 00.000.000/0000-00
+        input.value = `${v.slice(0,2)}.${v.slice(2,5)}.${v.slice(5,8)}/${v.slice(8,12)}-${v.slice(12)}`;
+      } else if (v.length > 9) {
+        // CPF com máscara parcial
+        input.value = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
+      } else if (v.length > 6) {
+        input.value = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
+      } else if (v.length > 3) {
+        input.value = `${v.slice(0,3)}.${v.slice(3)}`;
+      } else {
+        input.value = v;
+      }
+    }
+
+    async function maskAndSearchCep(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 8) v = v.slice(0, 8);
+      if (v.length > 5) {
+        input.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+      } else {
+        input.value = v;
+      }
+
+      if (v.length === 8) {
+        try {
+          const response = await fetch(`https://viacep.com.br/ws/${v}/json/`);
+          const data = await response.json();
+          if (!data.erro) {
+            document.getElementById('storeStreet').value = data.logradouro || 'Endereço não especificado';
+            document.getElementById('storeNeighborhood').value = data.bairro || 'Centro';
+            document.getElementById('storeCity').value = `${data.localidade} / ${data.uf}`;
+            document.getElementById('storeNumber').focus();
+          } else {
+            showNoticeModal('CEP não encontrado', 'Verifique o CEP digitado.', '⚠️');
+          }
+        } catch (err) {
+          console.error('Erro ViaCEP:', err);
+        }
+      }
+    }
+
     function loadStoreSettings() {
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {
         storeName: 'Vortex Food',
         ownerName: 'Gabriel Gustavo',
         storeCnpj: '',
         storePhone: '',
-        storeCity: 'Guarulhos / SP',
-        storeAddress: ''
+        storeCep: '',
+        storeStreet: 'Guarulhos',
+        storeNumber: '10',
+        storeNeighborhood: 'Centro',
+        storeCity: 'Guarulhos / SP'
       };
 
       document.getElementById('storeName').value = settings.storeName || '';
       document.getElementById('ownerName').value = settings.ownerName || '';
       document.getElementById('storeCnpj').value = settings.storeCnpj || '';
       document.getElementById('storePhone').value = settings.storePhone || '';
+      document.getElementById('storeCep').value = settings.storeCep || '';
+      document.getElementById('storeStreet').value = settings.storeStreet || '';
+      document.getElementById('storeNumber').value = settings.storeNumber || '';
+      document.getElementById('storeNeighborhood').value = settings.storeNeighborhood || '';
       document.getElementById('storeCity').value = settings.storeCity || '';
-      document.getElementById('storeAddress').value = settings.storeAddress || '';
     }
 
     function saveStoreSettings(e) {
@@ -561,8 +646,11 @@
         ownerName: document.getElementById('ownerName').value.trim(),
         storeCnpj: document.getElementById('storeCnpj').value.trim(),
         storePhone: document.getElementById('storePhone').value.trim(),
-        storeCity: document.getElementById('storeCity').value.trim(),
-        storeAddress: document.getElementById('storeAddress').value.trim()
+        storeCep: document.getElementById('storeCep').value.trim(),
+        storeStreet: document.getElementById('storeStreet').value.trim(),
+        storeNumber: document.getElementById('storeNumber').value.trim(),
+        storeNeighborhood: document.getElementById('storeNeighborhood').value.trim(),
+        storeCity: document.getElementById('storeCity').value.trim()
       };
 
       localStorage.setItem('vortex_store_settings', JSON.stringify(settings));

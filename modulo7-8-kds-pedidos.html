@@ -1,433 +1,617 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulos 7 & 8: KDS Cozinha</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - KDS / Cozinha & Bar</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 99;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    /* Menu Lateral Padronizado */
+    .sidebar {
+      width: 260px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      z-index: 100;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .logo-icon { font-size: 1.5rem; }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .close-sidebar-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .sidebar-nav {
+      padding: 15px 10px;
+      flex: 1;
+    }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .nav-section { margin-bottom: 20px; }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .nav-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 0 10px 8px;
+      display: block;
+    }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+      font-size: 0.90rem;
+    }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .nav-link:hover, .nav-link.active {
+      background-color: rgba(249, 115, 22, 0.15);
+      color: var(--primary);
+    }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .nav-icon { font-size: 1.1rem; }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    /* Conteúdo Principal */
+    .main-content {
+      flex: 1;
+      margin-left: 260px;
+      padding: 20px 20px 80px 20px;
+      width: calc(100% - 260px);
+    }
 
-        .content-body {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 25px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+      flex-wrap: wrap;
+    }
 
-        .kds-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-        }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
 
-        .ticket-card {
-            background: var(--panel-dark);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
+    .toggle-btn {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
 
-        .ticket-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
+    header h1 { font-size: 1.5rem; }
 
-        .ticket-title { font-size: 16px; font-weight: 900; }
-        .ticket-time { font-size: 11px; color: #a4b0be; font-weight: 700; }
+    /* Filtros de Setor do KDS */
+    .kds-filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
 
-        .ticket-items {
-            flex: 1;
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+    .filter-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
-        .ticket-item {
-            font-size: 13px;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 6px 8px;
-            border-radius: 6px;
-        }
+    .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
 
-        .btn-status {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
+    /* Quadro Kanban do KDS */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
 
-        .status-pendente { background: var(--warning); color: #000; }
-        .status-preparo { background: var(--secondary); color: #fff; }
-        .status-pronto { background: var(--success); color: #fff; }
+    .kanban-column {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px;
+      min-height: 550px;
+    }
 
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
+    .column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+    }
 
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    .column-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .column-count {
+      background: var(--bg-main);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+
+    .cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cartão do Pedido no KDS */
+    .kds-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kds-card:hover {
+      border-color: var(--primary);
+    }
+
+    .kds-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .kds-origin-tag {
+      background: rgba(249, 115, 22, 0.15);
+      color: var(--primary);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .kds-timer {
+      font-size: 0.8rem;
+      color: var(--warning);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kds-client {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    .kds-items-box {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .kds-item-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .kds-item-qty {
+      font-weight: bold;
+      color: var(--primary);
+      margin-right: 6px;
+    }
+
+    .kds-card-bottom {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 5px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .btn-kds-action {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-kds-action:hover { background: var(--primary-hover); }
+
+    .btn-kds-done {
+      background: var(--success);
+    }
+    .btn-kds-done:hover { background: #16a34a; }
+
+    /* Modais Customizados */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .custom-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 25px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+
+    .btn-modal-primary {
+      background: var(--primary);
+      color: white;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 15px 15px 80px 15px;
+      }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Operação & Cozinha</div>
-            <div class="menu-item active">🍳 Módulos 7 & 8: KDS Cozinha</div>
-            <div class="menu-item" onclick="window.location.href='modulo5-mesas.html'">🍽️ Módulo 5: Mesas</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulos 7 & 8 — KDS (Monitor de Cozinha)</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado em Tempo Real</div>
-        </header>
-
-        <div class="content-body">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="font-weight: 800;">Pedidos em Produção</h3>
-                <button style="background: var(--primary-gradient); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;" onclick="adicionarPedidoTeste()">+ Simular Novo Pedido</button>
-            </div>
-
-            <div id="kdsGrid" class="kds-grid">
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <!-- MENU LATERAL PADRONIZADO -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🌪️</span>
+        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link active"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>KDS / Tela da Cozinha & Bar</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- FILTROS DE SETOR -->
+    <div class="kds-filters">
+      <button class="filter-btn active" onclick="setKdsFilter('all', this)">🍽️ Todos os Setores</button>
+      <button class="filter-btn" onclick="setKdsFilter('kitchen', this)">🔥 Cozinha (Pratos & Lanches)</button>
+      <button class="filter-btn" onclick="setKdsFilter('bar', this)">🍹 Bar (Bebidas)</button>
+    </div>
+
+    <!-- QUADRO KANBAN KDS -->
+    <div class="kanban-board">
+      
+      <!-- Coluna 1: Novos / Pendentes -->
+      <div class="kanban-column">
+        <div class="column-header">
+          <span class="column-title">📥 Novos Pedidos</span>
+          <span class="column-count" id="countNew">0</span>
+        </div>
+        <div class="cards-container" id="colNew"></div>
+      </div>
+
+      <!-- Coluna 2: Em Preparo -->
+      <div class="kanban-column">
+        <div class="column-header">
+          <span class="column-title">👨‍🍳 Em Preparo</span>
+          <span class="column-count" id="countPreparing">0</span>
+        </div>
+        <div class="cards-container" id="colPreparing"></div>
+      </div>
+
+      <!-- Coluna 3: Prontos para Servir / Entregar -->
+      <div class="kanban-column">
+        <div class="column-header">
+          <span class="column-title">✅ Prontos</span>
+          <span class="column-count" id="countReady">0</span>
+        </div>
+        <div class="cards-container" id="colReady"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL DE NOTIFICAÇÃO -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
+      <div class="custom-modal-title" id="noticeTitle">Aviso</div>
+      <div class="custom-modal-desc" id="noticeDesc">Mensagem do sistema.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    // Carrega pedidos unificados do localStorage (ou simula dados padrão caso vazio)
+    let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [
+      { id: 201, origin: 'Mesa 04', client: 'Carlos Silva', items: [{ name: 'X-Burger Especial', qty: 2, type: 'kitchen' }, { name: 'Coca-Cola Lata', qty: 2, type: 'bar' }], status: 'new', time: '19:20' },
+      { id: 202, origin: 'Delivery #102', client: 'Lucas Mendes', items: [{ name: 'Pizza Calabresa G', qty: 1, type: 'kitchen' }, { name: 'Refrigerante 2L', qty: 1, type: 'bar' }], status: 'preparing', time: '19:12' },
+      { id: 203, origin: 'Balcão / PDV', client: 'Juliana Rocha', items: [{ name: 'Batata Frita M', qty: 1, type: 'kitchen' }, { name: 'Suco Natural', qty: 1, type: 'bar' }], status: 'ready', time: '19:05' }
+    ];
+
+    let currentFilter = 'all';
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function saveKdsOrders() {
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      renderKdsBoard();
+    }
+
+    function setKdsFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderKdsBoard();
+    }
+
+    function renderKdsBoard() {
+      const colNew = document.getElementById('colNew');
+      const colPreparing = document.getElementById('colPreparing');
+      const colReady = document.getElementById('colReady');
+
+      colNew.innerHTML = '';
+      colPreparing.innerHTML = '';
+      colReady.innerHTML = '';
+
+      let countNew = 0, countPreparing = 0, countReady = 0;
+
+      kdsOrders.forEach(order => {
+        // Filtra itens pelo setor escolhido se necessário
+        const filteredItems = order.items.filter(item => {
+          if (currentFilter === 'kitchen') return item.type === 'kitchen' || !item.type;
+          if (currentFilter === 'bar') return item.type === 'bar';
+          return true;
+        });
+
+        if (filteredItems.length === 0) return; // Se não tem itens do setor neste pedido, oculta
+
+        const cardHtml = `
+          <div class="kds-card">
+            <div class="kds-card-top">
+              <span class="kds-origin-tag">${order.origin}</span>
+              <span class="kds-timer">🕒 ${order.time}</span>
+            </div>
+            <div class="kds-client">${order.client}</div>
+            <div class="kds-items-box">
+              ${filteredItems.map(i => `
+                <div class="kds-item-row">
+                  <span><span class="kds-item-qty">${i.qty}x</span>${i.name}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="kds-card-bottom">
+              ${getKdsActionButton(order)}
+            </div>
+          </div>
+        `;
+
+        if (order.status === 'new') {
+          colNew.innerHTML += cardHtml;
+          countNew++;
+        } else if (order.status === 'preparing') {
+          colPreparing.innerHTML += cardHtml;
+          countPreparing++;
+        } else if (order.status === 'ready') {
+          colReady.innerHTML += cardHtml;
+          countReady++;
         }
+      });
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
-        }
+      document.getElementById('countNew').innerText = countNew;
+      document.getElementById('countPreparing').innerText = countPreparing;
+      document.getElementById('countReady').innerText = countReady;
+    }
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+    function getKdsActionButton(order) {
+      if (order.status === 'new') {
+        return `<button class="btn-kds-action" onclick="updateOrderStatus(${order.id}, 'preparing')">Iniciar Preparo 👨‍🍳</button>`;
+      } else if (order.status === 'preparing') {
+        return `<button class="btn-kds-action btn-kds-done" onclick="updateOrderStatus(${order.id}, 'ready')">Marcar Pronto ✅</button>`;
+      } else {
+        return `<span style="font-size:0.8rem; color:var(--success); font-weight:bold;">Pronto para Entrega ✓</span>`;
+      }
+    }
 
-        let pedidosKDS = JSON.parse(localStorage.getItem('vortex_kds')) || [
-            { id: 101, origem: 'Mesa 03', itens: ['2x Vortex Burger Duplo', '1x Batata Rústica M'], status: 'Pendente', hora: '09:40' },
-            { id: 102, origem: 'PDV Balcão', itens: ['1x Smash Cheeseburger', '1x Coca-Cola 350ml'], status: 'Em Preparo', hora: '09:45' }
-        ];
+    function updateOrderStatus(orderId, newStatus) {
+      const order = kdsOrders.find(o => o.id === orderId);
+      if (order) {
+        order.status = newStatus;
+        saveKdsOrders();
+      }
+    }
 
-        function carregarKDS() {
-            const grid = document.getElementById('kdsGrid');
-            grid.innerHTML = '';
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
 
-            if (pedidosKDS.length === 0) {
-                grid.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; grid-column: 1/-1; text-align: center; margin-top: 40px;">Nenhum pedido ativo na cozinha no momento.</div>';
-                return;
-            }
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
 
-            pedidosKDS.forEach((p, index) => {
-                let btnClass = 'status-pendente';
-                let btnText = 'Iniciar Preparo';
-                let nextStatus = 'Em Preparo';
+    // Atualiza o relógio do topo em tempo real
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+    }, 1000);
 
-                if (p.status === 'Em Preparo') {
-                    btnClass = 'status-preparo';
-                    btnText = 'Marcar como Pronto';
-                    nextStatus = 'Pronto';
-                } else if (p.status === 'Pronto') {
-                    btnClass = 'status-pronto';
-                    btnText = 'Concluir / Arquivar';
-                    nextStatus = 'Concluido';
-                }
-
-                let itensHtml = '';
-                p.itens.forEach(item => {
-                    itensHtml += `<div class="ticket-item">• ${item}</div>`;
-                });
-
-                grid.innerHTML += `
-                    <div class="ticket-card">
-                        <div>
-                            <div class="ticket-header">
-                                <span class="ticket-title">Pedido #${p.id} (${p.origem})</span>
-                                <span class="ticket-time">${p.hora}</span>
-                            </div>
-                            <div class="ticket-items">
-                                ${itensHtml}
-                            </div>
-                        </div>
-                        <div>
-                            <div style="font-size: 10px; font-weight: 800; color: #a4b0be; margin-bottom: 4px;">ESTADO: ${p.status}</div>
-                            <button class="btn-status ${btnClass}" onclick="avancarStatus(${index}, '${nextStatus}')">${btnText}</button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            localStorage.setItem('vortex_kds', JSON.stringify(pedidosKDS));
-        }
-
-        function avancarStatus(index, novoStatus) {
-            const p = pedidosKDS[index];
-            if (novoStatus === 'Concluido') {
-                pedidosKDS.splice(index, 1);
-                carregarKDS();
-                mostrarAviso(`Pedido #${p.id} concluído e arquivado com sucesso!`);
-            } else {
-                pedidosKDS[index].status = novoStatus;
-                carregarKDS();
-                mostrarAviso(`Pedido #${p.id} alterado para "${novoStatus}"!`);
-            }
-        }
-
-        function adicionarPedidoTeste() {
-            const novoId = Math.floor(100 + Math.random() * 900);
-            const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            pedidosKDS.push({
-                id: novoId,
-                origem: 'Mesa ' + Math.floor(1 + Math.random() * 10),
-                itens: ['1x Vortex Burger Duplo', '2x Coca-Cola 350ml'],
-                status: 'Pendente',
-                hora: agora
-            });
-            carregarKDS();
-            mostrarAviso(`Novo pedido #${novoId} recebido na cozinha!`);
-        }
-
-        carregarKDS();
-    </script>
+    window.addEventListener('DOMContentLoaded', () => {
+      renderKdsBoard();
+    });
+  </script>
 </body>
 </html>

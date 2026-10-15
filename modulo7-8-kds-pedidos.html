@@ -342,7 +342,7 @@
       font-size: 0.78rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     .btn-cancel-kds:hover { background: var(--danger); color: white; }
 
@@ -366,6 +366,64 @@
     .btn-kds-action:hover { background: var(--primary-hover); }
     .btn-kds-done { background: var(--success); }
     .btn-kds-done:hover { background: #16a34a; }
+
+    /* Modais Customizados */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .custom-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 25px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+
+    .modal-actions-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-modal-cancel {
+      background: var(--border);
+      color: var(--text-main);
+      width: 50%;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-modal-confirm-danger {
+      background: var(--danger);
+      color: white;
+      width: 50%;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -479,9 +537,23 @@
     </div>
   </main>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (ESTILO MODERNO) -->
+  <div class="modal-overlay" id="confirmCancelKdsModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">⚠️</div>
+      <div class="custom-modal-title">Cancelar Pedido</div>
+      <div class="custom-modal-desc" id="confirmCancelKdsText">Deseja realmente cancelar este pedido?</div>
+      <div class="modal-actions-row">
+        <button class="btn-modal-cancel" onclick="closeConfirmCancelKdsModal()">Voltar</button>
+        <button class="btn-modal-confirm-danger" onclick="executeCancelKdsOrder()">Sim, Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
     let currentFilter = 'all';
+    let pendingKdsCancelId = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -513,7 +585,7 @@
       let countNew = 0, countPreparing = 0, countReady = 0;
 
       kdsOrders.forEach(order => {
-        if (order.status === 'cancelled') return; // Não exibe pedidos cancelados no Kanban ativo
+        if (order.status === 'cancelled') return;
 
         const filteredItems = order.items.filter(item => {
           if (currentFilter === 'kitchen') return item.type === 'kitchen' || !item.type;
@@ -539,7 +611,7 @@
             <div class="kds-items-box">
               ${filteredItems.map(i => `
                 <div class="kds-item-row">
-                  <span><span class="kds-item-qty">${i.qty}x</span> ${i.name}</span>
+                  <span><span class="kds-item-qty">${i.qty}x</span>${i.name}</span>
                 </div>
               `).join('')}
             </div>
@@ -547,7 +619,7 @@
             <div class="kds-card-bottom">
               <div style="display:flex; gap:6px;">
                 <button class="btn-print-kds" onclick="printKdsOrder(${order.id})" title="Imprimir Comanda">🖨️ Comanda</button>
-                <button class="btn-cancel-kds" onclick="cancelKdsOrder(${order.id})" title="Cancelar Pedido">❌ Cancelar</button>
+                <button class="btn-cancel-kds" onclick="openConfirmCancelKdsModal(${order.id})" title="Cancelar Pedido">❌ Cancelar</button>
               </div>
               <div class="kds-actions-right">
                 ${getKdsActionButton(order)}
@@ -573,15 +645,25 @@
       document.getElementById('countReady').innerText = countReady;
     }
 
-    function cancelKdsOrder(id) {
-      if (!confirm(`Deseja realmente cancelar o pedido #${id}?`)) return;
+    function openConfirmCancelKdsModal(id) {
+      pendingKdsCancelId = id;
+      document.getElementById('confirmCancelKdsText').innerText = `Deseja realmente cancelar o pedido #${id}?`;
+      document.getElementById('confirmCancelKdsModal').classList.add('active');
+    }
 
-      const order = kdsOrders.find(o => o.id === id);
+    function closeConfirmCancelKdsModal() {
+      pendingKdsCancelId = null;
+      document.getElementById('confirmCancelKdsModal').classList.remove('active');
+    }
+
+    function executeCancelKdsOrder() {
+      if (!pendingKdsCancelId) return;
+
+      const order = kdsOrders.find(o => o.id === pendingKdsCancelId);
       if (order) {
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-        // Atualiza também no delivery se for um pedido de delivery
         let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
         deliveries.forEach(del => {
           if (`Delivery #${del.id}` === order.origin) {
@@ -590,6 +672,7 @@
         });
         localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
+        closeConfirmCancelKdsModal();
         renderKdsBoard();
       }
     }
@@ -635,7 +718,7 @@
             <p><strong>Pagamento:</strong> ${paymentText}</p>
             ${order.observation ? `<div class="divider"></div><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
             <div class="divider"></div>
-            <p class="center">Hora: ${order.time}</p>
+            <p.center>Hora: ${order.time}</p>
             <script>
               window.onload = function() { window.print(); window.close(); }
             <\/script>

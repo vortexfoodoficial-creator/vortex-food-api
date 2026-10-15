@@ -16,6 +16,7 @@
       --border: #334155;
       --success: #22c55e;
       --danger: #ef4444;
+      --info: #38bdf8;
     }
 
     body.light-theme {
@@ -30,12 +31,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
-      transition: background-color 0.3s, color 0.3s;
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
@@ -43,6 +40,7 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
+    /* Menu Lateral */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -74,36 +72,86 @@
     }
 
     .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .config-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 20px; max-width: 600px;
+    .config-container {
+      display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin-bottom: 40px;
     }
-    .config-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-    .form-group { margin-bottom: 15px; }
-    label { font-size: 0.82rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; }
-    input[type="text"], input[type="file"] {
-      background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none;
+    .config-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px;
     }
+
+    .config-title {
+      font-size: 1.1rem; font-weight: bold; margin-bottom: 16px; border-bottom: 1px solid var(--border);
+      padding-bottom: 10px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+    }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+
+    .form-group { margin-bottom: 14px; }
+    label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 600; }
+    
+    input[type="text"], input[type="email"], input[type="file"] {
+      background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main);
+      width: 100%; padding: 10px; border-radius: 8px; font-size: 0.88rem; outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--primary); }
 
     .logo-preview-box {
-      display: flex; align-items: center; gap: 15px; margin-top: 10px; background: var(--bg-main); padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 15px; margin-top: 10px; background: var(--bg-main);
+      padding: 12px; border-radius: 10px; border: 1px solid var(--border);
     }
     .logo-preview-img { width: 50px; height: 50px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid var(--border); }
 
     .btn-save {
-      background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.95rem; width: 100%; transition: background 0.2s;
+      background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 12px;
+      font-weight: bold; cursor: pointer; font-size: 1rem; width: 100%; transition: background 0.2s;
+      margin-top: 10px;
     }
     .btn-save:hover { background: var(--primary-hover); }
 
     .btn-remove-logo {
-      background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
+      background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger);
+      padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
+    }
+
+    /* Modais Customizados */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px;
+    }
+    .modal-overlay.active { display: flex; }
+    
+    .custom-modal-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px;
+      width: 100%; max-width: 400px; text-align: center;
+    }
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    
+    .btn-modal-primary {
+      background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px;
+      font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem;
+    }
+
+    .btn-modal-danger {
+      background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px;
+      font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; margin-bottom: 8px;
+    }
+
+    .btn-modal-secondary {
+      background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px;
+      font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem;
     }
 
     @media (max-width: 768px) {
+      .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -117,6 +165,7 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
+  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -164,41 +213,137 @@
     </div>
   </aside>
 
+  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Configurações da Loja</h1>
+        <h1>Configurações do Estabelecimento</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <div class="config-card">
-      <div class="config-title">⚙️ Identidade do Estabelecimento</div>
+    <div class="config-container">
+      
+      <!-- CARD 1: IDENTIDADE E LOGOTIPO -->
+      <div class="config-card">
+        <div class="config-title">🏷️ Identidade da Loja</div>
 
-      <div class="form-group">
-        <label for="storeNameInput">Nome do Estabelecimento:</label>
-        <input type="text" id="storeNameInput" placeholder="Ex: BESTBURGUERS">
-      </div>
+        <div class="form-group">
+          <label for="storeNameInput">Nome do Estabelecimento:</label>
+          <input type="text" id="storeNameInput" placeholder="Ex: BESTBURGUERS">
+        </div>
 
-      <div class="form-group">
-        <label for="storeLogoInput">Logotipo do Estabelecimento (Aparecerá no menu lateral):</label>
-        <input type="file" id="storeLogoInput" accept="image/*" onchange="handleLogoUpload(this)">
-        
-        <div class="logo-preview-box" id="logoPreviewBox" style="display:none;">
-          <img id="logoPreviewImg" src="" alt="Prévia" class="logo-preview-img">
-          <div>
-            <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Logotipo carregado</span>
-            <button type="button" class="btn-remove-logo" onclick="removeStoreLogo()">Remover Logo</button>
+        <div class="form-group">
+          <label for="storeLogoInput">Logotipo do Estabelecimento (Exibido no menu lateral):</label>
+          <input type="file" id="storeLogoInput" accept="image/*" onchange="handleLogoUpload(this)">
+          
+          <div class="logo-preview-box" id="logoPreviewBox" style="display:none;">
+            <img id="logoPreviewImg" src="" alt="Prévia" class="logo-preview-img">
+            <div>
+              <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Logotipo ativo</span>
+              <button type="button" class="btn-remove-logo" onclick="promptRemoveLogo()">Remover Logo</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <button class="btn-save" onclick="saveStoreSettings()">Salvar Alterações 💾</button>
+      <!-- CARD 2: DADOS DO RESPONSÁVEL E DOCUMENTOS -->
+      <div class="config-card">
+        <div class="config-title">👤 Responsável & Documentos</div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="ownerNameInput">Nome do Proprietário / Responsável:</label>
+            <input type="text" id="ownerNameInput" placeholder="Ex: Gabriel Gustavo">
+          </div>
+          <div class="form-group">
+            <label for="docNumberInput">CPF ou CNPJ:</label>
+            <input type="text" id="docNumberInput" placeholder="000.000.000-00 ou 00.000.000/0001-00" oninput="maskCpfCnpj(this)">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="storePhoneInput">WhatsApp / Telefone Principal:</label>
+            <input type="text" id="storePhoneInput" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
+          </div>
+          <div class="form-group">
+            <label for="storeEmailInput">E-mail de Contato:</label>
+            <input type="email" id="storeEmailInput" placeholder="contato@estabelecimento.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 3: ENDEREÇO E LOCALIZAÇÃO COM BUSCA DE CEP -->
+      <div class="config-card">
+        <div class="config-title">📍 Endereço do Estabelecimento</div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="cepInput">CEP (Busca Automática):</label>
+            <input type="text" id="cepInput" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)">
+          </div>
+          <div class="form-group">
+            <label for="streetNumberInput">Número:</label>
+            <input type="text" id="streetNumberInput" placeholder="Ex: 123">
+          </div>
+          <div class="form-group">
+            <label for="complementInput">Complemento:</label>
+            <input type="text" id="complementInput" placeholder="Ex: Sala 2 / Bloco A">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="streetInput">Rua / Logradouro:</label>
+          <input type="text" id="streetInput" placeholder="Rua do Estabelecimento">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="neighborhoodInput">Bairro:</label>
+            <input type="text" id="neighborhoodInput" placeholder="Bairro">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="cityInput">Cidade:</label>
+              <input type="text" id="cityInput" placeholder="Cidade">
+            </div>
+            <div class="form-group">
+              <label for="ufInput">UF:</label>
+              <input type="text" id="ufInput" placeholder="SP" maxlength="2" style="text-transform:uppercase;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveAllSettings()">Salvar Todas as Configurações 💾</button>
+
     </div>
   </main>
+
+  <!-- MODAL DE SUCESSO OU AVISO -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
+      <div class="custom-modal-title" id="noticeTitle">Sucesso!</div>
+      <div class="custom-modal-desc" id="noticeDesc">Alterações salvas.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE REMOÇÃO DE LOGO -->
+  <div class="modal-overlay" id="confirmLogoModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">🖼️</div>
+      <div class="custom-modal-title">Remover Logotipo?</div>
+      <div class="custom-modal-desc">Deseja realmente remover o logotipo personalizado do estabelecimento? O menu lateral voltará ao padrão limpo.</div>
+      <button class="btn-modal-danger" onclick="confirmRemoveLogo()">Sim, Remover Logotipo</button>
+      <button class="btn-modal-secondary" onclick="closeConfirmLogoModal()">Cancelar</button>
+    </div>
+  </div>
 
   <script>
     let tempLogoBase64 = null;
@@ -216,11 +361,37 @@
       }
     }
 
+    /* CARREGA TODAS AS CONFIGURAÇÕES SALVAS */
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {
+        storeName: 'BESTBURGUERS',
+        ownerName: '',
+        docNumber: '',
+        phone: '',
+        email: '',
+        cep: '',
+        streetNumber: '',
+        complement: '',
+        street: '',
+        neighborhood: '',
+        city: '',
+        uf: ''
+      };
+
       document.getElementById('storeNameInput').value = settings.storeName || 'BESTBURGUERS';
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      document.getElementById('ownerNameInput').value = settings.ownerName || '';
+      document.getElementById('docNumberInput').value = settings.docNumber || '';
+      document.getElementById('storePhoneInput').value = settings.phone || '';
+      document.getElementById('storeEmailInput').value = settings.email || '';
+      document.getElementById('cepInput').value = settings.cep || '';
+      document.getElementById('streetNumberInput').value = settings.streetNumber || '';
+      document.getElementById('complementInput').value = settings.complement || '';
+      document.getElementById('streetInput').value = settings.street || '';
+      document.getElementById('neighborhoodInput').value = settings.neighborhood || '';
+      document.getElementById('cityInput').value = settings.city || '';
+      document.getElementById('ufInput').value = settings.uf || '';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -239,6 +410,7 @@
       }
     }
 
+    /* LOGOTIPO */
     function handleLogoUpload(input) {
       const file = input.files[0];
       if (file) {
@@ -252,24 +424,134 @@
       }
     }
 
-    function removeStoreLogo() {
+    function promptRemoveLogo() {
+      document.getElementById('confirmLogoModal').classList.add('active');
+    }
+
+    function closeConfirmLogoModal() {
+      document.getElementById('confirmLogoModal').classList.remove('active');
+    }
+
+    function confirmRemoveLogo() {
       tempLogoBase64 = null;
       localStorage.removeItem('vortex_store_logo');
       document.getElementById('storeLogoInput').value = '';
       document.getElementById('logoPreviewBox').style.display = 'none';
       document.getElementById('sidebarStoreLogo').style.display = 'none';
+      closeConfirmLogoModal();
+      showNoticeModal('Logotipo Removido', 'O logotipo foi removido com sucesso.', '🖼️');
     }
 
-    function saveStoreSettings() {
-      const newName = document.getElementById('storeNameInput').value.trim() || 'BESTBURGUERS';
-      localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: newName }));
+    /* MÁSCARAS E BUSCA DE CEP AUTOMÁTICA */
+    function maskAndSearchCep(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (value.length > 8) value = value.slice(0, 8);
+
+      if (value.length > 5) {
+        input.value = value.slice(0, 5) + '-' + value.slice(5);
+      } else {
+        input.value = value;
+      }
+
+      if (value.length === 8) {
+        fetch(`https://viacep.com.br/ws/${value}/json/`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data.erro) {
+              document.getElementById('streetInput').value = data.logradouro || '';
+              document.getElementById('neighborhoodInput').value = data.bairro || '';
+              document.getElementById('cityInput').value = data.localidade || '';
+              document.getElementById('ufInput').value = data.uf || '';
+              document.getElementById('streetNumberInput').focus();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    /* MÁSCARA CPF / CNPJ DINÂMICA */
+    function maskCpfCnpj(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 14) v = v.slice(0, 14);
+
+      if (v.length <= 11) {
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      } else {
+        v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      }
+      input.value = v;
+    }
+
+    /* MÁSCARA DE TELEFONE */
+    function handlePhoneKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        let v = input.value;
+        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '').slice(0, -1);
+          formatAndSetPhone(input, digits);
+        }
+      }
+    }
+
+    function handlePhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetPhone(input, digits);
+    }
+
+    function formatAndSetPhone(input, digits) {
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      if (digits.length === 0) input.value = '';
+      else if (digits.length <= 2) input.value = `(${digits}`;
+      else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
+    /* SALVAR TODAS AS CONFIGURAÇÕES */
+    function saveAllSettings() {
+      const storeName = document.getElementById('storeNameInput').value.trim() || 'BESTBURGUERS';
+      const ownerName = document.getElementById('ownerNameInput').value.trim();
+      const docNumber = document.getElementById('docNumberInput').value.trim();
+      const phone = document.getElementById('storePhoneInput').value.trim();
+      const email = document.getElementById('storeEmailInput').value.trim();
+      const cep = document.getElementById('cepInput').value.trim();
+      const streetNumber = document.getElementById('streetNumberInput').value.trim();
+      const complement = document.getElementById('complementInput').value.trim();
+      const street = document.getElementById('streetInput').value.trim();
+      const neighborhood = document.getElementById('neighborhoodInput').value.trim();
+      const city = document.getElementById('cityInput').value.trim();
+      const uf = document.getElementById('ufInput').value.trim().toUpperCase();
+
+      const payload = {
+        storeName, ownerName, docNumber, phone, email, cep,
+        streetNumber, complement, street, neighborhood, city, uf
+      };
+
+      localStorage.setItem('vortex_store_settings', JSON.stringify(payload));
 
       if (tempLogoBase64) {
         localStorage.setItem('vortex_store_logo', tempLogoBase64);
       }
 
       loadStoreSettings();
-      alert('Configurações salvas com sucesso!');
+      showNoticeModal('Configurações Salvas!', 'As informações e a identidade do seu estabelecimento foram atualizadas.', '🎉');
+    }
+
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     setInterval(() => {

@@ -12,9 +12,11 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #f97316;
+      --primary-hover: #ea580c;
       --border: #334155;
       --success: #22c55e;
       --info: #38bdf8;
+      --warning: #eab308;
     }
 
     body.light-theme {
@@ -73,9 +75,19 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    /* CARDS DE ATALHO OPERACIONAL */
+    .shortcuts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 25px; }
+    .shortcut-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-decoration: none; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; transition: all 0.2s; }
+    .shortcut-card:hover { border-color: var(--primary); transform: translateY(-3px); background: rgba(249, 115, 22, 0.08); }
+    .shortcut-icon { font-size: 1.8rem; }
+    .shortcut-label { font-size: 0.85rem; font-weight: bold; }
+
     .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 25px; }
     .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
-    .metric-title { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .metric-title { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
     .metric-value { font-size: 1.5rem; font-weight: bold; color: var(--text-main); }
 
     @media (max-width: 768px) {
@@ -150,6 +162,30 @@
       </div>
     </header>
 
+    <!-- SEÇÃO DE ATALHOS RÁPIDOS OPERACIONAIS -->
+    <div class="card-box" style="margin-bottom:20px;">
+      <div class="card-title">🚀 Acesso Rápido Operacional</div>
+      <div class="shortcuts-grid">
+        <a href="modulo3-pdv.html" class="shortcut-card">
+          <span class="shortcut-icon">💻</span>
+          <span class="shortcut-label">PDV / Caixa</span>
+        </a>
+        <a href="modulo5-mesas.html" class="shortcut-card">
+          <span class="shortcut-icon">🍽️</span>
+          <span class="shortcut-label">Mesas & Comandas</span>
+        </a>
+        <a href="modulo21-delivery.html" class="shortcut-card">
+          <span class="shortcut-icon">🛵</span>
+          <span class="shortcut-label">Delivery & Entregas</span>
+        </a>
+        <a href="modulo7-8-kds-pedidos.html" class="shortcut-card">
+          <span class="shortcut-icon">👨‍🍳</span>
+          <span class="shortcut-label">KDS / Cozinha</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- SEÇÃO DE MÉTRICAS E INDICADORES -->
     <div class="metrics-grid">
       <div class="metric-card">
         <span class="metric-title">Vendas de Hoje (Todas as Origens)</span>
@@ -162,6 +198,10 @@
       <div class="metric-card">
         <span class="metric-title">Mesas Ocupadas / Total</span>
         <span class="metric-value" id="dashMesasStatus">0 / 10</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">Entregas em Rota</span>
+        <span class="metric-value" style="color:var(--warning);" id="dashEntregasRota">0</span>
       </div>
     </div>
   </main>
@@ -194,16 +234,20 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Faturamento do Dia (Soma Delivery, PDV e Mesas)
+      // Faturamento do Dia (Soma de Delivery, PDV e Mesas)
       const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       document.getElementById('dashVendas').innerText = `R$ ${salesRaw}`;
 
-      // Pedidos na Cozinha (KDS)
+      // Pedidos Ativos na Cozinha (KDS)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
 
-      // Leituras Dinâmicas de Mesas em Tempo Real
+      // Entregas em Rota (Delivery)
+      const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
+      document.getElementById('dashEntregasRota').innerText = deliveringCount;
+
+      // Leitura Dinâmica e Sincronizada do Total de Mesas e Mesas Ocupadas
       const totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
       const tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       

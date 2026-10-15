@@ -20,6 +20,15 @@
       --info: #38bdf8;
     }
 
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -33,6 +42,7 @@
       display: flex;
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
@@ -54,7 +64,7 @@
       top: 0; bottom: 0; left: 0;
       z-index: 100;
       overflow-y: auto;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, background-color 0.3s;
     }
 
     .sidebar-header {
@@ -183,6 +193,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 20px;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     .card-title {
@@ -224,12 +235,13 @@
       border-radius: 8px;
       font-size: 0.88rem;
       outline: none;
+      transition: background-color 0.3s, border-color 0.2s;
     }
 
     input:read-only {
-      background: rgba(30, 41, 59, 0.5);
+      background: rgba(30, 41, 59, 0.2);
       color: var(--text-muted);
-      border-color: rgba(51, 65, 85, 0.5);
+      border-color: rgba(51, 65, 85, 0.3);
       cursor: not-allowed;
     }
 
@@ -329,7 +341,7 @@
     /* Caixa de Dinheiro e Troco */
     .cash-change-box {
       display: none;
-      background: rgba(15, 23, 42, 0.7);
+      background: rgba(15, 23, 42, 0.2);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 8px;
@@ -411,6 +423,7 @@
       flex-direction: column;
       gap: 6px;
       position: relative;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     .delivery-item-top {
@@ -430,7 +443,7 @@
     .status-dispatch { background: rgba(56, 189, 248, 0.15); color: var(--info); }
     .status-cancelled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
-    /* Botões de Ação no Card */
+    /* Botões de Ação */
     .card-actions-row {
       display: flex;
       justify-content: space-between;
@@ -454,7 +467,7 @@
       gap: 4px;
       transition: background 0.2s;
     }
-    .btn-print:hover { background: var(--primary); }
+    .btn-print:hover { background: var(--primary); color: white; }
 
     .btn-dispatch {
       background: var(--success);
@@ -504,12 +517,11 @@
       width: 100%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
     }
 
     .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
     .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
 
     .modal-actions-row {
       display: flex;
@@ -525,7 +537,6 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-size: 0.9rem;
     }
 
     .btn-modal-confirm-danger {
@@ -537,7 +548,6 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-size: 0.9rem;
     }
 
     .btn-modal-primary {
@@ -549,7 +559,6 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-size: 0.95rem;
     }
   </style>
 </head>
@@ -595,6 +604,7 @@
         <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
   </aside>
@@ -613,7 +623,7 @@
 
     <div class="delivery-grid">
       
-      <!-- Coluna 1: Cadastrar Novo Pedido de Delivery -->
+      <!-- Coluna 1: Cadastrar Novo Pedido -->
       <div class="card-box">
         <div class="card-title">📝 Novo Pedido de Delivery</div>
         <form id="deliveryForm" onsubmit="registerDeliveryOrder(event)">
@@ -714,7 +724,6 @@
             </div>
           </div>
 
-          <!-- CAMPO OBSERVAÇÃO -->
           <div class="form-group" style="margin-top: 8px;">
             <label for="clientObservation">Observação do Pedido (Opcional):</label>
             <textarea id="clientObservation" placeholder="Ex: Retirar cebola, interfone quebrado..."></textarea>
@@ -733,7 +742,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
+  <!-- MODAL CANCELAMENTO -->
   <div class="modal-overlay" id="confirmCancelModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon">⚠️</div>
@@ -746,7 +755,7 @@
     </div>
   </div>
 
-  <!-- MODAL DE AVISO GERAL -->
+  <!-- MODAL AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="noticeIcon">🎉</div>
@@ -777,6 +786,14 @@
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
     }
 
     function maskPhone(input) {
@@ -843,9 +860,9 @@
           <div class="delivery-cart-row">
             <span><strong>${item.qty}x</strong> ${item.name}</span>
             <div style="display:flex; align-items:center; gap:6px;">
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
               <span style="font-weight:bold; width:16px; text-align:center;">${item.qty}</span>
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:white; border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
             </div>
           </div>
         `;
@@ -1047,7 +1064,6 @@
         del.status = 'Cancelado';
         localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-        // Dedução automática do valor do pedido cancelado no faturamento do dia
         let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
         let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
         currentSales = Math.max(0, currentSales - (del.total || 0));
@@ -1165,13 +1181,11 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
 
-      // 1. Salva no Faturamento do Dia
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
       let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // 2. Adiciona nas entregas ativas
       const newDel = {
         id: newDeliveryId,
         client,
@@ -1190,7 +1204,6 @@
       deliveries.unshift(newDel);
       localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-      // 3. Envia para a Cozinha (KDS)
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -1209,7 +1222,6 @@
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa formulário e carrinho
       document.getElementById('deliveryForm').reset();
       document.getElementById('clientStreet').value = '';
       document.getElementById('clientNeighborhood').value = '';
@@ -1241,6 +1253,7 @@
     }, 1000);
 
     window.onload = function() {
+      applyTheme();
       renderProductsMiniGrid();
       renderDeliveries();
     };

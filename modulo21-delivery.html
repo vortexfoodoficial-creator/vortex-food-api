@@ -41,7 +41,6 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -133,7 +132,6 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -193,7 +191,7 @@
     </header>
 
     <div class="delivery-grid">
-      <!-- NOVO PEDIDO DELIVERY -->
+      <!-- FORMULÁRIO COMPLETO DE LANÇAMENTO -->
       <div class="card-box">
         <div class="card-title">🛵 Lançar Pedido para Entrega</div>
 
@@ -229,9 +227,15 @@
           <input type="text" id="neighborhoodInput" placeholder="Aguardando CEP...">
         </div>
 
+        <!-- CAMPO COMPLEMENTO RESTAURADO -->
         <div class="form-group">
-          <label for="complementInput">Ponto de Referência (Opcional):</label>
-          <input type="text" id="complementInput" placeholder="Ex: Casa verde, próximo à praça">
+          <label for="complementInput">Complemento (Ex: Ap 42, Bloco B):</label>
+          <input type="text" id="complementInput" placeholder="Ex: Ap 42, Bloco B / Casa nos fundos">
+        </div>
+
+        <div class="form-group">
+          <label for="refInput">Ponto de Referência (Opcional):</label>
+          <input type="text" id="refInput" placeholder="Ex: Próximo à praça central">
         </div>
 
         <div class="form-group">
@@ -246,11 +250,21 @@
           </div>
         </div>
 
+        <!-- CAMPO OBSERVAÇÃO RESTAURADO -->
+        <div class="form-group">
+          <label for="deliveryObsInput">Observações do Pedido (Envio p/ Cozinha):</label>
+          <input type="text" id="deliveryObsInput" placeholder="Ex: Sem maionese, carne bem passada...">
+        </div>
+
+        <!-- FORMAS DE PAGAMENTO RESTAURADAS COM DÉBITO, CRÉDITO, VR E VA -->
         <div class="form-group">
           <label for="paymentMethodSelect">Forma de Pagamento:</label>
           <select id="paymentMethodSelect" onchange="handlePaymentChange(this.value)">
             <option value="Pix">Pix</option>
-            <option value="Cartão na Entrega">Cartão na Entrega</option>
+            <option value="Cartão de Débito (Maquininha)">Cartão de Débito (Maquininha)</option>
+            <option value="Cartão de Crédito (Maquininha)">Cartão de Crédito (Maquininha)</option>
+            <option value="Vale Refeição - VR (Maquininha)">Vale Refeição - VR (Maquininha)</option>
+            <option value="Vale Alimentação - VA (Maquininha)">Vale Alimentação - VA (Maquininha)</option>
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
@@ -272,7 +286,7 @@
         <button class="btn-submit" onclick="submitDeliveryOrder()">Enviar Pedido p/ Cozinha 🛵</button>
       </div>
 
-      <!-- PAINEL DE PEDIDOS DE DELIVERY ATIVOS -->
+      <!-- PAINEL DE PEDIDOS ATIVOS -->
       <div class="card-box">
         <div class="card-title">📦 Pedidos em Andamento</div>
         <div class="delivery-orders-list" id="deliveryOrdersList"></div>
@@ -483,9 +497,12 @@
       const number = document.getElementById('streetNumberInput').value.trim();
       const street = document.getElementById('streetInput').value.trim();
       const neighborhood = document.getElementById('neighborhoodInput').value.trim();
+      const complement = document.getElementById('complementInput').value.trim();
+      const ref = document.getElementById('refInput').value.trim();
+      const observation = document.getElementById('deliveryObsInput').value.trim();
 
       if (!clientName || !clientPhone || !number || !street) {
-        showNoticeModal('Campos Obrigatórios', 'Preencha o Nome, Telefone, Rua e Número do endereço do cliente.', '⚠️');
+        showNoticeModal('Campos Obrigatórios', 'Preencha o Nome, Telefone, Rua e Número do cliente.', '⚠️');
         return;
       }
 
@@ -502,14 +519,17 @@
 
       if (payment === 'Dinheiro') {
         if (rawCashGiven < total) {
-          showNoticeModal('Valor Insuficiente', 'O valor informado para o troco é menor que o total do pedido.', '⚠️');
+          showNoticeModal('Valor Insuficiente', 'O valor informado para o troco é menor que o total.', '⚠️');
           return;
         }
         cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
         changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
       }
 
-      const fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
+      let fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
+      if (complement) fullAddress += ` (${complement})`;
+      if (ref) fullAddress += ` | Ref: ${ref}`;
+
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -524,6 +544,7 @@
         payment: payment,
         cashGiven: cashGivenStr,
         change: changeStr,
+        observation: observation,
         items: [...deliveryCart],
         total: total,
         status: 'new',
@@ -533,7 +554,7 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa Formulário
+      // Limpa campos do formulário
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -543,16 +564,18 @@
       document.getElementById('streetInput').value = '';
       document.getElementById('neighborhoodInput').value = '';
       document.getElementById('complementInput').value = '';
+      document.getElementById('refInput').value = '';
+      document.getElementById('deliveryObsInput').value = '';
       document.getElementById('cashGivenInput').value = '';
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', 'O pedido de entrega foi registrado e enviado ao KDS.', '🛵');
+      showNoticeModal('Pedido Cadastrado!', 'O pedido foi registrado e enviado ao KDS/Cozinha.', '🛵');
     }
 
     function loadActiveOrders() {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery'));
+      const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status !== 'cancelled');
       const container = document.getElementById('deliveryOrdersList');
       container.innerHTML = '';
 
@@ -579,6 +602,7 @@
             <div style="font-size:0.82rem; color:var(--text-muted);">
               📍 ${o.address}<br>
               🍔 ${itemsText}<br>
+              ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
               💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})
             </div>
           </div>

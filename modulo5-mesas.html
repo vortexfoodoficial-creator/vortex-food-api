@@ -77,7 +77,20 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+
+    /* CARD DE CONFIGURAÇÃO DE AUTOATENDIMENTO QR CODE */
+    .qr-config-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+    .qr-config-info { flex: 1; min-width: 250px; }
+    .qr-config-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .qr-config-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+
+    .switch-container { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .switch-input { display: none; }
+    .switch-slider { width: 50px; height: 26px; background-color: var(--border); border-radius: 20px; position: relative; transition: background-color 0.3s; }
+    .switch-slider::before { content: ""; position: absolute; width: 20px; height: 20px; border-radius: 50%; background-color: white; top: 3px; left: 3px; transition: transform 0.3s; }
+    .switch-input:checked + .switch-slider { background-color: var(--success); }
+    .switch-input:checked + .switch-slider::before { transform: translateX(24px); }
 
     .mesas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
     .mesa-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; transition: all 0.2s; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
@@ -93,13 +106,13 @@
     .btn-mesa-action { background: var(--primary); color: white; border: none; padding: 9px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; transition: background 0.2s; }
     .btn-mesa-action:hover { background: var(--primary-hover); }
     .btn-qrcode { background: var(--border); color: var(--text-main); border: none; padding: 6px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer; margin-top: 4px; width: 100%; }
+    .btn-qrcode.disabled { opacity: 0.5; cursor: not-allowed; }
 
     .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
     input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     input:focus, select:focus { border-color: var(--primary); }
 
-    /* CARDÁPIO COM ROLAGEM INDEPENDENTE */
     .menu-scroll-area { max-height: 160px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: var(--bg-main); margin-bottom: 12px; }
     .mini-menu-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px; cursor: pointer; transition: all 0.2s; }
     .mini-menu-card:hover { border-color: var(--primary); }
@@ -192,6 +205,21 @@
       </div>
     </header>
 
+    <!-- CARD DE CONTROLE DE AUTOATENDIMENTO QR CODE -->
+    <div class="qr-config-card">
+      <div class="qr-config-info">
+        <div class="qr-config-title">📱 Fechamento de Conta via QR Code da Mesa</div>
+        <div class="qr-config-desc">
+          Ative para permitir que o próprio cliente possa ler o QR Code da mesa e solicitar o fechamento da conta pelo celular. Imprima gratuitamente a etiqueta exclusiva de cada mesa abaixo. Se desativado, apenas os atendentes poderão fechar comanda pelo painel.
+        </div>
+      </div>
+      <label class="switch-container">
+        <input type="checkbox" id="qrEnableToggle" class="switch-input" onchange="toggleQrFeature(this.checked)">
+        <span class="switch-slider"></span>
+        <span id="qrStatusText" style="font-size: 0.85rem; font-weight: bold;">Desativado</span>
+      </label>
+    </div>
+
     <div class="card-box">
       <div class="card-title">
         <span>🍽️ Gestão do Atendimento de Mesas</span>
@@ -281,11 +309,11 @@
   <!-- MODAL DE QR CODE DA MESA -->
   <div class="modal-overlay" id="qrModal">
     <div class="custom-modal-card" style="text-align:center;">
-      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:12px;" id="qrModalTitle">📱 QR Code - Mesa 01</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:12px;" id="qrModalTitle">📱 QR Code Exclusivo - Mesa 01</div>
       <div style="background:white; padding:15px; border-radius:12px; display:inline-block; margin:10px 0;">
         <img id="qrCodeImg" src="" alt="QR Code Mesa" style="width:160px; height:160px;">
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Imprima grátis e cole no tampo da mesa para autoatendimento do cliente.</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Imprima grátis e cole na mesa para autoatendimento e fechamento de conta.</div>
       <button class="btn-modal-primary" onclick="printMesaQrCode()">🖨️ Imprimir Etiqueta da Mesa</button>
       <button class="btn-modal-secondary" onclick="closeQrModal()">Fechar</button>
     </div>
@@ -316,6 +344,7 @@
     let tableCarts = {};
     let tempCart = [];
     let rawCashGiven = 0;
+    let isQrEnabled = false;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -343,6 +372,22 @@
       } else {
         sidebarLogo.style.display = 'none';
       }
+
+      // Carrega estado do QR Code
+      isQrEnabled = localStorage.getItem('vortex_qr_enabled') === 'true';
+      const toggle = document.getElementById('qrEnableToggle');
+      toggle.checked = isQrEnabled;
+      document.getElementById('qrStatusText').innerText = isQrEnabled ? 'Ativado' : 'Desativado';
+      document.getElementById('qrStatusText').style.color = isQrEnabled ? 'var(--success)' : 'var(--text-muted)';
+    }
+
+    function toggleQrFeature(enabled) {
+      isQrEnabled = enabled;
+      localStorage.setItem('vortex_qr_enabled', enabled ? 'true' : 'false');
+      document.getElementById('qrStatusText').innerText = enabled ? 'Ativado' : 'Desativado';
+      document.getElementById('qrStatusText').style.color = enabled ? 'var(--success)' : 'var(--text-muted)';
+      renderMesas();
+      showNoticeModal('Recurso Atualizado', enabled ? 'Autoatendimento e Fechamento via QR Code ATIVADOS!' : 'Fechamento via QR Code DESATIVADO pelo estabelecimento.', enabled ? '📱' : '🔒');
     }
 
     function renderMesas() {
@@ -375,7 +420,9 @@
               <button class="btn-mesa-action" onclick="openMesaModal(${i})">
                 ${isOccupied ? '📋 Gerenciar Comanda' : '➕ Abrir Comanda'}
               </button>
-              <button class="btn-qrcode" onclick="openQrModal(${i})">📱 Ver QR Code da Mesa</button>
+              <button class="btn-qrcode ${!isQrEnabled ? 'disabled' : ''}" onclick="openQrModal(${i})">
+                ${isQrEnabled ? '📱 Ver QR Code da Mesa' : '🔒 QR Code Desativado'}
+              </button>
             </div>
           </div>
         `;
@@ -386,7 +433,7 @@
       totalTablesCount += 1;
       localStorage.setItem('vortex_total_tables', totalTablesCount);
       renderMesas();
-      showNoticeModal('Mesa Adicionada!', `Mesa ${totalTablesCount} criada com sucesso.`, '➕');
+      showNoticeModal('Mesa Adicionada!', `Mesa ${totalTablesCount} criada com sucesso e sincronizada com o Dashboard.`, '➕');
     }
 
     function removeTable() {
@@ -397,7 +444,7 @@
       totalTablesCount -= 1;
       localStorage.setItem('vortex_total_tables', totalTablesCount);
       renderMesas();
-      showNoticeModal('Mesa Removida!', `Mesa ${totalTablesCount + 1} removida.`, '➖');
+      showNoticeModal('Mesa Removida!', `Mesa ${totalTablesCount + 1} removida do sistema e do Dashboard.`, '➖');
     }
 
     function openMesaModal(mesaNum) {
@@ -593,7 +640,7 @@
         return;
       }
 
-      // SOMA NO DASHBOARD
+      // SOMA NO DASHBOARD (vortex_vendas_hoje)
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
@@ -613,7 +660,11 @@
 
     /* QR CODE DA MESA */
     function openQrModal(mesaNum) {
-      document.getElementById('qrModalTitle').innerText = `📱 QR Code - Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
+      if (!isQrEnabled) {
+        showNoticeModal('Recurso Desativado', 'Ative a chave de fechamento via QR Code no topo da página para visualizar e imprimir as etiquetas.', '🔒');
+        return;
+      }
+      document.getElementById('qrModalTitle').innerText = `📱 QR Code Exclusivo - Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
       document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://vortexfoodoficial-creator.github.io/vortex/cardapio.html?mesa=${mesaNum}`;
       document.getElementById('qrModal').classList.add('active');
     }
@@ -633,7 +684,7 @@
             <h2>VORTEX FOOD</h2>
             <h3>${title}</h3>
             <img src="${imgUrl}" style="width:200px; height:200px; margin:15px 0;"><br>
-            <p>Acesse o cardápio e faça seu pedido!</p>
+            <p>Acesse o cardápio e solicite a conta pelo celular!</p>
             <script>window.onload = function() { window.print(); window.close(); }<\/script>
           </body>
         </html>

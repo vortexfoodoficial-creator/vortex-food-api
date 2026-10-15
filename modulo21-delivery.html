@@ -191,7 +191,6 @@
     </header>
 
     <div class="delivery-grid">
-      <!-- FORMULÁRIO COMPLETO DE LANÇAMENTO -->
       <div class="card-box">
         <div class="card-title">🛵 Lançar Pedido para Entrega</div>
 
@@ -227,7 +226,6 @@
           <input type="text" id="neighborhoodInput" placeholder="Aguardando CEP...">
         </div>
 
-        <!-- CAMPO COMPLEMENTO RESTAURADO -->
         <div class="form-group">
           <label for="complementInput">Complemento (Ex: Ap 42, Bloco B):</label>
           <input type="text" id="complementInput" placeholder="Ex: Ap 42, Bloco B / Casa nos fundos">
@@ -250,13 +248,11 @@
           </div>
         </div>
 
-        <!-- CAMPO OBSERVAÇÃO RESTAURADO -->
         <div class="form-group">
           <label for="deliveryObsInput">Observações do Pedido (Envio p/ Cozinha):</label>
           <input type="text" id="deliveryObsInput" placeholder="Ex: Sem maionese, carne bem passada...">
         </div>
 
-        <!-- FORMAS DE PAGAMENTO RESTAURADAS COM DÉBITO, CRÉDITO, VR E VA -->
         <div class="form-group">
           <label for="paymentMethodSelect">Forma de Pagamento:</label>
           <select id="paymentMethodSelect" onchange="handlePaymentChange(this.value)">
@@ -286,7 +282,6 @@
         <button class="btn-submit" onclick="submitDeliveryOrder()">Enviar Pedido p/ Cozinha 🛵</button>
       </div>
 
-      <!-- PAINEL DE PEDIDOS ATIVOS -->
       <div class="card-box">
         <div class="card-title">📦 Pedidos em Andamento</div>
         <div class="delivery-orders-list" id="deliveryOrdersList"></div>
@@ -533,6 +528,13 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+      // ATUALIZADO: Soma o valor direto no Faturamento do Dia (Dashboard)
+      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+      let currentSales = parseFloat(cleanedSalesStr) || 0;
+      currentSales += total;
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -554,7 +556,7 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa campos do formulário
+      // Limpa campos
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -570,7 +572,7 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', 'O pedido foi registrado e enviado ao KDS/Cozinha.', '🛵');
+      showNoticeModal('Pedido Cadastrado!', 'O pedido foi registrado, o faturamento foi atualizado no Dashboard e o pedido enviado ao KDS.', '🛵');
     }
 
     function loadActiveOrders() {

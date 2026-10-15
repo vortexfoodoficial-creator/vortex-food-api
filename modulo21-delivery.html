@@ -894,7 +894,7 @@
       });
     }
 
-    // Função de Impressão de Comanda Térmica
+    // Função de Impressão Ajustada para Mini Impressora Térmica (80mm)
     function printDeliveryOrder(id) {
       const del = deliveries.find(d => d.id === id);
       if (!del) return;
@@ -908,18 +908,19 @@
         paymentText += ` (Dinheiro - Levou R$ ${del.cashGiven} | Troco: R$ ${del.change})`;
       }
 
-      const printWindow = window.open('', '_blank', 'width=350,height=600');
+      const printWindow = window.open('', '_blank', 'width=320,height=600');
       printWindow.document.write(`
         <html>
           <head>
             <title>Comanda - Delivery #${del.id}</title>
             <style>
-              body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
-              h3, h4, p { margin: 4px 0; }
+              @page { size: 80mm auto; margin: 0; }
+              body { font-family: 'Courier New', monospace; font-size: 11px; width: 76mm; margin: 0 auto; padding: 5px; color: #000; background: #fff; }
+              h3, h4, p { margin: 3px 0; }
               .center { text-align: center; }
-              .divider { border-top: 1px dashed #000; margin: 8px 0; }
+              .divider { border-top: 1px dashed #000; margin: 6px 0; }
               table { width: 100%; border-collapse: collapse; }
-              td { padding: 3px 0; }
+              td { padding: 2px 0; }
             </style>
           </head>
           <body>
@@ -1067,10 +1068,10 @@
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.onload = function() {
       renderProductsMiniGrid();
       renderDeliveries();
-    });
+    };
   </script>
 </body>
 </html>

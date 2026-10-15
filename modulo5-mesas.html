@@ -41,6 +41,7 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
+    /* Menu Lateral */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -142,6 +143,7 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
+  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -189,6 +191,7 @@
     </div>
   </aside>
 
+  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
@@ -227,6 +230,7 @@
     <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
+  <!-- MODAL COMANDA DA MESA -->
   <div class="modal-overlay" id="tableModal">
     <div class="custom-modal-card">
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
@@ -236,6 +240,7 @@
     </div>
   </div>
 
+  <!-- MODAL QR CODE MESA -->
   <div class="modal-overlay" id="qrModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div class="custom-modal-title" id="qrModalTitle">QR Code da Mesa</div>
@@ -541,6 +546,7 @@
       }
     }
 
+    /* FECHAMENTO DA MESA E ATUALIZAÇÃO SEGURA DO FATURAMENTO NO DASHBOARD */
     function closeTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -552,10 +558,15 @@
         }
 
         if (t.total > 0) {
-          let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
-          let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
+          // Lê faturamento e converte para número de forma segura
+          let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+          let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+          let currentSales = parseFloat(cleanedSalesStr) || 0;
+
           currentSales += t.total;
-          localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
+
+          // Salva formatado com vírgula para manter compatibilidade total
+          localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
 
         t.status = 'free';

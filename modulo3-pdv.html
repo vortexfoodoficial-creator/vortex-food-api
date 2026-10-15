@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vortex Food - PDV / Caixa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - PDV / Frente de Caixa</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -16,6 +16,8 @@
       --border: #334155;
       --success: #22c55e;
       --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
     }
 
     * {
@@ -36,10 +38,7 @@
     .sidebar-overlay {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.6);
       z-index: 99;
     }
@@ -52,9 +51,7 @@
       display: flex;
       flex-direction: column;
       position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
+      top: 0; bottom: 0; left: 0;
       z-index: 100;
       overflow-y: auto;
       transition: transform 0.3s ease;
@@ -75,9 +72,7 @@
       font-size: 1.2rem;
     }
 
-    .logo-icon {
-      font-size: 1.5rem;
-    }
+    .logo-icon { font-size: 1.5rem; }
 
     .close-sidebar-btn {
       display: none;
@@ -93,9 +88,7 @@
       flex: 1;
     }
 
-    .nav-section {
-      margin-bottom: 20px;
-    }
+    .nav-section { margin-bottom: 20px; }
 
     .nav-section-title {
       font-size: 0.75rem;
@@ -124,32 +117,34 @@
       color: var(--primary);
     }
 
-    .nav-icon {
-      font-size: 1.1rem;
-    }
+    .nav-icon { font-size: 1.1rem; }
 
     /* Conteúdo Principal do PDV */
     .main-content {
       flex: 1;
       margin-left: 260px;
-      padding: 20px 20px 80px 20px;
+      padding: 20px;
       width: calc(100% - 260px);
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      height: 100vh;
+      overflow: hidden;
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    @media (max-width: 1024px) {
+      .main-content {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow-y: auto;
+        margin-left: 0;
+        width: 100%;
+        padding: 15px 15px 80px 15px;
+      }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
     }
 
     .toggle-btn {
@@ -163,87 +158,47 @@
       cursor: pointer;
     }
 
-    header h1 {
-      font-size: 1.5rem;
+    @media (max-width: 1024px) {
+      .toggle-btn { display: inline-block; }
     }
 
-    /* Botões de Atalhos Rápidos no Header */
-    .header-shortcuts {
-      display: flex;
-      gap: 10px;
-    }
-
-    .shortcut-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 14px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .shortcut-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .pdv-container {
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 20px;
-    }
-
-    .catalog-section {
+    /* Coluna Esquerda: Produtos do PDV */
+    .pdv-left-section {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .category-tabs {
+    .pdv-header {
       display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 5px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
     }
 
-    .category-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 8px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-      white-space: nowrap;
-      font-size: 0.85rem;
-    }
-
-    .category-btn.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
+    .pdv-header h1 { font-size: 1.4rem; }
 
     .products-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      padding-right: 5px;
+      flex: 1;
     }
 
     .product-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 15px;
+      border-radius: 12px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
+      transition: all 0.2s;
+      min-height: 110px;
     }
 
     .product-card:hover {
@@ -251,292 +206,198 @@
       transform: translateY(-2px);
     }
 
-    .product-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 8px;
-    }
+    .product-card-name { font-size: 0.85rem; font-weight: 600; line-height: 1.3; }
+    .product-card-price { font-size: 0.95rem; font-weight: bold; color: var(--success); margin-top: 8px; }
 
-    .product-price {
-      color: var(--primary);
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .cart-section {
+    /* Coluna Direita: Carrinho e Fechamento */
+    .pdv-cart-section {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 20px;
       display: flex;
       flex-direction: column;
-      height: fit-content;
+      height: calc(100vh - 40px);
     }
 
-    .cart-header {
+    .cart-title {
       font-size: 1.1rem;
       font-weight: bold;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
+      padding-bottom: 12px;
       margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .cart-items {
+    /* Tipo de Pedido (Mesa vs Viagem) */
+    .order-type-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .type-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .type-btn.active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .cart-items-list {
+      flex: 1;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      max-height: 280px;
-      overflow-y: auto;
+      gap: 8px;
       margin-bottom: 15px;
+      padding-right: 4px;
     }
 
-    .cart-item {
+    .cart-item-row {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(15, 23, 42, 0.5);
-      padding: 10px;
-      border-radius: 8px;
       font-size: 0.85rem;
     }
 
-    .cart-item-qty {
+    .cart-item-controls {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .qty-btn {
+    .btn-qty {
       background: var(--border);
       color: white;
       border: none;
-      width: 22px;
-      height: 22px;
-      border-radius: 4px;
+      width: 24px; height: 24px;
+      border-radius: 6px;
       cursor: pointer;
+      font-weight: bold;
     }
 
-    .payment-methods {
-      margin-top: 10px;
+    .cart-summary {
+      border-top: 1px solid var(--border);
+      padding-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .payment-title {
-      font-size: 0.85rem;
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
       color: var(--text-muted);
-      margin-bottom: 8px;
     }
 
-    .payment-grid {
+    .summary-row.total {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    .summary-row.total span:last-child { color: var(--success); }
+
+    .payment-methods-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 15px;
+      gap: 6px;
+      margin: 10px 0;
     }
 
-    .pay-btn {
+    .pay-method-btn {
       background: var(--bg-main);
       border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 10px;
+      color: var(--text-muted);
+      padding: 8px;
       border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
-      font-size: 0.85rem;
       text-align: center;
     }
 
-    .pay-btn.selected {
-      border-color: var(--primary);
-      background: rgba(249, 115, 22, 0.15);
-      color: var(--primary);
-      font-weight: bold;
-    }
-
-    .cash-change-box {
-      display: none;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 15px;
-    }
-
-    .cash-change-box.active {
-      display: block;
-    }
-
-    .cash-input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .cash-input-group label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .cash-input-group input {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: bold;
-    }
-
-    .change-result {
-      font-size: 0.95rem;
-      font-weight: bold;
+    .pay-method-btn.active {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: var(--success);
       color: var(--success);
-      display: flex;
-      justify-content: space-between;
     }
 
-    .cart-total {
-      font-size: 1.3rem;
-      font-weight: bold;
-      display: flex;
-      justify-content: space-between;
-      margin: 15px 0;
-      border-top: 1px solid var(--border);
-      padding-top: 10px;
-    }
-
-    .btn-finish {
+    .btn-checkout {
       background: var(--success);
       color: white;
       border: none;
       padding: 14px;
-      border-radius: 8px;
-      font-weight: bold;
+      border-radius: 10px;
       font-size: 1rem;
+      font-weight: bold;
       cursor: pointer;
-      width: 100%;
       transition: background 0.2s;
+      width: 100%;
     }
 
-    .btn-finish:hover {
-      background: #16a34a;
-    }
+    .btn-checkout:hover { background: #16a34a; }
 
-    .btn-clear {
-      background: transparent;
-      color: var(--danger);
-      border: none;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    /* Modal Profissional Customizado */
+    /* Modais Customizados */
     .modal-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.8);
       z-index: 200;
       justify-content: center;
       align-items: center;
+      padding: 15px;
     }
 
-    .modal-overlay.active {
-      display: flex;
-    }
+    .modal-overlay.active { display: flex; }
 
-    .modal-card {
+    .custom-modal-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 30px;
-      width: 90%;
+      border-radius: 18px;
+      padding: 25px;
+      width: 100%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
     }
 
-    .modal-icon {
-      font-size: 3rem;
-      margin-bottom: 15px;
-    }
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
 
-    .modal-title {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: var(--success);
-    }
-
-    .modal-details {
-      background: rgba(15, 23, 42, 0.5);
-      border-radius: 8px;
-      padding: 12px;
-      margin: 15px 0;
-      text-align: left;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .modal-btn {
+    .btn-modal-primary {
       background: var(--primary);
       color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      font-weight: bold;
       width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
       cursor: pointer;
-      font-size: 1rem;
-    }
-
-    .modal-btn:hover {
-      background: var(--primary-hover);
-    }
-
-    @media (max-width: 900px) {
-      .pdv-container {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
-      .sidebar.open {
-        transform: translateX(0);
-      }
-      .sidebar-overlay.open {
-        display: block;
-      }
-      .close-sidebar-btn {
-        display: block;
-      }
-      .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 20px 15px 80px 15px;
-      }
-      .toggle-btn {
-        display: block;
-      }
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .header-shortcuts {
-        width: 100%;
-      }
-      .shortcut-btn {
-        flex: 1;
-        justify-content: center;
-      }
+      font-size: 0.95rem;
     }
   </style>
 </head>
@@ -555,383 +416,279 @@
     </div>
 
     <nav class="sidebar-nav">
-      <!-- BLOCO 1: OPERACIONAL -->
       <div class="nav-section">
         <span class="nav-section-title">OPERACIONAL</span>
-        <a href="index.html" class="nav-link">
-          <span class="nav-icon">📊</span>
-          <span class="nav-text">Dashboard</span>
-        </a>
-        <a href="modulo3-pdv.html" class="nav-link active">
-          <span class="nav-icon">💻</span>
-          <span class="nav-text">PDV / Caixa</span>
-        </a>
-        <a href="modulo5-mesas.html" class="nav-link">
-          <span class="nav-icon">🍽️</span>
-          <span class="nav-text">Mesas & Comandas</span>
-        </a>
-        <a href="modulo21-delivery.html" class="nav-link">
-          <span class="nav-icon">🛵</span>
-          <span class="nav-text">Delivery & Entregas</span>
-        </a>
-        <a href="modulo7-8-kds-pedidos.html" class="nav-link">
-          <span class="nav-icon">👨‍🍳</span>
-          <span class="nav-text">KDS / Cozinha</span>
-        </a>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link active"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
       </div>
-
-      <!-- BLOCO 2: PRODUTOS -->
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS</span>
-        <a href="modulo2-cardapio.html" class="nav-link">
-          <span class="nav-icon">📋</span>
-          <span class="nav-text">Cardápio & Produtos</span>
-        </a>
-        <a href="modulo13-fichas-tecnicas.html" class="nav-link">
-          <span class="nav-icon">📖</span>
-          <span class="nav-text">Fichas Técnicas</span>
-        </a>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
       </div>
-
-      <!-- BLOCO 3: SUPRIMENTOS & CLIENTES -->
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
-        <a href="modulo12-estoque.html" class="nav-link">
-          <span class="nav-icon">📦</span>
-          <span class="nav-text">Estoque & Insumos</span>
-        </a>
-        <a href="modulo14-compras.html" class="nav-link">
-          <span class="nav-icon">🛒</span>
-          <span class="nav-text">Compras & Cotações</span>
-        </a>
-        <a href="modulo18-crm.html" class="nav-link">
-          <span class="nav-icon">👥</span>
-          <span class="nav-text">CRM & Clientes</span>
-        </a>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
       </div>
-
-      <!-- BLOCO 4: ADMINISTRAÇÃO -->
       <div class="nav-section">
         <span class="nav-section-title">ADMINISTRAÇÃO</span>
-        <a href="modulo17-caixa-turno.html" class="nav-link">
-          <span class="nav-icon">🔒</span>
-          <span class="nav-text">Fechamento de Caixa</span>
-        </a>
-        <a href="modulo15-financeiro.html" class="nav-link">
-          <span class="nav-icon">💰</span>
-          <span class="nav-text">Financeiro & DRE</span>
-        </a>
-        <a href="modulo16-contas.html" class="nav-link">
-          <span class="nav-icon">📄</span>
-          <span class="nav-text">Contas Pagar/Receber</span>
-        </a>
-        <a href="modulo9-equipe.html" class="nav-link">
-          <span class="nav-icon">👔</span>
-          <span class="nav-text">Equipe & Permissões</span>
-        </a>
-        <a href="modulo19-fiscal.html" class="nav-link">
-          <span class="nav-icon">🧾</span>
-          <span class="nav-text">Emissão Fiscal</span>
-        </a>
-        <a href="modulo10-relatorios.html" class="nav-link">
-          <span class="nav-icon">📈</span>
-          <span class="nav-text">Relatórios</span>
-        </a>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
       </div>
     </nav>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
+  <!-- CONTEÚDO PRINCIPAL DO PDV -->
   <main class="main-content">
-    <header>
-      <div class="header-left">
-        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Frente de Caixa (PDV)</h1>
+    
+    <!-- Esquerda: Produtos -->
+    <div class="pdv-left-section">
+      <div class="pdv-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+          <h1>PDV / Frente de Caixa</h1>
+        </div>
+        <input type="text" id="productSearch" placeholder="🔍 Buscar produto..." oninput="filterProducts(this)" style="background:var(--bg-card); border:1px solid var(--border); color:white; padding:8px 12px; border-radius:8px; width:200px; font-size:0.85rem;">
       </div>
 
-      <!-- ATALHOS RÁPIDOS PARA FINANCEIRO E RELATÓRIOS -->
-      <div class="header-shortcuts">
-        <a href="modulo15-financeiro.html" class="shortcut-btn">
-          <span>💰</span> Financeiro
-        </a>
-        <a href="modulo10-relatorios.html" class="shortcut-btn">
-          <span>📈</span> Relatórios
-        </a>
+      <div class="products-grid" id="productsGrid">
+        <!-- Renderizado dinamicamente -->
       </div>
-    </header>
+    </div>
 
-    <div class="pdv-container">
-      <!-- Catálogo de Produtos -->
-      <div class="catalog-section">
-        <div class="category-tabs">
-          <button class="category-btn active">Todos</button>
-          <button class="category-btn">Burgers</button>
-          <button class="category-btn">Bebidas</button>
-          <button class="category-btn">Porções</button>
-          <button class="category-btn">Sobremesas</button>
-        </div>
-
-        <div class="products-grid">
-          <div class="product-card" onclick="addToCart('X-Burger Especial', 28.50)">
-            <div class="product-title">X-Burger Especial</div>
-            <div class="product-price">R$ 28,50</div>
-          </div>
-          <div class="product-card" onclick="addToCart('X-Salada Duplo', 32.00)">
-            <div class="product-title">X-Salada Duplo</div>
-            <div class="product-price">R$ 32,00</div>
-          </div>
-          <div class="product-card" onclick="addToCart('Batata Frita M', 18.00)">
-            <div class="product-title">Batata Frita M</div>
-            <div class="product-price">R$ 18,00</div>
-          </div>
-          <div class="product-card" onclick="addToCart('Refrigerante Lata', 7.50)">
-            <div class="product-title">Refrigerante Lata</div>
-            <div class="product-price">R$ 7,50</div>
-          </div>
-          <div class="product-card" onclick="addToCart('Suco Natural 500ml', 10.00)">
-            <div class="product-title">Suco Natural 500ml</div>
-            <div class="product-price">R$ 10,00</div>
-          </div>
-          <div class="product-card" onclick="addToCart('Milkshake Chocolate', 16.00)">
-            <div class="product-title">Milkshake Chocolate</div>
-            <div class="product-price">R$ 16,00</div>
-          </div>
-        </div>
+    <!-- Direita: Carrinho e Fechamento -->
+    <div class="pdv-cart-section">
+      <div class="cart-title">
+        <span>🛒 Carrinho de Venda</span>
+        <span id="cartItemCount" style="font-size:0.8rem; color:var(--text-muted);">0 itens</span>
       </div>
 
-      <!-- Carrinho e Fechamento -->
-      <div class="cart-section">
-        <div class="cart-header">
-          <span>Comanda / Pedido</span>
-          <button class="btn-clear" onclick="clearCart()">Limpar</button>
-        </div>
+      <!-- SELETOR DE TIPO DE PEDIDO -->
+      <div class="order-type-selector">
+        <div class="type-btn active" id="typeBalcao" onclick="setOrderType('Balcão / Viagem')">🛍️ Para Viagem</div>
+        <div class="type-btn" id="typeMesa" onclick="setOrderType('Consumo Local')">🍽️ Consumo Local</div>
+      </div>
 
-        <div class="cart-items" id="cartItems">
-          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">
-            Nenhum item selecionado. Clique nos produtos ao lado.
-          </div>
-        </div>
+      <div class="cart-items-list" id="cartItemsList">
+        <div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhum produto adicionado.</div>
+      </div>
 
-        <div class="payment-methods">
-          <div class="payment-title">Forma de Pagamento:</div>
-          <div class="payment-grid">
-            <button class="pay-btn selected" onclick="selectPayment('Pix', this)">Pix</button>
-            <button class="pay-btn" onclick="selectPayment('Cartão Crédito', this)">Crédito</button>
-            <button class="pay-btn" onclick="selectPayment('Cartão Débito', this)">Débito</button>
-            <button class="pay-btn" onclick="selectPayment('Dinheiro', this)">Dinheiro</button>
-          </div>
+      <div class="cart-summary">
+        <div class="summary-row">
+          <span>Subtotal:</span>
+          <span id="cartSubtotal">R$ 0,00</span>
         </div>
-
-        <!-- Painel de Troco -->
-        <div class="cash-change-box" id="cashChangeBox">
-          <div class="cash-input-group">
-            <label for="cashGiven">Valor Entregue pelo Cliente:</label>
-            <input type="text" id="cashGiven" placeholder="R$ 0,00" oninput="formatAndCalculateChange(this)">
-          </div>
-          <div class="change-result">
-            <span>Troco a devolver:</span>
-            <span id="changeDisplay">R$ 0,00</span>
-          </div>
-        </div>
-
-        <div class="cart-total">
-          <span>Total:</span>
+        <div class="summary-row total">
+          <span>Total a Pagar:</span>
           <span id="cartTotal">R$ 0,00</span>
         </div>
 
-        <button class="btn-finish" onclick="finishOrder()">FINALIZAR VENDA</button>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">Forma de Pagamento:</div>
+        <div class="payment-methods-grid">
+          <div class="pay-method-btn active" onclick="setPaymentMethod('Pix', this)">Pix</div>
+          <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Crédito', this)">Crédito</div>
+          <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Débito', this)">Débito</div>
+          <div class="pay-method-btn" onclick="setPaymentMethod('Dinheiro', this)">Dinheiro</div>
+        </div>
+
+        <button class="btn-checkout" onclick="finalizePdvSale()">Finalizar Venda & Enviar p/ Cozinha</button>
       </div>
     </div>
   </main>
 
-  <!-- MODAL DE SUCESSO PROFISSIONAL -->
-  <div class="modal-overlay" id="successModal">
-    <div class="modal-card">
-      <div class="modal-icon">🎉</div>
-      <div class="modal-title">Venda Concluída!</div>
-      <div class="modal-details" id="modalDetailsText">
-        <!-- Detalhes injetados via JS -->
-      </div>
-      <button class="modal-btn" onclick="closeModal()">Continuar Operação</button>
+  <!-- MODAL DE SUCESSO -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
+      <div class="custom-modal-title" id="noticeTitle">Venda Concluída!</div>
+      <div class="custom-modal-desc" id="noticeDesc">Pedido enviado com sucesso para a tela da cozinha (KDS).</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Nova Venda</button>
     </div>
   </div>
 
   <script>
+    const catalogProducts = [
+      { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
+      { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
+      { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
+      { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
+      { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
+      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
+      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+    ];
+
     let cart = [];
-    let selectedPayment = 'Pix';
-    let rawCashGivenValue = 0;
+    let currentOrderType = 'Balcão / Viagem';
+    let currentPayment = 'Pix';
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
 
-    function addToCart(name, price) {
-      const existing = cart.find(item => item.name === name);
+    function renderProducts(productsToRender) {
+      const grid = document.getElementById('productsGrid');
+      grid.innerHTML = '';
+      productsToRender.forEach(p => {
+        grid.innerHTML += `
+          <div class="product-card" onclick="addToCart('${p.name}', ${p.price}, '${p.type}')">
+            <span class="product-card-name">${p.name}</span>
+            <span class="product-card-price">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+          </div>
+        `;
+      });
+    }
+
+    function filterProducts(input) {
+      const query = input.value.toLowerCase();
+      const filtered = catalogProducts.filter(p => p.name.toLowerCase().includes(query));
+      renderProducts(filtered);
+    }
+
+    function setOrderType(type) {
+      currentOrderType = type;
+      document.getElementById('typeBalcao').classList.remove('active');
+      document.getElementById('typeMesa').classList.remove('active');
+      if (type === 'Balcão / Viagem') {
+        document.getElementById('typeBalcao').classList.add('active');
+      } else {
+        document.getElementById('typeMesa').classList.add('active');
+      }
+    }
+
+    function setPaymentMethod(method, btn) {
+      currentPayment = method;
+      document.querySelectorAll('.pay-method-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function addToCart(name, price, type) {
+      const existing = cart.find(i => i.name === name);
       if (existing) {
         existing.qty += 1;
       } else {
-        cart.push({ name, price, qty: 1 });
+        cart.push({ name, price, type, qty: 1 });
       }
       renderCart();
     }
 
-    function changeQty(name, delta) {
-      const item = cart.find(item => item.name === name);
-      if (item) {
-        item.qty += delta;
-        if (item.qty <= 0) {
-          cart = cart.filter(i => i.name !== name);
-        }
+    function changeQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
       }
       renderCart();
-    }
-
-    function clearCart() {
-      cart = [];
-      rawCashGivenValue = 0;
-      const cashInput = document.getElementById('cashGiven');
-      if (cashInput) cashInput.value = '';
-      document.getElementById('changeDisplay').innerText = 'R$ 0,00';
-      renderCart();
-    }
-
-    function selectPayment(method, btn) {
-      selectedPayment = method;
-      document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-
-      const cashBox = document.getElementById('cashChangeBox');
-      if (method === 'Dinheiro') {
-        cashBox.classList.add('active');
-        calculateChange();
-      } else {
-        cashBox.classList.remove('active');
-      }
-    }
-
-    function formatAndCalculateChange(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (!value) {
-        input.value = '';
-        rawCashGivenValue = 0;
-        calculateChange();
-        return;
-      }
-      rawCashGivenValue = parseFloat(value) / 100;
-      input.value = 'R$ ' + rawCashGivenValue.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-      calculateChange();
-    }
-
-    function calculateChange() {
-      const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-      const changeDisplay = document.getElementById('changeDisplay');
-
-      if (rawCashGivenValue > 0 && rawCashGivenValue >= total) {
-        const change = rawCashGivenValue - total;
-        changeDisplay.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
-        changeDisplay.style.color = 'var(--success)';
-      } else if (rawCashGivenValue > 0 && rawCashGivenValue < total) {
-        changeDisplay.innerText = 'Falta dinheiro';
-        changeDisplay.style.color = 'var(--danger)';
-      } else {
-        changeDisplay.innerText = 'R$ 0,00';
-        changeDisplay.style.color = 'var(--success)';
-      }
     }
 
     function renderCart() {
-      const cartContainer = document.getElementById('cartItems');
-      const totalContainer = document.getElementById('cartTotal');
-
+      const list = document.getElementById('cartItemsList');
       if (cart.length === 0) {
-        cartContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nenhum item selecionado. Clique nos produtos ao lado.</div>`;
-        totalContainer.innerText = 'R$ 0,00';
-        calculateChange();
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhum produto adicionado.</div>`;
+        document.getElementById('cartItemCount').innerText = '0 itens';
+        document.getElementById('cartSubtotal').innerText = 'R$ 0,00';
+        document.getElementById('cartTotal').innerText = 'R$ 0,00';
         return;
       }
 
       let html = '';
-      let total = 0;
+      let subtotal = 0;
+      let totalCount = 0;
 
-      cart.forEach(item => {
-        const subtotal = item.price * item.qty;
-        total += subtotal;
+      cart.forEach((item, idx) => {
+        subtotal += item.price * item.qty;
+        totalCount += item.qty;
         html += `
-          <div class="cart-item">
+          <div class="cart-item-row">
             <div>
-              <strong>${item.name}</strong><br>
-              <small>R$ ${item.price.toFixed(2).replace('.', ',')}</small>
+              <div style="font-weight:600;">${item.name}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">R$ ${item.price.toFixed(2).replace('.', ',')} un</div>
             </div>
-            <div class="cart-item-qty">
-              <button class="qty-btn" onclick="changeQty('${item.name}', -1)">-</button>
-              <span>${item.qty}</span>
-              <button class="qty-btn" onclick="changeQty('${item.name}', 1)">+</button>
+            <div class="cart-item-controls">
+              <button class="btn-qty" onclick="changeQty(${idx}, -1)">-</button>
+              <span style="font-weight:bold; width:20px; text-align:center;">${item.qty}</span>
+              <button class="btn-qty" onclick="changeQty(${idx}, 1)">+</button>
             </div>
           </div>
         `;
       });
 
-      cartContainer.innerHTML = html;
-      totalContainer.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-      calculateChange();
+      list.innerHTML = html;
+      document.getElementById('cartItemCount').innerText = `${totalCount} itens`;
+      document.getElementById('cartSubtotal').innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById('cartTotal').innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
     }
 
-    function finishOrder() {
+    function finalizePdvSale() {
       if (cart.length === 0) {
-        alert('Adicione pelo menos um produto para finalizar a venda.');
+        showNoticeModal('Carrinho Vazio', 'Adicione pelo menos um produto ao carrinho antes de finalizar a venda.', '⚠️');
         return;
       }
 
-      const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+      const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
-      if (selectedPayment === 'Dinheiro') {
-        if (rawCashGivenValue < total) {
-          alert(`⚠️ O valor pago é menor que o total do pedido.`);
-          return;
-        }
-      }
-
-      // Salva no localStorage para alimentar o Financeiro (Módulo 15) e Relatórios (Módulo 10)
-      const now = new Date();
-      const timeString = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const itemsSummary = cart.map(i => `${i.qty}x ${i.name}`).join(', ');
-
-      const saleRecord = {
-        time: timeString,
-        items: itemsSummary,
-        payment: selectedPayment,
-        total: total
-      };
-
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_history') || '[]');
-      salesHistory.unshift(saleRecord);
-      localStorage.setItem('vortex_history', JSON.stringify(salesHistory));
-
-      // Atualiza faturamento geral do Dashboard
+      // 1. Salva no Faturamento do Dia
       let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // Exibe Modal Profissional
-      let detailsHtml = `<span><strong>Total:</strong> R$ ${total.toFixed(2).replace('.', ',')}</span><span><strong>Pagamento:</strong> ${selectedPayment}</span>`;
-      if (selectedPayment === 'Dinheiro') {
-        const change = rawCashGivenValue - total;
-        detailsHtml += `<span><strong>Entregue:</strong> R$ ${rawCashGivenValue.toFixed(2).replace('.', ',')}</span><span style="color:var(--success)"><strong>Troco:</strong> R$ ${change.toFixed(2).replace('.', ',')}</span>`;
-      }
+      // 2. Salva no Histórico de Relatórios
+      let history = JSON.parse(localStorage.getItem('vortex_history') || '[]');
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const itemsSummary = cart.map(i => `${i.qty}x ${i.name}`).join(', ');
+      
+      history.unshift({
+        time: timeStr,
+        items: `[PDV - ${currentOrderType}] ${itemsSummary}`,
+        payment: currentPayment,
+        total: total
+      });
+      localStorage.setItem('vortex_history', JSON.stringify(history));
 
-      document.getElementById('modalDetailsText').innerHTML = detailsHtml;
-      document.getElementById('successModal').classList.add('active');
+      // 3. ENVIA AUTOMATICAMENTE PARA A COZINHA (KDS)
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      clearCart();
+      kdsOrders.unshift({
+        id: nextKdsId,
+        origin: currentOrderType,
+        client: currentOrderType === 'Balcão / Viagem' ? 'Cliente Balcão' : 'Mesa PDV',
+        items: [...cart],
+        status: 'new',
+        time: timeStr
+      });
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+      // Limpa carrinho e exibe sucesso
+      cart = [];
+      renderCart();
+      showNoticeModal('Venda Finalizada!', `Pedido registrado no caixa e enviado para a tela da cozinha (KDS) como "${currentOrderType}".`, '🎉');
     }
 
-    function closeModal() {
-      document.getElementById('successModal').classList.remove('active');
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
     }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderProducts(catalogProducts);
+    });
   </script>
 </body>
 </html>

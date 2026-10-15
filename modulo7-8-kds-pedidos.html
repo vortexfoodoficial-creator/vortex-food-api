@@ -367,7 +367,7 @@
     .btn-kds-done { background: var(--success); }
     .btn-kds-done:hover { background: #16a34a; }
 
-    /* Modais Customizados */
+    /* Modal Customizado */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -537,7 +537,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (ESTILO MODERNO) -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
   <div class="modal-overlay" id="confirmCancelKdsModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon">⚠️</div>
@@ -558,11 +558,6 @@
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
-    }
-
-    function saveKdsOrders() {
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-      renderKdsBoard();
     }
 
     function setKdsFilter(filter, btn) {
@@ -660,9 +655,17 @@
       if (!pendingKdsCancelId) return;
 
       const order = kdsOrders.find(o => o.id === pendingKdsCancelId);
-      if (order) {
+      if (order && order.status !== 'cancelled') {
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+        // Dedução automática do valor no faturamento do dia
+        if (order.total) {
+          let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+          let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
+          currentSales = Math.max(0, currentSales - order.total);
+          localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
+        }
 
         let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
         deliveries.forEach(del => {
@@ -718,7 +721,7 @@
             <p><strong>Pagamento:</strong> ${paymentText}</p>
             ${order.observation ? `<div class="divider"></div><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
             <div class="divider"></div>
-            <p.center>Hora: ${order.time}</p>
+            <p class="center">Hora: ${order.time}</p>
             <script>
               window.onload = function() { window.print(); window.close(); }
             <\/script>

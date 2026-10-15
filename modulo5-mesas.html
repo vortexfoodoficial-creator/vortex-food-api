@@ -53,7 +53,7 @@
       z-index: 99;
     }
 
-    /* Menu Lateral */
+    /* Menu Lateral Padronizado */
     .sidebar {
       width: 260px;
       background-color: var(--bg-sidebar);
@@ -177,7 +177,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 20px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -200,8 +200,10 @@
       background: rgba(34, 197, 94, 0.08);
     }
 
-    .table-number { font-size: 1.2rem; font-weight: bold; }
-    .table-status { font-size: 0.85rem; font-weight: 600; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; }
+    .table-number { font-size: 1.1rem; font-weight: bold; }
+    .table-status { font-size: 0.8rem; font-weight: bold; }
+    .table-info { font-size: 0.82rem; color: var(--text-muted); }
 
     .modal-overlay {
       display: none;
@@ -220,10 +222,23 @@
       border-radius: 18px;
       padding: 25px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
     }
     .custom-modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; }
-    .btn-modal-primary {
+    
+    .btn-modal-close {
+      background: var(--border);
+      color: var(--text-main);
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-modal-action {
       background: var(--primary);
       color: white;
       width: 100%;
@@ -232,7 +247,19 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      margin-top: 15px;
+      margin-top: 10px;
+    }
+
+    .btn-modal-danger {
+      background: var(--danger);
+      color: white;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
     }
 
     @media (max-width: 768px) {
@@ -315,12 +342,28 @@
   <div class="modal-overlay" id="tableModal">
     <div class="custom-modal-card">
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
-      <div id="tableModalBody" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;"></div>
-      <button class="btn-modal-primary" onclick="closeTableModal()">Fechar</button>
+      <div id="tableModalBody" style="font-size:0.9rem; margin-bottom:15px;"></div>
+      <div id="tableModalActions"></div>
+      <button class="btn-modal-close" onclick="closeTableModal()">Fechar</button>
     </div>
   </div>
 
   <script>
+    let defaultTables = [
+      { id: 1, number: '01', status: 'free', client: '', items: [], total: 0 },
+      { id: 2, number: '02', status: 'occupied', client: 'Rafael', items: [{ name: 'X-Salada Duplo', qty: 2, price: 32.0 }], total: 64.0 },
+      { id: 3, number: '03', status: 'free', client: '', items: [], total: 0 },
+      { id: 4, number: '04', status: 'occupied', client: 'Camila', items: [{ name: 'Pizza Calabresa G', qty: 1, price: 55.0 }], total: 55.0 },
+      { id: 5, number: '05', status: 'free', client: '', items: [], total: 0 },
+      { id: 6, number: '06', status: 'free', client: '', items: [], total: 0 },
+      { id: 7, number: '07', status: 'occupied', client: 'Lucas', items: [{ name: 'Batata Frita M', qty: 1, price: 18.0 }], total: 18.0 },
+      { id: 8, number: '08', status: 'free', client: '', items: [], total: 0 },
+      { id: 9, number: '09', status: 'free', client: '', items: [], total: 0 },
+      { id: 10, number: '10', status: 'free', client: '', items: [], total: 0 },
+      { id: 11, number: '11', status: 'free', client: '', items: [], total: 0 },
+      { id: 12, number: '12', status: 'free', client: '', items: [], total: 0 }
+    ];
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -336,20 +379,11 @@
 
     function loadTables() {
       applyTheme();
-      const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [
-        { id: 1, number: '01', status: 'free' },
-        { id: 2, number: '02', status: 'occupied' },
-        { id: 3, number: '03', status: 'free' },
-        { id: 4, number: '04', status: 'occupied' },
-        { id: 5, number: '05', status: 'free' },
-        { id: 6, number: '06', status: 'free' },
-        { id: 7, number: '07', status: 'occupied' },
-        { id: 8, number: '08', status: 'free' },
-        { id: 9, number: '09', status: 'free' },
-        { id: 10, number: '10', status: 'free' },
-        { id: 11, number: '11', status: 'free' },
-        { id: 12, number: '12', status: 'free' }
-      ];
+      let tables = JSON.parse(localStorage.getItem('vortex_tables'));
+      if (!tables || tables.length === 0 || !tables[0].number) {
+        tables = defaultTables;
+        localStorage.setItem('vortex_tables', JSON.stringify(tables));
+      }
 
       const container = document.getElementById('tablesGridContainer');
       container.innerHTML = '';
@@ -358,9 +392,14 @@
         const isOccupied = t.status === 'occupied';
         container.innerHTML += `
           <div class="table-card ${isOccupied ? 'occupied' : 'free'}" onclick="openTableModal(${t.id})">
-            <div class="table-number">Mesa ${t.number}</div>
-            <div class="table-status" style="color: ${isOccupied ? 'var(--danger)' : 'var(--success)'};">
-              ${isOccupied ? '🔴 Ocupada' : '🟢 Livre'}
+            <div class="table-header">
+              <span class="table-number">Mesa ${t.number}</span>
+              <span class="table-status" style="color: ${isOccupied ? 'var(--danger)' : 'var(--success)'};">
+                ${isOccupied ? '🔴 Ocupada' : '🟢 Livre'}
+              </span>
+            </div>
+            <div class="table-info">
+              ${isOccupied ? `👤 Client: <strong>${t.client || 'Cliente'}</strong><br>💰 Total: <strong>R$ ${t.total.toFixed(2).replace('.', ',')}</strong>` : 'Clique para abrir comanda'}
             </div>
           </div>
         `;
@@ -368,15 +407,74 @@
     }
 
     function openTableModal(id) {
-      const tables = JSON.parse(localStorage.getItem('vortex_tables')) || [];
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
       if (!t) return;
 
       document.getElementById('tableModalTitle').innerText = `Mesa ${t.number}`;
-      document.getElementById('tableModalBody').innerText = t.status === 'occupied' 
-        ? 'Esta mesa está atualmente ocupada com comanda aberta no salão.' 
-        : 'Esta mesa está livre para novos clientes.';
+      const body = document.getElementById('tableModalBody');
+      const actions = document.getElementById('tableModalActions');
+
+      if (t.status === 'occupied') {
+        const itemsList = t.items.map(i => `<li>${i.qty}x ${i.name} - R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</li>`).join('');
+        body.innerHTML = `
+          <p style="margin-bottom:8px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
+          <p style="margin-bottom:8px;"><strong>Consumo:</strong></p>
+          <ul style="padding-left:20px; color:var(--text-main); font-size:0.85rem; margin-bottom:10px;">${itemsList || 'Nenhum item consumido.'}</ul>
+          <p style="font-size:1.1rem; font-weight:bold; color:var(--success);">Total: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
+        `;
+        actions.innerHTML = `
+          <button class="btn-modal-danger" onclick="closeTableComanda(${t.id})">Fechar Comanda & Liberar Mesa 💳</button>
+        `;
+      } else {
+        body.innerHTML = `
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Nome do Cliente:</label>
+            <input type="text" id="openTableClientInput" placeholder="Ex: Lucas" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:9px; border-radius:8px;">
+          </div>
+        `;
+        actions.innerHTML = `
+          <button class="btn-modal-action" onclick="openTableComanda(${t.id})">Abrir Comanda 🍽️</button>
+        `;
+      }
+
       document.getElementById('tableModal').classList.add('active');
+    }
+
+    function openTableComanda(id) {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const t = tables.find(item => item.id === id);
+      if (t) {
+        const clientName = document.getElementById('openTableClientInput').value.trim() || 'Cliente';
+        t.status = 'occupied';
+        t.client = clientName;
+        t.items = [{ name: 'Consumo Inicial', qty: 1, price: 0.0 }];
+        t.total = 0.0;
+        localStorage.setItem('vortex_tables', JSON.stringify(tables));
+        closeTableModal();
+        loadTables();
+      }
+    }
+
+    function closeTableComanda(id) {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const t = tables.find(item => item.id === id);
+      if (t) {
+        if (t.total > 0) {
+          let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
+          let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
+          currentSales += t.total;
+          localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
+        }
+
+        t.status = 'free';
+        t.client = '';
+        t.items = [];
+        t.total = 0.0;
+        localStorage.setItem('vortex_tables', JSON.stringify(tables));
+        closeTableModal();
+        loadTables();
+      }
     }
 
     function closeTableModal() {

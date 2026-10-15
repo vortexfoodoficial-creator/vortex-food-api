@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - PDV / Frente de Caixa</title>
+  <title>Vortex Food - PDV / Caixa</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -80,31 +80,22 @@
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
     .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
-    .product-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: all 0.2s; min-height: 90px; }
-    .product-card:hover { border-color: var(--primary); background: rgba(249, 115, 22, 0.1); transform: translateY(-2px); }
-    .product-name { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-    .product-price { font-size: 0.9rem; font-weight: bold; color: var(--success); }
+    .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; max-height: 480px; overflow-y: auto; padding-right: 4px; }
+    .catalog-item-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+    .catalog-item-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .catalog-item-name { font-size: 0.85rem; font-weight: bold; }
+    .catalog-item-price { font-size: 0.9rem; color: var(--success); font-weight: bold; }
 
-    .cart-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .cart-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
-
-    .form-group { margin-bottom: 10px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
-    
     input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     input:focus, select:focus { border-color: var(--primary); }
 
-    .cash-change-box { display: none; background: rgba(15, 23, 42, 0.2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 8px; margin-bottom: 8px; }
-    .cash-change-box.active { display: block; }
-    .change-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.85rem; margin-top: 6px; }
+    .pdv-cart-list { max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .cart-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
 
-    .total-row { display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: bold; margin: 12px 0 8px 0; padding-top: 8px; border-top: 1px solid var(--border); }
-    .total-row span:last-child { color: var(--success); }
-
-    .btn-primary { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
-    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-submit { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+    .btn-submit:hover { background: var(--primary-hover); }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
@@ -177,7 +168,7 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>PDV / Frente de Caixa</h1>
+        <h1>PDV / Caixa (Balcão)</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
@@ -186,59 +177,56 @@
 
     <div class="pdv-grid">
       <div class="card-box">
-        <div class="card-title">📋 Cardápio Rápido</div>
-        <div class="products-grid" id="pdvProductsGrid"></div>
+        <div class="card-title">📋 Cardápio para Venda no Balcão</div>
+        <div class="catalog-grid" id="catalogGrid"></div>
       </div>
 
       <div class="card-box">
-        <div class="card-title">🛒 Carrinho de Venda</div>
-        <div class="cart-list" id="pdvCartList">
-          <div style="color:var(--text-muted); font-size:0.85rem; text-align:center;">Carrinho vazio.</div>
+        <div class="card-title">💻 Carrinho do PDV</div>
+
+        <div class="form-group">
+          <label for="pdvClientInput">Nome do Cliente (Opcional):</label>
+          <input type="text" id="pdvClientInput" placeholder="Ex: Cliente Balcão">
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="pdvClientName">Cliente (Opcional):</label>
-            <input type="text" id="pdvClientName" placeholder="Ex: Balcão / João">
-          </div>
-          <div class="form-group">
-            <label for="pdvClientPhone">Telefone (Opcional):</label>
-            <input type="text" id="pdvClientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
+        <!-- NOVO: TIPO DE CONSUMO (LOCAL / VIAGEM) -->
+        <div class="form-group">
+          <label for="pdvConsumptionType">Tipo de Atendimento *:</label>
+          <select id="pdvConsumptionType">
+            <option value="Consumo no Local">🍽️ Consumo no Local</option>
+            <option value="Para Viagem">🛍️ Para Viagem</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Itens Selecionados:</label>
+          <div class="pdv-cart-list" id="pdvCartList">
+            <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item adicionado.</div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="pdvPayment">Forma de Pagamento:</label>
-          <select id="pdvPayment" onchange="handlePaymentChange(this.value)">
+          <label for="pdvObsInput">Observação do Pedido:</label>
+          <input type="text" id="pdvObsInput" placeholder="Ex: Sem cebola, caprichar no molho...">
+        </div>
+
+        <div class="form-group">
+          <label for="pdvPaymentSelect">Forma de Pagamento:</label>
+          <select id="pdvPaymentSelect">
+            <option value="Dinheiro">Dinheiro</option>
             <option value="Pix">Pix</option>
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Cartão de Crédito">Cartão de Crédito</option>
-            <option value="Vale Refeição (VR)">Vale Refeição (VR)</option>
-            <option value="Vale Alimentação (VA)">Vale Alimentação (VA)</option>
-            <option value="Dinheiro">Dinheiro</option>
+            <option value="Vale Refeição - VR">Vale Refeição - VR</option>
           </select>
         </div>
 
-        <div class="cash-change-box" id="cashChangeBox">
-          <label for="cashGivenInput">Valor Recebido do Cliente:</label>
-          <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
-          <div class="change-row">
-            <span>Troco a Devolver:</span>
-            <span id="calculatedChangeDisplay">R$ 0,00</span>
-          </div>
+        <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:bold; margin:15px 0;">
+          <span>Total a Pagar:</span>
+          <span id="pdvTotalDisplay" style="color:var(--success);">R$ 0,00</span>
         </div>
 
-        <div class="form-group" style="margin-top: 6px;">
-          <label for="pdvObs">Observação (Opcional):</label>
-          <input type="text" id="pdvObs" placeholder="Ex: Sem maionese...">
-        </div>
-
-        <div class="total-row">
-          <span>Total:</span>
-          <span id="pdvTotalDisplay">R$ 0,00</span>
-        </div>
-
-        <button class="btn-primary" onclick="finalizePdvSale()">Finalizar Venda & Enviar p/ Cozinha 💻</button>
+        <button class="btn-submit" onclick="finalizePdvOrder()">Finalizar Venda & Enviar p/ Cozinha 🚀</button>
       </div>
     </div>
   </main>
@@ -246,26 +234,23 @@
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
-      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
-      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Venda realizada.</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Venda Concluída!</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Pedido enviado ao KDS.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
-    const pdvProducts = [
+    const catalogProducts = [
       { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
       { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
       { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
       { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
       { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
-      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
-      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
-      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' }
     ];
 
     let pdvCart = [];
-    let rawCashGiven = 0;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -295,95 +280,29 @@
       }
     }
 
-    function handlePhoneKeyDown(e, input) {
-      if (e.key === 'Backspace') {
-        let v = input.value;
-        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
-          e.preventDefault();
-          let digits = v.replace(/\D/g, '').slice(0, -1);
-          formatAndSetPhone(input, digits);
-        }
-      }
-    }
-
-    function handlePhoneInput(input) {
-      let digits = input.value.replace(/\D/g, '');
-      formatAndSetPhone(input, digits);
-    }
-
-    function formatAndSetPhone(input, digits) {
-      if (digits.length > 11) digits = digits.slice(0, 11);
-      if (digits.length === 0) input.value = '';
-      else if (digits.length <= 2) input.value = `(${digits}`;
-      else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
-      else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
-      else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
-    }
-
-    function handlePaymentChange(val) {
-      const box = document.getElementById('cashChangeBox');
-      if (val === 'Dinheiro') box.classList.add('active');
-      else box.classList.remove('active');
-      calculateChange();
-    }
-
-    function maskCurrencyInput(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (!value) {
-        input.value = 'R$ 0,00';
-        rawCashGiven = 0;
-        calculateChange();
-        return;
-      }
-      const numeric = parseFloat(value) / 100;
-      rawCashGiven = numeric;
-      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      calculateChange();
-    }
-
-    function calculateChange() {
-      const payment = document.getElementById('pdvPayment').value;
-      if (payment !== 'Dinheiro') return;
-
-      const total = pdvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const display = document.getElementById('calculatedChangeDisplay');
-
-      if (rawCashGiven >= total && total > 0) {
-        const change = rawCashGiven - total;
-        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
-        display.style.color = 'var(--success)';
-      } else if (rawCashGiven > 0) {
-        display.innerText = 'Falta dinheiro';
-        display.style.color = 'var(--danger)';
-      } else {
-        display.innerText = 'R$ 0,00';
-        display.style.color = 'var(--text-main)';
-      }
-    }
-
-    function renderPdvProducts() {
-      const grid = document.getElementById('pdvProductsGrid');
+    function renderCatalog() {
+      const grid = document.getElementById('catalogGrid');
       grid.innerHTML = '';
-      pdvProducts.forEach(p => {
+      catalogProducts.forEach(p => {
         grid.innerHTML += `
-          <div class="product-card" onclick="addToPdvCart('${p.name}', ${p.price}, '${p.type}')">
-            <div class="product-name">${p.name}</div>
-            <div class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
+          <div class="catalog-item-card" onclick="addToPdvCart('${p.name}', ${p.price})">
+            <div class="catalog-item-name">${p.name}</div>
+            <div class="catalog-item-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>
         `;
       });
     }
 
-    function addToPdvCart(name, price, type) {
+    function addToPdvCart(name, price) {
       const existing = pdvCart.find(i => i.name === name);
       if (existing) existing.qty += 1;
-      else pdvCart.push({ name, price, type, qty: 1 });
+      else pdvCart.push({ name, price, qty: 1 });
       renderPdvCart();
     }
 
-    function changePdvQty(index, delta) {
-      pdvCart[index].qty += delta;
-      if (pdvCart[index].qty <= 0) pdvCart.splice(index, 1);
+    function changePdvQty(idx, delta) {
+      pdvCart[idx].qty += delta;
+      if (pdvCart[idx].qty <= 0) pdvCart.splice(idx, 1);
       renderPdvCart();
     }
 
@@ -392,9 +311,8 @@
       const totalDisplay = document.getElementById('pdvTotalDisplay');
 
       if (pdvCart.length === 0) {
-        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center;">Carrinho vazio.</div>`;
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item adicionado.</div>`;
         totalDisplay.innerText = 'R$ 0,00';
-        calculateChange();
         return;
       }
 
@@ -403,85 +321,74 @@
       pdvCart.forEach((item, idx) => {
         total += item.price * item.qty;
         html += `
-          <div class="cart-row">
+          <div class="cart-item-row">
             <span><strong>${item.qty}x</strong> ${item.name}</span>
             <div style="display:flex; align-items:center; gap:6px;">
-              <button type="button" onclick="changePdvQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
-              <span style="font-weight:bold; width:16px; text-align:center;">${item.qty}</span>
-              <button type="button" onclick="changePdvQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:22px; height:22px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+              <button type="button" onclick="changePdvQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <span>${item.qty}</span>
+              <button type="button" onclick="changePdvQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
             </div>
           </div>
         `;
       });
       list.innerHTML = html;
       totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-      calculateChange();
     }
 
-    function finalizePdvSale() {
+    function finalizePdvOrder() {
       if (pdvCart.length === 0) {
-        showNoticeModal('Carrinho Vazio', 'Adicione produtos ao carrinho antes de finalizar.', '⚠️');
+        showNoticeModal('Carrinho Vazio', 'Adicione itens ao carrinho antes de finalizar.', '⚠️');
         return;
       }
 
+      const clientName = document.getElementById('pdvClientInput').value.trim() || 'Balcão';
+      const consumptionType = document.getElementById('pdvConsumptionType').value; // Consumo no Local ou Para Viagem
+      const observation = document.getElementById('pdvObsInput').value.trim();
+      const payment = document.getElementById('pdvPaymentSelect').value;
+
       const total = pdvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const payment = document.getElementById('pdvPayment').value;
-
-      let cashGivenStr = '';
-      let changeStr = '';
-
-      if (payment === 'Dinheiro') {
-        if (rawCashGiven < total) {
-          showNoticeModal('Valor Insuficiente', 'O dinheiro recebido é menor que o valor total da compra.', '⚠️');
-          return;
-        }
-        cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
-        changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
-      }
-
-      const clientName = document.getElementById('pdvClientName').value.trim() || 'Balcão / Caixa';
-      const clientPhone = document.getElementById('pdvClientPhone').value.trim();
-      const obs = document.getElementById('pdvObs').value.trim();
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
-      let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
+      // Atualiza Faturamento no Dashboard (vortex_vendas_hoje)
+      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
+      let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      kdsOrders.unshift({
+      const newOrder = {
         id: nextKdsId,
-        origin: 'PDV (Consumo Local)',
-        client: clientPhone ? `${clientName} (${clientPhone})` : clientName,
+        origin: `Balcão (${consumptionType})`,
+        client: clientName,
+        address: consumptionType,
         payment: payment,
-        cashGiven: cashGivenStr,
-        change: changeStr,
-        observation: obs,
+        observation: observation,
         items: [...pdvCart],
         total: total,
         status: 'new',
         time: timeStr
-      });
+      };
+
+      kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
+      // Limpa formulário
       pdvCart = [];
-      rawCashGiven = 0;
-      document.getElementById('pdvClientName').value = '';
-      document.getElementById('pdvClientPhone').value = '';
-      document.getElementById('pdvObs').value = '';
-      document.getElementById('cashGivenInput').value = '';
+      document.getElementById('pdvClientInput').value = '';
+      document.getElementById('pdvObsInput').value = '';
       renderPdvCart();
-      showNoticeModal('Venda Finalizada!', 'Pedido registrado e enviado para o KDS!', '🎉');
+
+      showNoticeModal('Venda Realizada!', `Pedido #${nextKdsId} (${consumptionType}) enviado com sucesso para a Cozinha!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {
       document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeDesc').innerHTML = desc;
       document.getElementById('noticeModal').classList.add('active');
     }
 
@@ -490,13 +397,12 @@
     }
 
     setInterval(() => {
-      const now = new Date();
-      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
     window.onload = function() {
       loadStoreSettings();
-      renderPdvProducts();
+      renderCatalog();
     };
   </script>
 </body>

@@ -79,7 +79,6 @@
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
-    /* CARD DE CONFIGURAÇÃO DE AUTOATENDIMENTO QR CODE */
     .qr-config-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
     .qr-config-info { flex: 1; min-width: 250px; }
     .qr-config-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
@@ -205,12 +204,11 @@
       </div>
     </header>
 
-    <!-- CARD DE CONTROLE DE AUTOATENDIMENTO QR CODE -->
     <div class="qr-config-card">
       <div class="qr-config-info">
         <div class="qr-config-title">📱 Fechamento de Conta via QR Code da Mesa</div>
         <div class="qr-config-desc">
-          Ative para permitir que o próprio cliente possa ler o QR Code da mesa e solicitar o fechamento da conta pelo celular. Imprima gratuitamente a etiqueta exclusiva de cada mesa abaixo. Se desativado, apenas os atendentes poderão fechar comanda pelo painel.
+          Ative para permitir que o cliente possa ler o QR Code da mesa e solicitar o fechamento da conta pelo celular. Imprima gratuitamente a etiqueta exclusiva de cada mesa abaixo. Se desativado, apenas os atendentes poderão fechar comanda pelo painel.
         </div>
       </div>
       <label class="switch-container">
@@ -373,7 +371,6 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Carrega estado do QR Code
       isQrEnabled = localStorage.getItem('vortex_qr_enabled') === 'true';
       const toggle = document.getElementById('qrEnableToggle');
       toggle.checked = isQrEnabled;
@@ -452,7 +449,7 @@
       document.getElementById('modalMesaTitle').innerText = `Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
 
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
-      let currentData = tableCarts[activeTableId] || { client: '', items: [], obs: '' };
+      let currentData = tableCarts[activeTableId] || { client: '', items: [], obs: '', orderId: null };
 
       document.getElementById('tableClientNameInput').value = currentData.client || '';
       document.getElementById('tableObsInput').value = currentData.obs || '';
@@ -521,7 +518,6 @@
       totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     }
 
-    /* ENVIAR PEDIDO PARA A COZINHA */
     function submitTableOrderToKds() {
       if (tempCart.length === 0) {
         showNoticeModal('Comanda Vazia', 'Adicione itens à mesa antes de enviar.', '⚠️');
@@ -535,40 +531,50 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Salva Comanda da Mesa
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let currentData = tableCarts[activeTableId] || {};
+      let existingOrderId = currentData.orderId;
+
+      let targetOrder = kdsOrders.find(o => o.id === existingOrderId);
+
+      if (targetOrder && targetOrder.status !== 'finished' && targetOrder.status !== 'cancelled') {
+        targetOrder.items = [...tempCart];
+        targetOrder.total = total;
+        targetOrder.observation = observation;
+      } else {
+        const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
+        existingOrderId = nextKdsId;
+
+        targetOrder = {
+          id: nextKdsId,
+          origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
+          client: clientName,
+          address: 'Consumo Local',
+          payment: 'Comanda de Mesa',
+          observation: observation,
+          items: [...tempCart],
+          total: total,
+          status: 'new',
+          time: timeStr
+        };
+        kdsOrders.unshift(targetOrder);
+      }
+
       tableCarts[activeTableId] = {
         client: clientName,
         items: [...tempCart],
-        obs: observation
+        obs: observation,
+        orderId: existingOrderId
       };
+
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
-
-      // Envia Pedido ao KDS
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
-
-      const newOrder = {
-        id: nextKdsId,
-        origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
-        client: clientName,
-        address: 'Consumo Local',
-        payment: 'Comanda de Mesa',
-        observation: observation,
-        items: [...tempCart],
-        total: total,
-        status: 'new',
-        time: timeStr
-      };
-
-      kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
       closeMesaModal();
       renderMesas();
-      showNoticeModal('Pedido Enviado!', `Pedido #${nextKdsId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha!`, '👨‍🍳');
+      showNoticeModal('Pedido Enviado!', `Pedido #${existingOrderId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha!`, '👨‍🍳');
     }
 
-    /* FECHAR CONTA DA MESA */
     function openPaymentModal() {
       if (tempCart.length === 0) {
         showNoticeModal('Sem Consumo', 'Não há itens na comanda para fechar conta.', '⚠️');
@@ -631,6 +637,7 @@
       }
     }
 
+    /* FECHAR CONTA E ATUALIZAR KDS PARA FINALIZADO */
     function finalizeTablePayment() {
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('tablePaymentMethod').value;
@@ -640,14 +647,25 @@
         return;
       }
 
-      // SOMA NO DASHBOARD (vortex_vendas_hoje)
+      // SOMA NO DASHBOARD
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // Libera a Mesa
+      // ATUALIZA STATUS NO KDS PARA FINISHED (FINALIZADO)
+      let currentData = tableCarts[activeTableId] || {};
+      if (currentData.orderId) {
+        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        let kdsOrder = kdsOrders.find(o => o.id === currentData.orderId);
+        if (kdsOrder) {
+          kdsOrder.status = 'finished';
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        }
+      }
+
+      // LIBERA A MESA
       delete tableCarts[activeTableId];
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
 
@@ -655,10 +673,9 @@
       closeMesaModal();
       renderMesas();
 
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga e liberada com sucesso! Faturamento atualizado no Dashboard.`, '✅');
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, enviada para pedidos finalizados na Cozinha e liberada com sucesso!`, '✅');
     }
 
-    /* QR CODE DA MESA */
     function openQrModal(mesaNum) {
       if (!isQrEnabled) {
         showNoticeModal('Recurso Desativado', 'Ative a chave de fechamento via QR Code no topo da página para visualizar e imprimir as etiquetas.', '🔒');

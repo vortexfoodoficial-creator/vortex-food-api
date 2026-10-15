@@ -174,13 +174,13 @@
     }
     .search-input:focus { border-color: var(--primary); }
 
-    /* CONTAINER COM ROLAGEM INDEPENDENTE PARA O CARDÁPIO (Aprox. 3 linhas visíveis) */
+    /* CONTAINER COM ROLAGEM INDEPENDENTE PARA O CARDÁPIO */
     .catalog-scroll-box {
       background: var(--bg-main);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 10px;
-      max-height: 250px; /* Altura controlada para exibir cerca de 3 linhas */
+      max-height: 250px;
       overflow-y: auto;
       margin-bottom: 20px;
     }
@@ -241,12 +241,12 @@
     }
 
     .cart-items-list {
-      max-height: 140px;
+      max-height: 130px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     .cart-row {
@@ -282,6 +282,7 @@
       font-size: 0.88rem;
       outline: none;
     }
+    textarea { resize: none; height: 50px; }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); }
 
     .type-buttons-row {
@@ -313,7 +314,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 6px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .pay-btn {
@@ -333,12 +334,30 @@
       color: var(--success);
     }
 
+    /* Caixa de Dinheiro e Troco no PDV */
+    .cash-change-box {
+      display: none;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+    .cash-change-box.active { display: block; }
+    .change-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 0.82rem;
+      margin-top: 5px;
+    }
+
     .total-row {
       display: flex;
       justify-content: space-between;
       font-size: 1.15rem;
       font-weight: bold;
-      margin: 12px 0;
+      margin: 10px 0;
       padding-top: 8px;
       border-top: 1px solid var(--border);
     }
@@ -463,9 +482,7 @@
 
     <!-- CARDÁPIO COM ROLAGEM INDEPENDENTE -->
     <div class="catalog-scroll-box">
-      <div class="products-grid" id="productsGrid">
-        <!-- Renderizado via JS -->
-      </div>
+      <div class="products-grid" id="productsGrid"></div>
     </div>
 
     <!-- CAIXA DO CARRINHO E REGISTRO DE VENDA -->
@@ -488,12 +505,12 @@
       <form id="pdvForm" onsubmit="finalizePdvSale(event)">
         <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
           <div class="form-group">
-            <label for="clientName">Nome do Cliente (Opcional):</label>
-            <input type="text" id="clientName" placeholder="Ex: Carlos Silva">
+            <label for="clientName">Nome do Cliente:</label>
+            <input type="text" id="clientName" placeholder="Ex: Carlos Silva" required>
           </div>
           <div class="form-group">
             <label for="clientPhone">WhatsApp / Telefone:</label>
-            <input type="text" id="clientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)">
+            <input type="text" id="clientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)" required>
           </div>
         </div>
 
@@ -507,6 +524,21 @@
             <div class="pay-btn" onclick="setPayment('Vale VA', this)">Vale VA</div>
             <div class="pay-btn" onclick="setPayment('Dinheiro', this)">Dinheiro</div>
           </div>
+        </div>
+
+        <!-- CAIXA DE DINHEIRO E TROCO -->
+        <div class="cash-change-box" id="cashChangeBox">
+          <label for="cashGivenInput">Valor Recebido em Dinheiro:</label>
+          <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
+          <div class="change-row">
+            <span>Troco a Devolver:</span>
+            <span id="calculatedChangeDisplay">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="clientObservation">Observação do Pedido (Opcional):</label>
+          <textarea id="clientObservation" placeholder="Ex: Sem cebola, caprichar no molho..."></textarea>
         </div>
 
         <div class="total-row">
@@ -544,6 +576,7 @@
     let cart = [];
     let currentSaleType = 'Para Viagem';
     let currentPayment = 'Pix';
+    let rawCashGiven = 0;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -616,6 +649,7 @@
         list.innerHTML = `<div style="color:var(--text-muted); font-size:0.82rem; text-align:center; padding:15px;">Nenhum produto adicionado.</div>`;
         countDisplay.innerText = '0 itens';
         totalDisplay.innerText = 'R$ 0,00';
+        calculateChange();
         return;
       }
 
@@ -642,6 +676,7 @@
       list.innerHTML = html;
       countDisplay.innerText = `${totalQty} item(ns)`;
       totalDisplay.innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+      calculateChange();
     }
 
     function setSaleType(type) {
@@ -659,6 +694,47 @@
       currentPayment = method;
       document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+
+      const cashBox = document.getElementById('cashChangeBox');
+      if (method === 'Dinheiro') {
+        cashBox.classList.add('active');
+      } else {
+        cashBox.classList.remove('active');
+      }
+      calculateChange();
+    }
+
+    function maskCurrencyInput(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = 'R$ 0,00';
+        rawCashGiven = 0;
+        calculateChange();
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      rawCashGiven = numeric;
+      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      calculateChange();
+    }
+
+    function calculateChange() {
+      const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const display = document.getElementById('calculatedChangeDisplay');
+
+      if (currentPayment !== 'Dinheiro') return;
+
+      if (rawCashGiven >= total && total > 0) {
+        const change = rawCashGiven - total;
+        display.innerText = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        display.style.color = 'var(--success)';
+      } else if (rawCashGiven > 0) {
+        display.innerText = 'Falta dinheiro';
+        display.style.color = 'var(--danger)';
+      } else {
+        display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
+      }
     }
 
     function finalizePdvSale(event) {
@@ -668,17 +744,31 @@
         return;
       }
 
-      const client = document.getElementById('clientName').value.trim() || 'Balcão';
       const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      let cashGivenStr = '';
+      let changeStr = '';
+
+      if (currentPayment === 'Dinheiro') {
+        if (rawCashGiven < total) {
+          alert('O valor em dinheiro recebido é menor que o total da venda.');
+          return;
+        }
+        cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
+        changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
+      }
+
+      const client = document.getElementById('clientName').value.trim();
+      const phone = document.getElementById('clientPhone').value.trim();
+      const observation = document.getElementById('clientObservation').value.trim();
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Atualiza faturamento do dia
+      // 1. Atualiza faturamento do dia
       let currentSales = parseFloat(localStorage.getItem('vortex_vendas_hoje') || '1450.00');
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
 
-      // Envia para o KDS (Cozinha)
+      // 2. Envia para o KDS (Cozinha) com todas as informações completas
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
@@ -686,8 +776,13 @@
         id: nextId,
         origin: `PDV (${currentSaleType})`,
         client: client,
+        phone: phone,
         payment: currentPayment,
+        cashGiven: cashGivenStr,
+        change: changeStr,
+        observation: observation,
         items: [...cart],
+        total: total,
         status: 'new',
         time: timeStr
       });
@@ -698,6 +793,8 @@
       renderCart();
       document.getElementById('pdvForm').reset();
       document.getElementById('productSearch').value = '';
+      document.getElementById('cashGivenInput').value = '';
+      rawCashGiven = 0;
       renderProducts();
 
       document.getElementById('noticeModal').classList.add('active');

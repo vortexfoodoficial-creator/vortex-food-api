@@ -444,9 +444,9 @@
       background: var(--border);
       color: var(--text-main);
       border: none;
-      padding: 5px 9px;
+      padding: 6px 10px;
       border-radius: 6px;
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       font-weight: bold;
       cursor: pointer;
       display: flex;
@@ -473,12 +473,12 @@
       background: rgba(239, 68, 68, 0.15);
       color: var(--danger);
       border: 1px solid var(--danger);
-      padding: 5px 10px;
+      padding: 6px 10px;
       border-radius: 6px;
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     .btn-cancel-delivery:hover { background: var(--danger); color: white; }
 
@@ -510,6 +510,35 @@
     .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
     .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
     .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+
+    .modal-actions-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-modal-cancel {
+      background: var(--border);
+      color: var(--text-main);
+      width: 50%;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-modal-confirm-danger {
+      background: var(--danger);
+      color: white;
+      width: 50%;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
 
     .btn-modal-primary {
       background: var(--primary);
@@ -704,7 +733,20 @@
     </div>
   </main>
 
-  <!-- MODAL DE AVISO -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (ESTILO MODERNO) -->
+  <div class="modal-overlay" id="confirmCancelModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">⚠️</div>
+      <div class="custom-modal-title">Cancelar Entrega</div>
+      <div class="custom-modal-desc" id="confirmCancelText">Deseja realmente cancelar este pedido?</div>
+      <div class="modal-actions-row">
+        <button class="btn-modal-cancel" onclick="closeConfirmCancelModal()">Voltar</button>
+        <button class="btn-modal-confirm-danger" onclick="executeCancelDelivery()">Sim, Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE AVISO GERAL -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="noticeIcon">🎉</div>
@@ -729,6 +771,7 @@
     let deliveryCart = [];
     let currentPayment = 'Pix';
     let rawCashGiven = 0;
+    let pendingCancelId = null;
     let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
 
     function toggleMenu() {
@@ -887,7 +930,6 @@
       }
     }
 
-    // Sincroniza status do KDS com o Delivery (incluindo Cancelamento)
     function syncDeliveriesWithKds() {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let updated = false;
@@ -939,7 +981,7 @@
         let actionButtonsHtml = '';
         if (del.status === 'Pronto p/ Entrega') {
           actionButtonsHtml = `
-            <button class="btn-cancel-delivery" onclick="cancelDeliveryOrder(${del.id})">❌ Cancelar</button>
+            <button class="btn-cancel-delivery" onclick="openConfirmCancelModal(${del.id})">❌ Cancelar</button>
             <button class="btn-dispatch" onclick="dispatchOrder(${del.id})">Despachar 🛵</button>
           `;
         } else if (del.status === 'Em Rota de Entrega') {
@@ -948,7 +990,7 @@
           actionButtonsHtml = `<span style="font-size:0.8rem; color:var(--danger); font-weight:bold;">Cancelado ❌</span>`;
         } else {
           actionButtonsHtml = `
-            <button class="btn-cancel-delivery" onclick="cancelDeliveryOrder(${del.id})">❌ Cancelar</button>
+            <button class="btn-cancel-delivery" onclick="openConfirmCancelModal(${del.id})">❌ Cancelar</button>
             <span style="font-size:0.8rem; color:var(--warning); font-weight:bold;">Na Cozinha...</span>
           `;
         }
@@ -986,23 +1028,34 @@
       }
     }
 
-    function cancelDeliveryOrder(id) {
-      if (!confirm(`Deseja realmente cancelar a entrega #${id}?`)) return;
+    function openConfirmCancelModal(id) {
+      pendingCancelId = id;
+      document.getElementById('confirmCancelText').innerText = `Deseja realmente cancelar a entrega #${id}?`;
+      document.getElementById('confirmCancelModal').classList.add('active');
+    }
 
-      const del = deliveries.find(d => d.id === id);
+    function closeConfirmCancelModal() {
+      pendingCancelId = null;
+      document.getElementById('confirmCancelModal').classList.remove('active');
+    }
+
+    function executeCancelDelivery() {
+      if (!pendingCancelId) return;
+
+      const del = deliveries.find(d => d.id === pendingCancelId);
       if (del) {
         del.status = 'Cancelado';
         localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
-        // Cancela também no KDS se estiver lá
         let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         kdsOrders.forEach(k => {
-          if (k.origin === `Delivery #${id}`) {
+          if (k.origin === `Delivery #${pendingCancelId}`) {
             k.status = 'cancelled';
           }
         });
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
+        closeConfirmCancelModal();
         renderDeliveries();
       }
     }

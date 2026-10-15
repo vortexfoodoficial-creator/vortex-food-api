@@ -99,9 +99,19 @@
     .btn-start { background: var(--warning); color: #000; }
     .btn-finish { background: var(--success); color: white; }
     
-    /* BOTÃO DE CANCELAMENTO DIRETO NA COZINHA RESTAURADO */
     .btn-cancel-kds { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-cancel-kds:hover { background: var(--danger); color: white; }
+
+    /* MODAL CUSTOMIZADO VORTEX FOOD */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
+    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+    .custom-modal-desc { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
+    
+    .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; margin-bottom: 8px; }
+    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -178,7 +188,20 @@
     <div class="kds-grid" id="kdsContainer"></div>
   </main>
 
+  <!-- MODAL PROFISSIONAL DE CANCELAMENTO -->
+  <div class="modal-overlay" id="cancelKdsModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">❌</div>
+      <div class="custom-modal-title">Cancelar Pedido?</div>
+      <div class="custom-modal-desc" id="cancelKdsDesc">Deseja realmente remover este pedido do monitor da cozinha?</div>
+      <button class="btn-modal-danger" onclick="confirmKdsCancel()">Sim, Cancelar Pedido</button>
+      <button class="btn-modal-secondary" onclick="closeKdsCancelModal()">Manter Pedido</button>
+    </div>
+  </div>
+
   <script>
+    let selectedCancelOrderId = null;
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -255,7 +278,7 @@
               <button class="btn-status-action ${buttonActionClass}" onclick="advanceOrderStatus(${o.id})">
                 ${buttonText}
               </button>
-              <button class="btn-cancel-kds" onclick="cancelKdsOrder(${o.id})" title="Cancelar Pedido">
+              <button class="btn-cancel-kds" onclick="promptKdsCancel(${o.id})" title="Cancelar Pedido">
                 ❌
               </button>
             </div>
@@ -278,16 +301,28 @@
       }
     }
 
-    /* CANCELAMENTO DIRETO NO KDS */
-    function cancelKdsOrder(orderId) {
-      if (confirm('Deseja realmente cancelar este pedido da cozinha?')) {
+    /* MODAL PROFISSIONAL DE CANCELAMENTO */
+    function promptKdsCancel(orderId) {
+      selectedCancelOrderId = orderId;
+      document.getElementById('cancelKdsDesc').innerText = `Deseja realmente cancelar e remover o pedido #${orderId} da cozinha?`;
+      document.getElementById('cancelKdsModal').classList.add('active');
+    }
+
+    function closeKdsCancelModal() {
+      selectedCancelOrderId = null;
+      document.getElementById('cancelKdsModal').classList.remove('active');
+    }
+
+    function confirmKdsCancel() {
+      if (selectedCancelOrderId) {
         let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        const o = orders.find(item => item.id === orderId);
+        const o = orders.find(item => item.id === selectedCancelOrderId);
         if (o) {
           o.status = 'cancelled';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-          renderKds();
         }
+        closeKdsCancelModal();
+        renderKds();
       }
     }
 

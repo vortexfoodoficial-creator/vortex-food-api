@@ -41,7 +41,6 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -81,22 +80,28 @@
     .kds-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
     .kds-card.status-new { border-left: 5px solid var(--info); }
     .kds-card.status-preparing { border-left: 5px solid var(--warning); }
-    .kds-card.status-ready { border-left: 5px solid var(--success); }
 
     .kds-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
     .kds-id { font-weight: bold; font-size: 1rem; color: var(--primary); }
     .kds-time { font-size: 0.8rem; color: var(--text-muted); }
 
     .kds-body { display: flex; flex-direction: column; gap: 8px; }
-    .kds-origin { font-size: 0.85rem; font-weight: bold; }
+    .kds-origin { font-size: 0.88rem; font-weight: bold; }
     .kds-client { font-size: 0.8rem; color: var(--text-muted); }
 
     .kds-items-list { list-style: none; padding: 0; background: var(--bg-main); border-radius: 8px; padding: 8px 12px; max-height: 140px; overflow-y: auto; }
     .kds-items-list li { font-size: 0.85rem; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
 
-    .btn-status-action { width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; transition: background 0.2s; }
+    .obs-box { background: rgba(234, 179, 8, 0.12); border: 1px solid var(--warning); color: #fef08a; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+
+    .kds-actions-row { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-status-action { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; transition: background 0.2s; }
     .btn-start { background: var(--warning); color: #000; }
     .btn-finish { background: var(--success); color: white; }
+    
+    /* BOTÃO DE CANCELAMENTO DIRETO NA COZINHA RESTAURADO */
+    .btn-cancel-kds { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-cancel-kds:hover { background: var(--danger); color: white; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -112,7 +117,6 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -160,7 +164,6 @@
     </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
@@ -245,12 +248,17 @@
                 ${itemsList}
               </ul>
 
-              ${o.observation ? `<div style="font-size:0.78rem; color:var(--warning);">⚠️ Obs: ${o.observation}</div>` : ''}
+              ${o.observation ? `<div class="obs-box">⚠️ Obs: ${o.observation}</div>` : ''}
             </div>
 
-            <button class="btn-status-action ${buttonActionClass}" onclick="advanceOrderStatus(${o.id})">
-              ${buttonText}
-            </button>
+            <div class="kds-actions-row">
+              <button class="btn-status-action ${buttonActionClass}" onclick="advanceOrderStatus(${o.id})">
+                ${buttonText}
+              </button>
+              <button class="btn-cancel-kds" onclick="cancelKdsOrder(${o.id})" title="Cancelar Pedido">
+                ❌
+              </button>
+            </div>
           </div>
         `;
       });
@@ -267,6 +275,19 @@
         }
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         renderKds();
+      }
+    }
+
+    /* CANCELAMENTO DIRETO NO KDS */
+    function cancelKdsOrder(orderId) {
+      if (confirm('Deseja realmente cancelar este pedido da cozinha?')) {
+        let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        const o = orders.find(item => item.id === orderId);
+        if (o) {
+          o.status = 'cancelled';
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+          renderKds();
+        }
       }
     }
 

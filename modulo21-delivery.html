@@ -29,536 +29,103 @@
       --border: #cbd5e1;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
-      transition: background-color 0.3s, color 0.3s;
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
     }
 
     .sidebar-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 99;
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral Padronizado */
+    /* Menu Lateral */
     .sidebar {
-      width: 260px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      z-index: 100;
-      overflow-y: auto;
-      transition: transform 0.3s ease, background-color 0.3s;
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
     }
 
     .sidebar-header {
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
     }
 
-    .logo-icon { font-size: 1.5rem; }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-    .close-sidebar-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .sidebar-nav {
-      padding: 15px 10px;
-      flex: 1;
-    }
-
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
     .nav-section { margin-bottom: 20px; }
-
-    .nav-section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0 10px 8px;
-      display: block;
-    }
-
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      transition: all 0.2s ease;
-      font-size: 0.90rem;
-    }
-
-    .nav-link:hover, .nav-link.active {
-      background-color: rgba(249, 115, 22, 0.15);
-      color: var(--primary);
-    }
-
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal */
-    .main-content {
-      flex: 1;
-      margin-left: 260px;
-      padding: 20px;
-      width: calc(100% - 260px);
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 25px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      flex-wrap: wrap;
-    }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
+    .delivery-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-    .toggle-btn {
-      display: none;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
+    .form-group { margin-bottom: 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
+    input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
 
-    header h1 { font-size: 1.5rem; }
+    .menu-select-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 180px; overflow-y: auto; margin-bottom: 12px; padding-right: 4px; }
+    .mini-menu-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; transition: all 0.2s; }
+    .mini-menu-card:hover { border-color: var(--primary); }
+    .mini-menu-title { font-size: 0.8rem; font-weight: bold; }
+    .mini-menu-price { font-size: 0.75rem; color: var(--success); font-weight: bold; }
 
-    /* Layout do Delivery */
-    .delivery-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 20px;
-    }
+    .delivery-cart-list { max-height: 120px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .cart-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
 
-    @media (max-width: 1024px) {
+    .cash-change-box { display: none; background: rgba(15, 23, 42, 0.2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 8px; margin-bottom: 8px; }
+    .cash-change-box.active { display: block; }
+    .change-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.85rem; margin-top: 6px; }
+
+    .btn-submit { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+    .btn-submit:hover { background: var(--primary-hover); }
+
+    .delivery-orders-list { display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; }
+    .order-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
+    .order-id { font-weight: bold; color: var(--primary); }
+    .order-status { font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; }
+    .status-new { background: rgba(56, 189, 248, 0.15); color: var(--info); }
+    .status-preparing { background: rgba(234, 179, 8, 0.15); color: var(--warning); }
+    .status-delivering { background: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .status-finished { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; }
+
+    @media (max-width: 900px) {
       .delivery-grid { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
       .close-sidebar-btn { display: block; }
-      .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 15px 15px 80px 15px;
-      }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
       .toggle-btn { display: block; }
-    }
-
-    .card-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 15px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Formulário */
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    label {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
-
-    input, select, textarea {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      width: 100%;
-      padding: 9px;
-      border-radius: 8px;
-      font-size: 0.88rem;
-      outline: none;
-      transition: background-color 0.3s, border-color 0.2s;
-    }
-
-    input:read-only {
-      background: rgba(30, 41, 59, 0.2);
-      color: var(--text-muted);
-      border-color: rgba(51, 65, 85, 0.3);
-      cursor: not-allowed;
-    }
-
-    textarea {
-      resize: none;
-      height: 50px;
-    }
-
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--primary);
-    }
-
-    /* Seletor Rápido de Produtos */
-    .product-selector-box {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-
-    .products-mini-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      max-height: 130px;
-      overflow-y: auto;
-      margin-top: 6px;
-      padding-right: 4px;
-    }
-
-    .mini-product-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: all 0.2s;
-    }
-
-    .mini-product-card:hover {
-      border-color: var(--primary);
-      background: rgba(249, 115, 22, 0.1);
-    }
-
-    .delivery-cart-list {
-      max-height: 100px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-top: 6px;
-      margin-bottom: 6px;
-    }
-
-    .delivery-cart-row {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 6px 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.82rem;
-    }
-
-    /* Grade de Pagamento no Delivery */
-    .payment-methods-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-      margin: 6px 0;
-    }
-
-    .pay-method-btn {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 7px 4px;
-      border-radius: 6px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
-    }
-
-    .pay-method-btn.active {
-      background: rgba(34, 197, 94, 0.15);
-      border-color: var(--success);
-      color: var(--success);
-    }
-
-    /* Caixa de Dinheiro e Troco */
-    .cash-change-box {
-      display: none;
-      background: rgba(15, 23, 42, 0.2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      margin-top: 6px;
-      margin-bottom: 6px;
-    }
-
-    .cash-change-box.active { display: block; }
-
-    .cash-change-box label {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 3px;
-    }
-
-    .cash-change-box input {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      width: 100%;
-      padding: 7px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      outline: none;
-    }
-
-    .change-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-      font-size: 0.82rem;
-      margin-top: 5px;
-    }
-
-    .total-display-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 1.05rem;
-      font-weight: bold;
-      margin: 8px 0;
-      padding-top: 6px;
-      border-top: 1px solid var(--border);
-    }
-
-    .total-display-row span:last-child { color: var(--success); }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      border: none;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-top: 5px;
-    }
-
-    .btn-primary:hover { background: var(--primary-hover); }
-
-    /* Lista de Entregas Ativas */
-    .delivery-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-height: 650px;
-      overflow-y: auto;
-    }
-
-    .delivery-item {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      position: relative;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-
-    .delivery-item-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
-    .tag-status {
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: bold;
-    }
-    .status-preparing { background: rgba(234, 179, 8, 0.15); color: var(--warning); }
-    .status-ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-    .status-dispatch { background: rgba(56, 189, 248, 0.15); color: var(--info); }
-    .status-cancelled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-
-    /* Botões de Ação */
-    .card-actions-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-      padding-top: 6px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .btn-print {
-      background: var(--border);
-      color: var(--text-main);
-      border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: background 0.2s;
-    }
-    .btn-print:hover { background: var(--primary); color: white; }
-
-    .btn-dispatch {
-      background: var(--success);
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-dispatch:hover { background: #16a34a; }
-
-    .btn-cancel-delivery {
-      background: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-cancel-delivery:hover { background: var(--danger); color: white; }
-
-    /* Modais Customizados */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-    }
-
-    .modal-overlay.active { display: flex; }
-
-    .custom-modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 25px;
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-    }
-
-    .custom-modal-icon { font-size: 3rem; margin-bottom: 12px; }
-    .custom-modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
-    .custom-modal-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
-
-    .modal-actions-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-modal-cancel {
-      background: var(--border);
-      color: var(--text-main);
-      width: 50%;
-      padding: 11px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-    }
-
-    .btn-modal-confirm-danger {
-      background: var(--danger);
-      color: white;
-      width: 50%;
-      padding: 11px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-    }
-
-    .btn-modal-primary {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -569,9 +136,9 @@
   <!-- MENU LATERAL -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="logo">
-        <span class="logo-icon">🌪️</span>
-        <span class="logo-text">VORTEX <strong>FOOD</strong></span>
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
       </div>
       <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
@@ -607,9 +174,13 @@
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
       </div>
     </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
   </aside>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <main class="main-content">
     <header>
       <div class="header-left">
@@ -622,145 +193,98 @@
     </header>
 
     <div class="delivery-grid">
-      
-      <!-- Coluna 1: Cadastrar Novo Pedido -->
+      <!-- NOVO PEDIDO DELIVERY -->
       <div class="card-box">
-        <div class="card-title">📝 Novo Pedido de Delivery</div>
-        <form id="deliveryForm" onsubmit="registerDeliveryOrder(event)">
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="clientName">Nome do Cliente *:</label>
-              <input type="text" id="clientName" placeholder="Ex: Lucas Mendes" required>
-            </div>
-            <div class="form-group">
-              <label for="clientPhone">Telefone / WhatsApp *:</label>
-              <input type="text" id="clientPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)" required>
-            </div>
-          </div>
+        <div class="card-title">🛵 Lançar Pedido para Entrega</div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="clientCep">CEP *:</label>
-              <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)" required>
-            </div>
-            <div class="form-group">
-              <label for="clientNumber">Número da Residência *:</label>
-              <input type="text" id="clientNumber" placeholder="Ex: 142" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="clientStreet">Endereço / Rua (Automático):</label>
-              <input type="text" id="clientStreet" placeholder="Aguardando CEP..." readonly required>
-            </div>
-            <div class="form-group">
-              <label for="clientNeighborhood">Bairro (Automático):</label>
-              <input type="text" id="clientNeighborhood" placeholder="Aguardando CEP..." readonly required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="clientCity">Cidade (Automático):</label>
-              <input type="text" id="clientCity" placeholder="Aguardando CEP..." readonly required>
-            </div>
-            <div class="form-group">
-              <label for="clientState">Estado (Automático):</label>
-              <input type="text" id="clientState" placeholder="UF" readonly required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="clientComplement">Complemento (Opcional):</label>
-              <input type="text" id="clientComplement" placeholder="Ex: Apto 32B">
-            </div>
-            <div class="form-group">
-              <label for="clientReference">Ponto de Referência (Opcional):</label>
-              <input type="text" id="clientReference" placeholder="Ex: Próximo à praça">
-            </div>
-          </div>
-
-          <!-- SELETOR INTELIGENTE DE PRODUTOS -->
+        <div class="form-row">
           <div class="form-group">
-            <label>Itens do Pedido (Clique para adicionar) *:</label>
-            <div class="product-selector-box">
-              <div style="font-size:0.75rem; color:var(--text-muted);">Cardápio Rápido:</div>
-              <div class="products-mini-grid" id="productsMiniGrid"></div>
-              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">Itens Selecionados:</div>
-              <div class="delivery-cart-list" id="deliveryCartList">
-                <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>
-              </div>
-            </div>
+            <label for="clientNameInput">Nome do Cliente *:</label>
+            <input type="text" id="clientNameInput" placeholder="Ex: Gabriel Gustavo">
           </div>
-
-          <!-- TOTAL E FORMA DE PAGAMENTO -->
-          <div class="total-display-row">
-            <span>Total do Pedido:</span>
-            <span id="deliveryTotalDisplay">R$ 0,00</span>
-          </div>
-
           <div class="form-group">
-            <label>Forma de Pagamento *:</label>
-            <div class="payment-methods-grid">
-              <div class="pay-method-btn active" onclick="setPaymentMethod('Pix', this)">Pix</div>
-              <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Débito', this)">Débito</div>
-              <div class="pay-method-btn" onclick="setPaymentMethod('Cartão de Crédito', this)">Crédito</div>
-              <div class="pay-method-btn" onclick="setPaymentMethod('Vale Refeição (VR)', this)">Vale VR</div>
-              <div class="pay-method-btn" onclick="setPaymentMethod('Vale Alimentação (VA)', this)">Vale VA</div>
-              <div class="pay-method-btn" onclick="setPaymentMethod('Dinheiro', this)">Dinheiro</div>
-            </div>
+            <label for="clientPhoneInput">Telefone / WhatsApp *:</label>
+            <input type="text" id="clientPhoneInput" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
           </div>
+        </div>
 
-          <!-- CAIXA DE DINHEIRO E TROCO -->
-          <div class="cash-change-box" id="cashChangeBox">
-            <label for="cashGivenInput">Valor Recebido do Cliente:</label>
-            <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
-            <div class="change-row">
-              <span>Troco a Devolver:</span>
-              <span id="calculatedChangeDisplay">R$ 0,00</span>
-            </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cepInput">CEP (Busca Automática):</label>
+            <input type="text" id="cepInput" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)">
           </div>
-
-          <div class="form-group" style="margin-top: 8px;">
-            <label for="clientObservation">Observação do Pedido (Opcional):</label>
-            <textarea id="clientObservation" placeholder="Ex: Retirar cebola, interfone quebrado..."></textarea>
+          <div class="form-group">
+            <label for="streetNumberInput">Número da Residência *:</label>
+            <input type="text" id="streetNumberInput" placeholder="Ex: 142">
           </div>
+        </div>
 
-          <button type="submit" class="btn-primary">Cadastrar & Enviar p/ Cozinha 🛵</button>
-        </form>
+        <div class="form-group">
+          <label for="streetInput">Rua / Logradouro (Automático):</label>
+          <input type="text" id="streetInput" placeholder="Aguardando CEP...">
+        </div>
+
+        <div class="form-group">
+          <label for="neighborhoodInput">Bairro (Automático):</label>
+          <input type="text" id="neighborhoodInput" placeholder="Aguardando CEP...">
+        </div>
+
+        <div class="form-group">
+          <label for="complementInput">Ponto de Referência (Opcional):</label>
+          <input type="text" id="complementInput" placeholder="Ex: Casa verde, próximo à praça">
+        </div>
+
+        <div class="form-group">
+          <label>Adicionar Itens do Cardápio:</label>
+          <div class="menu-select-grid" id="menuSelectGrid"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Itens do Pedido:</label>
+          <div class="delivery-cart-list" id="deliveryCartList">
+            <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item selecionado.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="paymentMethodSelect">Forma de Pagamento:</label>
+          <select id="paymentMethodSelect" onchange="handlePaymentChange(this.value)">
+            <option value="Pix">Pix</option>
+            <option value="Cartão na Entrega">Cartão na Entrega</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
+        </div>
+
+        <div class="cash-change-box" id="cashChangeBox">
+          <label for="cashGivenInput">Troco para quanto?</label>
+          <input type="text" id="cashGivenInput" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
+          <div class="change-row">
+            <span>Troco a Enviar:</span>
+            <span id="calculatedChangeDisplay">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:bold; margin:12px 0;">
+          <span>Total + Entrega:</span>
+          <span id="deliveryTotalDisplay" style="color:var(--success);">R$ 0,00</span>
+        </div>
+
+        <button class="btn-submit" onclick="submitDeliveryOrder()">Enviar Pedido p/ Cozinha 🛵</button>
       </div>
 
-      <!-- Coluna 2: Lista de Entregas Ativas -->
+      <!-- PAINEL DE PEDIDOS DE DELIVERY ATIVOS -->
       <div class="card-box">
-        <div class="card-title">🛵 Entregas em Andamento</div>
-        <div class="delivery-list" id="deliveryListContainer"></div>
+        <div class="card-title">📦 Pedidos em Andamento</div>
+        <div class="delivery-orders-list" id="deliveryOrdersList"></div>
       </div>
-
     </div>
   </main>
 
-  <!-- MODAL CANCELAMENTO -->
-  <div class="modal-overlay" id="confirmCancelModal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon">⚠️</div>
-      <div class="custom-modal-title">Cancelar Entrega</div>
-      <div class="custom-modal-desc" id="confirmCancelText">Deseja realmente cancelar este pedido?</div>
-      <div class="modal-actions-row">
-        <button class="btn-modal-cancel" onclick="closeConfirmCancelModal()">Voltar</button>
-        <button class="btn-modal-confirm-danger" onclick="executeCancelDelivery()">Sim, Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
-      <div class="custom-modal-icon" id="noticeIcon">🎉</div>
-      <div class="custom-modal-title" id="noticeTitle">Sucesso!</div>
-      <div class="custom-modal-desc" id="noticeDesc">Pedido de delivery registrado.</div>
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Pedido enviado.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
@@ -772,16 +296,11 @@
       { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
       { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
       { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
-      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
-      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
-      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' }
     ];
 
     let deliveryCart = [];
-    let currentPayment = 'Pix';
     let rawCashGiven = 0;
-    let pendingCancelId = null;
-    let deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -796,48 +315,93 @@
       }
     }
 
-    function maskPhone(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 11) v = v.slice(0, 11);
-      if (v.length > 6) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-      } else if (v.length > 2) {
-        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
-      } else if (v.length > 0) {
-        input.value = `(${v}`;
+    function loadStoreSettings() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
       } else {
-        input.value = '';
+        sidebarLogo.style.display = 'none';
       }
     }
 
-    function renderProductsMiniGrid() {
-      const grid = document.getElementById('productsMiniGrid');
+    function handlePhoneKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        let v = input.value;
+        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '').slice(0, -1);
+          formatAndSetPhone(input, digits);
+        }
+      }
+    }
+
+    function handlePhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetPhone(input, digits);
+    }
+
+    function formatAndSetPhone(input, digits) {
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      if (digits.length === 0) input.value = '';
+      else if (digits.length <= 2) input.value = `(${digits}`;
+      else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
+    function maskAndSearchCep(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (value.length > 8) value = value.slice(0, 8);
+
+      if (value.length > 5) {
+        input.value = value.slice(0, 5) + '-' + value.slice(5);
+      } else {
+        input.value = value;
+      }
+
+      if (value.length === 8) {
+        fetch(`https://viacep.com.br/ws/${value}/json/`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data.erro) {
+              document.getElementById('streetInput').value = data.logradouro || '';
+              document.getElementById('neighborhoodInput').value = data.bairro || '';
+              document.getElementById('streetNumberInput').focus();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    function renderCatalog() {
+      const grid = document.getElementById('menuSelectGrid');
       grid.innerHTML = '';
       catalogProducts.forEach(p => {
         grid.innerHTML += `
-          <div class="mini-product-card" onclick="addDeliveryItem('${p.name}', ${p.price}, '${p.type}')">
-            <span style="font-weight:600; font-size:0.8rem; color:var(--text-main);">${p.name}</span>
-            <span style="color:var(--success); font-size:0.75rem; font-weight:bold; margin-top:3px;">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+          <div class="mini-menu-card" onclick="addToDeliveryCart('${p.name}', ${p.price}, '${p.type}')">
+            <div class="mini-menu-title">${p.name}</div>
+            <div class="mini-menu-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>
         `;
       });
     }
 
-    function addDeliveryItem(name, price, type) {
+    function addToDeliveryCart(name, price, type) {
       const existing = deliveryCart.find(i => i.name === name);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        deliveryCart.push({ name, price, type, qty: 1 });
-      }
+      if (existing) existing.qty += 1;
+      else deliveryCart.push({ name, price, type, qty: 1 });
       renderDeliveryCart();
     }
 
-    function changeDeliveryCartQty(index, delta) {
-      deliveryCart[index].qty += delta;
-      if (deliveryCart[index].qty <= 0) {
-        deliveryCart.splice(index, 1);
-      }
+    function changeCartQty(idx, delta) {
+      deliveryCart[idx].qty += delta;
+      if (deliveryCart[idx].qty <= 0) deliveryCart.splice(idx, 1);
       renderDeliveryCart();
     }
 
@@ -846,43 +410,36 @@
       const totalDisplay = document.getElementById('deliveryTotalDisplay');
 
       if (deliveryCart.length === 0) {
-        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum produto selecionado.</div>`;
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item selecionado.</div>`;
         totalDisplay.innerText = 'R$ 0,00';
         calculateChange();
         return;
       }
 
       let html = '';
-      let subtotal = 0;
+      let total = 0;
       deliveryCart.forEach((item, idx) => {
-        subtotal += item.price * item.qty;
+        total += item.price * item.qty;
         html += `
-          <div class="delivery-cart-row">
+          <div class="cart-item-row">
             <span><strong>${item.qty}x</strong> ${item.name}</span>
             <div style="display:flex; align-items:center; gap:6px;">
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
-              <span style="font-weight:bold; width:16px; text-align:center;">${item.qty}</span>
-              <button type="button" onclick="changeDeliveryCartQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+              <button type="button" onclick="changeCartQty(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">-</button>
+              <span>${item.qty}</span>
+              <button type="button" onclick="changeCartQty(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; width:20px; height:20px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
             </div>
           </div>
         `;
       });
       list.innerHTML = html;
-      totalDisplay.innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+      totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
       calculateChange();
     }
 
-    function setPaymentMethod(method, btn) {
-      currentPayment = method;
-      document.querySelectorAll('.pay-method-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      const cashBox = document.getElementById('cashChangeBox');
-      if (method === 'Dinheiro') {
-        cashBox.classList.add('active');
-      } else {
-        cashBox.classList.remove('active');
-      }
+    function handlePaymentChange(val) {
+      const box = document.getElementById('cashChangeBox');
+      if (val === 'Dinheiro') box.classList.add('active');
+      else box.classList.remove('active');
       calculateChange();
     }
 
@@ -901,10 +458,11 @@
     }
 
     function calculateChange() {
+      const payment = document.getElementById('paymentMethodSelect').value;
+      if (payment !== 'Dinheiro') return;
+
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const display = document.getElementById('calculatedChangeDisplay');
-
-      if (currentPayment !== 'Dinheiro') return;
 
       if (rawCashGiven >= total && total > 0) {
         const change = rawCashGiven - total;
@@ -919,321 +477,113 @@
       }
     }
 
-    async function maskAndSearchCep(input) {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 8) v = v.slice(0, 8);
-      if (v.length > 5) {
-        input.value = `${v.slice(0, 5)}-${v.slice(5)}`;
-      } else {
-        input.value = v;
-      }
+    function submitDeliveryOrder() {
+      const clientName = document.getElementById('clientNameInput').value.trim();
+      const clientPhone = document.getElementById('clientPhoneInput').value.trim();
+      const number = document.getElementById('streetNumberInput').value.trim();
+      const street = document.getElementById('streetInput').value.trim();
+      const neighborhood = document.getElementById('neighborhoodInput').value.trim();
 
-      if (v.length === 8) {
-        try {
-          const response = await fetch(`https://viacep.com.br/ws/${v}/json/`);
-          const data = await response.json();
-          if (!data.erro) {
-            document.getElementById('clientStreet').value = data.logradouro || 'Endereço não especificado';
-            document.getElementById('clientNeighborhood').value = data.bairro || 'Centro';
-            document.getElementById('clientCity').value = data.localidade;
-            document.getElementById('clientState').value = data.uf;
-            document.getElementById('clientNumber').focus();
-          } else {
-            showNoticeModal('CEP não encontrado', 'Verifique o CEP digitado.', '⚠️');
-          }
-        } catch (err) {
-          console.error('Erro ViaCEP:', err);
-        }
-      }
-    }
-
-    function syncDeliveriesWithKds() {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      let updated = false;
-
-      deliveries.forEach(del => {
-        const correspondingKds = kdsOrders.find(k => k.origin === `Delivery #${del.id}`);
-        if (correspondingKds) {
-          if (correspondingKds.status === 'ready' && del.status === 'Em Preparo') {
-            del.status = 'Pronto p/ Entrega';
-            updated = true;
-          } else if (correspondingKds.status === 'cancelled' && del.status !== 'Cancelado') {
-            del.status = 'Cancelado';
-            updated = true;
-          }
-        }
-      });
-
-      if (updated) {
-        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
-      }
-    }
-
-    function renderDeliveries() {
-      syncDeliveriesWithKds();
-      deliveries = JSON.parse(localStorage.getItem('vortex_deliveries')) || [];
-      const container = document.getElementById('deliveryListContainer');
-      container.innerHTML = '';
-
-      if (deliveries.length === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-top:20px;">Nenhuma entrega ativa no momento.</div>`;
+      if (!clientName || !clientPhone || !number || !street) {
+        showNoticeModal('Campos Obrigatórios', 'Preencha o Nome, Telefone, Rua e Número do endereço do cliente.', '⚠️');
         return;
       }
 
-      deliveries.forEach(del => {
-        let paymentInfo = `💳 Pagamento: ${del.payment}`;
-        if (del.payment === 'Dinheiro' && del.cashGiven) {
-          paymentInfo += ` (Recebe: R$ ${del.cashGiven} | Troco: <strong>R$ ${del.change}</strong>)`;
-        }
-
-        const itemsFormatted = Array.isArray(del.items) 
-          ? del.items.map(i => `${i.qty}x ${i.name}`).join(', ')
-          : del.items;
-
-        let statusClass = 'status-preparing';
-        if (del.status === 'Pronto p/ Entrega') statusClass = 'status-ready';
-        if (del.status === 'Em Rota de Entrega') statusClass = 'status-dispatch';
-        if (del.status === 'Cancelado') statusClass = 'status-cancelled';
-
-        let actionButtonsHtml = '';
-        if (del.status === 'Pronto p/ Entrega') {
-          actionButtonsHtml = `
-            <button class="btn-cancel-delivery" onclick="openConfirmCancelModal(${del.id})">❌ Cancelar</button>
-            <button class="btn-dispatch" onclick="dispatchOrder(${del.id})">Despachar 🛵</button>
-          `;
-        } else if (del.status === 'Em Rota de Entrega') {
-          actionButtonsHtml = `<span style="font-size:0.8rem; color:var(--info); font-weight:bold;">Em rota 🚀</span>`;
-        } else if (del.status === 'Cancelado') {
-          actionButtonsHtml = `<span style="font-size:0.8rem; color:var(--danger); font-weight:bold;">Cancelado ❌</span>`;
-        } else {
-          actionButtonsHtml = `
-            <button class="btn-cancel-delivery" onclick="openConfirmCancelModal(${del.id})">❌ Cancelar</button>
-            <span style="font-size:0.8rem; color:var(--warning); font-weight:bold;">Na Cozinha...</span>
-          `;
-        }
-
-        container.innerHTML += `
-          <div class="delivery-item">
-            <div class="delivery-item-top">
-              <div>
-                <div style="font-weight:bold; font-size:0.95rem;">${del.client}</div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">📞 ${del.phone} | 🕒 ${del.time}</div>
-              </div>
-              <span class="tag-status ${statusClass}">${del.status}</span>
-            </div>
-            <div style="font-size:0.85rem;">📍 ${del.address}</div>
-            <div style="font-size:0.85rem; font-weight:600; color:var(--primary);">🍔 ${itemsFormatted}</div>
-            <div style="font-size:0.8rem; color:var(--success);">${paymentInfo}</div>
-            ${del.observation ? `<div style="font-size:0.8rem; color:var(--warning); background:rgba(234,179,8,0.1); padding:4px 8px; border-radius:6px;">⚠️ Obs: ${del.observation}</div>` : ''}
-            <div class="card-actions-row">
-              <button class="btn-print" onclick="printDeliveryOrder(${del.id})" title="Imprimir Comanda">🖨️ Comanda</button>
-              <div style="display:flex; gap:6px; align-items:center;">
-                ${actionButtonsHtml}
-              </div>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    function dispatchOrder(id) {
-      const del = deliveries.find(d => d.id === id);
-      if (del) {
-        del.status = 'Em Rota de Entrega';
-        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
-        renderDeliveries();
-      }
-    }
-
-    function openConfirmCancelModal(id) {
-      pendingCancelId = id;
-      document.getElementById('confirmCancelText').innerText = `Deseja realmente cancelar a entrega #${id}?`;
-      document.getElementById('confirmCancelModal').classList.add('active');
-    }
-
-    function closeConfirmCancelModal() {
-      pendingCancelId = null;
-      document.getElementById('confirmCancelModal').classList.remove('active');
-    }
-
-    function executeCancelDelivery() {
-      if (!pendingCancelId) return;
-
-      const del = deliveries.find(d => d.id === pendingCancelId);
-      if (del && del.status !== 'Cancelado') {
-        del.status = 'Cancelado';
-        localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
-
-        let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-        let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
-        currentSales = Math.max(0, currentSales - (del.total || 0));
-        localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
-
-        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        kdsOrders.forEach(k => {
-          if (k.origin === `Delivery #${pendingCancelId}`) {
-            k.status = 'cancelled';
-          }
-        });
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
-        closeConfirmCancelModal();
-        renderDeliveries();
-      }
-    }
-
-    function printDeliveryOrder(id) {
-      const del = deliveries.find(d => d.id === id);
-      if (!del) return;
-
-      const itemsFormatted = Array.isArray(del.items) 
-        ? del.items.map(i => `<tr><td>${i.qty}x ${i.name}</td></tr>`).join('')
-        : `<tr><td>${del.items}</td></tr>`;
-
-      let paymentText = del.payment;
-      if (del.payment === 'Dinheiro' && del.cashGiven) {
-        paymentText += ` (Dinheiro - Levou R$ ${del.cashGiven} | Troco: R$ ${del.change})`;
-      }
-
-      const printWindow = window.open('', '_blank', 'width=320,height=600');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Comanda - Delivery #${del.id}</title>
-            <style>
-              @page { size: 80mm auto; margin: 0; }
-              body { font-family: 'Courier New', monospace; font-size: 11px; width: 76mm; margin: 0 auto; padding: 5px; color: #000; background: #fff; }
-              h3, h4, p { margin: 3px 0; }
-              .center { text-align: center; }
-              .divider { border-top: 1px dashed #000; margin: 6px 0; }
-              table { width: 100%; border-collapse: collapse; }
-              td { padding: 2px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="center">
-              <h3>VORTEX FOOD</h3>
-              <p>*** COMANDA DELIVERY #${del.id} ***</p>
-            </div>
-            <div class="divider"></div>
-            <p><strong>Cliente:</strong> ${del.client}</p>
-            <p><strong>Telefone:</strong> ${del.phone}</p>
-            <p><strong>Endereço:</strong> ${del.address}</p>
-            <div class="divider"></div>
-            <h4>ITENS DO PEDIDO:</h4>
-            <table>
-              ${itemsFormatted}
-            </table>
-            <div class="divider"></div>
-            <p><strong>Pagamento:</strong> ${paymentText}</p>
-            <p><strong>Total:</strong> R$ ${(del.total || 0).toFixed(2).replace('.', ',')}</p>
-            ${del.observation ? `<div class="divider"></div><p><strong>OBS:</strong> ${del.observation}</p>` : ''}
-            <div class="divider"></div>
-            <p class="center">Hora: ${del.time}</p>
-            <script>
-              window.onload = function() { window.print(); window.close(); }
-            <\/script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    }
-
-    function registerDeliveryOrder(event) {
-      event.preventDefault();
-
       if (deliveryCart.length === 0) {
-        showNoticeModal('Carrinho Vazio', 'Selecione pelo menos um produto do cardápio rápido para o pedido de delivery.', '⚠️');
+        showNoticeModal('Carrinho Vazio', 'Adicione pelo menos um item ao pedido.', '⚠️');
         return;
       }
 
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const payment = document.getElementById('paymentMethodSelect').value;
+
       let cashGivenStr = '';
       let changeStr = '';
 
-      if (currentPayment === 'Dinheiro') {
+      if (payment === 'Dinheiro') {
         if (rawCashGiven < total) {
-          showNoticeModal('Valor Insuficiente', 'O valor em dinheiro recebido pelo cliente é menor que o total do pedido.', '⚠️');
+          showNoticeModal('Valor Insuficiente', 'O valor informado para o troco é menor que o total do pedido.', '⚠️');
           return;
         }
         cashGivenStr = rawCashGiven.toFixed(2).replace('.', ',');
         changeStr = (rawCashGiven - total).toFixed(2).replace('.', ',');
       }
 
-      const client = document.getElementById('clientName').value.trim();
-      const phone = document.getElementById('clientPhone').value.trim();
-      const cep = document.getElementById('clientCep').value.trim();
-      const number = document.getElementById('clientNumber').value.trim();
-      const street = document.getElementById('clientStreet').value.trim();
-      const neighborhood = document.getElementById('clientNeighborhood').value.trim();
-      const city = document.getElementById('clientCity').value.trim();
-      const state = document.getElementById('clientState').value.trim();
-      const complement = document.getElementById('clientComplement').value.trim();
-      const reference = document.getElementById('clientReference').value.trim();
-      const observation = document.getElementById('clientObservation').value.trim();
-
-      let fullAddress = `${street}, ${number}`;
-      if (complement) fullAddress += `, ${complement}`;
-      fullAddress += ` - ${neighborhood}, ${city}/${state} (CEP: ${cep})`;
-      if (reference) fullAddress += ` [Ref: ${reference}]`;
-
+      const fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const newDeliveryId = deliveries.length > 0 ? Math.max(...deliveries.map(d => d.id)) + 1 : 101;
-
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '1450,00';
-      let currentSales = parseFloat(currentSalesRaw.replace('.', '').replace(',', '.'));
-      currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toFixed(2).replace('.', ','));
-
-      const newDel = {
-        id: newDeliveryId,
-        client,
-        phone,
-        address: fullAddress,
-        payment: currentPayment,
-        cashGiven: cashGivenStr,
-        change: changeStr,
-        observation,
-        items: [...deliveryCart],
-        total: total,
-        time: timeStr,
-        status: 'Em Preparo'
-      };
-
-      deliveries.unshift(newDel);
-      localStorage.setItem('vortex_deliveries', JSON.stringify(deliveries));
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      kdsOrders.unshift({
+      const newOrder = {
         id: nextKdsId,
-        origin: `Delivery #${newDeliveryId}`,
-        client: client,
-        payment: currentPayment,
+        origin: 'Delivery 🛵',
+        client: `${clientName} (${clientPhone})`,
+        address: fullAddress,
+        payment: payment,
         cashGiven: cashGivenStr,
         change: changeStr,
-        observation: observation,
         items: [...deliveryCart],
         total: total,
         status: 'new',
         time: timeStr
-      });
+      };
+
+      kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      document.getElementById('deliveryForm').reset();
-      document.getElementById('clientStreet').value = '';
-      document.getElementById('clientNeighborhood').value = '';
-      document.getElementById('clientCity').value = '';
-      document.getElementById('clientState').value = '';
-      document.getElementById('cashGivenInput').value = '';
+      // Limpa Formulário
       deliveryCart = [];
       rawCashGiven = 0;
+      document.getElementById('clientNameInput').value = '';
+      document.getElementById('clientPhoneInput').value = '';
+      document.getElementById('cepInput').value = '';
+      document.getElementById('streetNumberInput').value = '';
+      document.getElementById('streetInput').value = '';
+      document.getElementById('neighborhoodInput').value = '';
+      document.getElementById('complementInput').value = '';
+      document.getElementById('cashGivenInput').value = '';
       renderDeliveryCart();
-      renderDeliveries();
+      loadActiveOrders();
 
-      showNoticeModal('Delivery Registrado!', `Pedido de ${client} enviado com sucesso para a cozinha!`, '🎉');
+      showNoticeModal('Pedido Cadastrado!', 'O pedido de entrega foi registrado e enviado ao KDS.', '🛵');
+    }
+
+    function loadActiveOrders() {
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery'));
+      const container = document.getElementById('deliveryOrdersList');
+      container.innerHTML = '';
+
+      if (deliveryOrders.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:20px;">Nenhum pedido de delivery ativo no momento.</div>`;
+        return;
+      }
+
+      deliveryOrders.forEach(o => {
+        let statusClass = 'status-new';
+        let statusText = 'Novo Pedido';
+        if (o.status === 'preparing') { statusClass = 'status-preparing'; statusText = 'Em Preparo'; }
+        else if (o.status === 'delivering') { statusClass = 'status-delivering'; statusText = 'Saiu para Entrega'; }
+        else if (o.status === 'finished') { statusClass = 'status-finished'; statusText = 'Entregue'; }
+
+        const itemsText = o.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+
+        container.innerHTML += `
+          <div class="order-card">
+            <div class="order-header">
+              <span class="order-id">#${o.id} - ${o.client}</span>
+              <span class="order-status ${statusClass}">${statusText}</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-muted);">
+              📍 ${o.address}<br>
+              🍔 ${itemsText}<br>
+              💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})
+            </div>
+          </div>
+        `;
+      });
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -1253,9 +603,9 @@
     }, 1000);
 
     window.onload = function() {
-      applyTheme();
-      renderProductsMiniGrid();
-      renderDeliveries();
+      loadStoreSettings();
+      renderCatalog();
+      loadActiveOrders();
     };
   </script>
 </body>

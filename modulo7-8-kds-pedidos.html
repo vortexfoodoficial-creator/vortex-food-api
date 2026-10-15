@@ -311,12 +311,29 @@
 
     .kds-card-bottom {
       display: flex;
-      justify-content: flex-end;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
       margin-top: 5px;
       padding-top: 8px;
       border-top: 1px solid rgba(255,255,255,0.05);
     }
+
+    .btn-print-kds {
+      background: var(--border);
+      color: var(--text-main);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+
+    .btn-print-kds:hover { background: var(--primary); }
 
     .btn-kds-action {
       background: var(--primary);
@@ -332,9 +349,7 @@
 
     .btn-kds-action:hover { background: var(--primary-hover); }
 
-    .btn-kds-done {
-      background: var(--success);
-    }
+    .btn-kds-done { background: var(--success); }
     .btn-kds-done:hover { background: #16a34a; }
 
     @media (max-width: 768px) {
@@ -451,8 +466,7 @@
 
   <script>
     let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [
-      { id: 201, origin: 'Mesa 04', client: 'Carlos Silva', observation: 'Sem cebola', items: [{ name: 'X-Burger Especial', qty: 2, type: 'kitchen' }, { name: 'Coca-Cola Lata', qty: 2, type: 'bar' }], status: 'new', time: '19:20' },
-      { id: 202, origin: 'Delivery #102', client: 'Lucas Mendes', observation: '', items: [{ name: 'Pizza Calabresa G', qty: 1, type: 'kitchen' }, { name: 'Refrigerante 2L', qty: 1, type: 'bar' }], status: 'preparing', time: '19:12' }
+      { id: 201, origin: 'Mesa 04', client: 'Carlos Silva', payment: 'Dinheiro', cashGiven: '50,00', change: '13,50', observation: 'Sem cebola', items: [{ name: 'X-Burger Especial', qty: 2, type: 'kitchen' }, { name: 'Coca-Cola Lata', qty: 2, type: 'bar' }], status: 'new', time: '19:20' }
     ];
 
     let currentFilter = 'all';
@@ -494,6 +508,11 @@
 
         if (filteredItems.length === 0) return;
 
+        let paymentHtml = order.payment ? `💳 ${order.payment}` : '';
+        if (order.payment === 'Dinheiro' && order.cashGiven) {
+          paymentHtml += ` (Recebe: R$ ${order.cashGiven} | Troco: <strong>R$ ${order.change}</strong>)`;
+        }
+
         const cardHtml = `
           <div class="kds-card">
             <div class="kds-card-top">
@@ -509,7 +528,9 @@
                 </div>
               `).join('')}
             </div>
+            ${paymentHtml ? `<div style="font-size:0.78rem; color:var(--success);"> ${paymentHtml}</div>` : ''}
             <div class="kds-card-bottom">
+              <button class="btn-print-kds" onclick="printKdsOrder(${order.id})" title="Imprimir Comanda">🖨️ Imprimir</button>
               ${getKdsActionButton(order)}
             </div>
           </div>
@@ -532,13 +553,63 @@
       document.getElementById('countReady').innerText = countReady;
     }
 
+    function printKdsOrder(id) {
+      const order = kdsOrders.find(o => o.id === id);
+      if (!order) return;
+
+      const itemsFormatted = order.items.map(i => `<tr><td>${i.qty}x ${i.name}</td></tr>`).join('');
+      let paymentText = order.payment || 'Não informado';
+      if (order.payment === 'Dinheiro' && order.cashGiven) {
+        paymentText += ` (Dinheiro - Recebe R$ ${order.cashGiven} | Troco: R$ ${order.change})`;
+      }
+
+      const printWindow = window.open('', '_blank', 'width=350,height=600');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Comanda Cozinha #${order.id}</title>
+            <style>
+              body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
+              h3, h4, p { margin: 4px 0; }
+              .center { text-align: center; }
+              .divider { border-top: 1px dashed #000; margin: 8px 0; }
+              table { width: 100%; border-collapse: collapse; }
+              td { padding: 3px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>VORTEX FOOD - COZINHA</h3>
+              <p>*** COMANDA #${order.id} (${order.origin}) ***</p>
+            </div>
+            <div class="divider"></div>
+            <p><strong>Cliente:</strong> ${order.client}</p>
+            <div class="divider"></div>
+            <h4>ITENS:</h4>
+            <table>
+              ${itemsFormatted}
+            </table>
+            <div class="divider"></div>
+            <p><strong>Pagamento:</strong> ${paymentText}</p>
+            ${order.observation ? `<div class="divider"></div><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
+            <div class="divider"></div>
+            <p class="center">Hora: ${order.time}</p>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+
     function getKdsActionButton(order) {
       if (order.status === 'new') {
         return `<button class="btn-kds-action" onclick="updateOrderStatus(${order.id}, 'preparing')">Iniciar Preparo 👨‍🍳</button>`;
       } else if (order.status === 'preparing') {
         return `<button class="btn-kds-action btn-kds-done" onclick="updateOrderStatus(${order.id}, 'ready')">Marcar Pronto ✅</button>`;
       } else {
-        return `<span style="font-size:0.8rem; color:var(--success); font-weight:bold;">Pronto para Entrega ✓</span>`;
+        return `<span style="font-size:0.8rem; color:var(--success); font-weight:bold;">Pronto ✓</span>`;
       }
     }
 
@@ -550,7 +621,6 @@
       }
     }
 
-    // Atualiza o relógio do topo em tempo real
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');

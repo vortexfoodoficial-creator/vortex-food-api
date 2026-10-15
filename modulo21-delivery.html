@@ -346,12 +346,12 @@
 
     .btn-cancel-order:hover { background: var(--danger); color: white; }
 
-    /* Modais */
+    /* ESTILIZAÇÃO DOS MODAIS E SELETORES MODERNOS */
     .modal-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       z-index: 200;
       justify-content: center;
       align-items: center;
@@ -363,11 +363,11 @@
     .modal-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 20px 20px 30px 20px;
       width: 100%;
       max-width: 540px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
       max-height: 85vh;
       overflow-y: auto;
       margin: auto;
@@ -398,32 +398,48 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .form-group label {
       font-size: 0.85rem;
       color: var(--text-muted);
+      font-weight: 600;
     }
 
     .form-group label .req {
       color: var(--danger);
       font-weight: bold;
+      margin-left: 3px;
     }
 
-    .form-group input, .form-group select, .form-group textarea {
-      background: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.9rem;
+    /* Formulários e Seletores Modernos e Escuros */
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea,
+    .add-item-controls select,
+    .add-item-controls input {
+      background-color: var(--bg-main) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text-main) !important;
+      padding: 12px !important;
+      border-radius: 10px !important;
+      font-size: 0.9rem !important;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus, 
+    .form-group select:focus, 
+    .add-item-controls select:focus {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
     }
 
     .form-group input:disabled {
-      opacity: 0.7;
+      opacity: 0.6;
       cursor: not-allowed;
-      background: rgba(15, 23, 42, 0.9);
+      background-color: #0b1120 !important;
     }
 
     .cep-loading-spinner {
@@ -440,12 +456,12 @@
 
     .form-row .form-group { flex: 1; }
 
-    /* Seção Dinâmica de Itens do Pedido */
+    /* Seção Sofisticada de Adição de Produtos */
     .items-builder-box {
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15, 23, 42, 0.7);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 14px;
       margin-bottom: 15px;
     }
 
@@ -462,7 +478,7 @@
       gap: 6px;
       max-height: 140px;
       overflow-y: auto;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .item-row-added {
@@ -470,8 +486,9 @@
       justify-content: space-between;
       align-items: center;
       background: var(--bg-card);
-      padding: 8px 10px;
-      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 8px;
       font-size: 0.85rem;
     }
 
@@ -482,26 +499,46 @@
       cursor: pointer;
       font-weight: bold;
       padding: 0 5px;
+      font-size: 1.1rem;
     }
 
     .add-item-controls {
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
     }
 
-    .add-item-controls select { flex: 1; min-width: 140px; }
-    .add-item-controls input { width: 60px; }
+    .add-item-controls select {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .add-item-controls input {
+      width: 70px;
+      text-align: center;
+    }
 
     .btn-add-item-list {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 8px 12px;
-      border-radius: 8px;
+      padding: 12px 16px;
+      border-radius: 10px;
       font-weight: bold;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-add-item-list:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-add-item-list:active {
+      transform: scale(0.97);
     }
 
     /* Pagamento e Troco */
@@ -509,7 +546,7 @@
       display: none;
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 12px;
       margin-bottom: 12px;
     }
@@ -528,12 +565,12 @@
     .custom-modal-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 25px;
       width: 100%;
       max-width: 420px;
       text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
       max-height: 85vh;
       overflow-y: auto;
     }
@@ -547,7 +584,7 @@
     .btn-modal-custom {
       flex: 1;
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: bold;
       border: none;
       cursor: pointer;
@@ -573,6 +610,14 @@
       .modal-card {
         padding: 15px 15px 30px 15px;
         max-height: 88vh;
+      }
+
+      .add-item-controls {
+        flex-wrap: wrap;
+      }
+
+      .add-item-controls select {
+        width: 100%;
       }
     }
   </style>
@@ -786,7 +831,7 @@
         <input type="text" id="clientReference" placeholder="Ex: Próximo à padaria Estrela">
       </div>
 
-      <!-- CONSTRUTOR DE MÚLTIPLOS ITENS -->
+      <!-- CONSTRUTOR DE MÚLTIPLOS ITENS COM SELETORES MODERNOS -->
       <div class="items-builder-box">
         <div class="items-builder-header">Itens do Pedido <span class="req">*</span></div>
         <div class="selected-items-list" id="builderItemsList">
@@ -1295,7 +1340,7 @@
         return;
       }
       if (!phone || phone.length < 14) {
-        showNoticeModal('Telefone Inválido', 'Por favor, insira um Telefone/WhatsApp válido.', '⚠️', 'var(--warning)');
+        showNoticeModal('Telefone Inválido', 'Por favor, insira um Telefone/WhatsApp válido com DDD.', '⚠️', 'var(--warning)');
         return;
       }
       if (!cep || cep.length < 9) {

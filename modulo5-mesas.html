@@ -172,8 +172,14 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 15px 20px;
+      padding: 18px 20px;
       margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .management-bar-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -225,18 +231,31 @@
     }
     .btn-manage-danger:hover { background: var(--danger); color: white; }
 
+    .qr-toggle-box {
+      background: var(--bg-main);
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
     .qr-toggle-label {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--text-main);
       cursor: pointer;
-      background: var(--bg-main);
-      padding: 6px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+    }
+
+    .qr-toggle-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+      margin-left: 24px;
     }
 
     .tables-grid {
@@ -312,6 +331,62 @@
     }
     .btn-qr-click:hover { background: var(--info); color: white; }
 
+    /* CARDÁPIO EMBUTIDO NO MODAL COM ROLAGEM INDEPENDENTE */
+    .modal-menu-section {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin: 12px 0;
+    }
+
+    .modal-menu-title {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-menu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .modal-menu-grid::-webkit-scrollbar {
+      width: 5px;
+    }
+    .modal-menu-grid::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .mini-menu-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .mini-menu-item:hover {
+      border-color: var(--primary);
+      background: rgba(249, 115, 22, 0.1);
+    }
+
+    .mini-menu-name { font-size: 0.78rem; font-weight: 600; color: var(--text-main); }
+    .mini-menu-price { font-size: 0.75rem; font-weight: bold; color: var(--success); margin-top: 4px; }
+
     /* Modais Customizados */
     .modal-overlay {
       display: none;
@@ -329,7 +404,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 25px;
+      padding: 22px;
       width: 100%;
       max-width: 440px;
     }
@@ -345,7 +420,7 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
     .btn-modal-action {
@@ -447,31 +522,39 @@
 
     <!-- BARRA DE GERENCIAMENTO DE MESAS -->
     <div class="management-bar">
-      <div class="management-bar-title">
-        <span>🍽️ Layout do Salão</span>
-        <span style="font-size: 0.8rem; color: var(--text-muted);" id="tablesCountBadge">(0 Mesas)</span>
+      <div class="management-bar-top">
+        <div class="management-bar-title">
+          <span>🍽️ Layout do Salão</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="tablesCountBadge">(0 Mesas)</span>
+        </div>
+
+        <div class="management-actions">
+          <button class="btn-manage" onclick="addNewTable()">➕ Adicionar Mesa</button>
+          <button class="btn-manage-danger" onclick="removeLastTable()">➖ Remover Mesa</button>
+        </div>
       </div>
 
-      <div class="management-actions">
+      <div class="qr-toggle-box">
         <label class="qr-toggle-label">
           <input type="checkbox" id="qrOrderingToggle" onchange="toggleQrOrdering(this)">
           📱 Pedido / Fechamento por QR Code
         </label>
-        <button class="btn-manage" onclick="addNewTable()">➕ Adicionar Mesa</button>
-        <button class="btn-manage-danger" onclick="removeLastTable()">➖ Remover Mesa</button>
+        <div class="qr-toggle-desc">
+          Ativando essa função, você permite que o cliente peça ou solicite o fechamento da conta lendo o QR Code disponível na mesa. Há um QR Code único para cada mesa para você imprimir gratuitamente e colar nas mesas.
+        </div>
       </div>
     </div>
 
     <div class="tables-grid" id="tablesGridContainer"></div>
   </main>
 
-  <!-- MODAL DETALHE DA MESA -->
+  <!-- MODAL DETALHE DA MESA / COMANDA COM CARDÁPIO EMBUTIDO -->
   <div class="modal-overlay" id="tableModal">
     <div class="custom-modal-card">
       <div class="custom-modal-title" id="tableModalTitle">Mesa</div>
-      <div id="tableModalBody" style="font-size:0.9rem; margin-bottom:15px;"></div>
+      <div id="tableModalBody" style="font-size:0.9rem;"></div>
       <div id="tableModalActions"></div>
-      <button class="btn-modal-close" onclick="closeTableModal()">Fechar</button>
+      <button class="btn-modal-close" onclick="closeTableModal()">Fechar Window</button>
     </div>
   </div>
 
@@ -491,6 +574,17 @@
   </div>
 
   <script>
+    const catalogProducts = [
+      { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
+      { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
+      { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
+      { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
+      { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
+      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' },
+      { id: 7, name: 'Água Mineral 500ml', price: 5.00, type: 'bar' },
+      { id: 8, name: 'Cerveja Lata 350ml', price: 9.00, type: 'bar' }
+    ];
+
     let defaultTables = [
       { id: 1, number: '01', status: 'free', client: '', items: [], total: 0 },
       { id: 2, number: '02', status: 'occupied', client: 'Rafael', items: [{ name: 'X-Salada Duplo', qty: 2, price: 32.0 }], total: 64.0 },
@@ -507,6 +601,7 @@
     ];
 
     let currentQrTable = null;
+    let currentActiveTableId = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -529,7 +624,6 @@
         localStorage.setItem('vortex_tables', JSON.stringify(tables));
       }
 
-      // Sincroniza estado do QR Code
       const qrEnabled = localStorage.getItem('vortex_qr_ordering_enabled') === 'true';
       const toggleEl = document.getElementById('qrOrderingToggle');
       if (toggleEl) toggleEl.checked = qrEnabled;
@@ -593,7 +687,9 @@
       loadTables();
     }
 
+    /* MODAL DE MESA E COMANDA COM CARDÁPIO INTEGRADO */
     function openTableModal(id) {
+      currentActiveTableId = id;
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
       if (!t) return;
@@ -604,12 +700,35 @@
 
       if (t.status === 'occupied') {
         const itemsList = t.items.map(i => `<li>${i.qty}x ${i.name} - R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</li>`).join('');
+        
+        const catalogHtml = catalogProducts.map(p => `
+          <div class="mini-menu-item" onclick="addItemToTableComanda(${t.id}, '${p.name}', ${p.price}, '${p.type}')">
+            <span class="mini-menu-name">${p.name}</span>
+            <span class="mini-menu-price">+ R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+          </div>
+        `).join('');
+
         body.innerHTML = `
-          <p style="margin-bottom:8px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
-          <p style="margin-bottom:8px;"><strong>Consumo Atual:</strong></p>
-          <ul style="padding-left:20px; color:var(--text-main); font-size:0.85rem; margin-bottom:10px;">${itemsList || 'Nenhum item consumido.'}</ul>
-          <p style="font-size:1.1rem; font-weight:bold; color:var(--success);">Total: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
+          <p style="margin-bottom:6px;"><strong>Cliente:</strong> ${t.client || 'Não informado'}</p>
+          <p style="margin-bottom:6px;"><strong>Consumo Atual:</strong></p>
+          <ul style="padding-left:20px; color:var(--text-main); font-size:0.85rem; max-height:80px; overflow-y:auto;">
+            ${itemsList || '<li>Nenhum item consumido.</li>'}
+          </ul>
+
+          <!-- CARDÁPIO EMBUTIDO COM ROLAGEM INDEPENDENTE -->
+          <div class="modal-menu-section">
+            <div class="modal-menu-title">
+              <span>🍔 Adicionar do Cardápio:</span>
+              <span style="font-size:0.7rem; color:var(--primary);">(Clique para lançar)</span>
+            </div>
+            <div class="modal-menu-grid">
+              ${catalogHtml}
+            </div>
+          </div>
+
+          <p style="font-size:1.1rem; font-weight:bold; color:var(--success); margin-top:8px;">Total Acumulado: R$ ${t.total.toFixed(2).replace('.', ',')}</p>
         `;
+
         actions.innerHTML = `
           <button class="btn-modal-danger" onclick="closeTableComanda(${t.id})">Fechar Comanda & Liberar Mesa 💳</button>
         `;
@@ -617,7 +736,7 @@
         body.innerHTML = `
           <div style="margin-bottom:12px;">
             <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Nome do Cliente:</label>
-            <input type="text" id="openTableClientInput" placeholder="Ex: Lucas" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:9px; border-radius:8px;">
+            <input type="text" id="openTableClientInput" placeholder="Ex: Lucas Mendes" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:9px; border-radius:8px;">
           </div>
         `;
         actions.innerHTML = `
@@ -628,6 +747,44 @@
       document.getElementById('tableModal').classList.add('active');
     }
 
+    function addItemToTableComanda(tableId, name, price, type) {
+      let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
+      const t = tables.find(item => item.id === tableId);
+      if (!t) return;
+
+      const existing = t.items.find(i => i.name === name);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        t.items.push({ name, qty: 1, price });
+      }
+
+      t.total = t.items.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      localStorage.setItem('vortex_tables', JSON.stringify(tables));
+
+      // Envia automaticamente para o KDS/Cozinha
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
+
+      kdsOrders.unshift({
+        id: nextKdsId,
+        origin: `Mesa ${t.number}`,
+        client: t.client || `Mesa ${t.number}`,
+        payment: 'Comanda Aberta',
+        items: [{ name, qty: 1, price, type }],
+        total: price,
+        status: 'new',
+        time: timeStr
+      });
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+      // Atualiza o modal e o salão
+      openTableModal(tableId);
+      loadTables();
+    }
+
     function openTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -635,7 +792,7 @@
         const clientName = document.getElementById('openTableClientInput').value.trim() || 'Cliente';
         t.status = 'occupied';
         t.client = clientName;
-        t.items = [{ name: 'Consumo Inicial', qty: 1, price: 0.0 }];
+        t.items = [];
         t.total = 0.0;
         localStorage.setItem('vortex_tables', JSON.stringify(tables));
         closeTableModal();
@@ -643,6 +800,7 @@
       }
     }
 
+    /* FECHAMENTO DA MESA E ENVIO PARA FATURAMENTO */
     function closeTableComanda(id) {
       let tables = JSON.parse(localStorage.getItem('vortex_tables')) || defaultTables;
       const t = tables.find(item => item.id === id);
@@ -665,6 +823,7 @@
     }
 
     function closeTableModal() {
+      currentActiveTableId = null;
       document.getElementById('tableModal').classList.remove('active');
     }
 

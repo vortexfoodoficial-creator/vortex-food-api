@@ -27,15 +27,12 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    html, body {
-      height: 100%;
-      overflow: hidden; /* Impede a rolagem geral da página */
-    }
-
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
       display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
     .sidebar-overlay {
@@ -122,7 +119,7 @@
 
     .nav-icon { font-size: 1.1rem; }
 
-    /* Conteúdo Principal Flexível */
+    /* Conteúdo Principal */
     .main-content {
       flex: 1;
       margin-left: 260px;
@@ -130,7 +127,7 @@
       width: calc(100% - 260px);
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      min-height: 100vh;
     }
 
     header {
@@ -190,13 +187,12 @@
       border-color: var(--primary);
     }
 
-    /* Quadro Kanban Ajustado */
+    /* Quadro Kanban KDS */
     .kanban-board {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 15px;
-      flex: 1;
-      min-height: 0; /* Essencial para permitir que as colunas controlem sua própria rolagem */
+      align-items: start;
     }
 
     .kanban-column {
@@ -206,8 +202,6 @@
       padding: 15px;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      min-height: 0;
     }
 
     .column-header {
@@ -215,7 +209,7 @@
       justify-content: space-between;
       align-items: center;
       padding-bottom: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
@@ -236,14 +230,16 @@
       border: 1px solid var(--border);
     }
 
-    /* Container de cartões com rolagem independente */
+    /* Container de cartões com altura ideal para 2 a 3 pedidos visíveis */
     .cards-container {
       display: flex;
       flex-direction: column;
       gap: 12px;
       overflow-y: auto;
-      flex: 1;
       padding-right: 4px;
+      /* Define altura garantida para exibir 2 a 3 cartões sem cortar */
+      max-height: 520px;
+      min-height: 180px;
     }
 
     /* Estilização elegante da barra de rolagem */
@@ -458,21 +454,29 @@
       font-size: 0.9rem;
     }
 
+    /* RESPONSIVIDADE MOBILE (CELULAR) */
     @media (max-width: 900px) {
-      html, body { overflow: auto; }
-      .main-content { height: auto; overflow: visible; }
-      .kanban-board { grid-template-columns: 1fr; }
-      .cards-container { max-height: 450px; }
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.open { transform: translateX(0); }
-      .sidebar-overlay.open { display: block; }
-      .close-sidebar-btn { display: block; }
       .main-content {
         margin-left: 0;
         width: 100%;
         padding: 15px 15px 80px 15px;
       }
       .toggle-btn { display: block; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+
+      .kanban-board {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      /* No Celular: Garante de 2 a 3 pedidos visíveis por seção sem cortar */
+      .cards-container {
+        max-height: 380px;
+        min-height: 150px;
+      }
     }
   </style>
 </head>
@@ -541,7 +545,7 @@
       <button class="filter-btn" onclick="setKdsFilter('bar', this)">🍹 Bar (Bebidas)</button>
     </div>
 
-    <!-- QUADRO KANBAN KDS COM SCROLL INDEPENDENTE -->
+    <!-- QUADRO KANBAN KDS COM ROLAGEM DE 2 A 3 PEDIDOS COMPLETO -->
     <div class="kanban-board">
       
       <!-- Coluna 1: Novos / Pendentes -->

@@ -444,7 +444,14 @@
       let paymentInfoHtml = '';
       if (!order.origin || order.origin.toLowerCase().includes('balcão') || order.origin.toLowerCase().includes('pdv')) {
         if (order.payment) {
-          paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> ${order.payment}</p>`;
+          if (order.payment.toLowerCase() === 'dinheiro') {
+            paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> Dinheiro</p>`;
+            if (order.cashGiven && order.cashGiven > 0) {
+              paymentInfoHtml += `<p>Valor Entregue: R$ ${order.cashGiven.toFixed(2).replace('.', ',')}<br>Troco: R$ ${(order.change || 0).toFixed(2).replace('.', ',')}</p>`;
+            }
+          } else {
+            paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> ${order.payment}</p>`;
+          }
         }
       }
 

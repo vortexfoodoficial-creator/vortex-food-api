@@ -146,12 +146,14 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
         <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
@@ -169,6 +171,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -302,7 +307,6 @@
       const saved = localStorage.getItem('vortex_products_catalog');
       if (saved) {
         let products = JSON.parse(saved);
-        // Retorna apenas os produtos ativos (não pausados)
         return products.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
@@ -310,7 +314,6 @@
           category: p.category
         }));
       }
-      // Padrão de segurança caso o cardápio esteja vazio
       return [
         { id: 1, name: 'X-Burger Especial', price: 28.50 },
         { id: 2, name: 'X-Salada Duplo', price: 32.00 }
@@ -452,7 +455,6 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Atualiza Faturamento no Dashboard (vortex_vendas_hoje)
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
@@ -462,7 +464,6 @@
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      // Calcula o troco caso seja dinheiro
       let changeVal = 0;
       if (payment === 'Dinheiro' && rawCashGiven > total) {
         changeVal = rawCashGiven - total;
@@ -486,7 +487,6 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Limpa formulário
       pdvCart = [];
       rawCashGiven = 0;
       document.getElementById('pdvClientInput').value = '';

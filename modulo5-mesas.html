@@ -328,15 +328,6 @@
   </div>
 
   <script>
-    const catalogProducts = [
-      { id: 1, name: 'X-Burger Especial', price: 28.50 },
-      { id: 2, name: 'X-Salada Duplo', price: 32.00 },
-      { id: 3, name: 'Pizza Calabresa G', price: 55.00 },
-      { id: 4, name: 'Batata Frita M', price: 18.00 },
-      { id: 5, name: 'Refrigerante 2L', price: 14.00 },
-      { id: 6, name: 'Suco Natural 500ml', price: 10.00 }
-    ];
-
     let totalTablesCount = 10;
     let activeTableId = null;
     let tableCarts = {};
@@ -376,6 +367,26 @@
       toggle.checked = isQrEnabled;
       document.getElementById('qrStatusText').innerText = isQrEnabled ? 'Ativado' : 'Desativado';
       document.getElementById('qrStatusText').style.color = isQrEnabled ? 'var(--success)' : 'var(--text-muted)';
+    }
+
+    // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
+    function getCatalogProducts() {
+      const saved = localStorage.getItem('vortex_products_catalog');
+      if (saved) {
+        let products = JSON.parse(saved);
+        // Retorna apenas os produtos ativos (não pausados)
+        return products.filter(p => p.active !== false).map(p => ({
+          id: p.id,
+          name: p.name,
+          price: parseFloat(p.price) || 0,
+          category: p.category
+        }));
+      }
+      // Padrão de segurança caso o cardápio esteja vazio
+      return [
+        { id: 1, name: 'X-Burger Especial', price: 28.50 },
+        { id: 2, name: 'X-Salada Duplo', price: 32.00 }
+      ];
     }
 
     function toggleQrFeature(enabled) {
@@ -468,9 +479,16 @@
     function renderTableCatalog() {
       const grid = document.getElementById('tableMenuGrid');
       grid.innerHTML = '';
+      const catalogProducts = getCatalogProducts();
+
+      if (catalogProducts.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">Nenhum produto disponível.</div>`;
+        return;
+      }
+
       catalogProducts.forEach(p => {
         grid.innerHTML += `
-          <div class="mini-menu-card" onclick="addToTempCart('${p.name}', ${p.price})">
+          <div class="mini-menu-card" onclick="addToTempCart('${p.name.replace(/'/g, "\\'")}', ${p.price})">
             <div class="mini-menu-title">${p.name}</div>
             <div class="mini-menu-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>

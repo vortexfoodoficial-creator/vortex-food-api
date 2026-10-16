@@ -262,15 +262,6 @@
   </div>
 
   <script>
-    const catalogProducts = [
-      { id: 1, name: 'X-Burger Especial', price: 28.50, type: 'kitchen' },
-      { id: 2, name: 'X-Salada Duplo', price: 32.00, type: 'kitchen' },
-      { id: 3, name: 'Pizza Calabresa G', price: 55.00, type: 'kitchen' },
-      { id: 4, name: 'Batata Frita M', price: 18.00, type: 'kitchen' },
-      { id: 5, name: 'Refrigerante 2L', price: 14.00, type: 'bar' },
-      { id: 6, name: 'Suco Natural 500ml', price: 10.00, type: 'bar' }
-    ];
-
     let pdvCart = [];
     let selectedConsumptionType = 'Consumo no Local';
     let rawCashGiven = 0;
@@ -303,6 +294,26 @@
       }
     }
 
+    // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
+    function getCatalogProducts() {
+      const saved = localStorage.getItem('vortex_products_catalog');
+      if (saved) {
+        let products = JSON.parse(saved);
+        // Retorna apenas os produtos ativos (não pausados)
+        return products.filter(p => p.active !== false).map(p => ({
+          id: p.id,
+          name: p.name,
+          price: parseFloat(p.price) || 0,
+          category: p.category
+        }));
+      }
+      // Padrão de segurança caso o cardápio esteja vazio
+      return [
+        { id: 1, name: 'X-Burger Especial', price: 28.50 },
+        { id: 2, name: 'X-Salada Duplo', price: 32.00 }
+      ];
+    }
+
     function setConsumptionType(type) {
       selectedConsumptionType = type;
       if (type === 'Consumo no Local') {
@@ -317,9 +328,16 @@
     function renderCatalog() {
       const grid = document.getElementById('catalogGrid');
       grid.innerHTML = '';
+      const catalogProducts = getCatalogProducts();
+
+      if (catalogProducts.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">Nenhum produto disponível no cardápio.</div>`;
+        return;
+      }
+
       catalogProducts.forEach(p => {
         grid.innerHTML += `
-          <div class="catalog-item-card" onclick="addToPdvCart('${p.name}', ${p.price})">
+          <div class="catalog-item-card" onclick="addToPdvCart('${p.name.replace(/'/g, "\\'")}', ${p.price})">
             <div class="catalog-item-name">${p.name}</div>
             <div class="catalog-item-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>

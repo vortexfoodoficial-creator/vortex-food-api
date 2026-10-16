@@ -212,7 +212,10 @@
         <span style="font-size:1.4rem;">💡</span>
         <div>
           <div style="font-size:0.7rem; color:var(--text-muted);">LUCRO BRUTO MÉDIO</div>
-          <div style="font-size:1rem; color:var(--success);" id="statAvgMargin">R$ 0,00 <span id="statAvgMarginPercent" style="font-size:0.75rem; font-weight:normal;">(0.0%)</span></div>
+          <div style="font-size:1rem; color:var(--success);">
+            <span id="statAvgMarginValue">R$ 0,00</span> 
+            <span id="statAvgMarginPercent" style="font-size:0.75rem; font-weight:normal;">(0.0%)</span>
+          </div>
         </div>
       </div>
     </div>
@@ -454,7 +457,7 @@
 
       document.getElementById('statTotalRecipes').innerText = recipes.length;
       document.getElementById('statAvgCmv').innerText = validCount > 0 ? (totalCmvPercent / validCount).toFixed(1) + '%' : '0.0%';
-      document.getElementById('statAvgMargin').innerText = validCount > 0 ? 'R$ ' + (totalMarginSum / validCount).toFixed(2).replace('.', ',') : 'R$ 0,00';
+      document.getElementById('statAvgMarginValue').innerText = validCount > 0 ? 'R$ ' + (totalMarginSum / validCount).toFixed(2).replace('.', ',') : 'R$ 0,00';
       document.getElementById('statAvgMarginPercent').innerText = validCount > 0 ? `(${(totalMarginPercentSum / validCount).toFixed(1)}%)` : '(0.0%)';
     }
 

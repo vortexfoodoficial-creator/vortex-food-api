@@ -237,9 +237,9 @@
       <div style="font-weight:bold; font-size:0.95rem;">Modo de Visualização</div>
       <div style="font-size:0.8rem; color:var(--text-muted);" id="themeDescText">Atualmente em Tema Escuro 🌙</div>
     </div>
-    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-      <input type="checkbox" id="themeToggle" onchange="changeTheme(this.checked)" style="display:none;">
-      <span style="width: 50px; height: 26px; background-color: var(--border); border-radius: 20px; position: relative; display: inline-block;"></span>
+    <label class="switch-container" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+      <input type="checkbox" id="themeToggle" class="switch-input" onchange="changeTheme(this.checked)" style="display:none;">
+      <span class="switch-slider" style="width: 50px; height: 26px; background-color: var(--border); border-radius: 20px; position: relative; display: inline-block; transition: background-color 0.3s;"></span>
     </label>
   </div>
 </div>

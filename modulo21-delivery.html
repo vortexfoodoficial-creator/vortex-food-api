@@ -343,12 +343,10 @@
       }
     }
 
-    // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
     function getCatalogProducts() {
       const saved = localStorage.getItem('vortex_products_catalog');
       if (saved) {
         let products = JSON.parse(saved);
-        // Retorna apenas os produtos ativos (não pausados)
         return products.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
@@ -356,7 +354,6 @@
           category: p.category
         }));
       }
-      // Padrão de segurança caso o cardápio esteja vazio
       return [
         { id: 1, name: 'X-Burger Especial', price: 28.50 },
         { id: 2, name: 'X-Salada Duplo', price: 32.00 }
@@ -561,9 +558,9 @@
       if (ref) fullAddress += ` | Ref: ${ref}`;
 
       const now = new Date();
+      const todayDateStr = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Atualiza Faturamento no Dashboard
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
@@ -587,6 +584,7 @@
         items: [...deliveryCart],
         total: total,
         status: 'new',
+        date: todayDateStr, // Armazena a data para o filtro de virada do dia
         time: timeStr,
         code: deliveryCode
       };
@@ -594,7 +592,6 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Reset dos campos
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -614,7 +611,20 @@
     }
 
     function loadActiveOrders() {
+      const todayDateStr = new Date().toISOString().split('T')[0];
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      
+      // Regra da virada do dia: Mantém pedidos ativos (new, preparing, ready, delivering) independente da data, 
+      // mas limpa automaticamente da tela os concluídos (finished) ou cancelados de dias anteriores.
+      kdsOrders = kdsOrders.filter(o => {
+        if (!o.origin || !o.origin.includes('Delivery')) return true;
+        if (o.status === 'finished' || o.status === 'cancelled') {
+          return o.date === todayDateStr;
+        }
+        return true;
+      });
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
       const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status !== 'cancelled');
       const container = document.getElementById('deliveryOrdersList');
       container.innerHTML = '';

@@ -228,8 +228,39 @@
     <div class="config-container">
       
       <!-- CARD DE CONFIGURAÇÃO DE TEMA DO SISTEMA -->
+<style>
+  .vortex-switch-input { display: none !important; }
+  .vortex-switch-slider {
+    width: 50px;
+    height: 26px;
+    background-color: #334155;
+    border-radius: 20px;
+    position: relative;
+    display: inline-block;
+    transition: background-color 0.3s;
+    cursor: pointer;
+  }
+  .vortex-switch-slider::before {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s;
+  }
+  .vortex-switch-input:checked + .vortex-switch-slider {
+    background-color: #f97316;
+  }
+  .vortex-switch-input:checked + .vortex-switch-slider::before {
+    transform: translateX(24px);
+  }
+</style>
+
 <div class="card-box" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-  <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+  <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">
     🎨 Aparência e Tema do Sistema
   </div>
   <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 14px 16px; border-radius: 10px;">
@@ -237,12 +268,38 @@
       <div style="font-weight:bold; font-size:0.95rem;">Modo de Visualização</div>
       <div style="font-size:0.8rem; color:var(--text-muted);" id="themeDescText">Atualmente em Tema Escuro 🌙</div>
     </div>
-    <label class="switch-container" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-      <input type="checkbox" id="themeToggle" class="switch-input" onchange="changeTheme(this.checked)" style="display:none;">
-      <span class="switch-slider" style="width: 50px; height: 26px; background-color: var(--border); border-radius: 20px; position: relative; display: inline-block; transition: background-color 0.3s;"></span>
+    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+      <input type="checkbox" id="themeToggle" class="vortex-switch-input" onchange="changeTheme(this.checked)">
+      <span class="vortex-switch-slider"></span>
     </label>
   </div>
 </div>
+
+<script>
+  function applyTheme() {
+    const savedTheme = localStorage.getItem('vortex_theme') || 'dark';
+    const toggle = document.getElementById('themeToggle');
+    const desc = document.getElementById('themeDescText');
+
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-theme');
+      if (toggle) toggle.checked = true;
+      if (desc) desc.innerText = 'Atualmente em Tema Claro ☀️';
+    } else {
+      document.body.classList.remove('light-theme');
+      if (toggle) toggle.checked = false;
+      if (desc) desc.innerText = 'Atualmente em Tema Escuro 🌙';
+    }
+  }
+
+  function changeTheme(isLight) {
+    const theme = isLight ? 'light' : 'dark';
+    localStorage.setItem('vortex_theme', theme);
+    applyTheme();
+  }
+
+  window.addEventListener('DOMContentLoaded', applyTheme);
+</script>
       
       <!-- CARD 1: IDENTIDADE E LOGOTIPO -->
       <div class="config-card">

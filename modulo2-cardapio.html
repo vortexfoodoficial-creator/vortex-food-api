@@ -76,49 +76,60 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: bold; flex: 1; min-width: 180px; }
+    .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
+    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: bold; flex: 1; min-width: 180px; }
+
+    /* BARRA DE AÇÕES DO TOPO (ESTILO IMAGEM 1) */
+    .top-action-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 20px; }
+    .top-action-btn { border: none; padding: 10px 12px; border-radius: 10px; font-weight: bold; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; transition: opacity 0.2s; }
+    .top-action-btn:hover { opacity: 0.9; }
 
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-
-    .actions-top-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-    .btn-action-custom { background: var(--primary); color: white; border: none; padding: 10px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; transition: background 0.2s; }
-    .btn-action-custom:hover { background: var(--primary-hover); }
-    .btn-secondary-custom { background: var(--border); color: var(--text-main); }
 
     .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
     .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 180px; }
 
-    /* GRUPOS E SEÇÕES */
-    .group-section-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 20px; overflow: hidden; }
-    .group-header-bar { background: rgba(30, 41, 59, 0.7); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
-    .group-title-text { font-size: 1.05rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-    .group-products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 16px; }
+    /* SEÇÃO DE GRUPOS E ITENS (ESTILO IMAGENS 2 e 3) */
+    .group-section-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
+    .group-header-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(30, 41, 59, 0.7); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+    .group-title-text { font-weight: bold; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; display: flex; align-items: center; gap: 8px; }
+    .group-actions-toolbar { display: flex; align-items: center; gap: 8px; }
 
-    .product-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; transition: border-color 0.2s; }
-    .product-card.paused { opacity: 0.7; border-style: dashed; }
+    .group-items-container { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .product-row-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
+    .product-row-card.paused { opacity: 0.65; border-style: dashed; }
 
-    .product-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-    .product-name { font-weight: bold; font-size: 1rem; }
-    .product-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.3; min-height: 28px; }
-    .product-price { font-size: 1.1rem; font-weight: bold; color: var(--success); }
+    .product-info-left { flex: 1; min-width: 200px; }
+    .product-name-row { font-weight: bold; font-size: 0.98rem; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+    .product-desc-text { font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; }
+    .product-price-tag { font-size: 0.95rem; font-weight: bold; color: var(--success); margin-top: 4px; display: block; }
 
-    .product-status { font-size: 0.72rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; display: inline-block; }
-    .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-    .status-inactive { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .product-row-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-icon-action { background: var(--border); border: none; color: var(--text-main); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: background 0.2s; }
+    .btn-icon-action:hover { background: var(--primary); color: white; }
+    .btn-icon-delete:hover { background: var(--danger); color: white; }
 
-    .product-actions { display: flex; gap: 6px; margin-top: 4px; }
-    .btn-card-action { flex: 1; border: none; padding: 7px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: pointer; }
-    .btn-edit { background: var(--border); color: var(--text-main); }
-    .btn-toggle-status { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); }
-    .btn-delete { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+    /* TOGGLE SWITCH CUSTOMIZADO */
+    .switch-toggle { position: relative; display: inline-block; width: 42px; height: 22px; }
+    .switch-toggle input { opacity: 0; width: 0; height: 0; }
+    .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .3s; border-radius: 20px; }
+    .slider-toggle:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider-toggle { background-color: var(--success); }
+    input:checked + .slider-toggle:before { transform: translateX(20px); }
 
     .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
     input[type="text"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
-    textarea { resize: vertical; min-height: 60px; }
+    textarea { resize: vertical; min-height: 55px; }
+
+    .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin-top: 6px; }
+    .day-checkbox-label { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px; font-size: 0.75rem; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: bold; }
+    .day-checkbox-label input { accent-color: var(--primary); }
+
+    .toggles-section { display: flex; flex-direction: column; gap: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 10px; max-height: 200px; overflow-y: auto; }
+    .toggle-row-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
@@ -200,51 +211,58 @@
 
     <div class="stats-summary-bar">
       <div class="stat-badge">
-        <span style="font-size:1.4rem;">📦</span>
+        <span style="font-size:1.3rem;">📦</span>
         <div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">TOTAL DE ITENS</div>
-          <div style="font-size:1.1rem;" id="statTotalItems">0</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">TOTAL DE ITENS</div>
+          <div style="font-size:1rem;" id="statTotalItems">0</div>
         </div>
       </div>
       <div class="stat-badge">
-        <span style="font-size:1.4rem;">🟢</span>
+        <span style="font-size:1.3rem;">🟢</span>
         <div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">DISPONÍVEIS (ATIVOS)</div>
-          <div style="font-size:1.1rem; color:var(--success);" id="statActiveItems">0</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">DISPONÍVEIS (ATIVOS)</div>
+          <div style="font-size:1rem; color:var(--success);" id="statActiveItems">0</div>
         </div>
       </div>
       <div class="stat-badge">
-        <span style="font-size:1.4rem;">⏸️</span>
+        <span style="font-size:1.3rem;">⏸️</span>
         <div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">PAUSADOS (INATIVOS)</div>
-          <div style="font-size:1.1rem; color:var(--danger);" id="statPausedItems">0</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">PAUSADOS (INATIVOS)</div>
+          <div style="font-size:1rem; color:var(--danger);" id="statPausedItems">0</div>
         </div>
       </div>
     </div>
 
-    <!-- BOTÕES DE AÇÃO RÁPIDA (GRUPOS E ITENS) -->
-    <div class="actions-top-bar">
-      <button class="btn-action-custom" onclick="openGroupModal()">📁 Criar Novo Grupo</button>
-      <button class="btn-action-custom" onclick="openProductModal()">➕ Criar Novo Item</button>
-      <button class="btn-action-custom btn-secondary-custom" onclick="openOrderGroupsModal()">↕️ Organizar Grupos</button>
+    <!-- BARRA DE AÇÕES DO TOPO (ESTILO IMAGEM 1) -->
+    <div class="top-action-bar">
+      <button class="top-action-btn" style="background:#22c55e;" onclick="openGroupModal()">📁 Criar Grupo</button>
+      <button class="top-action-btn" style="background:#3b82f6;" onclick="openProductModal()">➕ Criar Item</button>
+      <button class="top-action-btn" style="background:#ef4444;" onclick="openUpsellModal()">⭐ Item Upsell</button>
+      <button class="top-action-btn" style="background:#f97316;" onclick="openComplementsModal()">📋 Complementos</button>
+      <button class="top-action-btn" style="background:#64748b;" onclick="openTrashModal()">🗑️ Excluídos</button>
+      <button class="top-action-btn" style="background:#8b5cf6;" onclick="location.href='modulo12-estoque.html'">📦 Estoque</button>
+      <button class="top-action-btn" style="background:#6366f1;" onclick="openReorderModal()">↕️ Ordenar</button>
+      <button class="top-action-btn" style="background:#eab308; color:#0f172a;" onclick="filterHighlights()">⭐ Destaques</button>
+      <button class="top-action-btn" style="background:#10b981;" onclick="location.href='modulo13-fichas-tecnicas.html'">🥗 Matéria Prima</button>
     </div>
 
     <div class="card-box">
       <div class="search-filter-bar">
-        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar item por nome ou descrição..." oninput="renderProducts()">
-        <select id="categoryFilter" class="filter-select" onchange="renderProducts()">
-          <option value="all">Todos os Grupos</option>
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome do produto/código..." oninput="renderCardapio()">
+        <select id="categoryFilter" class="filter-select" onchange="renderCardapio()">
+          <option value="all">Todas as Categorias / Grupos</option>
         </select>
       </div>
 
-      <div id="catalogSectionsContainer"></div>
+      <!-- ÁREA ONDE OS GRUPOS E ITENS APARECEM EM LISTA (ESTILO IMAGENS 2 e 3) -->
+      <div id="groupsContainer"></div>
     </div>
   </main>
 
   <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO -->
   <div class="modal-overlay" id="productModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
         <span id="productModalTitle">Cadastrar Produto</span>
         <button onclick="closeProductModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
@@ -253,37 +271,67 @@
 
       <div class="form-group">
         <label for="prodName">Nome do Produto *:</label>
-        <input type="text" id="prodName" placeholder="Ex: X-Salada Especial ou Açaí 500ml">
+        <input type="text" id="prodName" placeholder="Ex: Best Cheeseburger">
       </div>
 
       <div class="form-group">
-        <label for="prodCategory">Grupo / Categoria *:</label>
-        <select id="prodCategory"></select>
-      </div>
-
-      <!-- PREÇO VARIÁVEL (A PARTIR DE) -->
-      <div class="form-group" style="background: rgba(249,115,22,0.08); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label style="margin:0; font-weight:bold;">Preço Variável ("A partir de:")</label>
-          <input type="checkbox" id="prodVariablePriceCheck" onchange="toggleVariablePriceState(this.checked)" style="width:18px; height:18px; cursor:pointer;">
-        </div>
-        <div style="font-size:0.75rem; color:var(--text-muted);">Ative para itens com preço base que pode aumentar conforme complementos/adicionais.</div>
+        <label for="prodDesc">Descrição (Opcional):</label>
+        <textarea id="prodDesc" placeholder="Ex: Pão brioche selado na manteiga, hambúrguer 160g..."></textarea>
       </div>
 
       <div class="form-group" style="display:flex; gap:10px;">
         <div style="flex:1;">
-          <label for="prodPrice">Preço Base (R$):</label>
-          <input type="text" id="prodPrice" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
+          <label for="prodGroupSelect">Grupo / Categoria *:</label>
+          <select id="prodGroupSelect"></select>
         </div>
         <div style="flex:1;">
-          <label for="prodCost">Custo do Item (Opcional):</label>
-          <input type="text" id="prodCost" placeholder="R$ 0,00" oninput="maskCostInput(this)">
+          <label for="prodCost">Custo do Item (R$):</label>
+          <input type="text" id="prodCost" placeholder="R$ 0,00" oninput="maskCurrency(this, 'cost')">
         </div>
       </div>
 
+      <!-- OPÇÃO DE PREÇO VARIÁVEL ("A PARTIR DE:") -->
+      <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:10px; border-radius:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.8rem; font-weight:bold;">Usar Preço Variável ("A partir de")</span>
+          <label class="switch-toggle">
+            <input type="checkbox" id="prodVariablePriceToggle" onchange="toggleVariablePriceMode(this.checked)">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+        <div id="fixedPriceBox">
+          <label for="prodPrice">Preço Fixo Único (R$):</label>
+          <input type="text" id="prodPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'price')">
+        </div>
+      </div>
+
+      <!-- DIAS ATIVOS -->
       <div class="form-group">
-        <label for="prodDesc">Descrição / Ingredientes:</label>
-        <textarea id="prodDesc" placeholder="Ex: Pão brioche, hambúrguer 160g, queijo e maionese."></textarea>
+        <label>Dias Ativos na Semana:</label>
+        <div class="days-grid">
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Dom" checked> Dom</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Seg" checked> Seg</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Ter" checked> Ter</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Qua" checked> Qua</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Qui" checked> Qui</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Sex" checked> Sex</label>
+          <label class="day-checkbox-label"><input type="checkbox" class="day-check" value="Sáb" checked> Sáb</label>
+        </div>
+      </div>
+
+      <!-- TOGGLES E OPÇÕES AVANÇADAS -->
+      <div class="form-group">
+        <label>Opções e Etiquetas:</label>
+        <div class="toggles-section">
+          <div class="toggle-row-item"><span>Exibir etiqueta "Promoção"</span><label class="switch-toggle"><input type="checkbox" id="tagPromo"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Exibir etiqueta "Mais Vendido"</span><label class="switch-toggle"><input type="checkbox" id="tagBestSeller"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Exibir etiqueta "Novidade!"</span><label class="switch-toggle"><input type="checkbox" id="tagNew"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Exibir no Delivery / Retirada</span><label class="switch-toggle"><input type="checkbox" id="showDelivery" checked><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Exibir no Cardápio de Mesas</span><label class="switch-toggle"><input type="checkbox" id="showTable" checked><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Destacar no Cardápio</span><label class="switch-toggle" id="highlightToggle"><input type="checkbox" id="isHighlight"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Bebida Alcoólica (+18)</span><label class="switch-toggle"><input type="checkbox" id="isAlcohol"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Precificado por Quilo (KG)</span><label class="switch-toggle"><input type="checkbox" id="isKg"><span class="slider-toggle"></span></label></div>
+        </div>
       </div>
 
       <button class="btn-modal-primary" onclick="saveProduct()">Salvar Produto 💾</button>
@@ -291,32 +339,24 @@
     </div>
   </div>
 
-  <!-- MODAL DE CRIAR GRUPO -->
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE GRUPO -->
   <div class="modal-overlay" id="groupModal">
-    <div class="custom-modal-card" style="max-width: 400px;">
-      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <span>📁 Criar Novo Grupo</span>
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="groupModalTitle">Criar Novo Grupo</span>
         <button onclick="closeGroupModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
+      <input type="hidden" id="editGroupId">
       <div class="form-group">
-        <label for="newGroupName">Nome do Grupo:</label>
-        <input type="text" id="newGroupName" placeholder="Ex: Lanches Artesanais, Bebidas...">
+        <label for="groupNameInput">Nome do Grupo *:</label>
+        <input type="text" id="groupNameInput" placeholder="Ex: LANCHES ARTESANAIS">
       </div>
-      <button class="btn-modal-primary" onclick="saveGroup()">Criar Grupo 📁</button>
+      <div class="form-group">
+        <label for="groupDescInput">Descrição do Grupo (Opcional):</label>
+        <textarea id="groupDescInput" placeholder="Ex: Hambúrgueres preparados com carne 100% Angus."></textarea>
+      </div>
+      <button class="btn-modal-primary" onclick="saveGroup()">Salvar Grupo 📁</button>
       <button class="btn-modal-secondary" onclick="closeGroupModal()">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- MODAL DE ORGANIZAR / ORDENAR GRUPOS -->
-  <div class="modal-overlay" id="orderGroupsModal">
-    <div class="custom-modal-card" style="max-width: 420px;">
-      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <span>↕️ Organizar Ordem dos Grupos</span>
-        <button onclick="closeOrderGroupsModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
-      </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Mova os grupos para cima ou para baixo para definir a ordem em que aparecem no cardápio digital do cliente.</div>
-      <div id="orderGroupsList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; max-height:250px; overflow-y:auto;"></div>
-      <button class="btn-modal-primary" onclick="closeOrderGroupsModal()">Concluído ✅</button>
     </div>
   </div>
 
@@ -324,32 +364,28 @@
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
-      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
-      <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Ação realizada.</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Ação concluída.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
-    let rawPriceValue = 0;
-    let rawCostValue = 0;
+    let rawPrice = 0;
+    let rawCost = 0;
+    let highlightFilterActive = false;
 
     const defaultGroups = [
-      'Lanches & Burguers',
-      'Pizzas & Calzones',
-      'Bebidas & Sucos',
-      'Acompanhamentos & Porções',
-      'Açaí & Sorvetes',
-      'Sobremesas & Doces',
-      'Outros / Diversos'
+      { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true },
+      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocrantes e recheados', active: true },
+      { id: 'g3', name: 'BEBIDAS & SUCOS', desc: 'Geladas e refrescantes', active: true }
     ];
 
     const defaultProducts = [
-      { id: 1, name: 'X-Burger Especial', category: 'Lanches & Burguers', price: 28.50, cost: 12.00, variablePrice: false, desc: 'Pão brioche, hambúrguer artesanal 160g, queijo cheddar e maionese especial.', active: true },
-      { id: 2, name: 'X-Salada Duplo', category: 'Lanches & Burguers', price: 32.00, cost: 14.50, variablePrice: false, desc: 'Pão com gergelim, 2 hambúrgueres 120g, queijo, alface, tomate.', active: true },
-      { id: 3, name: 'Pastel de Carne Especial', category: 'Outros / Diversos', price: 14.99, cost: 6.50, variablePrice: true, desc: 'Pastel crocante recheado com carne temperada.', active: true },
-      { id: 4, name: 'Refrigerante 2L', category: 'Bebidas & Sucos', price: 14.00, cost: 7.00, variablePrice: false, desc: 'Garrafa de 2 Litros gelada.', active: true },
-      { id: 5, name: 'Açaí Completo 500ml', category: 'Açaí & Sorvetes', price: 22.00, cost: 9.00, variablePrice: true, desc: 'Açaí cremoso com complementos à escolha.', active: true }
+      { id: 1, name: 'Best Cheeseburger', group: 'BEST BURGERS', price: 9.99, isVariable: false, cost: 4.50, desc: 'Pão brioche selado na manteiga, hambúrguer 56g, queijo cheddar.', active: true, isHighlight: true, showDelivery: true, showTable: true },
+      { id: 2, name: 'Best Salada', group: 'BEST BURGERS', price: 11.99, isVariable: false, cost: 5.20, desc: 'Pão, hambúrguer 56g, queijo, alface e tomate fresco.', active: true, isHighlight: false, showDelivery: true, showTable: true },
+      { id: 3, name: 'Pastel de carne', group: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', price: 14.99, isVariable: true, cost: 6.00, desc: 'Pastel crocante recheado com carne moída temperada.', active: true, isHighlight: false, showDelivery: true, showTable: true },
+      { id: 4, name: 'Pastel de queijo', group: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', price: 14.99, isVariable: true, cost: 5.80, desc: 'Pastel recheado com muçarela derretida.', active: true, isHighlight: false, showDelivery: true, showTable: true }
     ];
 
     function toggleMenu() {
@@ -359,26 +395,17 @@
 
     function applyGlobalTheme() {
       const currentTheme = localStorage.getItem('vortex_theme');
-      if (currentTheme === 'light') {
-        document.body.classList.add('light-theme');
-      } else {
-        document.body.classList.remove('light-theme');
-      }
+      if (currentTheme === 'light') document.body.classList.add('light-theme');
+      else document.body.classList.remove('light-theme');
     }
 
     function loadStoreSettings() {
       applyGlobalTheme();
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
-
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (savedLogo) {
-        sidebarLogo.src = savedLogo;
-        sidebarLogo.style.display = 'block';
-      } else {
-        sidebarLogo.style.display = 'none';
-      }
+      if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
     }
 
     function getGroups() {
@@ -405,112 +432,94 @@
       localStorage.setItem('vortex_synced_catalog', JSON.stringify(activeProductsOnly));
     }
 
-    function maskCurrencyInput(input) {
+    function maskCurrency(input, type) {
       let value = input.value.replace(/\D/g, '');
       if (!value) {
         input.value = 'R$ 0,00';
-        rawPriceValue = 0;
+        if (type === 'price') rawPrice = 0;
+        if (type === 'cost') rawCost = 0;
         return;
       }
       const numeric = parseFloat(value) / 100;
-      rawPriceValue = numeric;
+      if (type === 'price') rawPrice = numeric;
+      if (type === 'cost') rawCost = numeric;
       input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function maskCostInput(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (!value) {
-        input.value = 'R$ 0,00';
-        rawCostValue = 0;
-        return;
-      }
-      const numeric = parseFloat(value) / 100;
-      rawCostValue = numeric;
-      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function toggleVariablePriceMode(isVar) {
+      const box = document.getElementById('fixedPriceBox');
+      if (isVar) box.style.display = 'none';
+      else box.style.display = 'block';
     }
 
-    function toggleVariablePriceState(isVariable) {
-      const priceInput = document.getElementById('prodPrice');
-      if (isVariable) {
-        priceInput.disabled = false; // Permite definir o preço "a partir de"
-      }
-    }
-
-    function renderProducts() {
+    function renderCardapio() {
       loadStoreSettings();
-      let products = getProducts();
       let groups = getGroups();
-      
+      let products = getProducts();
       syncWithOtherModules(products);
 
-      const search = document.getElementById('searchInput').value.toLowerCase().trim();
-      const catFilter = document.getElementById('categoryFilter').value;
-      const container = document.getElementById('catalogSectionsContainer');
-
-      // Atualiza Selects de Grupos
+      // Preenche Select de Categorias do Topo e do Modal
       const filterSelect = document.getElementById('categoryFilter');
-      let currentFilterVal = filterSelect.value;
-      filterSelect.innerHTML = `<option value="all">Todos os Grupos</option>`;
-      groups.forEach(g => {
-        filterSelect.innerHTML += `<option value="${g}">${g}</option>`;
-      });
-      filterSelect.value = currentFilterVal;
+      const modalSelect = document.getElementById('prodGroupSelect');
+      
+      let currentFilter = filterSelect.value;
+      filterSelect.innerHTML = `<option value="all">Todas as Categorias / Grupos</option>`;
+      modalSelect.innerHTML = '';
 
-      const modalCatSelect = document.getElementById('prodCategory');
-      modalCatSelect.innerHTML = '';
       groups.forEach(g => {
-        modalCatSelect.innerHTML += `<option value="${g}">${g}</option>`;
+        filterSelect.innerHTML += `<option value="${g.name}" ${currentFilter === g.name ? 'selected' : ''}>${g.name}</option>`;
+        modalSelect.innerHTML += `<option value="${g.name}">${g.name}</option>`;
       });
 
-      // Estatísticas
+      // Atualiza Estatísticas
       const activeCount = products.filter(p => p.active !== false).length;
       const pausedCount = products.length - activeCount;
       document.getElementById('statTotalItems').innerText = products.length;
       document.getElementById('statActiveItems').innerText = activeCount;
       document.getElementById('statPausedItems').innerText = pausedCount;
 
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const container = document.getElementById('groupsContainer');
       container.innerHTML = '';
 
-      let filteredGroups = groups.filter(g => catFilter === 'all' || g === catFilter);
+      groups.forEach((group, gIdx) => {
+        if (currentFilter !== 'all' && currentFilter !== group.name) return;
 
-      filteredGroups.forEach(groupName => {
-        let groupItems = products.filter(p => (p.category || 'Outros / Diversos') === groupName);
-        
-        if (search) {
-          groupItems = groupItems.filter(p => p.name.toLowerCase().includes(search) || (p.desc && p.desc.toLowerCase().includes(search)));
-        }
+        let groupProducts = products.filter(p => {
+          let matchGroup = p.group === group.name;
+          let matchSearch = p.name.toLowerCase().includes(search) || (p.desc && p.desc.toLowerCase().includes(search));
+          let matchHighlight = !highlightFilterActive || p.isHighlight;
+          return matchGroup && matchSearch && matchHighlight;
+        });
 
-        if (groupItems.length === 0 && search) return;
+        if (highlightFilterActive && groupProducts.length === 0) return;
 
         let itemsHtml = '';
-        if (groupItems.length === 0) {
-          itemsHtml = `<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:15px; font-size:0.85rem;">Nenhum produto neste grupo.</div>`;
+        if (groupProducts.length === 0) {
+          itemsHtml = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:15px;">Nenhum produto neste grupo. Clique em "+" para adicionar.</div>`;
         } else {
-          groupItems.forEach(p => {
+          groupProducts.forEach(p => {
             const isActive = p.active !== false;
-            const formattedPrice = parseFloat(p.price || 0).toFixed(2).replace('.', ',');
-            const priceDisplay = p.variablePrice ? `A partir de R$ ${formattedPrice}` : `R$ ${formattedPrice}`;
+            const priceDisplay = p.isVariable ? `A partir de R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}` : `R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}`;
 
             itemsHtml += `
-              <div class="product-card ${!isActive ? 'paused' : ''}">
-                <div>
-                  <div class="product-header">
-                    <span class="product-name">${p.name}</span>
-                    <span class="product-status ${isActive ? 'status-active' : 'status-inactive'}">
-                      ${isActive ? '🟢 Disponível' : '⏸️ Pausado'}
-                    </span>
+              <div class="product-row-card ${!isActive ? 'paused' : ''}">
+                <div class="product-info-left">
+                  <div class="product-name-row">
+                    <span>${p.name}</span>
+                    ${p.isHighlight ? '⭐' : ''}
                   </div>
-                  <div class="product-desc" style="margin: 6px 0;">${p.desc || 'Sem descrição.'}</div>
-                  <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="product-price">${priceDisplay}</span>
-                    ${p.cost ? `<span style="font-size:0.75rem; color:var(--text-muted);">Custo: R$ ${parseFloat(p.cost).toFixed(2).replace('.', ',')}</span>` : ''}
-                  </div>
+                  <div class="product-desc-text">${p.desc || 'Sem descrição.'}</div>
+                  <span class="product-price-tag">${priceDisplay}</span>
                 </div>
 
-                <div class="product-actions">
-                  <button class="btn-card-action btn-edit" onclick="editProduct(${p.id})">✏️ Editar</button>
-                  <button class="btn-card-action btn-toggle-status" onclick="toggleStatus(${p.id})">${isActive ? '⏸️' : '▶️'}</button>
-                  <button class="btn-card-action btn-delete" onclick="deleteProduct(${p.id})">🗑️</button>
+                <div class="product-row-actions">
+                  <button class="btn-icon-action" onclick="editProduct(${p.id})" title="Editar Item">✏️</button>
+                  <button class="btn-icon-action btn-icon-delete" onclick="deleteProduct(${p.id})" title="Excluir Item">🗑️</button>
+                  <label class="switch-toggle" title="Ativar/Pausar">
+                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleProductStatus(${p.id})">
+                    <span class="slider-toggle"></span>
+                  </label>
                 </div>
               </div>
             `;
@@ -520,18 +529,31 @@
         container.innerHTML += `
           <div class="group-section-box">
             <div class="group-header-bar">
-              <span class="group-title-text">📁 ${groupName} <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">(${groupItems.length} itens)</span></span>
+              <span class="group-title-text">📁 ${group.name}</span>
+              <div class="group-actions-toolbar">
+                <button class="btn-icon-action" onclick="openProductModalForGroup('${group.name}')" title="Adicionar Item">+</button>
+                <button class="btn-icon-action" onclick="editGroup('${group.id}')" title="Editar Grupo">✏️</button>
+                <button class="btn-icon-action btn-icon-delete" onclick="deleteGroup('${group.id}')" title="Excluir Grupo">🗑️</button>
+                <button class="btn-icon-action" onclick="moveGroup(${gIdx}, -1)" title="Mover para Cima">⬆️</button>
+                <button class="btn-icon-action" onclick="moveGroup(${gIdx}, 1)" title="Mover para Baixo">⬇️</button>
+                <label class="switch-toggle" title="Ativar/Pausar Grupo">
+                  <input type="checkbox" ${group.active !== false ? 'checked' : ''} onchange="toggleGroupStatus('${group.id}')">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
             </div>
-            <div class="group-products-grid">
-              ${itemsHtml}
-            </div>
+            <div class="group-items-container">${itemsHtml}</div>
           </div>
         `;
       });
     }
 
+    /* GESTÃO DE GRUPOS */
     function openGroupModal() {
-      document.getElementById('newGroupName').value = '';
+      document.getElementById('editGroupId').value = '';
+      document.getElementById('groupModalTitle').innerText = 'Criar Novo Grupo';
+      document.getElementById('groupNameInput').value = '';
+      document.getElementById('groupDescInput').value = '';
       document.getElementById('groupModal').classList.add('active');
     }
 
@@ -540,68 +562,88 @@
     }
 
     function saveGroup() {
-      const name = document.getElementById('newGroupName').value.trim();
+      const id = document.getElementById('editGroupId').value;
+      const name = document.getElementById('groupNameInput').value.trim().toUpperCase();
+      const desc = document.getElementById('groupDescInput').value.trim();
+
       if (!name) {
-        showNoticeModal('Aviso', 'Digite o nome do novo grupo.', '⚠️');
+        showNoticeModal('Atenção', 'Informe o nome do grupo.', '⚠️');
         return;
       }
+
       let groups = getGroups();
-      if (groups.includes(name)) {
-        showNoticeModal('Aviso', 'Este grupo já existe.', '⚠️');
-        return;
+      if (id) {
+        let g = groups.find(item => item.id === id);
+        if (g) { g.name = name; g.desc = desc; }
+      } else {
+        const newId = 'g_' + Date.now();
+        groups.push({ id: newId, name, desc, active: true });
       }
-      groups.push(name);
+
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
       closeGroupModal();
-      renderProducts();
-      showNoticeModal('Grupo Criado!', `O grupo "${name}" foi adicionado com sucesso.`, '📁');
+      renderCardapio();
+      showNoticeModal('Salvo!', 'Grupo de produtos atualizado com sucesso.', '📁');
     }
 
-    function openOrderGroupsModal() {
+    function editGroup(id) {
       let groups = getGroups();
-      const list = document.getElementById('orderGroupsList');
-      list.innerHTML = '';
-      groups.forEach((g, idx) => {
-        list.innerHTML += `
-          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); padding:8px 12px; border:1px solid var(--border); border-radius:8px;">
-            <span style="font-weight:bold; font-size:0.9rem;">${g}</span>
-            <div style="display:flex; gap:4px;">
-              <button onclick="moveGroup(${idx}, -1)" style="background:var(--border); color:var(--text-main); border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
-              <button onclick="moveGroup(${idx}, 1)" style="background:var(--border); color:var(--text-main); border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" ${idx === groups.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
-            </div>
-          </div>
-        `;
-      });
-      document.getElementById('orderGroupsModal').classList.add('active');
+      let g = groups.find(item => item.id === id);
+      if (!g) return;
+      document.getElementById('editGroupId').value = g.id;
+      document.getElementById('groupModalTitle').innerText = 'Editar Grupo';
+      document.getElementById('groupNameInput').value = g.name;
+      document.getElementById('groupDescInput').value = g.desc || '';
+      document.getElementById('groupModal').classList.add('active');
     }
 
-    function closeOrderGroupsModal() {
-      document.getElementById('orderGroupsModal').classList.remove('active');
-      renderProducts();
-    }
-
-    function moveGroup(idx, direction) {
+    function deleteGroup(id) {
       let groups = getGroups();
-      let targetIdx = idx + direction;
-      if (targetIdx < 0 || targetIdx >= groups.length) return;
-      let temp = groups[idx];
-      groups[idx] = groups[targetIdx];
-      groups[targetIdx] = temp;
+      groups = groups.filter(item => item.id !== id);
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-      openOrderGroupsModal();
+      renderCardapio();
+      showNoticeModal('Excluído', 'Grupo removido com sucesso.', '🗑️');
     }
 
+    function toggleGroupStatus(id) {
+      let groups = getGroups();
+      let g = groups.find(item => item.id === id);
+      if (g) {
+        g.active = g.active === false ? true : false;
+        localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+        renderCardapio();
+      }
+    }
+
+    function moveGroup(index, direction) {
+      let groups = getGroups();
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= groups.length) return;
+      const temp = groups[index];
+      groups[index] = groups[newIndex];
+      groups[newIndex] = temp;
+      localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      renderCardapio();
+    }
+
+    /* GESTÃO DE PRODUTOS/ITENS */
     function openProductModal() {
       document.getElementById('editProductId').value = '';
       document.getElementById('productModalTitle').innerText = 'Cadastrar Produto';
       document.getElementById('prodName').value = '';
+      document.getElementById('prodDesc').value = '';
       document.getElementById('prodPrice').value = 'R$ 0,00';
       document.getElementById('prodCost').value = 'R$ 0,00';
-      document.getElementById('prodVariablePriceCheck').checked = false;
-      rawPriceValue = 0;
-      rawCostValue = 0;
-      document.getElementById('prodDesc').value = '';
+      rawPrice = 0;
+      rawCost = 0;
+      document.getElementById('prodVariablePriceToggle').checked = false;
+      toggleVariablePriceMode(false);
       document.getElementById('productModal').classList.add('active');
+    }
+
+    function openProductModalForGroup(groupName) {
+      openProductModal();
+      document.getElementById('prodGroupSelect').value = groupName;
     }
 
     function closeProductModal() {
@@ -616,16 +658,26 @@
       document.getElementById('editProductId').value = p.id;
       document.getElementById('productModalTitle').innerText = 'Editar Produto';
       document.getElementById('prodName').value = p.name;
-      document.getElementById('prodCategory').value = p.category || getGroups()[0];
-      
-      rawPriceValue = parseFloat(p.price) || 0;
-      document.getElementById('prodPrice').value = 'R$ ' + rawPriceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-      rawCostValue = parseFloat(p.cost) || 0;
-      document.getElementById('prodCost').value = 'R$ ' + rawCostValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-      document.getElementById('prodVariablePriceCheck').checked = !!p.variablePrice;
       document.getElementById('prodDesc').value = p.desc || '';
+      document.getElementById('prodGroupSelect').value = p.group || '';
+
+      rawPrice = parseFloat(p.price) || 0;
+      rawCost = parseFloat(p.cost) || 0;
+      document.getElementById('prodPrice').value = 'R$ ' + rawPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('prodCost').value = 'R$ ' + rawCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const isVar = p.isVariable || false;
+      document.getElementById('prodVariablePriceToggle').checked = isVar;
+      toggleVariablePriceMode(isVar);
+
+      document.getElementById('tagPromo').checked = p.tagPromo || false;
+      document.getElementById('tagBestSeller').checked = p.tagBestSeller || false;
+      document.getElementById('tagNew').checked = p.tagNew || false;
+      document.getElementById('showDelivery').checked = p.showDelivery !== false;
+      document.getElementById('showTable').checked = p.showTable !== false;
+      document.getElementById('isHighlight').checked = p.isHighlight || false;
+      document.getElementById('isAlcohol').checked = p.isAlcohol || false;
+      document.getElementById('isKg').checked = p.isKg || false;
 
       document.getElementById('productModal').classList.add('active');
     }
@@ -633,48 +685,61 @@
     function saveProduct() {
       const id = document.getElementById('editProductId').value;
       const name = document.getElementById('prodName').value.trim();
-      const category = document.getElementById('prodCategory').value;
-      const variablePrice = document.getElementById('prodVariablePriceCheck').checked;
       const desc = document.getElementById('prodDesc').value.trim();
+      const group = document.getElementById('prodGroupSelect').value;
+      const isVariable = document.getElementById('prodVariablePriceToggle').checked;
 
-      if (!name) {
-        showNoticeModal('Campo Obrigatório', 'Preencha o nome do produto.', '⚠️');
+      if (!name || (!isVariable && rawPrice <= 0)) {
+        showNoticeModal('Campos Obrigatórios', 'Preencha o nome do produto e o preço válido.', '⚠️');
         return;
       }
 
       let products = getProducts();
 
+      const itemData = {
+        name,
+        desc,
+        group,
+        price: rawPrice,
+        isVariable,
+        cost: rawCost,
+        tagPromo: document.getElementById('tagPromo').checked,
+        tagBestSeller: document.getElementById('tagBestSeller').checked,
+        tagNew: document.getElementById('tagNew').checked,
+        showDelivery: document.getElementById('showDelivery').checked,
+        showTable: document.getElementById('showTable').checked,
+        isHighlight: document.getElementById('isHighlight').checked,
+        isAlcohol: document.getElementById('isAlcohol').checked,
+        isKg: document.getElementById('isKg').checked,
+        active: true
+      };
+
       if (id) {
         let p = products.find(prod => prod.id === parseInt(id));
         if (p) {
-          p.name = name;
-          p.category = category;
-          p.price = rawPriceValue;
-          p.cost = rawCostValue;
-          p.variablePrice = variablePrice;
-          p.desc = desc;
+          Object.assign(p, itemData);
         }
       } else {
         const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-        products.push({ id: nextId, name, category, price: rawPriceValue, cost: rawCostValue, variablePrice, desc, active: true });
+        itemData.id = nextId;
+        products.push(itemData);
       }
 
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
-
       closeProductModal();
-      renderProducts();
-      showNoticeModal('Salvo & Sincronizado!', 'Produto salvo e atualizado em todos os módulos!', '💾');
+      renderCardapio();
+      showNoticeModal('Salvo com Sucesso!', 'Produto atualizado e sincronizado em tempo real.', '💾');
     }
 
-    function toggleStatus(id) {
+    function toggleProductStatus(id) {
       let products = getProducts();
       let p = products.find(prod => prod.id === id);
       if (p) {
         p.active = p.active === false ? true : false;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
         syncWithOtherModules(products);
-        renderProducts();
+        renderCardapio();
       }
     }
 
@@ -683,9 +748,20 @@
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
-      renderProducts();
-      showNoticeModal('Excluído', 'Produto removido com sucesso.', '🗑️');
+      renderCardapio();
+      showNoticeModal('Excluído', 'Produto removido do catálogo.', '🗑️');
     }
+
+    function filterHighlights() {
+      highlightFilterActive = !highlightFilterActive;
+      renderCardapio();
+      showNoticeModal('Filtro de Destaques', highlightFilterActive ? 'Exibindo apenas produtos em destaque.' : 'Exibindo todos os produtos.', '⭐');
+    }
+
+    function openUpsellModal() { showNoticeModal('Item Upsell', 'Módulo de vendas cruzadas / sugestões ativado para o checkout do cliente.', '⭐'); }
+    function openComplementsModal() { showNoticeModal('Complementos', 'Gerenciamento de adicionais, bordas e recheios vinculado.', '📋'); }
+    function openTrashModal() { showNoticeModal('Excluídos', 'Nenhum item na lixeira no momento.', '🗑️'); }
+    function openReorderModal() { showNoticeModal('Ordenador', 'Use as setas ⬆️ ⬇️ nos títulos dos grupos para reorganizar a ordem.', '↕️'); }
 
     function showNoticeModal(title, desc, icon) {
       document.getElementById('noticeIcon').innerText = icon || '🎉';
@@ -703,7 +779,7 @@
     }, 1000);
 
     window.onload = function() {
-      renderProducts();
+      renderCardapio();
     };
   </script>
 </body>

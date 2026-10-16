@@ -254,14 +254,14 @@
         </div>
         <div class="form-group" style="flex:1;">
           <label for="couponValue" id="couponValueLabel">Valor (%): *</label>
-          <input type="number" step="0.01" id="couponValue" placeholder="Ex: 10">
+          <input type="text" id="couponValue" placeholder="Ex: 10,00" oninput="maskCurrencyInput(this)">
         </div>
       </div>
 
       <div style="display:flex; gap:10px;">
         <div class="form-group" style="flex:1;">
           <label for="couponMinOrder">Pedido Mínimo (R$):</label>
-          <input type="number" step="0.01" id="couponMinOrder" placeholder="0,00 (sem mínimo)">
+          <input type="text" id="couponMinOrder" placeholder="0,00 (sem mínimo)" oninput="maskCurrencyInput(this)">
         </div>
         <div class="form-group" style="flex:1;">
           <label for="couponMaxUses">Limite de Usos:</label>
@@ -398,6 +398,30 @@
       document.getElementById('couponValueLabel').innerText = type === 'percent' ? 'Valor (%): *' : 'Valor (R$): *';
     }
 
+    // Função de máscara monetária automática (formata como 0,00)
+    function maskCurrencyInput(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = '';
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Função auxiliar para converter string formatada (ex: "1.234,56") para número float JS (1234.56)
+    function parseCurrencyToFloat(valStr) {
+      if (!valStr) return 0;
+      let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
+      return parseFloat(cleaned) || 0;
+    }
+
+    // Função auxiliar para converter número float para formato de input formatado ("1234.56" -> "1.234,56")
+    function formatFloatToCurrencyStr(num) {
+      if (isNaN(num) || num === 0) return '';
+      return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function openCouponModal() {
       document.getElementById('editCouponId').value = '';
       document.getElementById('couponModalTitle').innerText = 'Criar Cupom de Desconto';
@@ -419,8 +443,8 @@
     function saveCoupon() {
       const code = document.getElementById('couponCode').value.toUpperCase().trim();
       const type = document.getElementById('couponType').value;
-      const value = parseFloat(document.getElementById('couponValue').value) || 0;
-      const minOrder = parseFloat(document.getElementById('couponMinOrder').value) || 0;
+      const value = parseCurrencyToFloat(document.getElementById('couponValue').value);
+      const minOrder = parseCurrencyToFloat(document.getElementById('couponMinOrder').value);
       const maxUses = parseInt(document.getElementById('couponMaxUses').value) || null;
       const expiration = document.getElementById('couponExpiration').value;
       const status = document.getElementById('couponStatus').value;
@@ -471,8 +495,8 @@
       document.getElementById('couponModalTitle').innerText = 'Editar Cupom';
       document.getElementById('couponCode').value = c.code;
       document.getElementById('couponType').value = c.type;
-      document.getElementById('couponValue').value = c.value;
-      document.getElementById('couponMinOrder').value = c.minOrder || '';
+      document.getElementById('couponValue').value = formatFloatToCurrencyStr(c.value);
+      document.getElementById('couponMinOrder').value = formatFloatToCurrencyStr(c.minOrder);
       document.getElementById('couponMaxUses').value = c.maxUses || '';
       document.getElementById('couponExpiration').value = c.expiration || '';
       document.getElementById('couponStatus').value = c.status;

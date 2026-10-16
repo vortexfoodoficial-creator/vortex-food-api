@@ -85,7 +85,10 @@
     .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
 
+    /* ROLAGEM INDEPENDENTE PARA O CONTAINER DAS FICHS TÉCNICAS */
+    .recipe-scroll-container { max-height: 580px; overflow-y: auto; padding-right: 4px; }
     .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    
     .recipe-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
     .recipe-card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
     .recipe-title { font-weight: bold; font-size: 1.05rem; color: var(--primary); }
@@ -189,7 +192,7 @@
       </div>
     </header>
 
-    <!-- BARRA DE MÉTRICAS -->
+    <!-- BARRA DE MÉTRICAS COM PORCENTAGEM DE LUCRO -->
     <div class="stats-summary-bar">
       <div class="stat-badge">
         <span style="font-size:1.4rem;">📖</span>
@@ -209,7 +212,7 @@
         <span style="font-size:1.4rem;">💡</span>
         <div>
           <div style="font-size:0.7rem; color:var(--text-muted);">LUCRO BRUTO MÉDIO</div>
-          <div style="font-size:1rem; color:var(--success);" id="statAvgMargin">R$ 0,00</div>
+          <div style="font-size:1rem; color:var(--success);" id="statAvgMargin">R$ 0,00 <span id="statAvgMarginPercent" style="font-size:0.75rem; font-weight:normal;">(0.0%)</span></div>
         </div>
       </div>
     </div>
@@ -224,7 +227,10 @@
         <input type="text" id="recipeSearchInput" class="search-input" placeholder="🔍 Buscar ficha técnica por nome do produto..." oninput="renderRecipes()">
       </div>
 
-      <div class="recipe-grid" id="recipesContainer"></div>
+      <!-- CONTAINER COM ROLAGEM INDEPENDENTE -->
+      <div class="recipe-scroll-container">
+        <div class="recipe-grid" id="recipesContainer"></div>
+      </div>
     </div>
   </main>
 
@@ -258,7 +264,6 @@
           </div>
           <div style="flex:1;">
             <label for="ingredientUnit">Unidade:</label>
-
             <select id="ingredientUnit">
               <option value="kg">KG</option>
               <option value="g">G (Gramas)</option>
@@ -285,8 +290,8 @@
           <span class="cmv-val" id="draftPriceDisplay" style="color:var(--info);">R$ 0,00</span>
         </div>
         <div class="cmv-metric-item">
-          <span class="cmv-label">MARGEM BRUTA</span>
-          <span class="cmv-val" id="draftMarginDisplay" style="color:var(--success);">R$ 0,00 (0%)</span>
+          <span class="cmv-label">MARGEM / LUCRO</span>
+          <span class="cmv-val" id="draftMarginDisplay" style="color:var(--success);">R$ 0,00 (0.0%)</span>
         </div>
       </div>
 
@@ -369,6 +374,7 @@
 
       let totalCmvPercent = 0;
       let totalMarginSum = 0;
+      let totalMarginPercentSum = 0;
       let validCount = 0;
 
       let filteredRecipes = recipes.filter(r => r.productName.toLowerCase().includes(search));
@@ -400,11 +406,13 @@
           }).join('');
 
           let profitMargin = sellPrice - calculatedCost;
+          let profitMarginPercent = sellPrice > 0 ? (profitMargin / sellPrice) * 100 : 0;
           let cmvPercent = sellPrice > 0 ? (calculatedCost / sellPrice) * 100 : 0;
 
           if (sellPrice > 0) {
             totalCmvPercent += cmvPercent;
             totalMarginSum += profitMargin;
+            totalMarginPercentSum += profitMarginPercent;
             validCount++;
           }
 
@@ -433,8 +441,8 @@
                   <span class="cmv-val" style="color:var(--warning);">${cmvPercent.toFixed(1)}%</span>
                 </div>
                 <div class="cmv-metric-item">
-                  <span class="cmv-label">MARGEM</span>
-                  <span class="cmv-val" style="color:var(--success);">R$ ${profitMargin.toFixed(2).replace('.', ',')}</span>
+                  <span class="cmv-label">MARGEM / LUCRO</span>
+                  <span class="cmv-val" style="color:var(--success);">R$ ${profitMargin.toFixed(2).replace('.', ',')} <span style="font-size:0.7rem; font-weight:normal;">(${profitMarginPercent.toFixed(1)}%)</span></span>
                 </div>
               </div>
 
@@ -447,6 +455,7 @@
       document.getElementById('statTotalRecipes').innerText = recipes.length;
       document.getElementById('statAvgCmv').innerText = validCount > 0 ? (totalCmvPercent / validCount).toFixed(1) + '%' : '0.0%';
       document.getElementById('statAvgMargin').innerText = validCount > 0 ? 'R$ ' + (totalMarginSum / validCount).toFixed(2).replace('.', ',') : 'R$ 0,00';
+      document.getElementById('statAvgMarginPercent').innerText = validCount > 0 ? `(${(totalMarginPercentSum / validCount).toFixed(1)}%)` : '(0.0%)';
     }
 
     function openRecipeModal() {

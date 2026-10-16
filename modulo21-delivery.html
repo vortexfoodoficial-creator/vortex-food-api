@@ -561,6 +561,7 @@
 
       const now = new Date();
       const todayDateStr = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
+      const dateFormatted = now.toLocaleDateString('pt-BR'); // "DD/MM/AAAA"
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
@@ -587,6 +588,7 @@
         total: total,
         status: 'new',
         date: todayDateStr, // Armazena a data para o filtro de virada do dia
+        dateFormatted: dateFormatted,
         time: timeStr,
         code: deliveryCode
       };
@@ -765,7 +767,7 @@
             <div class="text-center">
               <h2>${storeSettings.storeName}</h2>
               <h3>PEDIDO DELIVERY #${o.id}</h3>
-              <p>Horário: ${o.time || '--:--'}</p>
+              <p>Data: ${o.dateFormatted || new Date().toLocaleDateString('pt-BR')} | Horário: ${o.time || '--:--'}</p>
             </div>
             <div class="line"></div>
             <p><strong>CLIENTE:</strong> ${o.client}<br><strong>ENDEREÇO:</strong> ${o.address}</p>

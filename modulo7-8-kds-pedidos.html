@@ -413,7 +413,7 @@
             <p><strong>PEDIDO #${order.id}</strong></p>
             <p>Origem: ${order.origin || 'Balcão'}</p>
             <p>Cliente: ${order.client || 'Cliente'}</p>
-            <p>Horário: ${order.time}</p>
+            <p>Data: ${order.dateFormatted || new Date().toLocaleDateString('pt-BR')} | Horário: ${order.time}</p>
             <hr>
             <table style="width:100%; border-collapse:collapse;">
               ${itemsTxt}

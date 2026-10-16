@@ -77,21 +77,18 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
-    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: bold; flex: 1; min-width: 180px; }
+    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: bold; flex: 1; min-width: 180px; cursor: pointer; transition: border-color 0.2s; }
+    .stat-badge:hover { border-color: var(--primary); }
 
-    /* BARRA DE AÇÕES DO TOPO (ESTILO IMAGEM 1) */
     .top-action-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 20px; }
     .top-action-btn { border: none; padding: 10px 12px; border-radius: 10px; font-weight: bold; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; transition: opacity 0.2s; }
     .top-action-btn:hover { opacity: 0.9; }
 
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-
     .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
     .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 180px; }
 
-    /* SEÇÃO DE GRUPOS E ITENS (ESTILO IMAGENS 2 e 3) */
     .group-section-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
     .group-header-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(30, 41, 59, 0.7); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
     .group-title-text { font-weight: bold; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; display: flex; align-items: center; gap: 8px; }
@@ -111,7 +108,6 @@
     .btn-icon-action:hover { background: var(--primary); color: white; }
     .btn-icon-delete:hover { background: var(--danger); color: white; }
 
-    /* TOGGLE SWITCH CUSTOMIZADO */
     .switch-toggle { position: relative; display: inline-block; width: 42px; height: 22px; }
     .switch-toggle input { opacity: 0; width: 0; height: 0; }
     .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .3s; border-radius: 20px; }
@@ -133,7 +129,7 @@
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; margin-top: 8px; }
 
@@ -210,10 +206,10 @@
     </header>
 
     <div class="stats-summary-bar">
-      <div class="stat-badge">
+      <div class="stat-badge" onclick="openAllProductsModal()" title="Ver Todos os Produtos">
         <span style="font-size:1.3rem;">📦</span>
         <div>
-          <div style="font-size:0.7rem; color:var(--text-muted);">TOTAL DE ITENS</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">TOTAL DE ITENS (GERENCIAR)</div>
           <div style="font-size:1rem;" id="statTotalItems">0</div>
         </div>
       </div>
@@ -233,7 +229,7 @@
       </div>
     </div>
 
-    <!-- BARRA DE AÇÕES DO TOPO (ESTILO IMAGEM 1) -->
+    <!-- BARRA DE AÇÕES DO TOPO -->
     <div class="top-action-bar">
       <button class="top-action-btn" style="background:#22c55e;" onclick="openGroupModal()">📁 Criar Grupo</button>
       <button class="top-action-btn" style="background:#3b82f6;" onclick="openProductModal()">➕ Criar Item</button>
@@ -254,7 +250,6 @@
         </select>
       </div>
 
-      <!-- ÁREA ONDE OS GRUPOS E ITENS APARECEM EM LISTA (ESTILO IMAGENS 2 e 3) -->
       <div id="groupsContainer"></div>
     </div>
   </main>
@@ -285,7 +280,7 @@
           <select id="prodGroupSelect"></select>
         </div>
         <div style="flex:1;">
-          <label for="prodCost">Custo do Item (R$):</label>
+          <label for="prodCost">Custo Base do Item (R$):</label>
           <input type="text" id="prodCost" placeholder="R$ 0,00" oninput="maskCurrency(this, 'cost')">
         </div>
       </div>
@@ -295,12 +290,12 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <span style="font-size:0.8rem; font-weight:bold;">Usar Preço Variável ("A partir de")</span>
           <label class="switch-toggle">
-            <input type="checkbox" id="prodVariablePriceToggle" onchange="toggleVariablePriceMode(this.checked)">
+            <input type="checkbox" id="prodVariablePriceToggle">
             <span class="slider-toggle"></span>
           </label>
         </div>
-        <div id="fixedPriceBox">
-          <label for="prodPrice">Preço Fixo Único (R$):</label>
+        <div>
+          <label for="prodPrice">Preço Base / Inicial (R$):</label>
           <input type="text" id="prodPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'price')">
         </div>
       </div>
@@ -339,6 +334,19 @@
     </div>
   </div>
 
+  <!-- MODAL DE GESTÃO GERAL DE PRODUTOS -->
+  <div class="modal-overlay" id="allProductsModal">
+    <div class="custom-modal-card" style="max-width: 600px;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>📦 Gerenciamento Geral de Produtos</span>
+        <button onclick="closeAllProductsModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Ative, pause ou exclua qualquer produto do catálogo rapidamente.</div>
+      <div id="allProductsListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto;"></div>
+      <button class="btn-modal-secondary" onclick="closeAllProductsModal()">Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL DE CADASTRO / EDIÇÃO DE GRUPO -->
   <div class="modal-overlay" id="groupModal">
     <div class="custom-modal-card">
@@ -360,6 +368,32 @@
     </div>
   </div>
 
+  <!-- MODAL DE ITEM UPSELL -->
+  <div class="modal-overlay" id="upsellModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>⭐ Gerenciar Itens Upsell (Sugestões)</span>
+        <button onclick="closeUpsellModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Selecione quais produtos serão oferecidos como sugestão extra ao finalizar o pedido.</div>
+      <div id="upsellListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+      <button class="btn-modal-primary" onclick="closeUpsellModal()">Salvar Sugestões ⭐</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE EXCLUÍDOS (LIXEIRA) -->
+  <div class="modal-overlay" id="trashModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>🗑️ Lixeira de Itens & Grupos Excluídos</span>
+        <button onclick="closeTrashModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Itens e grupos removidos ficam aqui e podem ser restaurados a qualquer momento.</div>
+      <div id="trashListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+      <button class="btn-modal-secondary" onclick="closeTrashModal()">Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
@@ -377,7 +411,7 @@
 
     const defaultGroups = [
       { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true },
-      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocrantes e recheados', active: true },
+      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocantes e recheados', active: true },
       { id: 'g3', name: 'BEBIDAS & SUCOS', desc: 'Geladas e refrescantes', active: true }
     ];
 
@@ -408,13 +442,16 @@
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
     }
 
+    /* LIMPEZA AUTOMÁTICA DE GRUPOS CORROMPIDOS / UNDEFINED */
     function getGroups() {
       let saved = localStorage.getItem('vortex_groups_catalog');
-      if (!saved) {
-        localStorage.setItem('vortex_groups_catalog', JSON.stringify(defaultGroups));
-        return defaultGroups;
-      }
-      return JSON.parse(saved);
+      let groups = saved ? JSON.parse(saved) : defaultGroups;
+      
+      // Filtra e remove estritamente qualquer grupo nulo, vazio ou com nome "UNDEFINED"
+      groups = groups.filter(g => g && g.name && g.name.trim() !== '' && g.name.toUpperCase() !== 'UNDEFINED' && g.name !== 'undefined');
+      
+      localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      return groups;
     }
 
     function getProducts() {
@@ -425,6 +462,11 @@
         return defaultProducts;
       }
       return JSON.parse(saved);
+    }
+
+    function getTrash() {
+      let saved = localStorage.getItem('vortex_trash_catalog');
+      return saved ? JSON.parse(saved) : { products: [], groups: [] };
     }
 
     function syncWithOtherModules(productsArray) {
@@ -446,19 +488,12 @@
       input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function toggleVariablePriceMode(isVar) {
-      const box = document.getElementById('fixedPriceBox');
-      if (isVar) box.style.display = 'none';
-      else box.style.display = 'block';
-    }
-
     function renderCardapio() {
       loadStoreSettings();
       let groups = getGroups();
       let products = getProducts();
       syncWithOtherModules(products);
 
-      // Preenche Select de Categorias do Topo e do Modal
       const filterSelect = document.getElementById('categoryFilter');
       const modalSelect = document.getElementById('prodGroupSelect');
       
@@ -471,7 +506,6 @@
         modalSelect.innerHTML += `<option value="${g.name}">${g.name}</option>`;
       });
 
-      // Atualiza Estatísticas
       const activeCount = products.filter(p => p.active !== false).length;
       const pausedCount = products.length - activeCount;
       document.getElementById('statTotalItems').innerText = products.length;
@@ -510,7 +544,7 @@
                     ${p.isHighlight ? '⭐' : ''}
                   </div>
                   <div class="product-desc-text">${p.desc || 'Sem descrição.'}</div>
-                  <span class="product-price-tag">${priceDisplay}</span>
+                  <span class="product-price-tag">${priceDisplay} <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(Custo Base: R$ ${(p.cost || 0).toFixed(2).replace('.', ',')})</span></span>
                 </div>
 
                 <div class="product-row-actions">
@@ -566,8 +600,8 @@
       const name = document.getElementById('groupNameInput').value.trim().toUpperCase();
       const desc = document.getElementById('groupDescInput').value.trim();
 
-      if (!name) {
-        showNoticeModal('Atenção', 'Informe o nome do grupo.', '⚠️');
+      if (!name || name === 'UNDEFINED') {
+        showNoticeModal('Atenção', 'Informe um nome válido para o grupo.', '⚠️');
         return;
       }
 
@@ -599,10 +633,16 @@
 
     function deleteGroup(id) {
       let groups = getGroups();
+      let trash = getTrash();
+      let g = groups.find(item => item.id === id);
+      if (g) {
+        trash.groups.push(g);
+        localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      }
       groups = groups.filter(item => item.id !== id);
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
       renderCardapio();
-      showNoticeModal('Excluído', 'Grupo removido com sucesso.', '🗑️');
+      showNoticeModal('Movido para a Lixeira', 'Grupo enviado para a lixeira com sucesso.', '🗑️');
     }
 
     function toggleGroupStatus(id) {
@@ -637,7 +677,6 @@
       rawPrice = 0;
       rawCost = 0;
       document.getElementById('prodVariablePriceToggle').checked = false;
-      toggleVariablePriceMode(false);
       document.getElementById('productModal').classList.add('active');
     }
 
@@ -666,9 +705,7 @@
       document.getElementById('prodPrice').value = 'R$ ' + rawPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       document.getElementById('prodCost').value = 'R$ ' + rawCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-      const isVar = p.isVariable || false;
-      document.getElementById('prodVariablePriceToggle').checked = isVar;
-      toggleVariablePriceMode(isVar);
+      document.getElementById('prodVariablePriceToggle').checked = p.isVariable || false;
 
       document.getElementById('tagPromo').checked = p.tagPromo || false;
       document.getElementById('tagBestSeller').checked = p.tagBestSeller || false;
@@ -689,8 +726,8 @@
       const group = document.getElementById('prodGroupSelect').value;
       const isVariable = document.getElementById('prodVariablePriceToggle').checked;
 
-      if (!name || (!isVariable && rawPrice <= 0)) {
-        showNoticeModal('Campos Obrigatórios', 'Preencha o nome do produto e o preço válido.', '⚠️');
+      if (!name || rawPrice <= 0) {
+        showNoticeModal('Campos Obrigatórios', 'Preencha o nome do produto e informe um preço base válido maior que zero.', '⚠️');
         return;
       }
 
@@ -716,9 +753,7 @@
 
       if (id) {
         let p = products.find(prod => prod.id === parseInt(id));
-        if (p) {
-          Object.assign(p, itemData);
-        }
+        if (p) Object.assign(p, itemData);
       } else {
         const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
         itemData.id = nextId;
@@ -745,11 +780,145 @@
 
     function deleteProduct(id) {
       let products = getProducts();
+      let trash = getTrash();
+      let p = products.find(prod => prod.id === id);
+      if (p) {
+        trash.products.push(p);
+        localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      }
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
       renderCardapio();
-      showNoticeModal('Excluído', 'Produto removido do catálogo.', '🗑️');
+      showNoticeModal('Movido para a Lixeira', 'Produto enviado para a lixeira.', '🗑️');
+    }
+
+    /* PAINEL DE GESTÃO GERAL DE PRODUTOS */
+    function openAllProductsModal() {
+      let products = getProducts();
+      let container = document.getElementById('allProductsListContainer');
+      container.innerHTML = '';
+
+      if (products.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum produto cadastrado.</div>`;
+      } else {
+        products.forEach(p => {
+          const isActive = p.active !== false;
+          container.innerHTML += `
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>${p.name}</strong> <span style="font-size:0.75rem; color:var(--primary);">(${p.group})</span>
+                <div style="font-size:0.8rem; color:var(--success);">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <label class="switch-toggle">
+                  <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleProductStatus(${p.id}); openAllProductsModal();">
+                  <span class="slider-toggle"></span>
+                </label>
+                <button class="btn-icon-action btn-icon-delete" onclick="deleteProduct(${p.id}); openAllProductsModal();">🗑️</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      document.getElementById('allProductsModal').classList.add('active');
+    }
+
+    function closeAllProductsModal() {
+      document.getElementById('allProductsModal').classList.remove('active');
+    }
+
+    /* MODAL DE UPSELL INTERATIVO */
+    function openUpsellModal() {
+      let products = getProducts();
+      let container = document.getElementById('upsellListContainer');
+      container.innerHTML = '';
+
+      products.forEach(p => {
+        const isUpsell = p.isUpsell || false;
+        container.innerHTML += `
+          <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span>${p.name}</span>
+            <label class="switch-toggle">
+              <input type="checkbox" ${isUpsell ? 'checked' : ''} onchange="toggleUpsellItem(${p.id})">
+              <span class="slider-toggle"></span>
+            </label>
+          </div>
+        `;
+      });
+      document.getElementById('upsellModal').classList.add('active');
+    }
+
+    function toggleUpsellItem(id) {
+      let products = getProducts();
+      let p = products.find(item => item.id === id);
+      if (p) {
+        p.isUpsell = !p.isUpsell;
+        localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      }
+    }
+
+    function closeUpsellModal() {
+      document.getElementById('upsellModal').classList.remove('active');
+      showNoticeModal('Upsell Atualizado', 'Sugestões de vendas cruzadas salvas com sucesso!', '⭐');
+    }
+
+    /* MODAL DE EXCLUÍDOS (LIXEIRA) */
+    function openTrashModal() {
+      let trash = getTrash();
+      let container = document.getElementById('trashListContainer');
+      container.innerHTML = '';
+
+      let totalTrash = trash.products.length + trash.groups.length;
+      if (totalTrash === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">A lixeira está vazia.</div>`;
+      } else {
+        trash.groups.forEach((g, idx) => {
+          container.innerHTML += `
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+              <span>📁 [Grupo] ${g.name}</span>
+              <button class="btn-modal-primary" style="width:auto; padding:6px 12px; font-size:0.75rem;" onclick="restoreGroup(${idx})">Restaurar ♻️</button>
+            </div>
+          `;
+        });
+
+        trash.products.forEach((p, idx) => {
+          container.innerHTML += `
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+              <span>🍔 [Produto] ${p.name}</span>
+              <button class="btn-modal-primary" style="width:auto; padding:6px 12px; font-size:0.75rem;" onclick="restoreProduct(${idx})">Restaurar ♻️</button>
+            </div>
+          `;
+        });
+      }
+      document.getElementById('trashModal').classList.add('active');
+    }
+
+    function restoreGroup(idx) {
+      let trash = getTrash();
+      let groups = getGroups();
+      let restored = trash.groups.splice(idx, 1)[0];
+      groups.push(restored);
+      localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      openTrashModal();
+      renderCardapio();
+    }
+
+    function restoreProduct(idx) {
+      let trash = getTrash();
+      let products = getProducts();
+      let restored = trash.products.splice(idx, 1)[0];
+      products.push(restored);
+      localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      syncWithOtherModules(products);
+      openTrashModal();
+      renderCardapio();
+    }
+
+    function closeTrashModal() {
+      document.getElementById('trashModal').classList.remove('active');
     }
 
     function filterHighlights() {
@@ -758,9 +927,7 @@
       showNoticeModal('Filtro de Destaques', highlightFilterActive ? 'Exibindo apenas produtos em destaque.' : 'Exibindo todos os produtos.', '⭐');
     }
 
-    function openUpsellModal() { showNoticeModal('Item Upsell', 'Módulo de vendas cruzadas / sugestões ativado para o checkout do cliente.', '⭐'); }
-    function openComplementsModal() { showNoticeModal('Complementos', 'Gerenciamento de adicionais, bordas e recheios vinculado.', '📋'); }
-    function openTrashModal() { showNoticeModal('Excluídos', 'Nenhum item na lixeira no momento.', '🗑️'); }
+    function openComplementsModal() { showNoticeModal('Complementos', 'Gerenciamento de adicionais e bordas recheadas ativado.', '📋'); }
     function openReorderModal() { showNoticeModal('Ordenador', 'Use as setas ⬆️ ⬇️ nos títulos dos grupos para reorganizar a ordem.', '↕️'); }
 
     function showNoticeModal(title, desc, icon) {

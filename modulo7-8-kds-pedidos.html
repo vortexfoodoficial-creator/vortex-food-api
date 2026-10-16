@@ -441,6 +441,13 @@
         </tr>
       `).join('');
 
+      let paymentInfoHtml = '';
+      if (!order.origin || order.origin.toLowerCase().includes('balcão') || order.origin.toLowerCase().includes('pdv')) {
+        if (order.payment) {
+          paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> ${order.payment}</p>`;
+        }
+      }
+
       printWin.document.write(`
         <html>
           <head><title>Comanda - Pedido #${order.id}</title></head>
@@ -452,6 +459,7 @@
             <p>Origem: ${order.origin || 'Balcão'}</p>
             <p>Cliente: ${order.client || 'Cliente'}</p>
             <p>Data: ${order.dateFormatted || new Date().toLocaleDateString('pt-BR')} | Horário: ${order.time}</p>
+            ${paymentInfoHtml}
             <hr>
             <table style="width:100%; border-collapse:collapse;">
               ${itemsTxt}

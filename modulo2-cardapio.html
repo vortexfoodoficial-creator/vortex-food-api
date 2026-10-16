@@ -1,457 +1,464 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 2: Cardápio e Produtos</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Cardápio & Produtos</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .btn-primary-action { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.88rem; transition: background 0.2s; }
+    .btn-primary-action:hover { background: var(--primary-hover); }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
+    .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 160px; }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .product-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+    
+    .product-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .product-name { font-weight: bold; font-size: 1.05rem; }
+    .product-category { font-size: 0.75rem; color: var(--primary); background: rgba(249, 115, 22, 0.12); padding: 3px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; }
+    .product-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.3; min-height: 32px; }
+    .product-price { font-size: 1.15rem; font-weight: bold; color: var(--success); }
 
-        .content-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
-        }
+    .product-status { font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-inactive { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            height: fit-content;
-        }
+    .product-actions { display: flex; gap: 8px; margin-top: 6px; }
+    .btn-card-action { flex: 1; border: none; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; transition: opacity 0.2s; }
+    .btn-edit { background: var(--border); color: var(--text-main); }
+    .btn-toggle-status { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); }
+    .btn-delete { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-        .card-container-white h3, 
-        .card-container-white td, 
-        .card-container-white th,
-        .card-container-white label {
-            color: var(--text-dark) !important;
-        }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
+    input[type="text"], input[type="number"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    textarea { resize: vertical; min-height: 60px; }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 450px; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
+    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; margin-top: 8px; }
 
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 13px;
-        }
-
-        .product-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .product-table th {
-            background: #f8f9fa;
-            color: var(--text-muted);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 10px;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .product-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #edf2f7;
-            vertical-align: middle;
-        }
-
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
-
-        @media (max-width: 900px) {
-            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
-        }
-
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Fundação</div>
-            <div class="menu-item active">🍔 Módulo 2: Cardápio</div>
-            <div class="menu-item" onclick="window.location.href='modulo1-config.html'">⚙️ Módulo 1: Estabelecimento</div>
-            
-            <div class="menu-group-label">Operação</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 2 — Gestão de Cardápio & Produtos</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
-        </header>
-
-        <div class="content-body">
-            <div class="card-container-white" style="overflow-x: auto;">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">Itens Cadastrados no Cardápio</h3>
-                <table class="product-table">
-                    <thead>
-                        <tr>
-                            <th>Produto</th>
-                            <th>Categoria</th>
-                            <th>Preço</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listaProdutosTable">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card-container-white">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Adicionar Produto</h3>
-                <form id="formProduto" onsubmit="salvarProduto(event)">
-                    <div class="form-group">
-                        <label>Nome do Produto *</label>
-                        <input type="text" id="nomeProduto" placeholder="Ex: Burger Triplo Cheddar" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Categoria *</label>
-                        <select id="categoriaProduto">
-                            <option value="Burgers">Hambúrgueres</option>
-                            <option value="Porções">Porções & Acompanhamentos</option>
-                            <option value="Bebidas">Bebidas</option>
-                            <option value="Sobremesas">Sobremesas</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Preço de Venda (R$) *</label>
-                        <input type="text" id="precoProduto" placeholder="0,00" oninput="mascaraMoeda(this)" required>
-                    </div>
-                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Produto</button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS</span>
+        <a href="modulo2-cardapio.html" class="nav-link active"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Cardápio & Catálogo de Produtos</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <div class="card-box">
+      <div class="card-title">
+        <span>📋 Produtos Cadastrados</span>
+        <button class="btn-primary-action" onclick="openProductModal()">➕ Novo Produto</button>
+      </div>
+
+      <div class="search-filter-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome do produto..." oninput="renderProducts()">
+        <select id="categoryFilter" class="filter-select" onchange="renderProducts()">
+          <option value="all">Todas as Categorias</option>
+          <option value="Lanches">Lanches</option>
+          <option value="Pizzas">Pizzas</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Acompanhamentos">Acompanhamentos</option>
+          <option value="Sobremesas">Sobremesas</option>
+        </select>
+      </div>
+
+      <div class="products-grid" id="productsContainer"></div>
+    </div>
+  </main>
+
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO -->
+  <div class="modal-overlay" id="productModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="productModalTitle">Cadastrar Produto</span>
+        <button onclick="closeProductModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <input type="hidden" id="editProductId">
+
+      <div class="form-group">
+        <label for="prodName">Nome do Produto:</label>
+        <input type="text" id="prodName" placeholder="Ex: X-Salada Especial">
+      </div>
+
+      <div class="form-group" style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label for="prodCategory">Categoria:</label>
+          <select id="prodCategory">
+            <option value="Lanches">Lanches</option>
+            <option value="Pizzas">Pizzas</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Acompanhamentos">Acompanhamentos</option>
+            <option value="Sobremesas">Sobremesas</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label for="prodPrice">Preço (R$):</label>
+          <input type="number" step="0.01" id="prodPrice" placeholder="0,00">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="prodDesc">Descrição do Produto:</label>
+        <textarea id="prodDesc" placeholder="Ex: Pão brioche, hambúrguer 150g, queijo prato, alface, tomate e maionese da casa."></textarea>
+      </div>
+
+      <button class="btn-modal-primary" onclick="saveProduct()">Salvar Produto 💾</button>
+      <button class="btn-modal-secondary" onclick="closeProductModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE NOTIFICAÇÃO MODERNA -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card" style="text-align:center;">
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Ação realizada.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    const defaultProducts = [
+      { id: 1, name: 'X-Burger Especial', category: 'Lanches', price: 28.50, desc: 'Pão brioche, hambúrguer artesanal 160g, queijo cheddar e maionese especial.', active: true },
+      { id: 2, name: 'X-Salada Duplo', category: 'Lanches', price: 32.00, desc: 'Pão com gergelim, 2 hambúrgueres 120g, queijo, alface, tomate e maionese.', active: true },
+      { id: 3, name: 'Pizza Calabresa G', category: 'Pizzas', price: 55.00, desc: 'Molho especial de tomate, mussarela, calabresa fatiada, cebola e azeitonas.', active: true },
+      { id: 4, name: 'Batata Frita M', category: 'Acompanhamentos', price: 18.00, desc: 'Batata palito crocante 300g acompanhada de maionese temperada.', active: true },
+      { id: 5, name: 'Refrigerante 2L', category: 'Bebidas', price: 14.00, desc: 'Garrafa de 2 Litros gelada.', active: true },
+      { id: 6, name: 'Suco Natural 500ml', category: 'Bebidas', price: 10.00, desc: 'Suco natural de laranja feito na hora.', active: true }
+    ];
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyGlobalTheme() {
+      const currentTheme = localStorage.getItem('vortex_theme');
+      if (currentTheme === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function loadStoreSettings() {
+      applyGlobalTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+    }
+
+    function getProducts() {
+      let saved = localStorage.getItem('vortex_products_catalog');
+      if (!saved) {
+        localStorage.setItem('vortex_products_catalog', JSON.stringify(defaultProducts));
+        return defaultProducts;
+      }
+      return JSON.parse(saved);
+    }
+
+    function renderProducts() {
+      loadStoreSettings();
+      let products = getProducts();
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const catFilter = document.getElementById('categoryFilter').value;
+      const container = document.getElementById('productsContainer');
+
+      container.innerHTML = '';
+
+      let filtered = products.filter(p => {
+        let matchesSearch = p.name.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
+        let matchesCat = catFilter === 'all' || p.category === catFilter;
+        return matchesSearch && matchesCat;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:30px;">
+            Nenhum produto encontrado.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(p => {
+        container.innerHTML += `
+          <div class="product-card">
+            <div>
+              <div class="product-header">
+                <span class="product-name">${p.name}</span>
+                <span class="product-category">${p.category}</span>
+              </div>
+              <div class="product-desc" style="margin: 8px 0;">${p.desc || 'Sem descrição.'}</div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="product-price">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</span>
+                <span class="product-status ${p.active ? 'status-active' : 'status-inactive'}">
+                  ${p.active ? '🟢 Ativo' : '🔴 Inativo'}
+                </span>
+              </div>
+            </div>
+
+            <div class="product-actions">
+              <button class="btn-card-action btn-edit" onclick="editProduct(${p.id})">✏️ Editar</button>
+              <button class="btn-card-action btn-toggle-status" onclick="toggleStatus(${p.id})">${p.active ? '⏸️ Pausar' : '▶️ Ativar'}</button>
+              <button class="btn-card-action btn-delete" onclick="deleteProduct(${p.id})">🗑️ Excluir</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function openProductModal() {
+      document.getElementById('editProductId').value = '';
+      document.getElementById('productModalTitle').innerText = 'Cadastrar Produto';
+      document.getElementById('prodName').value = '';
+      document.getElementById('prodPrice').value = '';
+      document.getElementById('prodDesc').value = '';
+      document.getElementById('productModal').classList.add('active');
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.remove('active');
+    }
+
+    function editProduct(id) {
+      let products = getProducts();
+      let p = products.find(prod => prod.id === id);
+      if (!p) return;
+
+      document.getElementById('editProductId').value = p.id;
+      document.getElementById('productModalTitle').innerText = 'Editar Produto';
+      document.getElementById('prodName').value = p.name;
+      document.getElementById('prodCategory').value = p.category;
+      document.getElementById('prodPrice').value = p.price;
+      document.getElementById('prodDesc').value = p.desc || '';
+
+      document.getElementById('productModal').classList.add('active');
+    }
+
+    function saveProduct() {
+      const id = document.getElementById('editProductId').value;
+      const name = document.getElementById('prodName').value.trim();
+      const category = document.getElementById('prodCategory').value;
+      const price = parseFloat(document.getElementById('prodPrice').value);
+      const desc = document.getElementById('prodDesc').value.trim();
+
+      if (!name || isNaN(price) || price < 0) {
+        showNoticeModal('Campos Inválidos', 'Preencha o nome e um preço válido.', '⚠️');
+        return;
+      }
+
+      let products = getProducts();
+
+      if (id) {
+        let p = products.find(prod => prod.id === parseInt(id));
+        if (p) {
+          p.name = name;
+          p.category = category;
+          p.price = price;
+          p.desc = desc;
         }
+      } else {
+        const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+        products.push({ id: nextId, name, category, price, desc, active: true });
+      }
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
-        }
+      localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      closeProductModal();
+      renderProducts();
+      showNoticeModal('Salvo!', 'Produto cadastrado com sucesso e atualizado no catálogo.', '💾');
+    }
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+    function toggleStatus(id) {
+      let products = getProducts();
+      let p = products.find(prod => prod.id === id);
+      if (p) {
+        p.active = !p.active;
+        localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+        renderProducts();
+        showNoticeModal('Status Alterado', `Produto ${p.active ? 'ativado' : 'pausado'} no cardápio.`, p.active ? '▶️' : '⏸️');
+      }
+    }
 
-        function mascaraMoeda(input) {
-            let valor = input.value.replace(/\D/g, "");
-            if (valor === "") {
-                input.value = "";
-                return;
-            }
-            let numero = (parseInt(valor) / 100).toFixed(2);
-            let partes = numero.split(".");
-            partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            input.value = partes.join(",");
-        }
+    function deleteProduct(id) {
+      let products = getProducts();
+      products = products.filter(p => p.id !== id);
+      localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      renderProducts();
+      showNoticeModal('Excluído', 'Produto removido do catálogo.', '🗑️');
+    }
 
-        function textoParaFloat(texto) {
-            if (!texto) return 0;
-            let limpo = texto.replace(/\./g, "").replace(",", ".");
-            return parseFloat(limpo) || 0;
-        }
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerText = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
 
-        let produtos = JSON.parse(localStorage.getItem('vortex_produtos')) || [
-            { nome: 'Vortex Burger Duplo', categoria: 'Burgers', preco: 38.00 },
-            { nome: 'Smash Cheeseburger', categoria: 'Burgers', preco: 26.00 },
-            { nome: 'Batata Rústica M', categoria: 'Porções', preco: 18.00 },
-            { nome: 'Coca-Cola 350ml', categoria: 'Bebidas', preco: 8.00 }
-        ];
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
 
-        function carregarProdutos() {
-            const tbody = document.getElementById('listaProdutosTable');
-            tbody.innerHTML = '';
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
 
-            produtos.forEach((p, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${p.nome}</strong></td>
-                        <td>${p.categoria}</td>
-                        <td style="font-weight: 700; color: #27ae60;">R$ ${p.preco.toFixed(2).replace('.', ',')}</td>
-                        <td style="text-align: right;">
-                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerProduto(${index})">Excluir</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            localStorage.setItem('vortex_produtos', JSON.stringify(produtos));
-        }
-
-        function salvarProduto(event) {
-            event.preventDefault();
-            const nome = document.getElementById('nomeProduto').value;
-            const categoria = document.getElementById('categoriaProduto').value;
-            const preco = textoParaFloat(document.getElementById('precoProduto').value);
-
-            if (preco <= 0) {
-                mostrarAviso('Por favor, insira um preço válido maior que zero.');
-                return;
-            }
-
-            produtos.push({ nome, categoria, preco });
-            carregarProdutos();
-            document.getElementById('formProduto').reset();
-            mostrarAviso('Produto cadastrado e sincronizado com sucesso!');
-        }
-
-        function removerProduto(index) {
-            produtos.splice(index, 1);
-            carregarProdutos();
-            mostrarAviso('Produto removido com sucesso!');
-        }
-
-        carregarProdutos();
-    </script>
+    window.onload = function() {
+      renderProducts();
+    };
+  </script>
 </body>
 </html>

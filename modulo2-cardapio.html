@@ -76,6 +76,9 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
+    .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: bold; flex: 1; min-width: 180px; }
+
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
@@ -84,18 +87,19 @@
 
     .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
-    .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 160px; }
+    .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 180px; }
 
-    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-    .product-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
-    
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+    .product-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; transition: border-color 0.2s; }
+    .product-card.paused { opacity: 0.7; border-style: dashed; }
+
     .product-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .product-name { font-weight: bold; font-size: 1.05rem; }
     .product-category { font-size: 0.75rem; color: var(--primary); background: rgba(249, 115, 22, 0.12); padding: 3px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; }
     .product-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.3; min-height: 32px; }
     .product-price { font-size: 1.15rem; font-weight: bold; color: var(--success); }
 
-    .product-status { font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .product-status { font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 10px; display: inline-block; }
     .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .status-inactive { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
@@ -107,7 +111,7 @@
 
     .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
-    input[type="text"], input[type="number"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    input[type="text"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     textarea { resize: vertical; min-height: 60px; }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
@@ -188,6 +192,31 @@
       </div>
     </header>
 
+    <!-- RESUMO DO CATÁLOGO -->
+    <div class="stats-summary-bar">
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">📦</span>
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">TOTAL DE ITENS</div>
+          <div style="font-size:1.1rem;" id="statTotalItems">0</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">🟢</span>
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">DISPONÍVEIS (ATIVOS)</div>
+          <div style="font-size:1.1rem; color:var(--success);" id="statActiveItems">0</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">⏸️</span>
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">PAUSADOS (INATIVOS)</div>
+          <div style="font-size:1.1rem; color:var(--danger);" id="statPausedItems">0</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card-box">
       <div class="card-title">
         <span>📋 Produtos Cadastrados</span>
@@ -198,11 +227,16 @@
         <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome do produto..." oninput="renderProducts()">
         <select id="categoryFilter" class="filter-select" onchange="renderProducts()">
           <option value="all">Todas as Categorias</option>
-          <option value="Lanches">Lanches</option>
-          <option value="Pizzas">Pizzas</option>
-          <option value="Bebidas">Bebidas</option>
-          <option value="Acompanhamentos">Acompanhamentos</option>
-          <option value="Sobremesas">Sobremesas</option>
+          <option value="Lanches & Burguers">Lanches & Burguers</option>
+          <option value="Pizzas & Calzones">Pizzas & Calzones</option>
+          <option value="Bebidas & Sucos">Bebidas & Sucos</option>
+          <option value="Acompanhamentos & Porções">Acompanhamentos & Porções</option>
+          <option value="Açaí & Sorvetes">Açaí & Sorvetes</option>
+          <option value="Sobremesas & Doces">Sobremesas & Doces</option>
+          <option value="Pratos Executivos & Refeições">Pratos Executivos & Refeições</option>
+          <option value="Pastéis & Salgados">Pastéis & Salgados</option>
+          <option value="Comida Japonesa / Sushi">Comida Japonesa / Sushi</option>
+          <option value="Outros / Diversos">Outros / Diversos</option>
         </select>
       </div>
 
@@ -222,29 +256,34 @@
 
       <div class="form-group">
         <label for="prodName">Nome do Produto:</label>
-        <input type="text" id="prodName" placeholder="Ex: X-Salada Especial">
+        <input type="text" id="prodName" placeholder="Ex: X-Salada Especial ou Açaí 500ml">
       </div>
 
       <div class="form-group" style="display:flex; gap:10px;">
-        <div style="flex:1;">
+        <div style="flex:1.2;">
           <label for="prodCategory">Categoria:</label>
           <select id="prodCategory">
-            <option value="Lanches">Lanches</option>
-            <option value="Pizzas">Pizzas</option>
-            <option value="Bebidas">Bebidas</option>
-            <option value="Acompanhamentos">Acompanhamentos</option>
-            <option value="Sobremesas">Sobremesas</option>
+            <option value="Lanches & Burguers">Lanches & Burguers</option>
+            <option value="Pizzas & Calzones">Pizzas & Calzones</option>
+            <option value="Bebidas & Sucos">Bebidas & Sucos</option>
+            <option value="Acompanhamentos & Porções">Acompanhamentos & Porções</option>
+            <option value="Açaí & Sorvetes">Açaí & Sorvetes</option>
+            <option value="Sobremesas & Doces">Sobremesas & Doces</option>
+            <option value="Pratos Executivos & Refeições">Pratos Executivos & Refeições</option>
+            <option value="Pastéis & Salgados">Pastéis & Salgados</option>
+            <option value="Comida Japonesa / Sushi">Comida Japonesa / Sushi</option>
+            <option value="Outros / Diversos">Outros / Diversos</option>
           </select>
         </div>
-        <div style="flex:1;">
+        <div style="flex:0.8;">
           <label for="prodPrice">Preço (R$):</label>
-          <input type="number" step="0.01" id="prodPrice" placeholder="0,00">
+          <input type="text" id="prodPrice" placeholder="R$ 0,00" oninput="maskCurrencyInput(this)">
         </div>
       </div>
 
       <div class="form-group">
-        <label for="prodDesc">Descrição do Produto:</label>
-        <textarea id="prodDesc" placeholder="Ex: Pão brioche, hambúrguer 150g, queijo prato, alface, tomate e maionese da casa."></textarea>
+        <label for="prodDesc">Descrição / Ingredientes:</label>
+        <textarea id="prodDesc" placeholder="Ex: Acompanha leite em pó, leite condensado e banana fatiada."></textarea>
       </div>
 
       <button class="btn-modal-primary" onclick="saveProduct()">Salvar Produto 💾</button>
@@ -263,13 +302,15 @@
   </div>
 
   <script>
+    let rawPriceValue = 0;
+
     const defaultProducts = [
-      { id: 1, name: 'X-Burger Especial', category: 'Lanches', price: 28.50, desc: 'Pão brioche, hambúrguer artesanal 160g, queijo cheddar e maionese especial.', active: true },
-      { id: 2, name: 'X-Salada Duplo', category: 'Lanches', price: 32.00, desc: 'Pão com gergelim, 2 hambúrgueres 120g, queijo, alface, tomate e maionese.', active: true },
-      { id: 3, name: 'Pizza Calabresa G', category: 'Pizzas', price: 55.00, desc: 'Molho especial de tomate, mussarela, calabresa fatiada, cebola e azeitonas.', active: true },
-      { id: 4, name: 'Batata Frita M', category: 'Acompanhamentos', price: 18.00, desc: 'Batata palito crocante 300g acompanhada de maionese temperada.', active: true },
-      { id: 5, name: 'Refrigerante 2L', category: 'Bebidas', price: 14.00, desc: 'Garrafa de 2 Litros gelada.', active: true },
-      { id: 6, name: 'Suco Natural 500ml', category: 'Bebidas', price: 10.00, desc: 'Suco natural de laranja feito na hora.', active: true }
+      { id: 1, name: 'X-Burger Especial', category: 'Lanches & Burguers', price: 28.50, desc: 'Pão brioche, hambúrguer artesanal 160g, queijo cheddar e maionese especial.', active: true },
+      { id: 2, name: 'X-Salada Duplo', category: 'Lanches & Burguers', price: 32.00, desc: 'Pão com gergelim, 2 hambúrgueres 120g, queijo, alface, tomate e maionese.', active: true },
+      { id: 3, name: 'Pizza Calabresa G', category: 'Pizzas & Calzones', price: 55.00, desc: 'Molho especial de tomate, mussarela, calabresa fatiada, cebola e azeitonas.', active: true },
+      { id: 4, name: 'Batata Frita M', category: 'Acompanhamentos & Porções', price: 18.00, desc: 'Batata palito crocante 300g acompanhada de maionese temperada.', active: true },
+      { id: 5, name: 'Refrigerante 2L', category: 'Bebidas & Sucos', price: 14.00, desc: 'Garrafa de 2 Litros gelada.', active: true },
+      { id: 6, name: 'Açaí Completo 500ml', category: 'Açaí & Sorvetes', price: 22.00, desc: 'Açaí cremoso com leite em pó, leite condensado, banana e granola.', active: true }
     ];
 
     function toggleMenu() {
@@ -310,6 +351,19 @@
       return JSON.parse(saved);
     }
 
+    /* MÁSCARA MONETÁRIA AUTOMÁTICA (R$ 0,00) */
+    function maskCurrencyInput(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = 'R$ 0,00';
+        rawPriceValue = 0;
+        return;
+      }
+      const numeric = parseFloat(value) / 100;
+      rawPriceValue = numeric;
+      input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function renderProducts() {
       loadStoreSettings();
       let products = getProducts();
@@ -317,10 +371,17 @@
       const catFilter = document.getElementById('categoryFilter').value;
       const container = document.getElementById('productsContainer');
 
+      // Atualiza Badges de Estatísticas
+      const activeCount = products.filter(p => p.active).length;
+      const pausedCount = products.length - activeCount;
+      document.getElementById('statTotalItems').innerText = products.length;
+      document.getElementById('statActiveItems').innerText = activeCount;
+      document.getElementById('statPausedItems').innerText = pausedCount;
+
       container.innerHTML = '';
 
       let filtered = products.filter(p => {
-        let matchesSearch = p.name.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
+        let matchesSearch = p.name.toLowerCase().includes(search) || (p.desc && p.desc.toLowerCase().includes(search));
         let matchesCat = catFilter === 'all' || p.category === catFilter;
         return matchesSearch && matchesCat;
       });
@@ -336,7 +397,7 @@
 
       filtered.forEach(p => {
         container.innerHTML += `
-          <div class="product-card">
+          <div class="product-card ${!p.active ? 'paused' : ''}">
             <div>
               <div class="product-header">
                 <span class="product-name">${p.name}</span>
@@ -346,7 +407,7 @@
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="product-price">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</span>
                 <span class="product-status ${p.active ? 'status-active' : 'status-inactive'}">
-                  ${p.active ? '🟢 Ativo' : '🔴 Inativo'}
+                  ${p.active ? '🟢 Disponível' : '⏸️ Pausado'}
                 </span>
               </div>
             </div>
@@ -365,7 +426,8 @@
       document.getElementById('editProductId').value = '';
       document.getElementById('productModalTitle').innerText = 'Cadastrar Produto';
       document.getElementById('prodName').value = '';
-      document.getElementById('prodPrice').value = '';
+      document.getElementById('prodPrice').value = 'R$ 0,00';
+      rawPriceValue = 0;
       document.getElementById('prodDesc').value = '';
       document.getElementById('productModal').classList.add('active');
     }
@@ -382,8 +444,11 @@
       document.getElementById('editProductId').value = p.id;
       document.getElementById('productModalTitle').innerText = 'Editar Produto';
       document.getElementById('prodName').value = p.name;
-      document.getElementById('prodCategory').value = p.category;
-      document.getElementById('prodPrice').value = p.price;
+      document.getElementById('prodCategory').value = p.category || 'Lanches & Burguers';
+      
+      rawPriceValue = parseFloat(p.price) || 0;
+      document.getElementById('prodPrice').value = 'R$ ' + rawPriceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
       document.getElementById('prodDesc').value = p.desc || '';
 
       document.getElementById('productModal').classList.add('active');
@@ -393,11 +458,10 @@
       const id = document.getElementById('editProductId').value;
       const name = document.getElementById('prodName').value.trim();
       const category = document.getElementById('prodCategory').value;
-      const price = parseFloat(document.getElementById('prodPrice').value);
       const desc = document.getElementById('prodDesc').value.trim();
 
-      if (!name || isNaN(price) || price < 0) {
-        showNoticeModal('Campos Inválidos', 'Preencha o nome e um preço válido.', '⚠️');
+      if (!name || rawPriceValue <= 0) {
+        showNoticeModal('Campos Pendentes', 'Preencha o nome do produto e informe um preço válido maior que zero.', '⚠️');
         return;
       }
 
@@ -408,18 +472,18 @@
         if (p) {
           p.name = name;
           p.category = category;
-          p.price = price;
+          p.price = rawPriceValue;
           p.desc = desc;
         }
       } else {
         const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-        products.push({ id: nextId, name, category, price, desc, active: true });
+        products.push({ id: nextId, name, category, price: rawPriceValue, desc, active: true });
       }
 
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       closeProductModal();
       renderProducts();
-      showNoticeModal('Salvo!', 'Produto cadastrado com sucesso e atualizado no catálogo.', '💾');
+      showNoticeModal('Salvo!', 'Produto salvo e sincronizado instantaneamente com o PDV, Mesas e Delivery!', '💾');
     }
 
     function toggleStatus(id) {
@@ -429,7 +493,7 @@
         p.active = !p.active;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
         renderProducts();
-        showNoticeModal('Status Alterado', `Produto ${p.active ? 'ativado' : 'pausado'} no cardápio.`, p.active ? '▶️' : '⏸️');
+        showNoticeModal('Sincronizado!', `Produto "${p.name}" ${p.active ? 'ATIVADO' : 'PAUSADO'}. O status foi atualizado em todos os cardápios.`, p.active ? '▶️' : '⏸️');
       }
     }
 
@@ -438,7 +502,7 @@
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       renderProducts();
-      showNoticeModal('Excluído', 'Produto removido do catálogo.', '🗑️');
+      showNoticeModal('Excluído', 'Produto removido do catálogo e de todos os módulos.', '🗑️');
     }
 
     function showNoticeModal(title, desc, icon) {

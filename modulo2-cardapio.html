@@ -90,6 +90,7 @@
     .filter-select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; min-width: 180px; }
 
     .group-section-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
+    .group-section-box.highlighted { border-color: var(--warning); box-shadow: 0 0 10px rgba(234, 179, 8, 0.2); }
     .group-header-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(30, 41, 59, 0.7); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
     .group-title-text { font-weight: bold; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; display: flex; align-items: center; gap: 8px; }
     .group-actions-toolbar { display: flex; align-items: center; gap: 8px; }
@@ -97,6 +98,7 @@
     .group-items-container { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
     .product-row-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
     .product-row-card.paused { opacity: 0.65; border-style: dashed; }
+    .product-row-card.highlighted-item { border-color: var(--warning); }
 
     .product-info-left { flex: 1; min-width: 200px; }
     .product-name-row { font-weight: bold; font-size: 0.98rem; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
@@ -117,7 +119,7 @@
 
     .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
-    input[type="text"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    input[type="text"], input[type="time"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     textarea { resize: vertical; min-height: 50px; }
 
     .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; margin-top: 4px; }
@@ -255,7 +257,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO (DIMENSÕES RESPONSIVAS AJUSTADAS) -->
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO -->
   <div class="modal-overlay" id="productModal">
     <div class="custom-modal-card">
       <div style="font-size:1.05rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -308,6 +310,33 @@
         <span style="font-size:0.7rem; color:var(--text-muted); margin-top:2px; display:block;">O cliente poderá escolher o peso desejado no momento do pedido.</span>
       </div>
 
+      <!-- HAPPY HOUR / PREÇO PROMOCIONAL POR HORÁRIO -->
+      <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:8px 10px; border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-size:0.78rem; font-weight:bold; color:var(--warning);">Ativar Happy Hour / Promoção por Horário ⏰</span>
+          <label class="switch-toggle">
+            <input type="checkbox" id="happyHourToggle" onchange="toggleHappyHourFields(this.checked)">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+        <div id="happyHourFields" style="display:none; margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+          <div>
+            <label for="happyHourPrice">Preço Promocional (R$):</label>
+            <input type="text" id="happyHourPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'happy')">
+          </div>
+          <div style="display:flex; gap:6px;">
+            <div style="flex:1;">
+              <label for="happyStart">Início:</label>
+              <input type="time" id="happyStart">
+            </div>
+            <div style="flex:1;">
+              <label for="happyEnd">Fim:</label>
+              <input type="time" id="happyEnd">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- DIAS ATIVOS -->
       <div class="form-group">
         <label>Dias Ativos na Semana:</label>
@@ -331,7 +360,7 @@
           <div class="toggle-row-item"><span>Exibir etiqueta "Novidade!"</span><label class="switch-toggle"><input type="checkbox" id="tagNew"><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Exibir no Delivery / Retirada</span><label class="switch-toggle"><input type="checkbox" id="showDelivery" checked><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Exibir no Cardápio de Mesas</span><label class="switch-toggle"><input type="checkbox" id="showTable" checked><span class="slider-toggle"></span></label></div>
-          <div class="toggle-row-item"><span>Destacar no Cardápio</span><label class="switch-toggle"><input type="checkbox" id="isHighlight"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Destacar no Cardápio ⭐</span><label class="switch-toggle"><input type="checkbox" id="isHighlight"><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Bebida Alcoólica (+18)</span><label class="switch-toggle"><input type="checkbox" id="isAlcohol"><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Precificado por Quilo (KG)</span><label class="switch-toggle"><input type="checkbox" id="isKg" onchange="toggleKgField(this.checked)"><span class="slider-toggle"></span></label></div>
         </div>
@@ -371,12 +400,19 @@
         <label for="groupDescInput">Descrição do Grupo (Opcional):</label>
         <textarea id="groupDescInput" placeholder="Ex: Hambúrgueres preparados com carne 100% Angus."></textarea>
       </div>
+      <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); border:1px solid var(--border); padding:10px; border-radius:8px;">
+        <span style="font-size:0.8rem; font-weight:bold;">Destacar Grupo Inteiro ⭐</span>
+        <label class="switch-toggle">
+          <input type="checkbox" id="groupHighlightToggle">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
       <button class="btn-modal-primary" onclick="saveGroup()">Salvar Grupo 📁</button>
       <button class="btn-modal-secondary" onclick="closeGroupModal()">Cancelar</button>
     </div>
   </div>
 
-  <!-- MODAL DE COMPLEMENTOS (NOVO E COMPLETO) -->
+  <!-- MODAL DE COMPLEMENTOS -->
   <div class="modal-overlay" id="complementsModal">
     <div class="custom-modal-card" style="max-width: 550px;">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -448,14 +484,15 @@
     let rawPrice = 0;
     let rawCost = 0;
     let rawKgPrice = 0;
+    let rawHappyPrice = 0;
     let rawCompPrice = 0;
     let highlightFilterActive = false;
     let draftCompItems = [];
 
     const defaultGroups = [
-      { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true },
-      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocantes e recheados', active: true },
-      { id: 'g3', name: 'BEBIDAS & SUCOS', desc: 'Geladas e refrescantes', active: true }
+      { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true, isHighlight: true },
+      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocantes e recheados', active: true, isHighlight: false },
+      { id: 'g3', name: 'BEBIDAS & SUCOS', desc: 'Geladas e refrescantes', active: true, isHighlight: false }
     ];
 
     const defaultProducts = [
@@ -525,6 +562,7 @@
         if (type === 'price') rawPrice = 0;
         if (type === 'cost') rawCost = 0;
         if (type === 'kg') rawKgPrice = 0;
+        if (type === 'happy') rawHappyPrice = 0;
         if (type === 'comp') rawCompPrice = 0;
         return;
       }
@@ -532,6 +570,7 @@
       if (type === 'price') rawPrice = numeric;
       if (type === 'cost') rawCost = numeric;
       if (type === 'kg') rawKgPrice = numeric;
+      if (type === 'happy') rawHappyPrice = numeric;
       if (type === 'comp') rawCompPrice = numeric;
       input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
@@ -540,6 +579,12 @@
       const box = document.getElementById('kgPriceContainer');
       if (isChecked) box.style.display = 'block';
       else box.style.display = 'none';
+    }
+
+    function toggleHappyHourFields(isChecked) {
+      const fields = document.getElementById('happyHourFields');
+      if (isChecked) fields.style.display = 'flex';
+      else fields.style.display = 'none';
     }
 
     function renderCardapio() {
@@ -576,11 +621,11 @@
         let groupProducts = products.filter(p => {
           let matchGroup = p.group === group.name;
           let matchSearch = p.name.toLowerCase().includes(search) || (p.desc && p.desc.toLowerCase().includes(search));
-          let matchHighlight = !highlightFilterActive || p.isHighlight;
+          let matchHighlight = !highlightFilterActive || p.isHighlight || group.isHighlight;
           return matchGroup && matchSearch && matchHighlight;
         });
 
-        if (highlightFilterActive && groupProducts.length === 0) return;
+        if (highlightFilterActive && groupProducts.length === 0 && !group.isHighlight) return;
 
         let itemsHtml = '';
         if (groupProducts.length === 0) {
@@ -591,8 +636,18 @@
             let priceDisplay = p.isVariable ? `A partir de R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}` : `R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}`;
             if (p.isKg) priceDisplay = `R$ ${parseFloat(p.kgPrice || p.price).toFixed(2).replace('.', ',')} / kg`;
 
+            // Verifica Happy Hour ativo no momento
+            let happyHourBadge = '';
+            if (p.isHappyHour && p.happyPrice) {
+              const now = new Date();
+              const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+              if ((!p.happyStart || currentTime >= p.happyStart) && (!p.happyEnd || currentTime <= p.happyEnd)) {
+                priceDisplay = `R$ ${parseFloat(p.happyPrice).toFixed(2).replace('.', ',')} <span style="background:var(--warning); color:#0f172a; padding:1px 6px; border-radius:4px; font-size:0.68rem; font-weight:bold;">HAPPY HOUR ⏰</span>`;
+              }
+            }
+
             itemsHtml += `
-              <div class="product-row-card ${!isActive ? 'paused' : ''}">
+              <div class="product-row-card ${!isActive ? 'paused' : ''} ${p.isHighlight ? 'highlighted-item' : ''}">
                 <div class="product-info-left">
                   <div class="product-name-row">
                     <span>${p.name}</span>
@@ -616,10 +671,11 @@
         }
 
         container.innerHTML += `
-          <div class="group-section-box">
+          <div class="group-section-box ${group.isHighlight ? 'highlighted' : ''}">
             <div class="group-header-bar">
-              <span class="group-title-text">📁 ${group.name}</span>
+              <span class="group-title-text">📁 ${group.name} ${group.isHighlight ? '⭐' : ''}</span>
               <div class="group-actions-toolbar">
+                <button class="btn-icon-action" onclick="toggleGroupHighlight('${group.id}')" title="Destacar Grupo">${group.isHighlight ? '⭐' : '☆'}</button>
                 <button class="btn-icon-action" onclick="openProductModalForGroup('${group.name}')" title="Adicionar Item">+</button>
                 <button class="btn-icon-action" onclick="editGroup('${group.id}')" title="Editar Grupo">✏️</button>
                 <button class="btn-icon-action btn-icon-delete" onclick="deleteGroup('${group.id}')" title="Excluir Grupo">🗑️</button>
@@ -643,6 +699,7 @@
       document.getElementById('groupModalTitle').innerText = 'Criar Novo Grupo';
       document.getElementById('groupNameInput').value = '';
       document.getElementById('groupDescInput').value = '';
+      document.getElementById('groupHighlightToggle').checked = false;
       document.getElementById('groupModal').classList.add('active');
     }
 
@@ -654,6 +711,7 @@
       const id = document.getElementById('editGroupId').value;
       const name = document.getElementById('groupNameInput').value.trim().toUpperCase();
       const desc = document.getElementById('groupDescInput').value.trim();
+      const isHighlight = document.getElementById('groupHighlightToggle').checked;
 
       if (!name || name === 'UNDEFINED') {
         showNoticeModal('Atenção', 'Informe um nome válido para o grupo.', '⚠️');
@@ -663,10 +721,10 @@
       let groups = getGroups();
       if (id) {
         let g = groups.find(item => item.id === id);
-        if (g) { g.name = name; g.desc = desc; }
+        if (g) { g.name = name; g.desc = desc; g.isHighlight = isHighlight; }
       } else {
         const newId = 'g_' + Date.now();
-        groups.push({ id: newId, name, desc, active: true });
+        groups.push({ id: newId, name, desc, isHighlight, active: true });
       }
 
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
@@ -683,7 +741,18 @@
       document.getElementById('groupModalTitle').innerText = 'Editar Grupo';
       document.getElementById('groupNameInput').value = g.name;
       document.getElementById('groupDescInput').value = g.desc || '';
+      document.getElementById('groupHighlightToggle').checked = g.isHighlight || false;
       document.getElementById('groupModal').classList.add('active');
+    }
+
+    function toggleGroupHighlight(id) {
+      let groups = getGroups();
+      let g = groups.find(item => item.id === id);
+      if (g) {
+        g.isHighlight = !g.isHighlight;
+        localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+        renderCardapio();
+      }
     }
 
     function deleteGroup(id) {
@@ -730,12 +799,18 @@
       document.getElementById('prodPrice').value = 'R$ 0,00';
       document.getElementById('prodCost').value = 'R$ 0,00';
       document.getElementById('prodKgPrice').value = 'R$ 0,00';
+      document.getElementById('happyHourPrice').value = 'R$ 0,00';
+      document.getElementById('happyStart').value = '';
+      document.getElementById('happyEnd').value = '';
       rawPrice = 0;
       rawCost = 0;
       rawKgPrice = 0;
+      rawHappyPrice = 0;
       document.getElementById('prodVariablePriceToggle').checked = false;
       document.getElementById('isKg').checked = false;
+      document.getElementById('happyHourToggle').checked = false;
       toggleKgField(false);
+      toggleHappyHourFields(false);
       document.getElementById('productModal').classList.add('active');
     }
 
@@ -762,14 +837,21 @@
       rawPrice = parseFloat(p.price) || 0;
       rawCost = parseFloat(p.cost) || 0;
       rawKgPrice = parseFloat(p.kgPrice) || 0;
+      rawHappyPrice = parseFloat(p.happyPrice) || 0;
       
       document.getElementById('prodPrice').value = 'R$ ' + rawPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       document.getElementById('prodCost').value = 'R$ ' + rawCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       document.getElementById('prodKgPrice').value = 'R$ ' + rawKgPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('happyHourPrice').value = 'R$ ' + rawHappyPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('happyStart').value = p.happyStart || '';
+      document.getElementById('happyEnd').value = p.happyEnd || '';
 
       document.getElementById('prodVariablePriceToggle').checked = p.isVariable || false;
       document.getElementById('isKg').checked = p.isKg || false;
       toggleKgField(p.isKg || false);
+
+      document.getElementById('happyHourToggle').checked = p.isHappyHour || false;
+      toggleHappyHourFields(p.isHappyHour || false);
 
       document.getElementById('tagPromo').checked = p.tagPromo || false;
       document.getElementById('tagBestSeller').checked = p.tagBestSeller || false;
@@ -789,6 +871,7 @@
       const group = document.getElementById('prodGroupSelect').value;
       const isVariable = document.getElementById('prodVariablePriceToggle').checked;
       const isKg = document.getElementById('isKg').checked;
+      const isHappyHour = document.getElementById('happyHourToggle').checked;
 
       if (!name || (!isKg && rawPrice <= 0) || (isKg && rawKgPrice <= 0)) {
         showNoticeModal('Campos Obrigatórios', 'Preencha o nome e informe um preço válido maior que zero.', '⚠️');
@@ -806,6 +889,10 @@
         isVariable,
         isKg,
         cost: rawCost,
+        isHappyHour,
+        happyPrice: isHappyHour ? rawHappyPrice : 0,
+        happyStart: isHappyHour ? document.getElementById('happyStart').value : '',
+        happyEnd: isHappyHour ? document.getElementById('happyEnd').value : '',
         tagPromo: document.getElementById('tagPromo').checked,
         tagBestSeller: document.getElementById('tagBestSeller').checked,
         tagNew: document.getElementById('tagNew').checked,
@@ -858,7 +945,6 @@
       showNoticeModal('Movido para a Lixeira', 'Produto enviado para a lixeira.', '🗑️');
     }
 
-    /* PAINEL DE GESTÃO GERAL DE PRODUTOS */
     function openAllProductsModal() {
       let products = getProducts();
       let container = document.getElementById('allProductsListContainer');
@@ -893,7 +979,6 @@
       document.getElementById('allProductsModal').classList.remove('active');
     }
 
-    /* GESTÃO COMPLETA DE COMPLEMENTOS */
     function openComplementsModal() {
       document.getElementById('compGroupName').value = '';
       document.getElementById('compItemName').value = '';
@@ -976,7 +1061,6 @@
       document.getElementById('complementsModal').classList.remove('active');
     }
 
-    /* MODAL DE UPSELL */
     function openUpsellModal() {
       let products = getProducts();
       let container = document.getElementById('upsellListContainer');
@@ -1011,7 +1095,6 @@
       showNoticeModal('Upsell Atualizado', 'Sugestões de vendas salvas com sucesso!', '⭐');
     }
 
-    /* MODAL DE LIXEIRA COM APAGAR PERMANENTE */
     function openTrashModal() {
       let trash = getTrash();
       let container = document.getElementById('trashListContainer');
@@ -1092,7 +1175,7 @@
     function filterHighlights() {
       highlightFilterActive = !highlightFilterActive;
       renderCardapio();
-      showNoticeModal('Filtro de Destaques', highlightFilterActive ? 'Exibindo apenas produtos em destaque.' : 'Exibindo todos os produtos.', '⭐');
+      showNoticeModal('Filtro de Destaques', highlightFilterActive ? 'Exibindo apenas itens e grupos em destaque.' : 'Exibindo todos os produtos.', '⭐');
     }
 
     function openReorderModal() { showNoticeModal('Ordenador', 'Use as setas ⬆️ ⬇️ nos títulos dos grupos para reorganizar a ordem.', '↕️'); }

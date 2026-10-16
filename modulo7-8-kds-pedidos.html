@@ -112,10 +112,13 @@
     .btn-print { background: var(--border); color: var(--text-main); }
     .btn-cancel { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
+    /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 440px; }
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
+    .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
+    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -203,6 +206,21 @@
     <div class="kds-grid" id="kdsContainer"></div>
   </main>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
+  <div class="modal-overlay" id="confirmCancelModal">
+    <div class="custom-modal-card" style="text-align:center;">
+      <div style="font-size:3rem; margin-bottom:12px;">⚠️</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;">Cancelar Pedido</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="confirmCancelText">
+        Tem certeza que deseja cancelar o pedido?
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Não, Manter Pedido</button>
+        <button class="btn-modal-danger" id="btnConfirmCancelAction">Sim, Cancelar Pedido</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE NOTIFICAÇÃO MODERNA -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
@@ -215,6 +233,7 @@
 
   <script>
     let activeFilter = 'all';
+    let pendingCancelOrderId = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -305,19 +324,19 @@
           actionsHtml = `
             <button class="btn-action-kds btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">👨‍🍳 Iniciar Preparo</button>
             <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'preparing') {
           actionsHtml = `
             <button class="btn-action-kds btn-ready" onclick="updateOrderStatus(${order.id}, 'ready')">✅ Marcar como Pronto</button>
             <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'ready') {
           actionsHtml = `
             <button class="btn-action-kds btn-finish" onclick="updateOrderStatus(${order.id}, 'finished')">🎯 Finalizar / Entregar Pedido</button>
             <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="cancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
           `;
         } else {
           actionsHtml = `
@@ -368,7 +387,26 @@
       }
     }
 
-    function cancelOrder(id) {
+    function askCancelOrder(id) {
+      pendingCancelOrderId = id;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá reverter as vendas do dia e atualizar as telas do sistema.`;
+      
+      const btnConfirm = document.getElementById('btnConfirmCancelAction');
+      btnConfirm.onclick = function() {
+        confirmCancelOrder(id);
+      };
+
+      document.getElementById('confirmCancelModal').classList.add('active');
+    }
+
+    function closeConfirmCancelModal() {
+      pendingCancelOrderId = null;
+      document.getElementById('confirmCancelModal').classList.remove('active');
+    }
+
+    function confirmCancelOrder(id) {
+      closeConfirmCancelModal();
+
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => o.id === id);
 
@@ -384,7 +422,7 @@
         localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
         renderKds();
-        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado e o valor de R$ ${order.total.toFixed(2).replace('.', ',')} foi abatido do Dashboard.`, '🔴');
+        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso e o valor de R$ ${order.total.toFixed(2).replace('.', ',')} foi abatido do Dashboard.`, '🔴');
       }
     }
 

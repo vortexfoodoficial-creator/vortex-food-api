@@ -192,7 +192,6 @@
       </div>
     </header>
 
-    <!-- RESUMO DO CATÁLOGO -->
     <div class="stats-summary-bar">
       <div class="stat-badge">
         <span style="font-size:1.4rem;">📦</span>
@@ -346,12 +345,21 @@
       let saved = localStorage.getItem('vortex_products_catalog');
       if (!saved) {
         localStorage.setItem('vortex_products_catalog', JSON.stringify(defaultProducts));
+        syncWithOtherModules(defaultProducts);
         return defaultProducts;
       }
       return JSON.parse(saved);
     }
 
-    /* MÁSCARA MONETÁRIA AUTOMÁTICA (R$ 0,00) */
+    /* FUNÇÃO MÁGICA DE SINCRONIZAÇÃO AUTOMÁTICA COM OUTROS MÓDULOS */
+    function syncWithOtherModules(productsArray) {
+      // Filtra apenas os produtos ativos para o PDV e Mesas não venderem itens pausados
+      const activeProductsOnly = productsArray.filter(p => p.active !== false);
+      
+      // Sincroniza com o PDV e Delivery
+      localStorage.setItem('vortex_synced_catalog', JSON.stringify(activeProductsOnly));
+    }
+
     function maskCurrencyInput(input) {
       let value = input.value.replace(/\D/g, '');
       if (!value) {
@@ -367,12 +375,15 @@
     function renderProducts() {
       loadStoreSettings();
       let products = getProducts();
+      
+      // Garante sincronia sempre que renderiza
+      syncWithOtherModules(products);
+
       const search = document.getElementById('searchInput').value.toLowerCase().trim();
       const catFilter = document.getElementById('categoryFilter').value;
       const container = document.getElementById('productsContainer');
 
-      // Atualiza Badges de Estatísticas
-      const activeCount = products.filter(p => p.active).length;
+      const activeCount = products.filter(p => p.active !== false).length;
       const pausedCount = products.length - activeCount;
       document.getElementById('statTotalItems').innerText = products.length;
       document.getElementById('statActiveItems').innerText = activeCount;
@@ -396,8 +407,9 @@
       }
 
       filtered.forEach(p => {
+        const isActive = p.active !== false;
         container.innerHTML += `
-          <div class="product-card ${!p.active ? 'paused' : ''}">
+          <div class="product-card ${!isActive ? 'paused' : ''}">
             <div>
               <div class="product-header">
                 <span class="product-name">${p.name}</span>
@@ -406,15 +418,15 @@
               <div class="product-desc" style="margin: 8px 0;">${p.desc || 'Sem descrição.'}</div>
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="product-price">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</span>
-                <span class="product-status ${p.active ? 'status-active' : 'status-inactive'}">
-                  ${p.active ? '🟢 Disponível' : '⏸️ Pausado'}
+                <span class="product-status ${isActive ? 'status-active' : 'status-inactive'}">
+                  ${isActive ? '🟢 Disponível' : '⏸️ Pausado'}
                 </span>
               </div>
             </div>
 
             <div class="product-actions">
               <button class="btn-card-action btn-edit" onclick="editProduct(${p.id})">✏️ Editar</button>
-              <button class="btn-card-action btn-toggle-status" onclick="toggleStatus(${p.id})">${p.active ? '⏸️ Pausar' : '▶️ Ativar'}</button>
+              <button class="btn-card-action btn-toggle-status" onclick="toggleStatus(${p.id})">${isActive ? '⏸️ Pausar' : '▶️ Ativar'}</button>
               <button class="btn-card-action btn-delete" onclick="deleteProduct(${p.id})">🗑️ Excluir</button>
             </div>
           </div>
@@ -481,19 +493,22 @@
       }
 
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      syncWithOtherModules(products);
+
       closeProductModal();
       renderProducts();
-      showNoticeModal('Salvo!', 'Produto salvo e sincronizado instantaneamente com o PDV, Mesas e Delivery!', '💾');
+      showNoticeModal('Salvo & Sincronizado!', 'Produto salvo e sincronizado instantaneamente com todos os módulos do sistema!', '💾');
     }
 
     function toggleStatus(id) {
       let products = getProducts();
       let p = products.find(prod => prod.id === id);
       if (p) {
-        p.active = !p.active;
+        p.active = p.active === false ? true : false;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+        syncWithOtherModules(products);
         renderProducts();
-        showNoticeModal('Sincronizado!', `Produto "${p.name}" ${p.active ? 'ATIVADO' : 'PAUSADO'}. O status foi atualizado em todos os cardápios.`, p.active ? '▶️' : '⏸️');
+        showNoticeModal('Status Sincronizado!', `Produto "${p.name}" foi ${p.active ? 'ATIVADO' : 'PAUSADO'} e atualizado em tempo real.`, p.active ? '▶️' : '⏸️');
       }
     }
 
@@ -501,8 +516,9 @@
       let products = getProducts();
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      syncWithOtherModules(products);
       renderProducts();
-      showNoticeModal('Excluído', 'Produto removido do catálogo e de todos os módulos.', '🗑️');
+      showNoticeModal('Excluído', 'Produto removido do catálogo e dos demais módulos.', '🗑️');
     }
 
     function showNoticeModal(title, desc, icon) {

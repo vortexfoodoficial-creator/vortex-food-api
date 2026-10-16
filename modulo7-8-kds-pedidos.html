@@ -251,7 +251,18 @@
 
     function renderKds() {
       loadStoreSettings();
+      const todayDateStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+
+      // Regra da virada do dia: Remove da tela KDS pedidos finalizados ou cancelados de dias anteriores
+      orders = orders.filter(o => {
+        if (o.status === 'finished' || o.status === 'cancelled') {
+          return o.date === todayDateStr;
+        }
+        return true;
+      });
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+
       const container = document.getElementById('kdsContainer');
       container.innerHTML = '';
 
@@ -363,7 +374,6 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        // Subtrai do faturamento do dia se já havia sido somado
         let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
         let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
         let currentSales = parseFloat(cleanedSalesStr) || 0;

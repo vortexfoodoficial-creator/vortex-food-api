@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Fidelidade & Cashback</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
+
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
+
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
+
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
+
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
+
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
+
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
+
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
+
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    .form-group { margin-bottom: 15px; }
+    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; }
+    input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+    .radio-option { display: flex; align-items: center; gap: 10px; background: var(--bg-main); border: 1px solid var(--border); padding: 12px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .radio-option input { width: auto; cursor: pointer; }
+
+    .btn-action { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 0.95rem; }
+    .btn-action:hover { background: var(--primary-hover); }
+
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-secondary:hover { opacity: 0.85; }
+
+    .btn-danger { background: var(--danger); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; }
+
+    .toggle-switch-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-main); padding: 12px; border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+
+    @media (max-width: 900px) {
+      .grid-container { grid-template-columns: 1fr; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link active"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Fidelidade / Cashback</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <div class="grid-container">
+      <!-- CONFIGURAÇÃO PRINCIPAL -->
+      <div class="card-box">
+        <div class="card-title">⚙️ Configuração do Programa</div>
+        
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="loyaltyMode" value="disabled" id="modeDisabled" onclick="switchMode('disabled')">
+            Fidelidade/cashback desativado[span_7](start_span)[span_7](end_span)[span_8](start_span)[span_8](end_span)[span_9](start_span)[span_9](end_span)
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="loyaltyMode" value="fidelity" id="modeFidelity" onclick="switchMode('fidelity')">
+            Modo fidelidade ativo (Pontos por pedido/valor)[span_10](start_span)[span_10](end_span)[span_11](start_span)[span_11](end_span)[span_12](start_span)[span_12](end_span)
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="loyaltyMode" value="cashback" id="modeCashback" onclick="switchMode('cashback')">
+            Modo cashback ativo (% de retorno)[span_13](start_span)[span_13](end_span)
+          </label>
+        </div>
+
+        <!-- CONFIG CASHBACK -->
+        <div id="cashbackConfigSection" style="display:none; margin-top:15px; border-top:1px solid var(--border); padding-top:15px;">
+          <div class="form-group">
+            <label for="cashbackPercent">Valor Cashback (%):</label>
+            <input type="number" id="cashbackPercent" placeholder="Ex: 5" min="0" max="100" step="0.5">
+          </div>
+        </div>
+
+        <button class="btn-action" style="margin-top:15px;" onclick="saveLoyaltySettings()">Salvar Configurações</button>
+      </div>
+
+      <!-- ALTERAR PONTOS CLIENTE -->
+      <div class="card-box">
+        <div class="card-title">👥 Gestão de Saldo de Clientes</div>
+        
+        <div class="form-group">
+          <label for="clientPhoneInput">Celular do Cliente (com DDD):</label>
+          <input type="text" id="clientPhoneInput" placeholder="Ex: 19992159211">
+        </div>
+
+        <div class="form-group">
+          <label for="clientPointsInput">Quantidade de Pontos / R$ Cashback:</label>
+          <input type="number" id="clientPointsInput" placeholder="Ex: 50" step="0.01">
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:15px;">
+          <button class="btn-secondary" onclick="clientAction('consultar')">🔍 Consultar</button>
+          <button class="btn-secondary" onclick="clientAction('adicionar')" style="background:var(--success); color:white;">➕ Adicionar</button>
+          <button class="btn-secondary" onclick="clientAction('subtrair')" style="background:var(--danger); color:white;">➖ Subtrair</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPIRAÇÃO E REGRAS -->
+    <div class="card-box">
+      <div class="card-title">⏳ Expiração e Regras de Inatividade</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:15px;">
+        Se você utilizar a expiração de pontos/cashback, recomendamos enviar disparos periódicos pelo WhatsApp para estimular seus clientes a retornarem[span_14](start_span)[span_14](end_span)[span_15](start_span)[span_15](end_span).
+      </p>
+
+      <div class="toggle-switch-row">
+        <span style="font-size:0.9rem; font-weight:600;">Zerar automaticamente saldo de clientes inativos (X dias)</span>
+        <input type="checkbox" id="autoExpireToggle" style="width:20px; height:20px; cursor:pointer;">
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Ação realizada com sucesso.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function loadStoreSettings() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+    }
+
+    function switchMode(mode) {
+      const cashbackSec = document.getElementById('cashbackConfigSection');
+      if (mode === 'cashback') {
+        cashbackSec.style.display = 'block';
+      } else {
+        cashbackSec.style.display = 'none';
+      }
+    }
+
+    function saveLoyaltySettings() {
+      let selectedMode = 'disabled';
+      if (document.getElementById('modeFidelity').checked) selectedMode = 'fidelity';
+      if (document.getElementById('modeCashback').checked) selectedMode = 'cashback';
+
+      const settings = {
+        mode: selectedMode,
+        cashbackPercent: document.getElementById('cashbackPercent').value || '0',
+        autoExpire: document.getElementById('autoExpireToggle').checked
+      };
+
+      localStorage.setItem('vortex_loyalty_settings', JSON.stringify(settings));
+      showNoticeModal('Configurações Salvas', 'As regras do programa de fidelidade/cashback foram atualizadas com sucesso!', '⭐');
+    }
+
+    function clientAction(action) {
+      const phone = document.getElementById('clientPhoneInput').value.trim();
+      const points = document.getElementById('clientPointsInput').value;
+
+      if (!phone) {
+        showNoticeModal('Atenção', 'Informe o número de celular do cliente.', '⚠️');
+        return;
+      }
+
+      let db = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
+      if (!db[phone]) db[phone] = 0;
+
+      if (action === 'consultar') {
+        showNoticeModal('Saldo do Cliente', `O cliente do celular ${phone} possui atualmente: <strong>${db[phone]}</strong> unidades/pontos de saldo.`, '🔍');
+        return;
+      }
+
+      const val = parseFloat(points) || 0;
+      if (action === 'adicionar') {
+        db[phone] += val;
+        showNoticeModal('Saldo Atualizado', `Adicionado ${val} com sucesso! Novo saldo: ${db[phone]}`, '✅');
+      } else if (action === 'subtrair') {
+        db[phone] = Math.max(0, db[phone] - val);
+        showNoticeModal('Saldo Atualizado', `Subtraído ${val} com sucesso! Novo saldo: ${db[phone]}`, '⚠️');
+      }
+
+      localStorage.setItem('vortex_clients_loyalty', JSON.stringify(db));
+    }
+
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      loadStoreSettings();
+      const saved = JSON.parse(localStorage.getItem('vortex_loyalty_settings'));
+      if (saved) {
+        if (saved.mode === 'fidelity') document.getElementById('modeFidelity').checked = true;
+        else if (saved.mode === 'cashback') {
+          document.getElementById('modeCashback').checked = true;
+          switchMode('cashback');
+        } else {
+          document.getElementById('modeDisabled').checked = true;
+        }
+        document.getElementById('cashbackPercent').value = saved.cashbackPercent || '';
+        document.getElementById('autoExpireToggle').checked = saved.autoExpire || false;
+      } else {
+        document.getElementById('modeDisabled').checked = true;
+      }
+    };
+  </script>
+</body>
+</html>

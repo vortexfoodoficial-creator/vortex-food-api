@@ -232,6 +232,7 @@
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Cartão de Crédito">Cartão de Crédito</option>
             <option value="Vale Refeição - VR">Vale Refeição - VR</option>
+            <option value="Cartão VA">Cartão VA</option>
           </select>
         </div>
 
@@ -439,13 +440,20 @@
       }
 
       const clientName = document.getElementById('pdvClientInput').value.trim() || 'Balcão';
-      const observation = document.getElementById('pdvObsInput').value.trim();
+      const userObs = document.getElementById('pdvObsInput').value.trim();
       const payment = document.getElementById('pdvPaymentSelect').value;
       const total = pdvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
-      if (payment === 'Dinheiro' && rawCashGiven < total) {
-        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total da compra.', '⚠️');
-        return;
+      let cashGivenVal = 0;
+      let changeVal = 0;
+
+      if (payment === 'Dinheiro') {
+        if (rawCashGiven < total) {
+          showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total da compra.', '⚠️');
+          return;
+        }
+        cashGivenVal = rawCashGiven;
+        changeVal = rawCashGiven - total;
       }
 
       const now = new Date();
@@ -461,13 +469,22 @@
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
+      // Monta observação incluindo dados de dinheiro/troco se aplicável para robustez no KDS
+      let finalObservation = userObs;
+      if (payment === 'Dinheiro' && cashGivenVal > 0) {
+        const cashStr = `Valor Entregue: R$ ${cashGivenVal.toFixed(2).replace('.', ',')} | Troco: R$ ${changeVal.toFixed(2).replace('.', ',')}`;
+        finalObservation = finalObservation ? `${finalObservation} (${cashStr})` : cashStr;
+      }
+
       const newOrder = {
         id: nextKdsId,
         origin: `Balcão (${selectedConsumptionType})`,
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
-        observation: observation,
+        cashGiven: cashGivenVal,
+        change: changeVal,
+        observation: finalObservation,
         items: [...pdvCart],
         total: total,
         status: 'new',

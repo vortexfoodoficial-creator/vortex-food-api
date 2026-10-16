@@ -220,8 +220,21 @@
       }
     }
 
+    function checkAndResetDailySales() {
+      const todayStr = new Date().toISOString().split('T')[0]; // Ex: "2026-06-07"
+      const lastSavedDate = localStorage.getItem('vortex_sales_date');
+
+      if (lastSavedDate !== todayStr) {
+        // O dia virou! Salva a data atual e zera as vendas do dia na interface
+        localStorage.setItem('vortex_sales_date', todayStr);
+        localStorage.setItem('vortex_vendas_hoje', '0,00');
+      }
+    }
+
     function loadDashboardData() {
       applyTheme();
+      checkAndResetDailySales(); // Verifica a virada de dia a cada atualização
+
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
 

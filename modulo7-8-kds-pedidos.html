@@ -443,14 +443,25 @@
 
       let paymentInfoHtml = '';
       if (!order.origin || order.origin.toLowerCase().includes('balcão') || order.origin.toLowerCase().includes('pdv')) {
-        if (order.payment) {
-          if (order.payment.toLowerCase() === 'dinheiro') {
+        let paymentMethod = order.payment || order.formaPagamento || order.paymentMethod || '';
+        if (paymentMethod) {
+          if (paymentMethod.toLowerCase() === 'dinheiro') {
             paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> Dinheiro</p>`;
-            if (order.cashGiven && order.cashGiven > 0) {
-              paymentInfoHtml += `<p>Valor Entregue: R$ ${order.cashGiven.toFixed(2).replace('.', ',')}<br>Troco: R$ ${(order.change || 0).toFixed(2).replace('.', ',')}</p>`;
+            
+            // Captura robusta de valor entregue e troco através de qualquer nomenclatura possível
+            let cashGivenVal = order.cashGiven !== undefined ? order.cashGiven : (order.valorRecebido !== undefined ? order.valorRecebido : (order.valorPago !== undefined ? order.valorPago : 0));
+            let changeVal = order.change !== undefined ? order.change : (order.troco !== undefined ? order.troco : 0);
+
+            // Se o valor entregue existir mas o troco estiver zerado, calcula automaticamente
+            if (cashGivenVal > 0 && changeVal === 0 && cashGivenVal > order.total) {
+              changeVal = cashGivenVal - order.total;
+            }
+
+            if (cashGivenVal > 0) {
+              paymentInfoHtml += `<p>Valor Entregue: R$ ${cashGivenVal.toFixed(2).replace('.', ',')}<br>Troco: R$ ${changeVal.toFixed(2).replace('.', ',')}</p>`;
             }
           } else {
-            paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> ${order.payment}</p>`;
+            paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> ${paymentMethod}</p>`;
           }
         }
       }

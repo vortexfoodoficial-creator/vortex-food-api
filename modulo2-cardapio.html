@@ -118,27 +118,28 @@
     .form-group { margin-bottom: 12px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
     input[type="text"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
-    textarea { resize: vertical; min-height: 55px; }
+    textarea { resize: vertical; min-height: 50px; }
 
-    .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin-top: 6px; }
-    .day-checkbox-label { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px; font-size: 0.75rem; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: bold; }
+    .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; margin-top: 4px; }
+    .day-checkbox-label { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 5px; font-size: 0.72rem; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: bold; }
     .day-checkbox-label input { accent-color: var(--primary); }
 
-    .toggles-section { display: flex; flex-direction: column; gap: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 10px; max-height: 200px; overflow-y: auto; }
-    .toggle-row-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
+    .toggles-section { display: flex; flex-direction: column; gap: 6px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 6px; max-height: 150px; overflow-y: auto; }
+    .toggle-row-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
 
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    /* CORREÇÃO DE DIMENSÕES MOBILE PARA O MODAL */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 10px; overflow-y: auto; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
-    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; margin-top: 8px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; margin: auto; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 11px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.88rem; }
+    .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.85rem; margin-top: 6px; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
       .close-sidebar-btn { display: block; }
-      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .main-content { margin-left: 0; width: 100%; padding: 12px 12px 70px 12px; }
       .toggle-btn { display: block; }
     }
   </style>
@@ -206,10 +207,10 @@
     </header>
 
     <div class="stats-summary-bar">
-      <div class="stat-badge" onclick="openAllProductsModal()" title="Ver Todos os Produtos">
+      <div class="stat-badge" onclick="openAllProductsModal()" title="Gerenciar Produtos">
         <span style="font-size:1.3rem;">📦</span>
         <div>
-          <div style="font-size:0.7rem; color:var(--text-muted);">TOTAL DE ITENS (GERENCIAR)</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">GERENCIAR ITENS</div>
           <div style="font-size:1rem;" id="statTotalItems">0</div>
         </div>
       </div>
@@ -229,17 +230,17 @@
       </div>
     </div>
 
-    <!-- BARRA DE AÇÕES DO TOPO -->
+    <!-- BARRA DE AÇÕES DO TOPO COM BOTÃO DE GERENCIAR ITENS INCLUÍDO -->
     <div class="top-action-bar">
       <button class="top-action-btn" style="background:#22c55e;" onclick="openGroupModal()">📁 Criar Grupo</button>
       <button class="top-action-btn" style="background:#3b82f6;" onclick="openProductModal()">➕ Criar Item</button>
+      <button class="top-action-btn" style="background:#06b6d4;" onclick="openAllProductsModal()">📋 Gerenciar Itens</button>
       <button class="top-action-btn" style="background:#ef4444;" onclick="openUpsellModal()">⭐ Item Upsell</button>
       <button class="top-action-btn" style="background:#f97316;" onclick="openComplementsModal()">📋 Complementos</button>
       <button class="top-action-btn" style="background:#64748b;" onclick="openTrashModal()">🗑️ Excluídos</button>
       <button class="top-action-btn" style="background:#8b5cf6;" onclick="location.href='modulo12-estoque.html'">📦 Estoque</button>
       <button class="top-action-btn" style="background:#6366f1;" onclick="openReorderModal()">↕️ Ordenar</button>
       <button class="top-action-btn" style="background:#eab308; color:#0f172a;" onclick="filterHighlights()">⭐ Destaques</button>
-      <button class="top-action-btn" style="background:#10b981;" onclick="location.href='modulo13-fichas-tecnicas.html'">🥗 Matéria Prima</button>
     </div>
 
     <div class="card-box">
@@ -254,10 +255,10 @@
     </div>
   </main>
 
-  <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO -->
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO (DIMENSÕES RESPONSIVAS AJUSTADAS) -->
   <div class="modal-overlay" id="productModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:1.05rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span id="productModalTitle">Cadastrar Produto</span>
         <button onclick="closeProductModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
@@ -271,7 +272,7 @@
 
       <div class="form-group">
         <label for="prodDesc">Descrição (Opcional):</label>
-        <textarea id="prodDesc" placeholder="Ex: Pão brioche selado na manteiga, hambúrguer 160g..."></textarea>
+        <textarea id="prodDesc" placeholder="Ex: Pão brioche selado na manteiga..."></textarea>
       </div>
 
       <div class="form-group" style="display:flex; gap:10px;">
@@ -280,15 +281,15 @@
           <select id="prodGroupSelect"></select>
         </div>
         <div style="flex:1;">
-          <label for="prodCost">Custo Base do Item (R$):</label>
+          <label for="prodCost">Custo Base (R$):</label>
           <input type="text" id="prodCost" placeholder="R$ 0,00" oninput="maskCurrency(this, 'cost')">
         </div>
       </div>
 
-      <!-- OPÇÃO DE PREÇO VARIÁVEL ("A PARTIR DE:") -->
-      <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:10px; border-radius:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-size:0.8rem; font-weight:bold;">Usar Preço Variável ("A partir de")</span>
+      <!-- OPÇÃO DE PREÇO VARIÁVEL -->
+      <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:8px 10px; border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-size:0.78rem; font-weight:bold;">Usar Preço Variável ("A partir de")</span>
           <label class="switch-toggle">
             <input type="checkbox" id="prodVariablePriceToggle">
             <span class="slider-toggle"></span>
@@ -298,6 +299,13 @@
           <label for="prodPrice">Preço Base / Inicial (R$):</label>
           <input type="text" id="prodPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'price')">
         </div>
+      </div>
+
+      <!-- CAMPO DINÂMICO DE PREÇO POR QUILO (KG) -->
+      <div class="form-group" id="kgPriceContainer" style="display:none; background:var(--bg-main); border:1px solid var(--primary); padding:8px 10px; border-radius:8px;">
+        <label for="prodKgPrice" style="color:var(--primary); font-weight:bold;">Preço por 1 KG (R$):</label>
+        <input type="text" id="prodKgPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'kg')">
+        <span style="font-size:0.7rem; color:var(--text-muted); margin-top:2px; display:block;">O cliente poderá escolher o peso desejado no momento do pedido.</span>
       </div>
 
       <!-- DIAS ATIVOS -->
@@ -323,9 +331,9 @@
           <div class="toggle-row-item"><span>Exibir etiqueta "Novidade!"</span><label class="switch-toggle"><input type="checkbox" id="tagNew"><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Exibir no Delivery / Retirada</span><label class="switch-toggle"><input type="checkbox" id="showDelivery" checked><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Exibir no Cardápio de Mesas</span><label class="switch-toggle"><input type="checkbox" id="showTable" checked><span class="slider-toggle"></span></label></div>
-          <div class="toggle-row-item"><span>Destacar no Cardápio</span><label class="switch-toggle" id="highlightToggle"><input type="checkbox" id="isHighlight"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Destacar no Cardápio</span><label class="switch-toggle"><input type="checkbox" id="isHighlight"><span class="slider-toggle"></span></label></div>
           <div class="toggle-row-item"><span>Bebida Alcoólica (+18)</span><label class="switch-toggle"><input type="checkbox" id="isAlcohol"><span class="slider-toggle"></span></label></div>
-          <div class="toggle-row-item"><span>Precificado por Quilo (KG)</span><label class="switch-toggle"><input type="checkbox" id="isKg"><span class="slider-toggle"></span></label></div>
+          <div class="toggle-row-item"><span>Precificado por Quilo (KG)</span><label class="switch-toggle"><input type="checkbox" id="isKg" onchange="toggleKgField(this.checked)"><span class="slider-toggle"></span></label></div>
         </div>
       </div>
 
@@ -336,13 +344,13 @@
 
   <!-- MODAL DE GESTÃO GERAL DE PRODUTOS -->
   <div class="modal-overlay" id="allProductsModal">
-    <div class="custom-modal-card" style="max-width: 600px;">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+    <div class="custom-modal-card" style="max-width: 550px;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span>📦 Gerenciamento Geral de Produtos</span>
         <button onclick="closeAllProductsModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Ative, pause ou exclua qualquer produto do catálogo rapidamente.</div>
-      <div id="allProductsListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto;"></div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Ative, pause ou exclua qualquer produto do catálogo rapidamente.</div>
+      <div id="allProductsListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:350px; overflow-y:auto;"></div>
       <button class="btn-modal-secondary" onclick="closeAllProductsModal()">Fechar</button>
     </div>
   </div>
@@ -350,7 +358,7 @@
   <!-- MODAL DE CADASTRO / EDIÇÃO DE GRUPO -->
   <div class="modal-overlay" id="groupModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span id="groupModalTitle">Criar Novo Grupo</span>
         <button onclick="closeGroupModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
@@ -368,38 +376,70 @@
     </div>
   </div>
 
+  <!-- MODAL DE COMPLEMENTOS (NOVO E COMPLETO) -->
+  <div class="modal-overlay" id="complementsModal">
+    <div class="custom-modal-card" style="max-width: 550px;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <span>📋 Gestão de Complementos & Adicionais</span>
+        <button onclick="closeComplementsModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Crie grupos de adicionais (ex: Bordas, Molhos, Extras) para vincular aos itens.</div>
+      
+      <div style="background:var(--bg-main); border:1px solid var(--border); padding:10px; border-radius:10px; margin-bottom:12px;">
+        <div class="form-group">
+          <label for="compGroupName">Nome do Grupo de Complementos *:</label>
+          <input type="text" id="compGroupName" placeholder="Ex: Adicionais de Queijo ou Bordas Recheadas">
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="compItemName" placeholder="Nome do Adicional (Ex: Cheddar Extra)" style="flex:1.5;">
+          <input type="text" id="compItemPrice" placeholder="Preço R$ 0,00" style="flex:1;" oninput="maskCurrency(this, 'comp')">
+          <button class="btn-modal-primary" style="width:auto; padding:0 14px;" onclick="addComplementItemToDraft()">Adicionar ➕</button>
+        </div>
+        <div id="draftCompList" style="margin-top:8px; display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto;"></div>
+      </div>
+
+      <button class="btn-modal-primary" onclick="saveComplementGroup()">Salvar Grupo de Complementos 💾</button>
+      
+      <div style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
+        <div style="font-weight:bold; font-size:0.85rem; margin-bottom:6px;">Grupos Cadastrados:</div>
+        <div id="savedComplementsList" style="display:flex; flex-direction:column; gap:6px; max-height:150px; overflow-y:auto;"></div>
+      </div>
+      <button class="btn-modal-secondary" style="margin-top:12px;" onclick="closeComplementsModal()">Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL DE ITEM UPSELL -->
   <div class="modal-overlay" id="upsellModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span>⭐ Gerenciar Itens Upsell (Sugestões)</span>
         <button onclick="closeUpsellModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
-      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Selecione quais produtos serão oferecidos como sugestão extra ao finalizar o pedido.</div>
-      <div id="upsellListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:10px;">Selecione quais produtos serão oferecidos como sugestão extra ao finalizar o pedido.</div>
+      <div id="upsellListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-bottom:12px;"></div>
       <button class="btn-modal-primary" onclick="closeUpsellModal()">Salvar Sugestões ⭐</button>
     </div>
   </div>
 
-  <!-- MODAL DE EXCLUÍDOS (LIXEIRA) -->
+  <!-- MODAL DE EXCLUÍDOS (LIXEIRA COM APAGAR PERMANENTE) -->
   <div class="modal-overlay" id="trashModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span>🗑️ Lixeira de Itens & Grupos Excluídos</span>
         <button onclick="closeTrashModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
-      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">Itens e grupos removidos ficam aqui e podem ser restaurados a qualquer momento.</div>
-      <div id="trashListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:10px;">Restaure itens apagados ou remova-os permanentemente do sistema.</div>
+      <div id="trashListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-bottom:12px;"></div>
       <button class="btn-modal-secondary" onclick="closeTrashModal()">Fechar</button>
     </div>
   </div>
 
   <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
-    <div class="custom-modal-card" style="text-align:center;">
-      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
-      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
-      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Ação concluída.</div>
+    <div class="custom-modal-card" style="text-align:center; max-width: 380px;">
+      <div style="font-size:2.5rem; margin-bottom:8px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Ação concluída.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
@@ -407,7 +447,10 @@
   <script>
     let rawPrice = 0;
     let rawCost = 0;
+    let rawKgPrice = 0;
+    let rawCompPrice = 0;
     let highlightFilterActive = false;
+    let draftCompItems = [];
 
     const defaultGroups = [
       { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true },
@@ -442,14 +485,10 @@
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
     }
 
-    /* LIMPEZA AUTOMÁTICA DE GRUPOS CORROMPIDOS / UNDEFINED */
     function getGroups() {
       let saved = localStorage.getItem('vortex_groups_catalog');
       let groups = saved ? JSON.parse(saved) : defaultGroups;
-      
-      // Filtra e remove estritamente qualquer grupo nulo, vazio ou com nome "UNDEFINED"
       groups = groups.filter(g => g && g.name && g.name.trim() !== '' && g.name.toUpperCase() !== 'UNDEFINED' && g.name !== 'undefined');
-      
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
       return groups;
     }
@@ -469,6 +508,11 @@
       return saved ? JSON.parse(saved) : { products: [], groups: [] };
     }
 
+    function getComplements() {
+      let saved = localStorage.getItem('vortex_complements_catalog');
+      return saved ? JSON.parse(saved) : [];
+    }
+
     function syncWithOtherModules(productsArray) {
       const activeProductsOnly = productsArray.filter(p => p.active !== false);
       localStorage.setItem('vortex_synced_catalog', JSON.stringify(activeProductsOnly));
@@ -480,12 +524,22 @@
         input.value = 'R$ 0,00';
         if (type === 'price') rawPrice = 0;
         if (type === 'cost') rawCost = 0;
+        if (type === 'kg') rawKgPrice = 0;
+        if (type === 'comp') rawCompPrice = 0;
         return;
       }
       const numeric = parseFloat(value) / 100;
       if (type === 'price') rawPrice = numeric;
       if (type === 'cost') rawCost = numeric;
+      if (type === 'kg') rawKgPrice = numeric;
+      if (type === 'comp') rawCompPrice = numeric;
       input.value = 'R$ ' + numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function toggleKgField(isChecked) {
+      const box = document.getElementById('kgPriceContainer');
+      if (isChecked) box.style.display = 'block';
+      else box.style.display = 'none';
     }
 
     function renderCardapio() {
@@ -530,11 +584,12 @@
 
         let itemsHtml = '';
         if (groupProducts.length === 0) {
-          itemsHtml = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:15px;">Nenhum produto neste grupo. Clique em "+" para adicionar.</div>`;
+          itemsHtml = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:12px;">Nenhum produto neste grupo. Clique em "+" para adicionar.</div>`;
         } else {
           groupProducts.forEach(p => {
             const isActive = p.active !== false;
-            const priceDisplay = p.isVariable ? `A partir de R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}` : `R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}`;
+            let priceDisplay = p.isVariable ? `A partir de R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}` : `R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}`;
+            if (p.isKg) priceDisplay = `R$ ${parseFloat(p.kgPrice || p.price).toFixed(2).replace('.', ',')} / kg`;
 
             itemsHtml += `
               <div class="product-row-card ${!isActive ? 'paused' : ''}">
@@ -674,9 +729,13 @@
       document.getElementById('prodDesc').value = '';
       document.getElementById('prodPrice').value = 'R$ 0,00';
       document.getElementById('prodCost').value = 'R$ 0,00';
+      document.getElementById('prodKgPrice').value = 'R$ 0,00';
       rawPrice = 0;
       rawCost = 0;
+      rawKgPrice = 0;
       document.getElementById('prodVariablePriceToggle').checked = false;
+      document.getElementById('isKg').checked = false;
+      toggleKgField(false);
       document.getElementById('productModal').classList.add('active');
     }
 
@@ -702,10 +761,15 @@
 
       rawPrice = parseFloat(p.price) || 0;
       rawCost = parseFloat(p.cost) || 0;
+      rawKgPrice = parseFloat(p.kgPrice) || 0;
+      
       document.getElementById('prodPrice').value = 'R$ ' + rawPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       document.getElementById('prodCost').value = 'R$ ' + rawCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('prodKgPrice').value = 'R$ ' + rawKgPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       document.getElementById('prodVariablePriceToggle').checked = p.isVariable || false;
+      document.getElementById('isKg').checked = p.isKg || false;
+      toggleKgField(p.isKg || false);
 
       document.getElementById('tagPromo').checked = p.tagPromo || false;
       document.getElementById('tagBestSeller').checked = p.tagBestSeller || false;
@@ -714,7 +778,6 @@
       document.getElementById('showTable').checked = p.showTable !== false;
       document.getElementById('isHighlight').checked = p.isHighlight || false;
       document.getElementById('isAlcohol').checked = p.isAlcohol || false;
-      document.getElementById('isKg').checked = p.isKg || false;
 
       document.getElementById('productModal').classList.add('active');
     }
@@ -725,9 +788,10 @@
       const desc = document.getElementById('prodDesc').value.trim();
       const group = document.getElementById('prodGroupSelect').value;
       const isVariable = document.getElementById('prodVariablePriceToggle').checked;
+      const isKg = document.getElementById('isKg').checked;
 
-      if (!name || rawPrice <= 0) {
-        showNoticeModal('Campos Obrigatórios', 'Preencha o nome do produto e informe um preço base válido maior que zero.', '⚠️');
+      if (!name || (!isKg && rawPrice <= 0) || (isKg && rawKgPrice <= 0)) {
+        showNoticeModal('Campos Obrigatórios', 'Preencha o nome e informe um preço válido maior que zero.', '⚠️');
         return;
       }
 
@@ -737,8 +801,10 @@
         name,
         desc,
         group,
-        price: rawPrice,
+        price: isKg ? rawKgPrice : rawPrice,
+        kgPrice: isKg ? rawKgPrice : 0,
         isVariable,
+        isKg,
         cost: rawCost,
         tagPromo: document.getElementById('tagPromo').checked,
         tagBestSeller: document.getElementById('tagBestSeller').checked,
@@ -747,7 +813,6 @@
         showTable: document.getElementById('showTable').checked,
         isHighlight: document.getElementById('isHighlight').checked,
         isAlcohol: document.getElementById('isAlcohol').checked,
-        isKg: document.getElementById('isKg').checked,
         active: true
       };
 
@@ -800,15 +865,15 @@
       container.innerHTML = '';
 
       if (products.length === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum produto cadastrado.</div>`;
+        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:12px;">Nenhum produto cadastrado.</div>`;
       } else {
         products.forEach(p => {
           const isActive = p.active !== false;
           container.innerHTML += `
-            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <strong>${p.name}</strong> <span style="font-size:0.75rem; color:var(--primary);">(${p.group})</span>
-                <div style="font-size:0.8rem; color:var(--success);">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</div>
+                <strong>${p.name}</strong> <span style="font-size:0.72rem; color:var(--primary);">(${p.group})</span>
+                <div style="font-size:0.78rem; color:var(--success);">R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}</div>
               </div>
               <div style="display:flex; gap:8px; align-items:center;">
                 <label class="switch-toggle">
@@ -828,7 +893,90 @@
       document.getElementById('allProductsModal').classList.remove('active');
     }
 
-    /* MODAL DE UPSELL INTERATIVO */
+    /* GESTÃO COMPLETA DE COMPLEMENTOS */
+    function openComplementsModal() {
+      document.getElementById('compGroupName').value = '';
+      document.getElementById('compItemName').value = '';
+      document.getElementById('compItemPrice').value = 'R$ 0,00';
+      rawCompPrice = 0;
+      draftCompItems = [];
+      renderDraftComplements();
+      renderSavedComplements();
+      document.getElementById('complementsModal').classList.add('active');
+    }
+
+    function addComplementItemToDraft() {
+      const name = document.getElementById('compItemName').value.trim();
+      if (!name || rawCompPrice <= 0) {
+        showNoticeModal('Atenção', 'Informe o nome e o preço do adicional.', '⚠️');
+        return;
+      }
+      draftCompItems.push({ name, price: rawCompPrice });
+      document.getElementById('compItemName').value = '';
+      document.getElementById('compItemPrice').value = 'R$ 0,00';
+      rawCompPrice = 0;
+      renderDraftComplements();
+    }
+
+    function renderDraftComplements() {
+      const container = document.getElementById('draftCompList');
+      container.innerHTML = '';
+      draftCompItems.forEach((item, idx) => {
+        container.innerHTML += `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:4px 8px; border-radius:6px; font-size:0.78rem;">
+            <span>${item.name} (+ R$ ${item.price.toFixed(2).replace('.', ',')})</span>
+            <button onclick="draftCompItems.splice(${idx}, 1); renderDraftComplements();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button>
+          </div>
+        `;
+      });
+    }
+
+    function saveComplementGroup() {
+      const groupName = document.getElementById('compGroupName').value.trim().toUpperCase();
+      if (!groupName || draftCompItems.length === 0) {
+        showNoticeModal('Atenção', 'Dê um nome ao grupo e adicione pelo menos um item.', '⚠️');
+        return;
+      }
+      let comps = getComplements();
+      comps.push({ id: 'comp_' + Date.now(), name: groupName, items: [...draftCompItems] });
+      localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
+      draftCompItems = [];
+      document.getElementById('compGroupName').value = '';
+      renderDraftComplements();
+      renderSavedComplements();
+      showNoticeModal('Salvo!', 'Grupo de complementos criado com sucesso.', '📋');
+    }
+
+    function renderSavedComplements() {
+      const container = document.getElementById('savedComplementsList');
+      container.innerHTML = '';
+      let comps = getComplements();
+      if (comps.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.78rem;">Nenhum grupo cadastrado.</div>`;
+        return;
+      }
+      comps.forEach((c, idx) => {
+        container.innerHTML += `
+          <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+            <div><strong>${c.name}</strong> (${c.items.length} itens)</div>
+            <button class="btn-icon-action btn-icon-delete" onclick="deleteComplementGroup(${idx})">🗑️</button>
+          </div>
+        `;
+      });
+    }
+
+    function deleteComplementGroup(idx) {
+      let comps = getComplements();
+      comps.splice(idx, 1);
+      localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
+      renderSavedComplements();
+    }
+
+    function closeComplementsModal() {
+      document.getElementById('complementsModal').classList.remove('active');
+    }
+
+    /* MODAL DE UPSELL */
     function openUpsellModal() {
       let products = getProducts();
       let container = document.getElementById('upsellListContainer');
@@ -837,8 +985,8 @@
       products.forEach(p => {
         const isUpsell = p.isUpsell || false;
         container.innerHTML += `
-          <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
-            <span>${p.name}</span>
+          <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.82rem;">${p.name}</span>
             <label class="switch-toggle">
               <input type="checkbox" ${isUpsell ? 'checked' : ''} onchange="toggleUpsellItem(${p.id})">
               <span class="slider-toggle"></span>
@@ -860,10 +1008,10 @@
 
     function closeUpsellModal() {
       document.getElementById('upsellModal').classList.remove('active');
-      showNoticeModal('Upsell Atualizado', 'Sugestões de vendas cruzadas salvas com sucesso!', '⭐');
+      showNoticeModal('Upsell Atualizado', 'Sugestões de vendas salvas com sucesso!', '⭐');
     }
 
-    /* MODAL DE EXCLUÍDOS (LIXEIRA) */
+    /* MODAL DE LIXEIRA COM APAGAR PERMANENTE */
     function openTrashModal() {
       let trash = getTrash();
       let container = document.getElementById('trashListContainer');
@@ -871,22 +1019,28 @@
 
       let totalTrash = trash.products.length + trash.groups.length;
       if (totalTrash === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">A lixeira está vazia.</div>`;
+        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px; font-size:0.82rem;">A lixeira está vazia.</div>`;
       } else {
         trash.groups.forEach((g, idx) => {
           container.innerHTML += `
-            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
               <span>📁 [Grupo] ${g.name}</span>
-              <button class="btn-modal-primary" style="width:auto; padding:6px 12px; font-size:0.75rem;" onclick="restoreGroup(${idx})">Restaurar ♻️</button>
+              <div style="display:flex; gap:4px;">
+                <button class="btn-modal-primary" style="width:auto; padding:4px 8px; font-size:0.7rem;" onclick="restoreGroup(${idx})">Restaurar ♻️</button>
+                <button class="btn-modal-primary" style="width:auto; padding:4px 8px; font-size:0.7rem; background:var(--danger);" onclick="permanentDeleteGroup(${idx})">Apagar ❌</button>
+              </div>
             </div>
           `;
         });
 
         trash.products.forEach((p, idx) => {
           container.innerHTML += `
-            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
               <span>🍔 [Produto] ${p.name}</span>
-              <button class="btn-modal-primary" style="width:auto; padding:6px 12px; font-size:0.75rem;" onclick="restoreProduct(${idx})">Restaurar ♻️</button>
+              <div style="display:flex; gap:4px;">
+                <button class="btn-modal-primary" style="width:auto; padding:4px 8px; font-size:0.7rem;" onclick="restoreProduct(${idx})">Restaurar ♻️</button>
+                <button class="btn-modal-primary" style="width:auto; padding:4px 8px; font-size:0.7rem; background:var(--danger);" onclick="permanentDeleteProduct(${idx})">Apagar ❌</button>
+              </div>
             </div>
           `;
         });
@@ -917,6 +1071,20 @@
       renderCardapio();
     }
 
+    function permanentDeleteGroup(idx) {
+      let trash = getTrash();
+      trash.groups.splice(idx, 1);
+      localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      openTrashModal();
+    }
+
+    function permanentDeleteProduct(idx) {
+      let trash = getTrash();
+      trash.products.splice(idx, 1);
+      localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
+      openTrashModal();
+    }
+
     function closeTrashModal() {
       document.getElementById('trashModal').classList.remove('active');
     }
@@ -927,7 +1095,6 @@
       showNoticeModal('Filtro de Destaques', highlightFilterActive ? 'Exibindo apenas produtos em destaque.' : 'Exibindo todos os produtos.', '⭐');
     }
 
-    function openComplementsModal() { showNoticeModal('Complementos', 'Gerenciamento de adicionais e bordas recheadas ativado.', '📋'); }
     function openReorderModal() { showNoticeModal('Ordenador', 'Use as setas ⬆️ ⬇️ nos títulos dos grupos para reorganizar a ordem.', '↕️'); }
 
     function showNoticeModal(title, desc, icon) {

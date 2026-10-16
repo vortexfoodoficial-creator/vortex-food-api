@@ -232,7 +232,7 @@
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Cartão de Crédito">Cartão de Crédito</option>
             <option value="Vale Refeição - VR">Vale Refeição - VR</option>
-            <option value="Cartão VA">Cartão VA</option>
+            <option value="Vale Alimentação - VA">Vale Alimentação - VA</option>
           </select>
         </div>
 
@@ -440,20 +440,13 @@
       }
 
       const clientName = document.getElementById('pdvClientInput').value.trim() || 'Balcão';
-      const userObs = document.getElementById('pdvObsInput').value.trim();
+      const observation = document.getElementById('pdvObsInput').value.trim();
       const payment = document.getElementById('pdvPaymentSelect').value;
       const total = pdvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
-      let cashGivenVal = 0;
-      let changeVal = 0;
-
-      if (payment === 'Dinheiro') {
-        if (rawCashGiven < total) {
-          showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total da compra.', '⚠️');
-          return;
-        }
-        cashGivenVal = rawCashGiven;
-        changeVal = rawCashGiven - total;
+      if (payment === 'Dinheiro' && rawCashGiven < total) {
+        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total da compra.', '⚠️');
+        return;
       }
 
       const now = new Date();
@@ -469,11 +462,10 @@
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
 
-      // Monta observação incluindo dados de dinheiro/troco se aplicável para robustez no KDS
-      let finalObservation = userObs;
-      if (payment === 'Dinheiro' && cashGivenVal > 0) {
-        const cashStr = `Valor Entregue: R$ ${cashGivenVal.toFixed(2).replace('.', ',')} | Troco: R$ ${changeVal.toFixed(2).replace('.', ',')}`;
-        finalObservation = finalObservation ? `${finalObservation} (${cashStr})` : cashStr;
+      // Calcula o troco caso seja dinheiro
+      let changeVal = 0;
+      if (payment === 'Dinheiro' && rawCashGiven > total) {
+        changeVal = rawCashGiven - total;
       }
 
       const newOrder = {
@@ -482,9 +474,9 @@
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
-        cashGiven: cashGivenVal,
-        change: changeVal,
-        observation: finalObservation,
+        cashGiven: payment === 'Dinheiro' ? rawCashGiven : 0,
+        change: payment === 'Dinheiro' ? changeVal : 0,
+        observation: observation,
         items: [...pdvCart],
         total: total,
         status: 'new',

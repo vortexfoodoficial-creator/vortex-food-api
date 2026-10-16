@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Configurações de Impressoras</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
+
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
+
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
+
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
+
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
+
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
+
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
+
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
+
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    .config-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .config-row:last-child { border-bottom: none; }
+    .config-label { font-size: 0.9rem; font-weight: 600; }
+    .config-sublabel { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* SWITCH CUSTOMIZADO */
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .3s; border-radius: 26px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    .btn-select-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .btn-action-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-action-outline:hover { background: rgba(249, 115, 22, 0.1); }
+
+    .bluetooth-alert { background: var(--bg-main); border: 1px solid var(--border); border-radius: 16px; padding: 25px; text-align: center; margin-top: 20px; }
+    .bluetooth-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link active"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Configurações de Impressoras</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <div class="card-box">
+      <div class="card-title">⚙️ Parâmetros de Impressão</div>
+
+      <div class="config-row">
+        <div>
+          <div class="config-label">Modo Avançado</div>
+          <div class="config-sublabel">Ativar opções avançadas de hardware e drivers</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="advancedModeToggle" onchange="savePrinterSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-row">
+        <div>
+          <div class="config-label">Impressão Automática</div>
+          <div class="config-sublabel">Imprimir automaticamente ao receber novos pedidos[span_1](start_span)[span_1](end_span)</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="autoPrintToggle" onchange="savePrinterSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Modo de impressão</label>
+        <div class="btn-select-box">
+          <span id="printModeDisplay" style="font-weight:bold; font-size:0.9rem;">Impressão completa[span_2](start_span)[span_2](end_span)</span>
+          <button class="btn-action-outline" onclick="openSelectModal('printMode')">Alterar[span_3](start_span)[span_3](end_span)</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Tamanho da Fonte</label>
+        <div class="btn-select-box">
+          <span id="fontSizeDisplay" style="font-weight:bold; font-size:0.9rem;">Normal[span_4](start_span)[span_4](end_span)</span>
+          <button class="btn-action-outline" onclick="openSelectModal('fontSize')">Alterar[span_5](start_span)[span_5](end_span)</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.9rem; font-weight:bold;">Escanear dispositivos</span>
+        <button class="btn-action-outline" onclick="scanBluetoothDevices()">🔄 Escanear</button>
+      </div>
+    </div>
+
+    <div class="bluetooth-alert">
+      <div class="bluetooth-icon">📶</div>
+      <div style="font-size:1rem; font-weight:bold; margin-bottom:6px;">Seu Bluetooth está desativado, ative-o e volte aqui para emparelhar sua impressora[span_6](start_span)[span_6](end_span)!</div>
+      <div style="font-size:0.85rem; color:var(--text-muted);" id="bluetoothStatusText">Nenhum dispositivo encontrado[span_7](start_span)[span_7](end_span)!</div>
+    </div>
+  </main>
+
+  <!-- MODAL DE SELEÇÃO -->
+  <div class="modal-overlay" id="selectModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;" id="modalTitle">Selecionar Opção</div>
+      <div id="modalOptionsList" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;"></div>
+      <button class="btn-action-outline" style="width:100%; border-color:var(--border); color:var(--text-main);" onclick="closeSelectModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Configuração salva.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    let currentEditingType = '';
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function loadStoreSettings() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+    }
+
+    function savePrinterSettings() {
+      const settings = {
+        advancedMode: document.getElementById('advancedModeToggle').checked,
+        autoPrint: document.getElementById('autoPrintToggle').checked,
+        printMode: document.getElementById('printModeDisplay').innerText,
+        fontSize: document.getElementById('fontSizeDisplay').innerText
+      };
+      localStorage.setItem('vortex_printer_settings', JSON.stringify(settings));
+    }
+
+    function openSelectModal(type) {
+      currentEditingType = type;
+      const modal = document.getElementById('selectModal');
+      const title = document.getElementById('modalTitle');
+      const list = document.getElementById('modalOptionsList');
+      list.innerHTML = '';
+
+      if (type === 'printMode') {
+        title.innerText = 'Modo de Impressão';
+        ['Impressão completa', 'Impressão resumida (apenas itens)', 'Apenas valor e pagamento'].forEach(opt => {
+          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:10px;" onclick="selectOption('${opt}')">${opt}</button>`;
+        });
+      } else if (type === 'fontSize') {
+        title.innerText = 'Tamanho da Fonte';
+        ['Pequena', 'Normal', 'Grande', 'Extra Grande'].forEach(opt => {
+          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:10px;" onclick="selectOption('${opt}')">${opt}</button>`;
+        });
+      }
+
+      modal.classList.add('active');
+    }
+
+    function selectOption(val) {
+      if (currentEditingType === 'printMode') {
+        document.getElementById('printModeDisplay').innerText = val;
+      } else if (currentEditingType === 'fontSize') {
+        document.getElementById('fontSizeDisplay').innerText = val;
+      }
+      closeSelectModal();
+      savePrinterSettings();
+      showNoticeModal('Atualizado', 'Configuração de impressora alterada com sucesso!', '🖨️');
+    }
+
+    function closeSelectModal() {
+      document.getElementById('selectModal').classList.remove('active');
+    }
+
+    function scanBluetoothDevices() {
+      document.getElementById('bluetoothStatusText').innerText = 'Buscando dispositivos próximos...';
+      setTimeout(() => {
+        document.getElementById('bluetoothStatusText').innerText = 'Nenhum dispositivo encontrado! Verifique se a impressora está ligada.';
+        showNoticeModal('Bluetooth', 'Escaneamento concluído. Certifique-se de que o Bluetooth do dispositivo está habilitado.', '📶');
+      }, 1500);
+    }
+
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      loadStoreSettings();
+      const saved = JSON.parse(localStorage.getItem('vortex_printer_settings'));
+      if (saved) {
+        document.getElementById('advancedModeToggle').checked = saved.advancedMode || false;
+        document.getElementById('autoPrintToggle').checked = saved.autoPrint || false;
+        if (saved.printMode) document.getElementById('printModeDisplay').innerText = saved.printMode;
+        if (saved.fontSize) document.getElementById('fontSizeDisplay').innerText = saved.fontSize;
+      }
+    };
+  </script>
+</body>
+</html>

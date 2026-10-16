@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Suporte & Ajuda</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+      --whatsapp: #25d366;
+    }
+
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
+
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
+
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
+
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
+
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
+
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
+
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
+
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    .btn-support { display: flex; align-items: center; justify-content: center; gap: 10px; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.9rem; width: 100%; text-decoration: none; margin-bottom: 10px; transition: opacity 0.2s; }
+    .btn-support:hover { opacity: 0.9; }
+
+    .btn-wa-group { background: #1e3a8a; color: white; }
+    .btn-bug { background: var(--primary); color: white; }
+    .btn-wa-green { background: var(--whatsapp); color: white; }
+
+    .faq-container { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-question { background: var(--bg-main); padding: 12px 15px; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .faq-answer { padding: 15px; font-size: 0.85rem; color: var(--text-muted); display: none; background: var(--bg-card); line-height: 1.5; }
+    .faq-item.active .faq-answer { display: block; }
+
+    .support-info-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link active"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Suporte ao Cliente</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- SUPORTE AO CLIENTE (GRUPOS E BUGS) -->
+    <div class="card-box">
+      <div class="card-title">🚀 Comunidade & Reportes</div>
+      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20entrar%20no%20grupo%20de%20novidades." target="_blank" class="btn-support btn-wa-group">
+        💬 Grupo de novidades WhatsApp[span_1](start_span)[span_1](end_span)
+      </a>
+      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20entrar%20no%20grupo%20de%20lojistas." target="_blank" class="btn-support btn-wa-group" style="background:#0f766e;">
+        👥 Grupo de Lojistas no WhatsApp[span_2](start_span)[span_2](end_span)
+      </a>
+      <button class="btn-support btn-bug" onclick="openBugModal()">
+        💰 Achou um BUG? Ganhe R$[span_3](start_span)[span_3](end_span)
+      </button>
+    </div>
+
+    <!-- PERGUNTAS FREQUENTES (FAQ) -->
+    <div class="card-box">
+      <div class="card-title">❓ Perguntas Frequentes (FAQ)[span_4](start_span)[span_4](end_span)</div>
+      <div class="faq-container">
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">Como configurar o cardápio digital? <span>▼</span></div>
+          <div class="faq-answer">Basta acessar o módulo "Cardápio & Produtos" na aba lateral para cadastrar, editar preços ou pausar itens em tempo real.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">Como funcionam as comandas na Cozinha (KDS)? <span>▼</span></div>
+          <div class="faq-answer">Todo pedido finalizado no PDV, Mesas ou Delivery é enviado automaticamente em tempo real para a tela do KDS, onde a cozinha pode gerenciar o preparo e imprimir a comanda térmica.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">Onde visualizo o fechamento do caixa do dia? <span>▼</span></div>
+          <div class="faq-answer">Acesse o módulo "Fechamento de Caixa" ou o "Financeiro & DRE" para auditar entradas, formas de pagamento e retiradas do turno.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPORTE VIA WHATSAPP -->
+    <div class="card-box">
+      <div class="card-title">📞 Suporte via WhatsApp[span_5](start_span)[span_5](end_span)</div>
+      <div class="support-info-text">
+        <strong>Horário de Atendimento:</strong><br>
+        Segunda à Sábado das 08:00 às 23:00[span_6](start_span)[span_6](end_span)<br>
+        Domingo das 10:30 às 23:00[span_7](start_span)[span_7](end_span)<br>
+        Telefone: +55 19 99215-9211[span_8](start_span)[span_8](end_span)
+      </div>
+      <a href="https://wa.me/5519992159211?text=Olá!%20Preciso%20de%20suporte%20técnico%20no%20Vortex%20Food." target="_blank" class="btn-support btn-wa-green">
+        🟢 Abrir o WhatsApp de Suporte[span_9](start_span)[span_9](end_span)
+      </a>
+    </div>
+
+    <!-- FINANCEIRO / COMERCIAL -->
+    <div class="card-box">
+      <div class="card-title">💳 WhatsApp do Financeiro / Comercial</div>
+      <div class="support-info-text">
+        <strong>Financeiro:</strong> +55 19 99215-9211[span_10](start_span)[span_10](end_span)
+      </div>
+      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20falar%20com%20o%20Financeiro." target="_blank" class="btn-support btn-wa-green" style="margin-bottom:15px;">
+        💬 Abrir o WhatsApp do Financeiro[span_11](start_span)[span_11](end_span)
+      </a>
+
+      <div class="support-info-text">
+        <strong>Comercial:</strong> +55 19 99248-2854[span_12](start_span)[span_12](end_span)
+      </div>
+      <a href="https://wa.me/5519992482854?text=Olá!%20Gostaria%20de%20falar%20com%20o%20Comercial." target="_blank" class="btn-support btn-wa-green">
+        💬 Abrir o WhatsApp do Comercial[span_13](start_span)[span_13](end_span)
+      </a>
+    </div>
+  </main>
+
+  <!-- MODAL DE BUG -->
+  <div class="modal-overlay" id="bugModal">
+    <div class="custom-modal-card">
+      <div style="font-size:3rem; margin-bottom:12px;">🐛</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;">Encontrou uma falha?</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;">Envie os detalhes do erro para o nosso WhatsApp de suporte técnico. Se o bug for validado, você ganha recompensa em dinheiro!</div>
+      <a href="https://wa.me/5519992159211?text=Olá!%20Encontrei%20um%20bug%20no%20sistema:" target="_blank" class="btn-support btn-wa-green" style="margin-bottom:8px;">Enviar Bug no WhatsApp</a>
+      <button class="btn-support" style="background:var(--border); color:var(--text-main); border:none;" onclick="closeBugModal()">Fechar</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function loadStoreSettings() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+    }
+
+    function toggleFaq(element) {
+      const parent = element.parentElement;
+      parent.classList.toggle('active');
+    }
+
+    function openBugModal() {
+      document.getElementById('bugModal').classList.add('active');
+    }
+
+    function closeBugModal() {
+      document.getElementById('bugModal').classList.remove('active');
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      loadStoreSettings();
+    };
+  </script>
+</body>
+</html>

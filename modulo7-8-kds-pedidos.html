@@ -448,9 +448,18 @@
           if (paymentMethod.toLowerCase() === 'dinheiro') {
             paymentInfoHtml = `<p><strong>Forma de Pagamento:</strong> Dinheiro</p>`;
             
-            // Captura robusta de valor entregue e troco através de qualquer nomenclatura possível
+            // Captura robusta de valor entregue e troco (incluindo leitura nas observações do PDV)
             let cashGivenVal = order.cashGiven !== undefined ? order.cashGiven : (order.valorRecebido !== undefined ? order.valorRecebido : (order.valorPago !== undefined ? order.valorPago : 0));
             let changeVal = order.change !== undefined ? order.change : (order.troco !== undefined ? order.troco : 0);
+
+            if (cashGivenVal === 0 && order.observation && order.observation.toLowerCase().includes('troco')) {
+              // Tenta extrair valores monetários de dentro da observação caso o PDV tenha gravado nela
+              let matches = order.observation.match(/R\$\s*[\d.,]+/g);
+              if (matches && matches.length >= 2) {
+                cashGivenVal = parseFloat(matches[0].replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+                changeVal = parseFloat(matches[1].replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+              }
+            }
 
             // Se o valor entregue existir mas o troco estiver zerado, calcula automaticamente
             if (cashGivenVal > 0 && changeVal === 0 && cashGivenVal > order.total) {

@@ -121,12 +121,14 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
         <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
@@ -144,6 +146,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -184,6 +189,10 @@
           <span class="shortcut-icon">👨‍🍳</span>
           <span class="shortcut-label">KDS / Cozinha</span>
         </a>
+        <a href="modulo-integracoes.html" class="shortcut-card">
+          <span class="shortcut-icon">🔗</span>
+          <span class="shortcut-label">Integrações Apps</span>
+        </a>
       </div>
     </div>
 
@@ -204,6 +213,10 @@
       <div class="metric-card">
         <span class="metric-title">Entregas em Rota</span>
         <span class="metric-value" style="color:var(--warning);" id="dashEntregasRota">0</span>
+      </div>
+      <div class="metric-card" style="border-color: var(--primary);">
+        <span class="metric-title">Clientes Fidelizados / Retenção</span>
+        <span class="metric-value" style="color: var(--primary);" id="dashFidelidadeRetencao">0 cadastrados</span>
       </div>
     </div>
   </main>
@@ -227,7 +240,6 @@
       const lastSavedDate = localStorage.getItem('vortex_sales_date');
 
       if (lastSavedDate !== todayStr) {
-        // O dia virou! Salva a data atual e zera as vendas do dia na interface
         localStorage.setItem('vortex_sales_date', todayStr);
         localStorage.setItem('vortex_vendas_hoje', '0,00');
       }
@@ -235,7 +247,7 @@
 
     function loadDashboardData() {
       applyTheme();
-      checkAndResetDailySales(); // Verifica a virada de dia a cada atualização
+      checkAndResetDailySales();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
@@ -249,7 +261,7 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Faturamento do Dia (Soma de Delivery, PDV e Mesas)
+      // Faturamento do Dia
       const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       document.getElementById('dashVendas').innerText = `R$ ${salesRaw}`;
 
@@ -258,11 +270,11 @@
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
 
-      // Entregas em Rota (Delivery)
+      // Entregas em Rota
       const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
       document.getElementById('dashEntregasRota').innerText = deliveringCount;
 
-      // Leitura Dinâmica e Sincronizada do Total de Mesas e Mesas Ocupadas
+      // Mesas Ocupadas
       const totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
       const tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       
@@ -272,8 +284,12 @@
           occupiedCount++;
         }
       });
-
       document.getElementById('dashMesasStatus').innerText = `${occupiedCount} / ${totalTables}`;
+
+      // Indicador de Clientes Fidelizados (Retenção)
+      const clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
+      const totalClientsCount = Object.keys(clientsLoyalty).length;
+      document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
     }
 
     setInterval(() => {

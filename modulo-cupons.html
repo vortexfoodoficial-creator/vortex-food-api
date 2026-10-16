@@ -110,6 +110,14 @@
     input[type="text"], input[type="number"], input[type="datetime-local"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     input:focus, select:focus { border-color: var(--primary); }
 
+    .input-prefix-wrapper { position: relative; display: flex; align-items: center; }
+    .input-prefix-wrapper input { padding-left: 28px; }
+    .input-prefix-text { position: absolute; left: 10px; color: var(--text-muted); font-weight: bold; font-size: 0.88rem; pointer-events: none; }
+
+    .input-suffix-wrapper { position: relative; display: flex; align-items: center; }
+    .input-suffix-wrapper input { padding-right: 30px; }
+    .input-suffix-text { position: absolute; right: 12px; color: var(--text-muted); font-weight: bold; font-size: 0.88rem; pointer-events: none; }
+
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 10px; overflow-y: auto; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; margin: auto; }
@@ -254,14 +262,20 @@
         </div>
         <div class="form-group" style="flex:1;">
           <label for="couponValue" id="couponValueLabel">Valor (%): *</label>
-          <input type="text" id="couponValue" placeholder="Ex: 10,00" oninput="maskCurrencyInput(this)">
+          <div id="couponValueWrapper" class="input-suffix-wrapper">
+            <input type="text" id="couponValue" placeholder="Ex: 10,00" oninput="maskCurrencyInput(this)">
+            <span id="couponValueSymbol" class="input-suffix-text">%</span>
+          </div>
         </div>
       </div>
 
       <div style="display:flex; gap:10px;">
         <div class="form-group" style="flex:1;">
           <label for="couponMinOrder">Pedido Mínimo (R$):</label>
-          <input type="text" id="couponMinOrder" placeholder="0,00 (sem mínimo)" oninput="maskCurrencyInput(this)">
+          <div class="input-prefix-wrapper">
+            <span class="input-prefix-text">R$</span>
+            <input type="text" id="couponMinOrder" placeholder="0,00 (sem mínimo)" oninput="maskCurrencyInput(this)">
+          </div>
         </div>
         <div class="form-group" style="flex:1;">
           <label for="couponMaxUses">Limite de Usos:</label>
@@ -353,7 +367,7 @@
           if (c.status === 'active') activeCount++;
           totalRedeemed += c.usedCount || 0;
 
-          let discountStr = c.type === 'percent' ? `${c.value}% OFF` : `R$ ${parseFloat(c.value).toFixed(2).replace('.', ',')} OFF`;
+          let discountStr = c.type === 'percent' ? `${parseFloat(c.value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% OFF` : `R$ ${parseFloat(c.value).toFixed(2).replace('.', ',')} OFF`;
           let minOrderStr = c.minOrder > 0 ? `R$ ${parseFloat(c.minOrder).toFixed(2).replace('.', ',')}` : 'Sem mínimo';
           let usesStr = c.maxUses ? `${c.usedCount || 0} / ${c.maxUses}` : `${c.usedCount || 0} (Ilimitado)`;
           let expStr = c.expiration ? new Date(c.expiration).toLocaleString('pt-BR') : 'Sem expiração';
@@ -395,7 +409,23 @@
 
     function updateValueLabel() {
       const type = document.getElementById('couponType').value;
-      document.getElementById('couponValueLabel').innerText = type === 'percent' ? 'Valor (%): *' : 'Valor (R$): *';
+      const label = document.getElementById('couponValueLabel');
+      const wrapper = document.getElementById('couponValueWrapper');
+      const symbol = document.getElementById('couponValueSymbol');
+
+      if (type === 'percent') {
+        label.innerText = 'Valor (%): *';
+        wrapper.className = 'input-suffix-wrapper';
+        symbol.innerText = '%';
+        symbol.style.right = '12px';
+        symbol.style.left = 'auto';
+      } else {
+        label.innerText = 'Valor (R$): *';
+        wrapper.className = 'input-prefix-wrapper';
+        symbol.innerText = 'R$';
+        symbol.style.left = '10px';
+        symbol.style.right = 'auto';
+      }
     }
 
     // Função de máscara monetária automática (formata como 0,00)

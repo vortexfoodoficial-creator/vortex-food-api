@@ -94,14 +94,13 @@
     .shortcut-icon { font-size: 1.6rem; }
     .shortcut-label { font-size: 0.82rem; font-weight: bold; }
 
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
     .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
     .metric-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
     .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
     .metric-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
 
     .dashboard-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .dashboard-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
     /* PROGRESS BARS & BARS VISUAIS */
     .progress-bar-bg { background: var(--bg-main); border-radius: 10px; height: 10px; width: 100%; overflow: hidden; margin-top: 6px; }
@@ -114,7 +113,7 @@
     .rank-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; }
 
     @media (max-width: 900px) {
-      .dashboard-grid-2, .dashboard-grid-3 { grid-template-columns: 1fr; }
+      .dashboard-grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -255,6 +254,12 @@
       </div>
 
       <div class="metric-card">
+        <span class="metric-title">Lucro Bruto Estimado</span>
+        <span class="metric-value" style="color:var(--success);" id="dashLucroBruto">R$ 0,00</span>
+        <span class="metric-sub" id="dashMargemLucro">Margem Média: 0.0%</span>
+      </div>
+
+      <div class="metric-card">
         <span class="metric-title">Ticket Médio</span>
         <span class="metric-value" id="dashTicketMedio">R$ 0,00</span>
         <span class="metric-sub" id="dashOrdersCount">0 pedidos encerrados</span>
@@ -310,15 +315,29 @@
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelDelivery" style="background:var(--primary);"></div></div>
         </div>
 
-        <div class="channel-item">
-          <div class="channel-info"><span>Integradores (iFood / 99)</span><span id="valChannelApps">R$ 0,00 (0%)</span></div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelApps" style="background:var(--warning);"></div></div>
+        <div style="margin-top:15px; border-top:1px dashed var(--border); padding-top:12px;">
+          <div style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase;">Integradores Delivery</div>
+
+          <div class="channel-item">
+            <div class="channel-info"><span>iFood</span><span id="valChannelIFood">R$ 0,00 (0%)</span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelIFood" style="background:#ea1d2c;"></div></div>
+          </div>
+
+          <div class="channel-item">
+            <div class="channel-info"><span>99 Food</span><span id="valChannel99">R$ 0,00 (0%)</span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannel99" style="background:#ff8000;"></div></div>
+          </div>
+
+          <div class="channel-item">
+            <div class="channel-info"><span>Keeta</span><span id="valChannelKeeta">R$ 0,00 (0%)</span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelKeeta" style="background:#ffd700;"></div></div>
+          </div>
         </div>
       </div>
 
       <!-- FORMAS DE PAGAMENTO -->
       <div class="card-box">
-        <div class="card-title">💳 Formas de Pagamento</div>
+        <div class="card-title">💳 Formas de Pagamento <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(Vendas registradas no sistema Vortex Food)</span></div>
         
         <div class="channel-item">
           <div class="channel-info"><span>PIX</span><span id="valPayPix">R$ 0,00 (0%)</span></div>
@@ -343,7 +362,7 @@
       <div class="card-box">
         <div class="card-title">🔥 Top Produtos mais Vendidos</div>
         <div class="rank-list" id="rankTopProducts">
-          <div style="text-align:center; color:var(--text-muted); padding:15px; font-size:0.85rem;">Nenhum produto vendido hoje.</div>
+          <div style="text-align:center; color:var(--text-muted); padding:15px; font-size:0.85rem;">Nenhum produto vendido no período.</div>
         </div>
       </div>
 
@@ -412,7 +431,7 @@
     function setPeriodFilter(period) {
       currentFilter = period;
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      if (event && event.target) event.target.classList.add('active');
       loadDashboardData();
     }
 
@@ -443,23 +462,36 @@
       
       let totalDiscounts = 0;
       let totalCancelled = 0;
+      let estimatedCmvCost = 0;
 
       salesHistory.forEach(s => {
         if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
         if (s.status === 'cancelled') totalCancelled++;
+        if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
+        else if (s.total) estimatedCmvCost += (s.total * 0.35); // CMV padrão estimado de 35% quando não parametrizado
       });
 
+      if (grossSales > 0 && salesHistory.length === 0) {
+        estimatedCmvCost = grossSales * 0.35;
+      }
+
       const netSales = Math.max(0, grossSales - totalDiscounts);
+      const grossProfit = Math.max(0, netSales - estimatedCmvCost);
+      const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
+
       document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
       document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+
+      document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
+      document.getElementById('dashMargemLucro').innerText = `Margem Média: ${profitMargin}%`;
 
       // Ticket Médio
       const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) encerrado(s)`;
 
-      // Ponto de Equilíbrio Estimado (Ex: Meta de R$ 15.000,00/mês)
+      // Ponto de Equilíbrio Estimado (Meta de R$ 15.000,00/mês)
       const monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
@@ -498,20 +530,25 @@
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
       // Canais de Venda
-      let channelMesa = 0, channelDelivery = 0, channelApps = 0;
+      let channelMesa = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
+
       salesHistory.forEach(s => {
         if (s.channel === 'delivery') channelDelivery += s.total || 0;
-        else if (s.channel === 'apps') channelApps += s.total || 0;
+        else if (s.channel === 'ifood') channelIFood += s.total || 0;
+        else if (s.channel === '99food') channel99 += s.total || 0;
+        else if (s.channel === 'keeta') channelKeeta += s.total || 0;
         else channelMesa += s.total || 0;
       });
 
       if (grossSales > 0 && salesHistory.length === 0) {
-        channelMesa = grossSales; // Fallback para vendas diretas sem histórico de canal
+        channelMesa = grossSales;
       }
 
       const pMesa = grossSales > 0 ? Math.round((channelMesa / grossSales) * 100) : 0;
       const pDelivery = grossSales > 0 ? Math.round((channelDelivery / grossSales) * 100) : 0;
-      const pApps = grossSales > 0 ? Math.round((channelApps / grossSales) * 100) : 0;
+      const pIFood = grossSales > 0 ? Math.round((channelIFood / grossSales) * 100) : 0;
+      const p99 = grossSales > 0 ? Math.round((channel99 / grossSales) * 100) : 0;
+      const pKeeta = grossSales > 0 ? Math.round((channelKeeta / grossSales) * 100) : 0;
 
       document.getElementById('valChannelMesa').innerText = `R$ ${formatFloatToCurrency(channelMesa)} (${pMesa}%)`;
       document.getElementById('barChannelMesa').style.width = `${pMesa}%`;
@@ -519,8 +556,14 @@
       document.getElementById('valChannelDelivery').innerText = `R$ ${formatFloatToCurrency(channelDelivery)} (${pDelivery}%)`;
       document.getElementById('barChannelDelivery').style.width = `${pDelivery}%`;
 
-      document.getElementById('valChannelApps').innerText = `R$ ${formatFloatToCurrency(channelApps)} (${pApps}%)`;
-      document.getElementById('barChannelApps').style.width = `${pApps}%`;
+      document.getElementById('valChannelIFood').innerText = `R$ ${formatFloatToCurrency(channelIFood)} (${pIFood}%)`;
+      document.getElementById('barChannelIFood').style.width = `${pIFood}%`;
+
+      document.getElementById('valChannel99').innerText = `R$ ${formatFloatToCurrency(channel99)} (${p99}%)`;
+      document.getElementById('barChannel99').style.width = `${p99}%`;
+
+      document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
+      document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
       // Formas de Pagamento
       let payPix = 0, payCartao = 0, payDinheiro = 0;
@@ -530,7 +573,7 @@
         else payDinheiro += s.total || 0;
       });
 
-      if (grossSales > 0 && salesHistory.length === 0) payPix = grossSales; // Fallback padronizado
+      if (grossSales > 0 && salesHistory.length === 0) payPix = grossSales;
 
       const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
       const pCartao = grossSales > 0 ? Math.round((payCartao / grossSales) * 100) : 0;

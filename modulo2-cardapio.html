@@ -129,7 +129,6 @@
     .toggles-section { display: flex; flex-direction: column; gap: 6px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 6px; max-height: 150px; overflow-y: auto; }
     .toggle-row-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
 
-    /* CORREÇÃO DE DIMENSÕES MOBILE PARA O MODAL */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 10px; overflow-y: auto; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; margin: auto; }
@@ -167,17 +166,21 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
-        <span class="nav-section-title">PRODUTOS</span>
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link active"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
         <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
         <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
         <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">ADMINISTRAÇÃO</span>
@@ -188,6 +191,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -232,7 +238,6 @@
       </div>
     </div>
 
-    <!-- BARRA DE AÇÕES DO TOPO COM BOTÃO DE GERENCIAR ITENS INCLUÍDO -->
     <div class="top-action-bar">
       <button class="top-action-btn" style="background:#22c55e;" onclick="openGroupModal()">📁 Criar Grupo</button>
       <button class="top-action-btn" style="background:#3b82f6;" onclick="openProductModal()">➕ Criar Item</button>
@@ -288,7 +293,6 @@
         </div>
       </div>
 
-      <!-- OPÇÃO DE PREÇO VARIÁVEL -->
       <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:8px 10px; border-radius:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <span style="font-size:0.78rem; font-weight:bold;">Usar Preço Variável ("A partir de")</span>
@@ -303,14 +307,12 @@
         </div>
       </div>
 
-      <!-- CAMPO DINÂMICO DE PREÇO POR QUILO (KG) -->
       <div class="form-group" id="kgPriceContainer" style="display:none; background:var(--bg-main); border:1px solid var(--primary); padding:8px 10px; border-radius:8px;">
         <label for="prodKgPrice" style="color:var(--primary); font-weight:bold;">Preço por 1 KG (R$):</label>
         <input type="text" id="prodKgPrice" placeholder="R$ 0,00" oninput="maskCurrency(this, 'kg')">
         <span style="font-size:0.7rem; color:var(--text-muted); margin-top:2px; display:block;">O cliente poderá escolher o peso desejado no momento do pedido.</span>
       </div>
 
-      <!-- HAPPY HOUR / PREÇO PROMOCIONAL POR HORÁRIO -->
       <div class="form-group" style="background:var(--bg-main); border:1px solid var(--border); padding:8px 10px; border-radius:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <span style="font-size:0.78rem; font-weight:bold; color:var(--warning);">Ativar Happy Hour / Promoção por Horário ⏰</span>
@@ -337,7 +339,6 @@
         </div>
       </div>
 
-      <!-- DIAS ATIVOS -->
       <div class="form-group">
         <label>Dias Ativos na Semana:</label>
         <div class="days-grid">
@@ -351,7 +352,6 @@
         </div>
       </div>
 
-      <!-- TOGGLES E OPÇÕES AVANÇADAS -->
       <div class="form-group">
         <label>Opções e Etiquetas:</label>
         <div class="toggles-section">
@@ -371,7 +371,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE GESTÃO GERAL DE PRODUTOS -->
   <div class="modal-overlay" id="allProductsModal">
     <div class="custom-modal-card" style="max-width: 550px;">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -384,7 +383,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE CADASTRO / EDIÇÃO DE GRUPO -->
   <div class="modal-overlay" id="groupModal">
     <div class="custom-modal-card">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -412,7 +410,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE COMPLEMENTOS -->
   <div class="modal-overlay" id="complementsModal">
     <div class="custom-modal-card" style="max-width: 550px;">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -444,7 +441,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE ITEM UPSELL -->
   <div class="modal-overlay" id="upsellModal">
     <div class="custom-modal-card">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -457,7 +453,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE EXCLUÍDOS (LIXEIRA COM APAGAR PERMANENTE) -->
   <div class="modal-overlay" id="trashModal">
     <div class="custom-modal-card">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -470,7 +465,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center; max-width: 380px;">
       <div style="font-size:2.5rem; margin-bottom:8px;" id="noticeIcon">🎉</div>
@@ -636,7 +630,6 @@
             let priceDisplay = p.isVariable ? `A partir de R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}` : `R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')}`;
             if (p.isKg) priceDisplay = `R$ ${parseFloat(p.kgPrice || p.price).toFixed(2).replace('.', ',')} / kg`;
 
-            // Verifica Happy Hour ativo no momento
             let happyHourBadge = '';
             if (p.isHappyHour && p.happyPrice) {
               const now = new Date();
@@ -693,7 +686,6 @@
       });
     }
 
-    /* GESTÃO DE GRUPOS */
     function openGroupModal() {
       document.getElementById('editGroupId').value = '';
       document.getElementById('groupModalTitle').innerText = 'Criar Novo Grupo';
@@ -790,7 +782,6 @@
       renderCardapio();
     }
 
-    /* GESTÃO DE PRODUTOS/ITENS */
     function openProductModal() {
       document.getElementById('editProductId').value = '';
       document.getElementById('productModalTitle').innerText = 'Cadastrar Produto';

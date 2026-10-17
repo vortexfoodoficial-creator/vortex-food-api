@@ -155,12 +155,14 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
         <a href="modulo-cupons.html" class="nav-link active"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
@@ -178,6 +180,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -198,7 +203,6 @@
       </div>
     </header>
 
-    <!-- BARRA DE MÉTRICAS -->
     <div class="stats-summary-bar">
       <div class="stat-badge">
         <span style="font-size:1.4rem;">🏷️</span>
@@ -237,7 +241,6 @@
     </div>
   </main>
 
-  <!-- MODAL DE CRIAR/EDITAR CUPOM -->
   <div class="modal-overlay" id="couponModal">
     <div class="custom-modal-card">
       <div style="font-size:1.05rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
@@ -301,7 +304,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center; max-width: 380px;">
       <div style="font-size:2.5rem; margin-bottom:8px;" id="noticeIcon">🎉</div>
@@ -428,7 +430,6 @@
       }
     }
 
-    // Função de máscara monetária automática (formata como 0,00)
     function maskCurrencyInput(input) {
       let value = input.value.replace(/\D/g, '');
       if (!value) {
@@ -439,14 +440,12 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Função auxiliar para converter string formatada (ex: "1.234,56") para número float JS (1234.56)
     function parseCurrencyToFloat(valStr) {
       if (!valStr) return 0;
       let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
       return parseFloat(cleaned) || 0;
     }
 
-    // Função auxiliar para converter número float para formato de input formatado ("1234.56" -> "1.234,56")
     function formatFloatToCurrencyStr(num) {
       if (isNaN(num) || num === 0) return '';
       return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

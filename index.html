@@ -350,8 +350,23 @@
         </div>
 
         <div class="channel-item">
-          <div class="channel-info"><span>Cartão Crédito / Débito</span><span id="valPayCartao">R$ 0,00 (0%)</span></div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayCartao" style="background:var(--info);"></div></div>
+          <div class="channel-info"><span>Cartão de débito</span><span id="valPayDebit">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayDebit" style="background:var(--info);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Cartão de crédito</span><span id="valPayCredit">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayCredit" style="background:#8b5cf6;"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Vale Refeição - VR</span><span id="valPayVr">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayVr" style="background:#ec4899;"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Vale Alimentação - VA</span><span id="valPayVa">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayVa" style="background:#14b8a6;"></div></div>
         </div>
 
         <div class="channel-item">
@@ -544,7 +559,7 @@
         else if (s.channel === 'ifood') channelIFood += s.total || 0;
         else if (s.channel === '99food') channel99 += s.total || 0;
         else if (s.channel === 'keeta') channelKeeta += s.total || 0;
-        else channelPdv += s.total || 0; // Fallback para vendas presenciais balcão
+        else channelPdv += s.total || 0;
       });
 
       if (grossSales > 0 && salesHistory.length === 0) {
@@ -577,24 +592,39 @@
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
       // Formas de Pagamento
-      let payPix = 0, payCartao = 0, payDinheiro = 0;
+      let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
         if (s.payMethod === 'pix') payPix += s.total || 0;
-        else if (s.payMethod === 'card') payCartao += s.total || 0;
-        else payDinheiro += s.total || 0;
+        else if (s.payMethod === 'debit') payDebit += s.total || 0;
+        else if (s.payMethod === 'credit' || s.payMethod === 'card') payCredit += s.total || 0;
+        else if (s.payMethod === 'vr') payVr += s.total || 0;
+        else if (s.payMethod === 'va') payVa += s.total || 0;
+        else if (s.payMethod === 'cash') payDinheiro += s.total || 0;
       });
 
       if (grossSales > 0 && salesHistory.length === 0) payPix = grossSales;
 
       const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
-      const pCartao = grossSales > 0 ? Math.round((payCartao / grossSales) * 100) : 0;
+      const pDebit = grossSales > 0 ? Math.round((payDebit / grossSales) * 100) : 0;
+      const pCredit = grossSales > 0 ? Math.round((payCredit / grossSales) * 100) : 0;
+      const pVr = grossSales > 0 ? Math.round((payVr / grossSales) * 100) : 0;
+      const pVa = grossSales > 0 ? Math.round((payVa / grossSales) * 100) : 0;
       const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
 
       document.getElementById('valPayPix').innerText = `R$ ${formatFloatToCurrency(payPix)} (${pPix}%)`;
       document.getElementById('barPayPix').style.width = `${pPix}%`;
 
-      document.getElementById('valPayCartao').innerText = `R$ ${formatFloatToCurrency(payCartao)} (${pCartao}%)`;
-      document.getElementById('barPayCartao').style.width = `${pCartao}%`;
+      document.getElementById('valPayDebit').innerText = `R$ ${formatFloatToCurrency(payDebit)} (${pDebit}%)`;
+      document.getElementById('barPayDebit').style.width = `${pDebit}%`;
+
+      document.getElementById('valPayCredit').innerText = `R$ ${formatFloatToCurrency(payCredit)} (${pCredit}%)`;
+      document.getElementById('barPayCredit').style.width = `${pCredit}%`;
+
+      document.getElementById('valPayVr').innerText = `R$ ${formatFloatToCurrency(payVr)} (${pVr}%)`;
+      document.getElementById('barPayVr').style.width = `${pVr}%`;
+
+      document.getElementById('valPayVa').innerText = `R$ ${formatFloatToCurrency(payVa)} (${pVa}%)`;
+      document.getElementById('barPayVa').style.width = `${pVa}%`;
 
       document.getElementById('valPayDinheiro').innerText = `R$ ${formatFloatToCurrency(payDinheiro)} (${pDinheiro}%)`;
       document.getElementById('barPayDinheiro').style.width = `${pDinheiro}%`;

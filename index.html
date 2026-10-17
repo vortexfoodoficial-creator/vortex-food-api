@@ -196,10 +196,10 @@
     <div class="filter-bar">
       <div style="font-size:0.85rem; font-weight:bold; color:var(--text-muted);">🗓️ Período de Análise:</div>
       <div class="filter-btn-group">
-        <button class="filter-btn active" onclick="setPeriodFilter('today')">Hoje</button>
-        <button class="filter-btn" onclick="setPeriodFilter('yesterday')">Ontem</button>
-        <button class="filter-btn" onclick="setPeriodFilter('week')">Esta Semana</button>
-        <button class="filter-btn" onclick="setPeriodFilter('month')">Este Mês</button>
+        <button class="filter-btn active" onclick="setPeriodFilter('today', this)">Hoje</button>
+        <button class="filter-btn" onclick="setPeriodFilter('yesterday', this)">Ontem</button>
+        <button class="filter-btn" onclick="setPeriodFilter('week', this)">Esta Semana</button>
+        <button class="filter-btn" onclick="setPeriodFilter('month', this)">Este Mês</button>
       </div>
     </div>
 
@@ -428,16 +428,6 @@
       }
     }
 
-    function checkAndResetDailySales() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const lastSavedDate = localStorage.getItem('vortex_sales_date');
-
-      if (lastSavedDate !== todayStr) {
-        localStorage.setItem('vortex_sales_date', todayStr);
-        localStorage.setItem('vortex_vendas_hoje', '0,00');
-      }
-    }
-
     function parseCurrencyToFloat(valStr) {
       if (!valStr) return 0;
       let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
@@ -448,16 +438,47 @@
       return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function setPeriodFilter(period) {
+    function setPeriodFilter(period, btnElement) {
       currentFilter = period;
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-      if (event && event.target) event.target.classList.add('active');
+      if (btnElement) {
+        btnElement.classList.add('active');
+      }
       loadDashboardData();
+    }
+
+    // Helper para comparar datas baseado no filtro escolhido
+    function isDateInFilter(dateStr, filterType) {
+      if (!dateStr) return filterType === 'today'; // Fallback se o histórico não tiver data registrada
+
+      const itemDate = new Date(dateStr.includes('T') ? dateStr : dateStr.split('T')[0] + 'T00:00:00');
+      const now = new Date();
+      
+      const todayString = now.toISOString().split('T')[0];
+      const itemString = itemDate.toISOString().split('T')[0];
+
+      if (filterType === 'today') {
+        return itemString === todayString;
+      } 
+      else if (filterType === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        return itemString === yesterday.toISOString().split('T')[0];
+      } 
+      else if (filterType === 'week') {
+        // Últimos 7 dias
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        return itemDate >= sevenDaysAgo && itemDate <= now;
+      } 
+      else if (filterType === 'month') {
+        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+      }
+      return true;
     }
 
     function loadDashboardData() {
       applyTheme();
-      checkAndResetDailySales();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
@@ -471,14 +492,28 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Faturamento e Vendas Brutas
-      const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      const grossSales = parseCurrencyToFloat(salesRaw);
+      // Histórico de Vendas/Pedidos salvos no sistema
+      const rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      
+      // Filtrar o histórico conforme o botão de período ativo
+      const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
+
+      // Se estiver no filtro 'today' e não houver histórico gravado, faz fallback para 'vortex_vendas_hoje'
+      let grossSales = 0;
+      if (currentFilter === 'today' && salesHistory.length === 0) {
+        const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+        grossSales = parseCurrencyToFloat(salesRaw);
+      } else {
+        salesHistory.forEach(s => {
+          if (s.status !== 'cancelled') {
+            grossSales += parseFloat(s.total) || 0;
+          }
+        });
+      }
+
       document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
 
-      // Histórico de Vendas/Pedidos
-      const salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      const totalOrdersCount = salesHistory.length || (grossSales > 0 ? 1 : 0);
+      const totalOrdersCount = salesHistory.length || (grossSales > 0 && currentFilter === 'today' ? 1 : 0);
       
       let totalDiscounts = 0;
       let totalCancelled = 0;
@@ -488,7 +523,7 @@
         if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
         if (s.status === 'cancelled') totalCancelled++;
         if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
-        else if (s.total) estimatedCmvCost += (s.total * 0.35); // CMV padrão estimado de 35% quando não parametrizado
+        else if (s.total) estimatedCmvCost += (s.total * 0.35); // CMV padrão estimado de 35%
       });
 
       if (grossSales > 0 && salesHistory.length === 0) {
@@ -509,7 +544,7 @@
       // Ticket Médio
       const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
-      document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) encerrado(s)`;
+      document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
 
       // Ponto de Equilíbrio Estimado (Meta de R$ 15.000,00/mês)
       const monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
@@ -517,7 +552,7 @@
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
-      // Pedidos Ativos na Cozinha (KDS)
+      // Pedidos Ativos na Cozinha (KDS) - Mantém em tempo real global
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
@@ -549,7 +584,7 @@
       const cancelRate = totalOrdersCount > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // Canais de Venda
+      // Canais de Venda filtrados
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
@@ -591,7 +626,7 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // Formas de Pagamento
+      // Formas de Pagamento filtradas
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
         if (s.payMethod === 'pix') payPix += s.total || 0;
@@ -684,7 +719,6 @@
 
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
-      loadDashboardData();
     }, 1000);
 
     window.onload = function() {

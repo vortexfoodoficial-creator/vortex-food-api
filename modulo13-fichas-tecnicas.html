@@ -85,7 +85,6 @@
     .search-filter-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
 
-    /* ROLAGEM INDEPENDENTE PARA O CONTAINER DAS FICHAS TÉCNICAS */
     .recipe-scroll-container { max-height: 580px; overflow-y: auto; padding-right: 4px; }
     .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
     
@@ -149,12 +148,14 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link active"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
         <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
@@ -172,6 +173,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -192,7 +196,6 @@
       </div>
     </header>
 
-    <!-- BARRA DE MÉTRICAS COM PORCENTAGEM DE LUCRO NO TOPO -->
     <div class="stats-summary-bar">
       <div class="stat-badge">
         <span style="font-size:1.4rem;">📖</span>
@@ -230,14 +233,12 @@
         <input type="text" id="recipeSearchInput" class="search-input" placeholder="🔍 Buscar ficha técnica por nome do produto..." oninput="renderRecipes()">
       </div>
 
-      <!-- CONTAINER COM ROLAGEM INDEPENDENTE -->
       <div class="recipe-scroll-container">
         <div class="recipe-grid" id="recipesContainer"></div>
       </div>
     </div>
   </main>
 
-  <!-- MODAL DE CRIAR/EDITAR FICHA TÉCNICA -->
   <div class="modal-overlay" id="recipeModal">
     <div class="custom-modal-card">
       <div style="font-size:1.05rem; font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -303,7 +304,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center; max-width: 380px;">
       <div style="font-size:2.5rem; margin-bottom:8px;" id="noticeIcon">🎉</div>
@@ -578,7 +578,6 @@
         else totalCalculatedCost += ing.qty * unitCost;
       });
 
-      // Atualiza o Custo Base do produto no Cardápio automaticamente
       p.cost = totalCalculatedCost;
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
 

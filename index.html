@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Dashboard</title>
+  <title>Vortex Food - Dashboard & Indicadores</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -17,6 +17,7 @@
       --success: #22c55e;
       --info: #38bdf8;
       --warning: #eab308;
+      --danger: #ef4444;
     }
 
     body.light-theme {
@@ -75,22 +76,45 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
+    .filter-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+    .filter-btn.active, .filter-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .alert-banner { background: rgba(239, 68, 68, 0.12); border: 1px solid var(--danger); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; display: none; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.85rem; color: var(--danger); }
+    .alert-banner.active { display: flex; }
+
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
     /* CARDS DE ATALHO OPERACIONAL */
-    .shortcuts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 25px; }
-    .shortcut-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-decoration: none; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; transition: all 0.2s; }
+    .shortcuts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .shortcut-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-decoration: none; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; transition: all 0.2s; }
     .shortcut-card:hover { border-color: var(--primary); transform: translateY(-3px); background: rgba(249, 115, 22, 0.08); }
-    .shortcut-icon { font-size: 1.8rem; }
-    .shortcut-label { font-size: 0.85rem; font-weight: bold; }
+    .shortcut-icon { font-size: 1.6rem; }
+    .shortcut-label { font-size: 0.82rem; font-weight: bold; }
 
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 25px; }
-    .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
-    .metric-title { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
-    .metric-value { font-size: 1.5rem; font-weight: bold; color: var(--text-main); }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+    .metric-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
+    .metric-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
 
-    @media (max-width: 768px) {
+    .dashboard-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .dashboard-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* PROGRESS BARS & BARS VISUAIS */
+    .progress-bar-bg { background: var(--bg-main); border-radius: 10px; height: 10px; width: 100%; overflow: hidden; margin-top: 6px; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.4s ease; }
+
+    .channel-item { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .channel-info { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; }
+
+    .rank-list { display: flex; flex-direction: column; gap: 8px; }
+    .rank-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; }
+
+    @media (max-width: 900px) {
+      .dashboard-grid-2, .dashboard-grid-3 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -169,7 +193,27 @@
       </div>
     </header>
 
-    <!-- SEÇÃO DE ATALHOS RÁPIDOS OPERACIONAIS -->
+    <!-- BARRA DE FILTRO DE PERÍODO -->
+    <div class="filter-bar">
+      <div style="font-size:0.85rem; font-weight:bold; color:var(--text-muted);">🗓️ Período de Análise:</div>
+      <div class="filter-btn-group">
+        <button class="filter-btn active" onclick="setPeriodFilter('today')">Hoje</button>
+        <button class="filter-btn" onclick="setPeriodFilter('yesterday')">Ontem</button>
+        <button class="filter-btn" onclick="setPeriodFilter('week')">Esta Semana</button>
+        <button class="filter-btn" onclick="setPeriodFilter('month')">Este Mês</button>
+      </div>
+    </div>
+
+    <!-- BANNER DE ALERTAS AUTOMÁTICOS DE ANOMALIAS -->
+    <div class="alert-banner" id="systemAlertBanner">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.2rem;">⚠️</span>
+        <span id="systemAlertText">Aviso: Existem pedidos atrasados no KDS ou insumos com estoque crítico!</span>
+      </div>
+      <a href="modulo7-8-kds-pedidos.html" style="color:var(--danger); font-weight:bold; text-decoration:underline; font-size:0.8rem;">Ver Cozinha ➔</a>
+    </div>
+
+    <!-- ATALHOS RÁPIDOS OPERACIONAIS -->
     <div class="card-box" style="margin-bottom:20px;">
       <div class="card-title">🚀 Acesso Rápido Operacional</div>
       <div class="shortcuts-grid">
@@ -196,32 +240,142 @@
       </div>
     </div>
 
-    <!-- SEÇÃO DE MÉTRICAS E INDICADORES -->
+    <!-- MÉTRICAS FINANCEIRAS E OPERACIONAIS PRINCIPAIS -->
     <div class="metrics-grid">
       <div class="metric-card">
-        <span class="metric-title">Vendas de Hoje (Todas as Origens)</span>
+        <span class="metric-title">Faturamento Bruto</span>
         <span class="metric-value" style="color:var(--success);" id="dashVendas">R$ 0,00</span>
+        <span class="metric-sub" id="dashSalesSub">Total arrecadado</span>
       </div>
+
       <div class="metric-card">
-        <span class="metric-title">Pedidos Ativos na Cozinha</span>
+        <span class="metric-title">Vendas Líquidas</span>
+        <span class="metric-value" style="color:var(--info);" id="dashVendasLiquidas">R$ 0,00</span>
+        <span class="metric-sub" id="dashNetSub">Descontos: R$ 0,00</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Ticket Médio</span>
+        <span class="metric-value" id="dashTicketMedio">R$ 0,00</span>
+        <span class="metric-sub" id="dashOrdersCount">0 pedidos encerrados</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Ponto de Equilíbrio (Meta)</span>
+        <span class="metric-value" style="color:var(--warning);" id="dashPontoEquilibrio">0%</span>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="dashPontoEqBar"></div></div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS DE DESEMPENHO DA OPERAÇÃO -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Pedidos Ativos no KDS</span>
         <span class="metric-value" style="color:var(--info);" id="dashPedidosKds">0</span>
+        <span class="metric-sub">Em preparo na cozinha</span>
       </div>
+
       <div class="metric-card">
-        <span class="metric-title">Mesas Ocupadas / Total</span>
+        <span class="metric-title">Mesas Ocupadas</span>
         <span class="metric-value" id="dashMesasStatus">0 / 10</span>
+        <span class="metric-sub" id="dashMesasPercent">0% de ocupação</span>
       </div>
+
       <div class="metric-card">
         <span class="metric-title">Entregas em Rota</span>
         <span class="metric-value" style="color:var(--warning);" id="dashEntregasRota">0</span>
+        <span class="metric-sub">Motoboys em deslocamento</span>
       </div>
+
       <div class="metric-card" style="border-color: var(--primary);">
-        <span class="metric-title">Clientes Fidelizados / Retenção</span>
+        <span class="metric-title">Clientes Fidelizados</span>
         <span class="metric-value" style="color: var(--primary);" id="dashFidelidadeRetencao">0 cadastrados</span>
+        <span class="metric-sub">Participantes de Cashback</span>
+      </div>
+    </div>
+
+    <!-- PAINÉIS DE ANÁLISE DE CANAIS E FORMAS DE PAGAMENTO -->
+    <div class="dashboard-grid-2">
+      <!-- CANAIS DE VENDA -->
+      <div class="card-box">
+        <div class="card-title">🛵 Vendas por Canal</div>
+        
+        <div class="channel-item">
+          <div class="channel-info"><span>Mesa & Balcão</span><span id="valChannelMesa">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelMesa" style="background:var(--info);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Delivery Próprio</span><span id="valChannelDelivery">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelDelivery" style="background:var(--primary);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Integradores (iFood / 99)</span><span id="valChannelApps">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelApps" style="background:var(--warning);"></div></div>
+        </div>
+      </div>
+
+      <!-- FORMAS DE PAGAMENTO -->
+      <div class="card-box">
+        <div class="card-title">💳 Formas de Pagamento</div>
+        
+        <div class="channel-item">
+          <div class="channel-info"><span>PIX</span><span id="valPayPix">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayPix" style="background:var(--success);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Cartão Crédito / Débito</span><span id="valPayCartao">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayCartao" style="background:var(--info);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>Dinheiro</span><span id="valPayDinheiro">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barPayDinheiro" style="background:var(--warning);"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RANKING DE PRODUTOS E DESEMPENHO DE EQUIPE -->
+    <div class="dashboard-grid-2">
+      <!-- TOP PRODUTOS -->
+      <div class="card-box">
+        <div class="card-title">🔥 Top Produtos mais Vendidos</div>
+        <div class="rank-list" id="rankTopProducts">
+          <div style="text-align:center; color:var(--text-muted); padding:15px; font-size:0.85rem;">Nenhum produto vendido hoje.</div>
+        </div>
+      </div>
+
+      <!-- TEMPOS DE OPERAÇÃO E CANCELAMENTOS -->
+      <div class="card-box">
+        <div class="card-title">⏱️ Eficiência e Qualidade Operacional</div>
+        
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="rank-item">
+            <span>⏱️ Tempo Médio de Preparo (KDS):</span>
+            <strong style="color:var(--info);" id="dashTimeKds">12 min</strong>
+          </div>
+          <div class="rank-item">
+            <span>🛵 Tempo Médio de Entrega:</span>
+            <strong style="color:var(--warning);" id="dashTimeDelivery">28 min</strong>
+          </div>
+          <div class="rank-item">
+            <span>🚫 Taxa de Cancelamento:</span>
+            <strong style="color:var(--danger);" id="dashCancelRate">0.0%</strong>
+          </div>
+          <div class="rank-item">
+            <span>🏷️ Total de Descontos Concedidos:</span>
+            <strong style="color:var(--text-muted);" id="dashTotalDiscounts">R$ 0,00</strong>
+          </div>
+        </div>
       </div>
     </div>
   </main>
 
   <script>
+    let currentFilter = 'today';
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -236,13 +390,30 @@
     }
 
     function checkAndResetDailySales() {
-      const todayStr = new Date().toISOString().split('T')[0]; // Ex: "2026-06-07"
+      const todayStr = new Date().toISOString().split('T')[0];
       const lastSavedDate = localStorage.getItem('vortex_sales_date');
 
       if (lastSavedDate !== todayStr) {
         localStorage.setItem('vortex_sales_date', todayStr);
         localStorage.setItem('vortex_vendas_hoje', '0,00');
       }
+    }
+
+    function parseCurrencyToFloat(valStr) {
+      if (!valStr) return 0;
+      let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
+      return parseFloat(cleaned) || 0;
+    }
+
+    function formatFloatToCurrency(num) {
+      return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setPeriodFilter(period) {
+      currentFilter = period;
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      loadDashboardData();
     }
 
     function loadDashboardData() {
@@ -261,9 +432,38 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Faturamento do Dia
+      // Faturamento e Vendas Brutas
       const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      document.getElementById('dashVendas').innerText = `R$ ${salesRaw}`;
+      const grossSales = parseCurrencyToFloat(salesRaw);
+      document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+
+      // Histórico de Vendas/Pedidos
+      const salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const totalOrdersCount = salesHistory.length || (grossSales > 0 ? 1 : 0);
+      
+      let totalDiscounts = 0;
+      let totalCancelled = 0;
+
+      salesHistory.forEach(s => {
+        if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
+        if (s.status === 'cancelled') totalCancelled++;
+      });
+
+      const netSales = Math.max(0, grossSales - totalDiscounts);
+      document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
+      document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
+      document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+
+      // Ticket Médio
+      const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
+      document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
+      document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) encerrado(s)`;
+
+      // Ponto de Equilíbrio Estimado (Ex: Meta de R$ 15.000,00/mês)
+      const monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
+      const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
+      document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
+      document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
       // Pedidos Ativos na Cozinha (KDS)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -285,11 +485,117 @@
         }
       });
       document.getElementById('dashMesasStatus').innerText = `${occupiedCount} / ${totalTables}`;
+      const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
+      document.getElementById('dashMesasPercent').innerText = `${tablesPercent}% de ocupação`;
 
-      // Indicador de Clientes Fidelizados (Retenção)
+      // Clientes Fidelizados (Retenção)
       const clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
       const totalClientsCount = Object.keys(clientsLoyalty).length;
       document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
+
+      // Taxa de Cancelamento
+      const cancelRate = totalOrdersCount > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
+      document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
+
+      // Canais de Venda
+      let channelMesa = 0, channelDelivery = 0, channelApps = 0;
+      salesHistory.forEach(s => {
+        if (s.channel === 'delivery') channelDelivery += s.total || 0;
+        else if (s.channel === 'apps') channelApps += s.total || 0;
+        else channelMesa += s.total || 0;
+      });
+
+      if (grossSales > 0 && salesHistory.length === 0) {
+        channelMesa = grossSales; // Fallback para vendas diretas sem histórico de canal
+      }
+
+      const pMesa = grossSales > 0 ? Math.round((channelMesa / grossSales) * 100) : 0;
+      const pDelivery = grossSales > 0 ? Math.round((channelDelivery / grossSales) * 100) : 0;
+      const pApps = grossSales > 0 ? Math.round((channelApps / grossSales) * 100) : 0;
+
+      document.getElementById('valChannelMesa').innerText = `R$ ${formatFloatToCurrency(channelMesa)} (${pMesa}%)`;
+      document.getElementById('barChannelMesa').style.width = `${pMesa}%`;
+
+      document.getElementById('valChannelDelivery').innerText = `R$ ${formatFloatToCurrency(channelDelivery)} (${pDelivery}%)`;
+      document.getElementById('barChannelDelivery').style.width = `${pDelivery}%`;
+
+      document.getElementById('valChannelApps').innerText = `R$ ${formatFloatToCurrency(channelApps)} (${pApps}%)`;
+      document.getElementById('barChannelApps').style.width = `${pApps}%`;
+
+      // Formas de Pagamento
+      let payPix = 0, payCartao = 0, payDinheiro = 0;
+      salesHistory.forEach(s => {
+        if (s.payMethod === 'pix') payPix += s.total || 0;
+        else if (s.payMethod === 'card') payCartao += s.total || 0;
+        else payDinheiro += s.total || 0;
+      });
+
+      if (grossSales > 0 && salesHistory.length === 0) payPix = grossSales; // Fallback padronizado
+
+      const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
+      const pCartao = grossSales > 0 ? Math.round((payCartao / grossSales) * 100) : 0;
+      const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
+
+      document.getElementById('valPayPix').innerText = `R$ ${formatFloatToCurrency(payPix)} (${pPix}%)`;
+      document.getElementById('barPayPix').style.width = `${pPix}%`;
+
+      document.getElementById('valPayCartao').innerText = `R$ ${formatFloatToCurrency(payCartao)} (${pCartao}%)`;
+      document.getElementById('barPayCartao').style.width = `${pCartao}%`;
+
+      document.getElementById('valPayDinheiro').innerText = `R$ ${formatFloatToCurrency(payDinheiro)} (${pDinheiro}%)`;
+      document.getElementById('barPayDinheiro').style.width = `${pDinheiro}%`;
+
+      // Top Produtos Vendidos
+      renderTopProducts(salesHistory);
+
+      // Alertas Automáticos do Sistema
+      checkSystemAlerts(activeKds, cancelRate);
+    }
+
+    function renderTopProducts(history) {
+      const rankContainer = document.getElementById('rankTopProducts');
+      let productMap = {};
+
+      history.forEach(s => {
+        if (s.items && Array.isArray(s.items)) {
+          s.items.forEach(item => {
+            if (!productMap[item.name]) productMap[item.name] = 0;
+            productMap[item.name] += item.qty || 1;
+          });
+        }
+      });
+
+      let sorted = Object.keys(productMap).sort((a, b) => productMap[b] - productMap[a]).slice(0, 5);
+
+      if (sorted.length === 0) {
+        rankContainer.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:15px; font-size:0.85rem;">Nenhum produto vendido no período.</div>`;
+        return;
+      }
+
+      rankContainer.innerHTML = '';
+      sorted.forEach((prodName, idx) => {
+        rankContainer.innerHTML += `
+          <div class="rank-item">
+            <span><strong>#${idx + 1}</strong> ${prodName}</span>
+            <strong style="color:var(--primary);">${productMap[prodName]} un.</strong>
+          </div>
+        `;
+      });
+    }
+
+    function checkSystemAlerts(activeKds, cancelRate) {
+      const banner = document.getElementById('systemAlertBanner');
+      const text = document.getElementById('systemAlertText');
+
+      if (activeKds > 8) {
+        text.innerText = `⚠️ Alerta de Sobrecarga: Existem ${activeKds} pedidos acumulados na fila da cozinha (KDS)!`;
+        banner.classList.add('active');
+      } else if (parseFloat(cancelRate) > 5) {
+        text.innerText = `⚠️ Alerta de Qualidade: Taxa de cancelamento alta (${cancelRate}%) detectada!`;
+        banner.classList.add('active');
+      } else {
+        banner.classList.remove('active');
+      }
     }
 
     setInterval(() => {

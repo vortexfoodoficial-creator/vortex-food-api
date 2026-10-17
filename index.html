@@ -306,12 +306,17 @@
         <div class="card-title">🛵 Vendas por Canal</div>
         
         <div class="channel-item">
-          <div class="channel-info"><span>Mesa & Balcão</span><span id="valChannelMesa">R$ 0,00 (0%)</span></div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelMesa" style="background:var(--info);"></div></div>
+          <div class="channel-info"><span>💻 PDV / Caixa (Balcão)</span><span id="valChannelPdv">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelPdv" style="background:var(--success);"></div></div>
         </div>
 
         <div class="channel-item">
-          <div class="channel-info"><span>Delivery Próprio</span><span id="valChannelDelivery">R$ 0,00 (0%)</span></div>
+          <div class="channel-info"><span>🍽️ Mesas & Comandas</span><span id="valChannelMesas">R$ 0,00 (0%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelMesas" style="background:var(--info);"></div></div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-info"><span>🛵 Delivery Próprio</span><span id="valChannelDelivery">R$ 0,00 (0%)</span></div>
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="barChannelDelivery" style="background:var(--primary);"></div></div>
         </div>
 
@@ -530,28 +535,34 @@
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
       // Canais de Venda
-      let channelMesa = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
+      let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
-        if (s.channel === 'delivery') channelDelivery += s.total || 0;
+        if (s.channel === 'pdv' || s.channel === 'counter') channelPdv += s.total || 0;
+        else if (s.channel === 'table' || s.channel === 'mesa') channelMesas += s.total || 0;
+        else if (s.channel === 'delivery') channelDelivery += s.total || 0;
         else if (s.channel === 'ifood') channelIFood += s.total || 0;
         else if (s.channel === '99food') channel99 += s.total || 0;
         else if (s.channel === 'keeta') channelKeeta += s.total || 0;
-        else channelMesa += s.total || 0;
+        else channelPdv += s.total || 0; // Fallback para vendas presenciais balcão
       });
 
       if (grossSales > 0 && salesHistory.length === 0) {
-        channelMesa = grossSales;
+        channelPdv = grossSales;
       }
 
-      const pMesa = grossSales > 0 ? Math.round((channelMesa / grossSales) * 100) : 0;
+      const pPdv = grossSales > 0 ? Math.round((channelPdv / grossSales) * 100) : 0;
+      const pMesas = grossSales > 0 ? Math.round((channelMesas / grossSales) * 100) : 0;
       const pDelivery = grossSales > 0 ? Math.round((channelDelivery / grossSales) * 100) : 0;
       const pIFood = grossSales > 0 ? Math.round((channelIFood / grossSales) * 100) : 0;
       const p99 = grossSales > 0 ? Math.round((channel99 / grossSales) * 100) : 0;
       const pKeeta = grossSales > 0 ? Math.round((channelKeeta / grossSales) * 100) : 0;
 
-      document.getElementById('valChannelMesa').innerText = `R$ ${formatFloatToCurrency(channelMesa)} (${pMesa}%)`;
-      document.getElementById('barChannelMesa').style.width = `${pMesa}%`;
+      document.getElementById('valChannelPdv').innerText = `R$ ${formatFloatToCurrency(channelPdv)} (${pPdv}%)`;
+      document.getElementById('barChannelPdv').style.width = `${pPdv}%`;
+
+      document.getElementById('valChannelMesas').innerText = `R$ ${formatFloatToCurrency(channelMesas)} (${pMesas}%)`;
+      document.getElementById('barChannelMesas').style.width = `${pMesas}%`;
 
       document.getElementById('valChannelDelivery').innerText = `R$ ${formatFloatToCurrency(channelDelivery)} (${pDelivery}%)`;
       document.getElementById('barChannelDelivery').style.width = `${pDelivery}%`;

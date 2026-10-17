@@ -447,32 +447,48 @@
       loadDashboardData();
     }
 
-    // Helper para comparar datas baseado no filtro escolhido
-    function isDateInFilter(dateStr, filterType) {
-      if (!dateStr) return filterType === 'today'; // Fallback se o histórico não tiver data registrada
-
-      const itemDate = new Date(dateStr.includes('T') ? dateStr : dateStr.split('T')[0] + 'T00:00:00');
+    // Helper robusto para comparar datas do histórico considerando o fuso local
+    function isDateInFilter(rawDate, filterType) {
       const now = new Date();
-      
-      const todayString = now.toISOString().split('T')[0];
-      const itemString = itemDate.toISOString().split('T')[0];
+      const todayY = now.getFullYear();
+      const todayM = now.getMonth();
+      const todayD = now.getDate();
+
+      // Se a venda não gravou data/timestamp, considera como venda de hoje
+      if (!rawDate) {
+        return filterType === 'today' || filterType === 'week' || filterType === 'month';
+      }
+
+      let itemDate = new Date(rawDate);
+      if (isNaN(itemDate.getTime())) {
+        // Fallback para datas string no formato YYYY-MM-DD
+        const parts = String(rawDate).split('T')[0].split('-');
+        if (parts.length === 3) {
+          itemDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        } else {
+          itemDate = new Date();
+        }
+      }
+
+      const itemY = itemDate.getFullYear();
+      const itemM = itemDate.getMonth();
+      const itemD = itemDate.getDate();
 
       if (filterType === 'today') {
-        return itemString === todayString;
+        return itemY === todayY && itemM === todayM && itemD === todayD;
       } 
       else if (filterType === 'yesterday') {
-        const yesterday = new Date();
-        yesterday.setDate(now.getDate() - 1);
-        return itemString === yesterday.toISOString().split('T')[0];
+        const yesterday = new Date(todayY, todayM, todayD - 1);
+        return itemY === yesterday.getFullYear() && itemM === yesterday.getMonth() && itemD === yesterday.getDate();
       } 
       else if (filterType === 'week') {
-        // Últimos 7 dias
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(now.getDate() - 7);
-        return itemDate >= sevenDaysAgo && itemDate <= now;
+        // Últimos 7 dias (incluindo hoje)
+        const sevenDaysAgo = new Date(todayY, todayM, todayD - 6, 0, 0, 0);
+        return itemDate >= sevenDaysAgo && itemDate <= new Date(todayY, todayM, todayD, 23, 59, 59);
       } 
       else if (filterType === 'month') {
-        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+        // Todos os dias do mês atual (do dia 1 ao dia de hoje)
+        return itemY === todayY && itemM === todayM;
       }
       return true;
     }
@@ -498,7 +514,7 @@
       // Filtrar o histórico conforme o botão de período ativo
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 
-      // Se estiver no filtro 'today' e não houver histórico gravado, faz fallback para 'vortex_vendas_hoje'
+      // Se estiver no filtro 'today' e não houver histórico gravado em array, faz o fallback para 'vortex_vendas_hoje'
       let grossSales = 0;
       if (currentFilter === 'today' && salesHistory.length === 0) {
         const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
@@ -552,7 +568,7 @@
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
-      // Pedidos Ativos na Cozinha (KDS) - Mantém em tempo real global
+      // Pedidos Ativos na Cozinha (KDS)
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
@@ -584,16 +600,17 @@
       const cancelRate = totalOrdersCount > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // Canais de Venda filtrados
+      // Canais de Venda
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
-        if (s.channel === 'pdv' || s.channel === 'counter') channelPdv += s.total || 0;
-        else if (s.channel === 'table' || s.channel === 'mesa') channelMesas += s.total || 0;
-        else if (s.channel === 'delivery') channelDelivery += s.total || 0;
-        else if (s.channel === 'ifood') channelIFood += s.total || 0;
-        else if (s.channel === '99food') channel99 += s.total || 0;
-        else if (s.channel === 'keeta') channelKeeta += s.total || 0;
+        const ch = (s.channel || '').toLowerCase();
+        if (ch === 'pdv' || ch === 'counter' || ch === 'balcao') channelPdv += s.total || 0;
+        else if (ch === 'table' || ch === 'mesa') channelMesas += s.total || 0;
+        else if (ch === 'delivery') channelDelivery += s.total || 0;
+        else if (ch.includes('ifood')) channelIFood += s.total || 0;
+        else if (ch.includes('99') || ch.includes('99food')) channel99 += s.total || 0;
+        else if (ch.includes('keeta')) channelKeeta += s.total || 0;
         else channelPdv += s.total || 0;
       });
 
@@ -626,15 +643,16 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // Formas de Pagamento filtradas
+      // Formas de Pagamento
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
-        if (s.payMethod === 'pix') payPix += s.total || 0;
-        else if (s.payMethod === 'debit') payDebit += s.total || 0;
-        else if (s.payMethod === 'credit' || s.payMethod === 'card') payCredit += s.total || 0;
-        else if (s.payMethod === 'vr') payVr += s.total || 0;
-        else if (s.payMethod === 'va') payVa += s.total || 0;
-        else if (s.payMethod === 'cash') payDinheiro += s.total || 0;
+        const pm = (s.payMethod || '').toLowerCase();
+        if (pm === 'pix') payPix += s.total || 0;
+        else if (pm === 'debit' || pm.includes('débito') || pm.includes('debito')) payDebit += s.total || 0;
+        else if (pm === 'credit' || pm === 'card' || pm.includes('crédito') || pm.includes('credito')) payCredit += s.total || 0;
+        else if (pm === 'vr' || pm.includes('refeicao')) payVr += s.total || 0;
+        else if (pm === 'va' || pm.includes('alimentacao')) payVa += s.total || 0;
+        else if (pm === 'cash' || pm.includes('dinheiro')) payDinheiro += s.total || 0;
       });
 
       if (grossSales > 0 && salesHistory.length === 0) payPix = grossSales;

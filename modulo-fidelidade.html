@@ -265,17 +265,17 @@
           
           <div id="fieldPointsOrder" class="form-group" style="display:none;">
             <label for="ptsPerOrderInput">Pontos por Pedido Realizado:</label>
-            <input type="number" id="ptsPerOrderInput" placeholder="Ex: 10 pontos por pedido">
+            <input type="text" id="ptsPerOrderInput" placeholder="Ex: 10">
           </div>
 
           <div id="fieldPointsValue" class="form-group" style="display:none;">
             <label for="ptsPerRealInput">Quantos Pontos o cliente ganha a cada R$ 1,00 gasto?:</label>
-            <input type="number" step="0.1" id="ptsPerRealInput" placeholder="Ex: 1 (R$ 10,00 gasto = 10 pontos)">
+            <input type="text" id="ptsPerRealInput" placeholder="Ex: 1">
           </div>
 
           <div id="fieldCashback" class="form-group" style="display:none;">
             <label for="cashbackPercentInput">Porcentagem de Cashback (%):</label>
-            <input type="number" step="0.5" id="cashbackPercentInput" placeholder="Ex: 5 (retorna 5% do valor em R$)">
+            <input type="text" id="cashbackPercentInput" placeholder="Ex: 5">
           </div>
 
         </div>
@@ -289,19 +289,19 @@
         
         <div class="form-group">
           <label for="minOrderToRedeem">Pedido Mínimo para Resgate (R$):</label>
-          <input type="number" id="minOrderToRedeem" placeholder="Ex: 30,00 (0 = sem valor mínimo)">
+          <input type="text" id="minOrderToRedeem" placeholder="Ex: 30,00 (0 = sem valor mínimo)" oninput="maskCurrency(this)">
           <span style="font-size:0.73rem; color:var(--text-muted);">Evita que o cliente use pontos/saldo em pedidos muito pequenos.</span>
         </div>
 
         <div class="form-group">
           <label for="maxDiscountPercent">Desconto Máximo com Saldo por Pedido (%):</label>
-          <input type="number" id="maxDiscountPercent" placeholder="Ex: 50 (limita resgate a 50% do total)">
-          <span style="font-size:0.73rem; color:var(--text-muted);">Garante que o cliente cubra pelo menos o custo do produto.</span>
+          <input type="text" id="maxDiscountPercent" placeholder="Ex: 50 (limita resgate a 50% do total)" oninput="maskInteger(this)">
+          <span style="font-size:0.73rem; color:var(--text-muted);">Protege a margem de lucro garantindo que o cliente cubra pelo menos parte do custo real do pedido com dinheiro.</span>
         </div>
 
         <div class="form-group">
           <label for="daysToExpire">Expiração do Saldo / Pontos (Dias):</label>
-          <input type="number" id="daysToExpire" placeholder="Ex: 60 (0 = pontos não vencem)">
+          <input type="text" id="daysToExpire" placeholder="Ex: 60 (0 = pontos não vencem)" oninput="maskInteger(this)">
           <span style="font-size:0.73rem; color:var(--text-muted);">Estimula o retorno do cliente antes que os pontos vençam.</span>
         </div>
 
@@ -330,11 +330,11 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <div style="flex:2; min-width:200px;">
           <label for="searchClientPhone">Celular do Cliente (com DDD):</label>
-          <input type="text" id="searchClientPhone" placeholder="Ex: 11999998888">
+          <input type="text" id="searchClientPhone" placeholder="Ex: (11) 99999-8888" oninput="maskPhone(this)">
         </div>
         <div style="flex:1; min-width:120px;">
           <label for="adjustPointsQty">Quantidade / Valor R$:</label>
-          <input type="number" id="adjustPointsQty" step="0.01" placeholder="Ex: 50">
+          <input type="text" id="adjustPointsQty" placeholder="Ex: 50,00" oninput="maskCurrency(this)">
         </div>
       </div>
 
@@ -362,8 +362,16 @@
       </div>
 
       <div class="form-group" style="text-align:left;">
-        <label for="rewardPointsCost">Custo em Pontos / Saldo R$ *:</label>
-        <input type="number" id="rewardPointsCost" placeholder="Ex: 100 pontos">
+        <label for="rewardType">Tipo de Custo do Prêmio *:</label>
+        <select id="rewardType" onchange="updateRewardCostLabel()">
+          <option value="points">Pontos (Ex: 100 pontos)</option>
+          <option value="money">Saldo / Dinheiro R$ (Ex: R$ 10,00)</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="text-align:left;">
+        <label for="rewardPointsCost" id="rewardCostLabel">Custo em Pontos *:</label>
+        <input type="text" id="rewardPointsCost" placeholder="Ex: 100" oninput="maskRewardCost(this)">
       </div>
 
       <button class="btn-modal-primary" onclick="saveReward()">Cadastrar Prêmio 🎁</button>
@@ -382,8 +390,8 @@
 
   <script>
     const defaultRewards = [
-      { id: 'rw1', title: '1 Refrigerante Lata 350ml', pointsCost: 80 },
-      { id: 'rw2', title: 'Desconto de R$ 15,00 no Pedido', pointsCost: 150 }
+      { id: 'rw1', title: '1 Refrigerante Lata 350ml', cost: 80, type: 'points' },
+      { id: 'rw2', title: 'Desconto de R$ 15,00 no Pedido', cost: 15, type: 'money' }
     ];
 
     function toggleMenu() {
@@ -414,6 +422,72 @@
       }
     }
 
+    // Máscaras fluidas e inteligentes sem travamento ao apagar
+    function maskCurrency(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (!value) {
+        input.value = '';
+        return;
+      }
+      let numeric = parseFloat(value) / 100;
+      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function maskInteger(input) {
+      input.value = input.value.replace(/\D/g, '');
+    }
+
+    function maskPhone(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.slice(0, 11);
+      
+      if (v.length > 10) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      } else if (v.length > 6) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2,6)}-${v.slice(6)}`;
+      } else if (v.length > 2) {
+        input.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      } else if (v.length > 0) {
+        input.value = `(${v}`;
+      } else {
+        input.value = '';
+      }
+    }
+
+    function updateRewardCostLabel() {
+      const type = document.getElementById('rewardType').value;
+      const label = document.getElementById('rewardCostLabel');
+      const input = document.getElementById('rewardPointsCost');
+      input.value = '';
+      if (type === 'points') {
+        label.innerText = 'Custo em Pontos *:';
+        input.placeholder = 'Ex: 100';
+      } else {
+        label.innerText = 'Custo em Saldo R$ (Cashback) *:';
+        input.placeholder = 'Ex: 10,00';
+      }
+    }
+
+    function maskRewardCost(input) {
+      const type = document.getElementById('rewardType').value;
+      if (type === 'money') {
+        maskCurrency(input);
+      } else {
+        maskInteger(input);
+      }
+    }
+
+    function parseFormattedFloat(valStr) {
+      if (!valStr) return 0;
+      let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
+      return parseFloat(cleaned) || 0;
+    }
+
+    function formatFloatToCurrencyStr(num) {
+      if (isNaN(num) || num === 0) return '';
+      return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function switchMode(mode) {
       const configSec = document.getElementById('configSection');
       const fOrder = document.getElementById('fieldPointsOrder');
@@ -442,11 +516,11 @@
 
       const settings = {
         mode: selectedMode,
-        ptsPerOrder: parseFloat(document.getElementById('ptsPerOrderInput').value) || 0,
-        ptsPerReal: parseFloat(document.getElementById('ptsPerRealInput').value) || 0,
-        cashbackPercent: parseFloat(document.getElementById('cashbackPercentInput').value) || 0,
-        minOrderToRedeem: parseFloat(document.getElementById('minOrderToRedeem').value) || 0,
-        maxDiscountPercent: parseFloat(document.getElementById('maxDiscountPercent').value) || 0,
+        ptsPerOrder: parseFormattedFloat(document.getElementById('ptsPerOrderInput').value),
+        ptsPerReal: parseFormattedFloat(document.getElementById('ptsPerRealInput').value),
+        cashbackPercent: parseFormattedFloat(document.getElementById('cashbackPercentInput').value),
+        minOrderToRedeem: parseFormattedFloat(document.getElementById('minOrderToRedeem').value),
+        maxDiscountPercent: parseFormattedFloat(document.getElementById('maxDiscountPercent').value),
         daysToExpire: parseInt(document.getElementById('daysToExpire').value) || 0
       };
 
@@ -474,11 +548,12 @@
       }
 
       rewards.forEach(r => {
+        let costStr = r.type === 'money' ? `R$ ${parseFloat(r.cost).toFixed(2).replace('.', ',')}` : `${r.cost} pts`;
         container.innerHTML += `
           <div class="reward-item">
             <div>
               <strong>${r.title}</strong>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Resgate por: <strong style="color:var(--primary);">${r.pointsCost} pts / R$</strong></div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Resgate por: <strong style="color:var(--primary);">${costStr}</strong></div>
             </div>
             <button onclick="deleteReward('${r.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1rem;">🗑️</button>
           </div>
@@ -488,7 +563,9 @@
 
     function openRewardModal() {
       document.getElementById('rewardTitle').value = '';
+      document.getElementById('rewardType').value = 'points';
       document.getElementById('rewardPointsCost').value = '';
+      updateRewardCostLabel();
       document.getElementById('rewardModal').classList.add('active');
     }
 
@@ -498,15 +575,16 @@
 
     function saveReward() {
       const title = document.getElementById('rewardTitle').value.trim();
-      const cost = parseFloat(document.getElementById('rewardPointsCost').value) || 0;
+      const type = document.getElementById('rewardType').value;
+      const cost = parseFormattedFloat(document.getElementById('rewardPointsCost').value);
 
       if (!title || cost <= 0) {
-        showNoticeModal('Atenção', 'Preencha o nome e o custo do prêmio em pontos.', '⚠️');
+        showNoticeModal('Atenção', 'Preencha o nome e um custo válido para o prêmio.', '⚠️');
         return;
       }
 
       let rewards = getRewards();
-      rewards.push({ id: 'rw_' + Date.now(), title, pointsCost: cost });
+      rewards.push({ id: 'rw_' + Date.now(), title, cost, type });
       localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(rewards));
 
       closeRewardModal();
@@ -522,41 +600,42 @@
     }
 
     function handleClientAction(action) {
-      const phone = document.getElementById('searchClientPhone').value.replace(/\D/g, '').trim();
-      const qty = parseFloat(document.getElementById('adjustPointsQty').value) || 0;
+      const phoneInput = document.getElementById('searchClientPhone').value.trim();
+      const phoneClean = phoneInput.replace(/\D/g, '');
+      const qty = parseFormattedFloat(document.getElementById('adjustPointsQty').value);
       const resDiv = document.getElementById('clientSearchResult');
 
-      if (!phone) {
-        showNoticeModal('Atenção', 'Por favor, informe o número de celular do cliente com DDD.', '⚠️');
+      if (!phoneClean) {
+        showNoticeModal('Atenção', 'Por favor, informe o número de celular do cliente.', '⚠️');
         return;
       }
 
       let clients = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
-      if (!clients[phone]) clients[phone] = { points: 0, lastActivity: new Date().toISOString() };
+      if (!clients[phoneClean]) clients[phoneClean] = { points: 0, lastActivity: new Date().toISOString() };
 
       if (action === 'consultar') {
         resDiv.style.display = 'block';
         resDiv.innerHTML = `
-          👤 <strong>Cliente:</strong> ${phone}<br>
-          ⭐ <strong>Saldo Atual:</strong> <span style="color:var(--primary); font-weight:bold; font-size:1.05rem;">${clients[phone].points.toFixed(2)}</span> pts / R$<br>
-          🕒 <strong>Última Atividade:</strong> ${new Date(clients[phone].lastActivity).toLocaleDateString('pt-BR')}
+          👤 <strong>Cliente:</strong> ${phoneInput}<br>
+          ⭐ <strong>Saldo Atual:</strong> <span style="color:var(--primary); font-weight:bold; font-size:1.05rem;">${clients[phoneClean].points.toFixed(2).replace('.', ',')}</span> pts / R$<br>
+          🕒 <strong>Última Atividade:</strong> ${new Date(clients[phoneClean].lastActivity).toLocaleDateString('pt-BR')}
         `;
         return;
       }
 
       if (qty <= 0) {
-        showNoticeModal('Atenção', 'Informe uma quantidade/valor válido para adicionar ou subtrair.', '⚠️');
+        showNoticeModal('Atenção', 'Informe uma quantidade ou valor válido para adicionar ou subtrair.', '⚠️');
         return;
       }
 
       if (action === 'adicionar') {
-        clients[phone].points += qty;
-        clients[phone].lastActivity = new Date().toISOString();
-        showNoticeModal('Saldo Creditado', `Adicionado <strong>${qty}</strong> ao saldo do cliente ${phone}.<br>Novo saldo: <strong>${clients[phone].points.toFixed(2)}</strong>`, '✅');
+        clients[phoneClean].points += qty;
+        clients[phoneClean].lastActivity = new Date().toISOString();
+        showNoticeModal('Saldo Creditado', `Adicionado <strong>${qty.toFixed(2).replace('.', ',')}</strong> ao saldo do cliente ${phoneInput}.<br>Novo saldo: <strong>${clients[phoneClean].points.toFixed(2).replace('.', ',')}</strong>`, '✅');
       } else if (action === 'subtrair') {
-        clients[phone].points = Math.max(0, clients[phone].points - qty);
-        clients[phone].lastActivity = new Date().toISOString();
-        showNoticeModal('Saldo Debitado', `Removido <strong>${qty}</strong> do saldo do cliente ${phone}.<br>Novo saldo: <strong>${clients[phone].points.toFixed(2)}</strong>`, '⚠️');
+        clients[phoneClean].points = Math.max(0, clients[phoneClean].points - qty);
+        clients[phoneClean].lastActivity = new Date().toISOString();
+        showNoticeModal('Saldo Debitado', `Removido <strong>${qty.toFixed(2).replace('.', ',')}</strong> do saldo do cliente ${phoneInput}.<br>Novo saldo: <strong>${clients[phoneClean].points.toFixed(2).replace('.', ',')}</strong>`, '⚠️');
       }
 
       localStorage.setItem('vortex_clients_loyalty', JSON.stringify(clients));
@@ -574,7 +653,7 @@
       });
 
       document.getElementById('statTotalClients').innerText = keys.length;
-      document.getElementById('statTotalPoints').innerText = `${totalPts.toFixed(1)} pts / R$ ${totalPts.toFixed(2).replace('.', ',')}`;
+      document.getElementById('statTotalPoints').innerText = `${totalPts.toFixed(1).replace('.', ',')} pts / R$ ${totalPts.toFixed(2).replace('.', ',')}`;
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -606,10 +685,10 @@
 
         switchMode(saved.mode || 'disabled');
 
-        document.getElementById('ptsPerOrderInput').value = saved.ptsPerOrder || '';
-        document.getElementById('ptsPerRealInput').value = saved.ptsPerReal || '';
-        document.getElementById('cashbackPercentInput').value = saved.cashbackPercent || '';
-        document.getElementById('minOrderToRedeem').value = saved.minOrderToRedeem || '';
+        document.getElementById('ptsPerOrderInput').value = formatFloatToCurrencyStr(saved.ptsPerOrder);
+        document.getElementById('ptsPerRealInput').value = formatFloatToCurrencyStr(saved.ptsPerReal);
+        document.getElementById('cashbackPercentInput').value = formatFloatToCurrencyStr(saved.cashbackPercent);
+        document.getElementById('minOrderToRedeem').value = formatFloatToCurrencyStr(saved.minOrderToRedeem);
         document.getElementById('maxDiscountPercent').value = saved.maxDiscountPercent || '';
         document.getElementById('daysToExpire').value = saved.daysToExpire || '';
       } else {

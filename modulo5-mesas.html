@@ -163,12 +163,14 @@
         <a href="modulo5-mesas.html" class="nav-link active"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
         <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
@@ -186,6 +188,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -376,7 +381,6 @@
       const saved = localStorage.getItem('vortex_products_catalog');
       if (saved) {
         let products = JSON.parse(saved);
-        // Retorna apenas os produtos ativos (não pausados)
         return products.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
@@ -384,7 +388,6 @@
           category: p.category
         }));
       }
-      // Padrão de segurança caso o cardápio esteja vazio
       return [
         { id: 1, name: 'X-Burger Especial', price: 28.50 },
         { id: 2, name: 'X-Salada Duplo', price: 32.00 }
@@ -657,7 +660,6 @@
       }
     }
 
-    /* FECHAR CONTA E ATUALIZAR KDS PARA FINALIZADO */
     function finalizeTablePayment() {
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('tablePaymentMethod').value;
@@ -667,14 +669,12 @@
         return;
       }
 
-      // SOMA NO DASHBOARD
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // ATUALIZA STATUS NO KDS PARA FINISHED (FINALIZADO)
       let currentData = tableCarts[activeTableId] || {};
       if (currentData.orderId) {
         let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -685,7 +685,6 @@
         }
       }
 
-      // LIBERA A MESA
       delete tableCarts[activeTableId];
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
 

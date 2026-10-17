@@ -76,33 +76,41 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
+    .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: bold; flex: 1; min-width: 200px; }
+
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
     .form-group { margin-bottom: 15px; }
     label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; }
-    input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none; }
+    input[type="text"], input[type="number"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none; }
     input:focus, select:focus { border-color: var(--primary); }
 
     .radio-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-    .radio-option { display: flex; align-items: center; gap: 10px; background: var(--bg-main); border: 1px solid var(--border); padding: 12px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
-    .radio-option input { width: auto; cursor: pointer; }
+    .radio-option { display: flex; align-items: flex-start; gap: 12px; background: var(--bg-main); border: 1px solid var(--border); padding: 14px; border-radius: 10px; cursor: pointer; transition: border-color 0.2s; }
+    .radio-option:hover { border-color: var(--primary); }
+    .radio-option input { margin-top: 3px; cursor: pointer; width: auto; }
+    .radio-info { display: flex; flex-direction: column; gap: 2px; }
+    .radio-title { font-size: 0.92rem; font-weight: bold; color: var(--text-main); }
+    .radio-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.3; }
 
-    .btn-action { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 0.95rem; }
-    .btn-action:hover { background: var(--primary-hover); }
+    .info-callout { background: rgba(56, 189, 248, 0.1); border: 1px solid var(--info); padding: 12px; border-radius: 10px; color: var(--info); font-size: 0.82rem; line-height: 1.4; margin-bottom: 15px; }
 
-    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-action { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 0.92rem; transition: opacity 0.2s; }
+    .btn-action:hover { opacity: 0.9; }
+
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 10px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-secondary:hover { opacity: 0.85; }
 
-    .btn-danger { background: var(--danger); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; }
-
-    .toggle-switch-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-main); padding: 12px; border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; }
+    .rewards-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 250px; overflow-y: auto; }
+    .reward-item { background: var(--bg-main); border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 440px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 11px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; font-size: 0.9rem; }
 
     @media (max-width: 900px) {
       .grid-container { grid-template-columns: 1fr; }
@@ -136,6 +144,7 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
@@ -160,6 +169,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -173,90 +185,207 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Fidelidade / Cashback</h1>
+        <h1>Fidelidade & Cashback do Cliente</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
+    <!-- BARRA DE MÉTRICAS -->
+    <div class="stats-summary-bar">
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">👥</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">CLIENTES CADASTRADOS</div>
+          <div style="font-size:1rem;" id="statTotalClients">0</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">💎</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">SALDO TOTAL ACUMULADO</div>
+          <div style="font-size:1rem; color:var(--info);" id="statTotalPoints">0 pts / R$ 0,00</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">🎁</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">RESGATES EFETUADOS</div>
+          <div style="font-size:1rem; color:var(--success);" id="statTotalRedeemed">0</div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid-container">
-      <!-- CONFIGURAÇÃO PRINCIPAL -->
+      <!-- CONFIGURAÇÃO DO MODO DE FIDELIDADE -->
       <div class="card-box">
-        <div class="card-title">⚙️ Configuração do Programa</div>
+        <div class="card-title">⚙️ Modo do Programa de Fidelização</div>
         
+        <div class="info-callout">
+          💡 <strong>Dica do Especialista:</strong> Programas de pontos e cashback aumentam a frequência de compras em até 40%. Escolha o modelo que melhor se adapta ao seu público!
+        </div>
+
         <div class="radio-group">
           <label class="radio-option">
             <input type="radio" name="loyaltyMode" value="disabled" id="modeDisabled" onclick="switchMode('disabled')">
-            Fidelidade/cashback desativado[span_7](start_span)[span_7](end_span)[span_8](start_span)[span_8](end_span)[span_9](start_span)[span_9](end_span)
+            <div class="radio-info">
+              <span class="radio-title">🚫 Desativado</span>
+              <span class="radio-desc">Nenhum ponto ou cashback acumulado nos pedidos.</span>
+            </div>
           </label>
+
           <label class="radio-option">
-            <input type="radio" name="loyaltyMode" value="fidelity" id="modeFidelity" onclick="switchMode('fidelity')">
-            Modo fidelidade ativo (Pontos por pedido/valor)[span_10](start_span)[span_10](end_span)[span_11](start_span)[span_11](end_span)[span_12](start_span)[span_12](end_span)
+            <input type="radio" name="loyaltyMode" value="points_order" id="modePointsOrder" onclick="switchMode('points_order')">
+            <div class="radio-info">
+              <span class="radio-title">⭐ Pontos Fixos por Pedido</span>
+              <span class="radio-desc">O cliente ganha uma quantidade fixa de pontos a cada compra realizada, independente do valor final.</span>
+            </div>
           </label>
+
+          <label class="radio-option">
+            <input type="radio" name="loyaltyMode" value="points_value" id="modePointsValue" onclick="switchMode('points_value')">
+            <div class="radio-info">
+              <span class="radio-title">📊 Pontos Proporcionais ao Valor (R$)</span>
+              <span class="radio-desc">Ganha pontos proporcionais ao valor gasto (ex: a cada R$ 1,00 gasto = 1 ponto ganho).</span>
+            </div>
+          </label>
+
           <label class="radio-option">
             <input type="radio" name="loyaltyMode" value="cashback" id="modeCashback" onclick="switchMode('cashback')">
-            Modo cashback ativo (% de retorno)[span_13](start_span)[span_13](end_span)
+            <div class="radio-info">
+              <span class="radio-title">💰 Cashback em Dinheiro (% de Retorno)</span>
+              <span class="radio-desc">Retorna uma porcentagem do valor gasto em saldo direto em reais (R$) para usar no próximo pedido.</span>
+            </div>
           </label>
         </div>
 
-        <!-- CONFIG CASHBACK -->
-        <div id="cashbackConfigSection" style="display:none; margin-top:15px; border-top:1px solid var(--border); padding-top:15px;">
-          <div class="form-group">
-            <label for="cashbackPercent">Valor Cashback (%):</label>
-            <input type="number" id="cashbackPercent" placeholder="Ex: 5" min="0" max="100" step="0.5">
+        <!-- REGRAS ESPECÍFICAS DE CADA MODO -->
+        <div id="configSection" style="display:none; border-top:1px dashed var(--border); padding-top:15px; margin-top:10px;">
+          
+          <div id="fieldPointsOrder" class="form-group" style="display:none;">
+            <label for="ptsPerOrderInput">Pontos por Pedido Realizado:</label>
+            <input type="number" id="ptsPerOrderInput" placeholder="Ex: 10 pontos por pedido">
           </div>
+
+          <div id="fieldPointsValue" class="form-group" style="display:none;">
+            <label for="ptsPerRealInput">Quantos Pontos o cliente ganha a cada R$ 1,00 gasto?:</label>
+            <input type="number" step="0.1" id="ptsPerRealInput" placeholder="Ex: 1 (R$ 10,00 gasto = 10 pontos)">
+          </div>
+
+          <div id="fieldCashback" class="form-group" style="display:none;">
+            <label for="cashbackPercentInput">Porcentagem de Cashback (%):</label>
+            <input type="number" step="0.5" id="cashbackPercentInput" placeholder="Ex: 5 (retorna 5% do valor em R$)">
+          </div>
+
         </div>
 
-        <button class="btn-action" style="margin-top:15px;" onclick="saveLoyaltySettings()">Salvar Configurações</button>
+        <button class="btn-action" style="margin-top:10px;" onclick="saveLoyaltySettings()">Salvar Regras do Programa 💾</button>
       </div>
 
-      <!-- ALTERAR PONTOS CLIENTE -->
+      <!-- TRAVAS E REGRAS DE SEGURANÇA -->
       <div class="card-box">
-        <div class="card-title">👥 Gestão de Saldo de Clientes</div>
+        <div class="card-title">🛡️ Regras de Resgate & Expiração</div>
         
         <div class="form-group">
-          <label for="clientPhoneInput">Celular do Cliente (com DDD):</label>
-          <input type="text" id="clientPhoneInput" placeholder="Ex: 19992159211">
+          <label for="minOrderToRedeem">Pedido Mínimo para Resgate (R$):</label>
+          <input type="number" id="minOrderToRedeem" placeholder="Ex: 30,00 (0 = sem valor mínimo)">
+          <span style="font-size:0.73rem; color:var(--text-muted);">Evita que o cliente use pontos/saldo em pedidos muito pequenos.</span>
         </div>
 
         <div class="form-group">
-          <label for="clientPointsInput">Quantidade de Pontos / R$ Cashback:</label>
-          <input type="number" id="clientPointsInput" placeholder="Ex: 50" step="0.01">
+          <label for="maxDiscountPercent">Desconto Máximo com Saldo por Pedido (%):</label>
+          <input type="number" id="maxDiscountPercent" placeholder="Ex: 50 (limita resgate a 50% do total)">
+          <span style="font-size:0.73rem; color:var(--text-muted);">Garante que o cliente cubra pelo menos o custo do produto.</span>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:15px;">
-          <button class="btn-secondary" onclick="clientAction('consultar')">🔍 Consultar</button>
-          <button class="btn-secondary" onclick="clientAction('adicionar')" style="background:var(--success); color:white;">➕ Adicionar</button>
-          <button class="btn-secondary" onclick="clientAction('subtrair')" style="background:var(--danger); color:white;">➖ Subtrair</button>
+        <div class="form-group">
+          <label for="daysToExpire">Expiração do Saldo / Pontos (Dias):</label>
+          <input type="number" id="daysToExpire" placeholder="Ex: 60 (0 = pontos não vencem)">
+          <span style="font-size:0.73rem; color:var(--text-muted);">Estimula o retorno do cliente antes que os pontos vençam.</span>
         </div>
+
+        <button class="btn-action" style="background:var(--border); color:var(--text-main);" onclick="saveLoyaltySettings()">Atualizar Travas 🔒</button>
       </div>
     </div>
 
-    <!-- EXPIRAÇÃO E REGRAS -->
+    <!-- RECOMPENSAS & PRÊMIOS DO CARTÃO FIDELIDADE -->
     <div class="card-box">
-      <div class="card-title">⏳ Expiração e Regras de Inatividade</div>
-      <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:15px;">
-        Se você utilizar a expiração de pontos/cashback, recomendamos enviar disparos periódicos pelo WhatsApp para estimular seus clientes a retornarem[span_14](start_span)[span_14](end_span)[span_15](start_span)[span_15](end_span).
+      <div class="card-title">
+        <span>🎁 Prêmios & Recompensas Disponíveis para Troca</span>
+        <button class="btn-secondary" style="background:var(--primary); color:white;" onclick="openRewardModal()">➕ Novo Prêmio</button>
+      </div>
+      
+      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">
+        Cadastre os itens que os clientes podem resgatar ao acumular pontos (Ex: 100 Pontos = 1 Coca-Cola Lata Grátis).
       </p>
 
-      <div class="toggle-switch-row">
-        <span style="font-size:0.9rem; font-weight:600;">Zerar automaticamente saldo de clientes inativos (X dias)</span>
-        <input type="checkbox" id="autoExpireToggle" style="width:20px; height:20px; cursor:pointer;">
+      <div class="rewards-list" id="rewardsContainer"></div>
+    </div>
+
+    <!-- CONSULTA E AJUSTE MANUAL DE CLIENTES -->
+    <div class="card-box">
+      <div class="card-title">🔍 Consulta & Ajuste Manual de Saldo do Cliente</div>
+      
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="flex:2; min-width:200px;">
+          <label for="searchClientPhone">Celular do Cliente (com DDD):</label>
+          <input type="text" id="searchClientPhone" placeholder="Ex: 11999998888">
+        </div>
+        <div style="flex:1; min-width:120px;">
+          <label for="adjustPointsQty">Quantidade / Valor R$:</label>
+          <input type="number" id="adjustPointsQty" step="0.01" placeholder="Ex: 50">
+        </div>
       </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn-secondary" style="flex:1;" onclick="handleClientAction('consultar')">🔍 Consultar Saldo</button>
+        <button class="btn-secondary" style="flex:1; background:var(--success); color:white;" onclick="handleClientAction('adicionar')">➕ Creditar Saldo</button>
+        <button class="btn-secondary" style="flex:1; background:var(--danger); color:white;" onclick="handleClientAction('subtrair')">➖ Debitar Saldo</button>
+      </div>
+
+      <div id="clientSearchResult" style="margin-top:15px; display:none; background:var(--bg-main); border:1px solid var(--border); padding:12px; border-radius:10px; font-size:0.88rem;"></div>
     </div>
   </main>
 
+  <!-- MODAL DE CRIAR PRÊMIO -->
+  <div class="modal-overlay" id="rewardModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Cadastrar Prêmio / Recompensa</span>
+        <button onclick="closeRewardModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="form-group" style="text-align:left;">
+        <label for="rewardTitle">Nome do Prêmio *:</label>
+        <input type="text" id="rewardTitle" placeholder="Ex: 1 Coca-Cola 2L Grátis ou R$ 10 OFF">
+      </div>
+
+      <div class="form-group" style="text-align:left;">
+        <label for="rewardPointsCost">Custo em Pontos / Saldo R$ *:</label>
+        <input type="number" id="rewardPointsCost" placeholder="Ex: 100 pontos">
+      </div>
+
+      <button class="btn-modal-primary" onclick="saveReward()">Cadastrar Prêmio 🎁</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
-      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
-      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
-      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Ação realizada com sucesso.</div>
+      <div style="font-size:2.8rem; margin-bottom:10px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:8px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; line-height:1.4;" id="noticeDesc">Ação concluída com sucesso.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
+    const defaultRewards = [
+      { id: 'rw1', title: '1 Refrigerante Lata 350ml', pointsCost: 80 },
+      { id: 'rw2', title: 'Desconto de R$ 15,00 no Pedido', pointsCost: 150 }
+    ];
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -286,56 +415,166 @@
     }
 
     function switchMode(mode) {
-      const cashbackSec = document.getElementById('cashbackConfigSection');
-      if (mode === 'cashback') {
-        cashbackSec.style.display = 'block';
+      const configSec = document.getElementById('configSection');
+      const fOrder = document.getElementById('fieldPointsOrder');
+      const fValue = document.getElementById('fieldPointsValue');
+      const fCashback = document.getElementById('fieldCashback');
+
+      fOrder.style.display = 'none';
+      fValue.style.display = 'none';
+      fCashback.style.display = 'none';
+
+      if (mode === 'disabled') {
+        configSec.style.display = 'none';
       } else {
-        cashbackSec.style.display = 'none';
+        configSec.style.display = 'block';
+        if (mode === 'points_order') fOrder.style.display = 'block';
+        if (mode === 'points_value') fValue.style.display = 'block';
+        if (mode === 'cashback') fCashback.style.display = 'block';
       }
     }
 
     function saveLoyaltySettings() {
       let selectedMode = 'disabled';
-      if (document.getElementById('modeFidelity').checked) selectedMode = 'fidelity';
+      if (document.getElementById('modePointsOrder').checked) selectedMode = 'points_order';
+      if (document.getElementById('modePointsValue').checked) selectedMode = 'points_value';
       if (document.getElementById('modeCashback').checked) selectedMode = 'cashback';
 
       const settings = {
         mode: selectedMode,
-        cashbackPercent: document.getElementById('cashbackPercent').value || '0',
-        autoExpire: document.getElementById('autoExpireToggle').checked
+        ptsPerOrder: parseFloat(document.getElementById('ptsPerOrderInput').value) || 0,
+        ptsPerReal: parseFloat(document.getElementById('ptsPerRealInput').value) || 0,
+        cashbackPercent: parseFloat(document.getElementById('cashbackPercentInput').value) || 0,
+        minOrderToRedeem: parseFloat(document.getElementById('minOrderToRedeem').value) || 0,
+        maxDiscountPercent: parseFloat(document.getElementById('maxDiscountPercent').value) || 0,
+        daysToExpire: parseInt(document.getElementById('daysToExpire').value) || 0
       };
 
       localStorage.setItem('vortex_loyalty_settings', JSON.stringify(settings));
-      showNoticeModal('Configurações Salvas', 'As regras do programa de fidelidade/cashback foram atualizadas com sucesso!', '⭐');
+      showNoticeModal('Configurações Salvas!', 'Regras do programa de fidelidade/cashback atualizadas com sucesso.', '⭐');
     }
 
-    function clientAction(action) {
-      const phone = document.getElementById('clientPhoneInput').value.trim();
-      const points = document.getElementById('clientPointsInput').value;
+    function getRewards() {
+      let saved = localStorage.getItem('vortex_loyalty_rewards');
+      if (!saved) {
+        localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(defaultRewards));
+        return defaultRewards;
+      }
+      return JSON.parse(saved);
+    }
+
+    function renderRewards() {
+      const rewards = getRewards();
+      const container = document.getElementById('rewardsContainer');
+      container.innerHTML = '';
+
+      if (rewards.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.85rem;">Nenhum prêmio cadastrado.</div>`;
+        return;
+      }
+
+      rewards.forEach(r => {
+        container.innerHTML += `
+          <div class="reward-item">
+            <div>
+              <strong>${r.title}</strong>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Resgate por: <strong style="color:var(--primary);">${r.pointsCost} pts / R$</strong></div>
+            </div>
+            <button onclick="deleteReward('${r.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1rem;">🗑️</button>
+          </div>
+        `;
+      });
+    }
+
+    function openRewardModal() {
+      document.getElementById('rewardTitle').value = '';
+      document.getElementById('rewardPointsCost').value = '';
+      document.getElementById('rewardModal').classList.add('active');
+    }
+
+    function closeRewardModal() {
+      document.getElementById('rewardModal').classList.remove('active');
+    }
+
+    function saveReward() {
+      const title = document.getElementById('rewardTitle').value.trim();
+      const cost = parseFloat(document.getElementById('rewardPointsCost').value) || 0;
+
+      if (!title || cost <= 0) {
+        showNoticeModal('Atenção', 'Preencha o nome e o custo do prêmio em pontos.', '⚠️');
+        return;
+      }
+
+      let rewards = getRewards();
+      rewards.push({ id: 'rw_' + Date.now(), title, pointsCost: cost });
+      localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(rewards));
+
+      closeRewardModal();
+      renderRewards();
+      showNoticeModal('Prêmio Cadastrado', 'Novo prêmio adicionado ao catálogo!', '🎁');
+    }
+
+    function deleteReward(id) {
+      let rewards = getRewards();
+      rewards = rewards.filter(r => r.id !== id);
+      localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(rewards));
+      renderRewards();
+    }
+
+    function handleClientAction(action) {
+      const phone = document.getElementById('searchClientPhone').value.replace(/\D/g, '').trim();
+      const qty = parseFloat(document.getElementById('adjustPointsQty').value) || 0;
+      const resDiv = document.getElementById('clientSearchResult');
 
       if (!phone) {
-        showNoticeModal('Atenção', 'Informe o número de celular do cliente.', '⚠️');
+        showNoticeModal('Atenção', 'Por favor, informe o número de celular do cliente com DDD.', '⚠️');
         return;
       }
 
-      let db = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
-      if (!db[phone]) db[phone] = 0;
+      let clients = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
+      if (!clients[phone]) clients[phone] = { points: 0, lastActivity: new Date().toISOString() };
 
       if (action === 'consultar') {
-        showNoticeModal('Saldo do Cliente', `O cliente do celular ${phone} possui atualmente: <strong>${db[phone]}</strong> unidades/pontos de saldo.`, '🔍');
+        resDiv.style.display = 'block';
+        resDiv.innerHTML = `
+          👤 <strong>Cliente:</strong> ${phone}<br>
+          ⭐ <strong>Saldo Atual:</strong> <span style="color:var(--primary); font-weight:bold; font-size:1.05rem;">${clients[phone].points.toFixed(2)}</span> pts / R$<br>
+          🕒 <strong>Última Atividade:</strong> ${new Date(clients[phone].lastActivity).toLocaleDateString('pt-BR')}
+        `;
         return;
       }
 
-      const val = parseFloat(points) || 0;
-      if (action === 'adicionar') {
-        db[phone] += val;
-        showNoticeModal('Saldo Atualizado', `Adicionado ${val} com sucesso! Novo saldo: ${db[phone]}`, '✅');
-      } else if (action === 'subtrair') {
-        db[phone] = Math.max(0, db[phone] - val);
-        showNoticeModal('Saldo Atualizado', `Subtraído ${val} com sucesso! Novo saldo: ${db[phone]}`, '⚠️');
+      if (qty <= 0) {
+        showNoticeModal('Atenção', 'Informe uma quantidade/valor válido para adicionar ou subtrair.', '⚠️');
+        return;
       }
 
-      localStorage.setItem('vortex_clients_loyalty', JSON.stringify(db));
+      if (action === 'adicionar') {
+        clients[phone].points += qty;
+        clients[phone].lastActivity = new Date().toISOString();
+        showNoticeModal('Saldo Creditado', `Adicionado <strong>${qty}</strong> ao saldo do cliente ${phone}.<br>Novo saldo: <strong>${clients[phone].points.toFixed(2)}</strong>`, '✅');
+      } else if (action === 'subtrair') {
+        clients[phone].points = Math.max(0, clients[phone].points - qty);
+        clients[phone].lastActivity = new Date().toISOString();
+        showNoticeModal('Saldo Debitado', `Removido <strong>${qty}</strong> do saldo do cliente ${phone}.<br>Novo saldo: <strong>${clients[phone].points.toFixed(2)}</strong>`, '⚠️');
+      }
+
+      localStorage.setItem('vortex_clients_loyalty', JSON.stringify(clients));
+      document.getElementById('adjustPointsQty').value = '';
+      updateDashboardStats();
+    }
+
+    function updateDashboardStats() {
+      let clients = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
+      let keys = Object.keys(clients);
+      let totalPts = 0;
+
+      keys.forEach(k => {
+        totalPts += (clients[k].points || 0);
+      });
+
+      document.getElementById('statTotalClients').innerText = keys.length;
+      document.getElementById('statTotalPoints').innerText = `${totalPts.toFixed(1)} pts / R$ ${totalPts.toFixed(2).replace('.', ',')}`;
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -355,17 +594,24 @@
 
     window.onload = function() {
       loadStoreSettings();
+      renderRewards();
+      updateDashboardStats();
+
       const saved = JSON.parse(localStorage.getItem('vortex_loyalty_settings'));
       if (saved) {
-        if (saved.mode === 'fidelity') document.getElementById('modeFidelity').checked = true;
-        else if (saved.mode === 'cashback') {
-          document.getElementById('modeCashback').checked = true;
-          switchMode('cashback');
-        } else {
-          document.getElementById('modeDisabled').checked = true;
-        }
-        document.getElementById('cashbackPercent').value = saved.cashbackPercent || '';
-        document.getElementById('autoExpireToggle').checked = saved.autoExpire || false;
+        if (saved.mode === 'points_order') document.getElementById('modePointsOrder').checked = true;
+        else if (saved.mode === 'points_value') document.getElementById('modePointsValue').checked = true;
+        else if (saved.mode === 'cashback') document.getElementById('modeCashback').checked = true;
+        else document.getElementById('modeDisabled').checked = true;
+
+        switchMode(saved.mode || 'disabled');
+
+        document.getElementById('ptsPerOrderInput').value = saved.ptsPerOrder || '';
+        document.getElementById('ptsPerRealInput').value = saved.ptsPerReal || '';
+        document.getElementById('cashbackPercentInput').value = saved.cashbackPercent || '';
+        document.getElementById('minOrderToRedeem').value = saved.minOrderToRedeem || '';
+        document.getElementById('maxDiscountPercent').value = saved.maxDiscountPercent || '';
+        document.getElementById('daysToExpire').value = saved.daysToExpire || '';
       } else {
         document.getElementById('modeDisabled').checked = true;
       }

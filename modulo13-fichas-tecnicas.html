@@ -313,6 +313,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let draftIngredients = [];
 
@@ -365,8 +369,29 @@
       return saved ? JSON.parse(saved) : [];
     }
 
-    function renderRecipes() {
+    async function syncRecipesToCloud() {
+      try {
+        if (typeof dbSaveRecipes === 'function') {
+          await dbSaveRecipes(getRecipes());
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
+      }
+    }
+
+    async function renderRecipes() {
       loadStoreSettings();
+
+      // Sincroniza com Supabase se disponível
+      try {
+        if (typeof dbFetchRecipes === 'function') {
+          const cloudRecipes = await dbFetchRecipes();
+          if (cloudRecipes && cloudRecipes.length > 0) {
+            localStorage.setItem('vortex_recipes_catalog', JSON.stringify(cloudRecipes));
+          }
+        }
+      } catch (e) {}
+
       let recipes = getRecipes();
       let products = getProducts();
       let insumos = getInsumos();
@@ -386,7 +411,7 @@
         container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px; font-weight: bold;">Nenhuma ficha técnica cadastrada. Clique em "Nova Ficha Técnica" para criar.</div>`;
       } else {
         filteredRecipes.forEach(r => {
-          let p = products.find(prod => prod.id === r.productId);
+          let p = products.find(prod => String(prod.id) === String(r.productId));
           let sellPrice = p ? parseFloat(p.price) : (r.sellPrice || 0);
 
           let calculatedCost = 0;
@@ -540,8 +565,8 @@
       });
 
       let products = getProducts();
-      let selectedProdId = parseInt(document.getElementById('recipeProductSelect').value);
-      let p = products.find(prod => prod.id === selectedProdId);
+      let selectedProdId = document.getElementById('recipeProductSelect').value;
+      let p = products.find(prod => String(prod.id) === String(selectedProdId));
       let sellPrice = p ? parseFloat(p.price) : 0;
       let margin = sellPrice - totalDraftCost;
       let marginPercent = sellPrice > 0 ? (margin / sellPrice) * 100 : 0;
@@ -555,15 +580,17 @@
       renderDraftIngredients();
     }
 
-    function saveRecipe() {
-      const productId = parseInt(document.getElementById('recipeProductSelect').value);
+    async function saveRecipe() {
+      const rawProdId = document.getElementById('recipeProductSelect').value;
+      const productId = isNaN(rawProdId) ? rawProdId : parseInt(rawProdId);
+
       if (!productId || draftIngredients.length === 0) {
         showNoticeModal('Atenção', 'Selecione o produto e adicione pelo menos um insumo.', '⚠️');
         return;
       }
 
       let products = getProducts();
-      let p = products.find(prod => prod.id === productId);
+      let p = products.find(prod => String(prod.id) === String(productId));
       if (!p) return;
 
       let recipes = getRecipes();
@@ -589,7 +616,7 @@
       };
 
       if (id) {
-        let r = recipes.find(item => item.id === id);
+        let r = recipes.find(item => String(item.id) === String(id));
         if (r) Object.assign(r, recipeData);
       } else {
         recipeData.id = 'rec_' + Date.now();
@@ -597,14 +624,16 @@
       }
 
       localStorage.setItem('vortex_recipes_catalog', JSON.stringify(recipes));
+      await syncRecipesToCloud();
+      
       closeRecipeModal();
       renderRecipes();
-      showNoticeModal('Ficha Técnica Salva!', 'Ficha atualizada e Custo Base sincronizado no Cardápio com sucesso!', '📖');
+      showNoticeModal('Ficha Técnica Salva!', 'Ficha atualizada e Custo Base sincronizado na nuvem com sucesso!', '📖');
     }
 
     function editRecipe(id) {
       let recipes = getRecipes();
-      let r = recipes.find(item => item.id === id);
+      let r = recipes.find(item => String(item.id) === String(id));
       if (!r) return;
 
       openRecipeModal();
@@ -615,10 +644,11 @@
       renderDraftIngredients();
     }
 
-    function deleteRecipe(id) {
+    async function deleteRecipe(id) {
       let recipes = getRecipes();
-      recipes = recipes.filter(r => r.id !== id);
+      recipes = recipes.filter(r => String(r.id) !== String(id));
       localStorage.setItem('vortex_recipes_catalog', JSON.stringify(recipes));
+      await syncRecipesToCloud();
       renderRecipes();
       showNoticeModal('Removido', 'Ficha técnica excluída.', '🗑️');
     }

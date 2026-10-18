@@ -345,7 +345,7 @@
   <!-- MODAL DE NOVO LANÇAMENTO -->
   <div class="modal-overlay" id="entryModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-size:space-between; align-items:center;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
         <span>➕ Novo Lançamento Financeiro</span>
         <button onclick="closeEntryModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
       </div>
@@ -374,6 +374,10 @@
       </div>
     </div>
   </div>
+
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
 
   <script>
     let currentQuickFilter = 'today';
@@ -453,16 +457,16 @@
     }
 
     function getProductCostFromCardapio(productName) {
-      const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
-      const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
+      const fichas = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+      const fichaMatch = fichas.find(f => f.productName && f.productName.toLowerCase() === productName.toLowerCase());
       if (fichaMatch && fichaMatch.totalCost) {
         return parseFloat(fichaMatch.totalCost) || 0;
       }
 
-      const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
+      const cardapio = JSON.parse(localStorage.getItem('vortex_products_catalog')) || [];
       const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
       if (prodMatch) {
-        return parseFloat(prodMatch.costPrice || prodMatch.custo || prodMatch.cost || 0);
+        return parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0);
       }
 
       return 0;
@@ -478,7 +482,17 @@
       document.getElementById('entryValue').value = '';
     }
 
-    function saveFinancialEntry() {
+    async function syncEntriesToCloud() {
+      try {
+        if (typeof dbSaveFinancialEntries === 'function') {
+          await dbSaveFinancialEntries(JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar lançamentos financeiros no Supabase:', e);
+      }
+    }
+
+    async function saveFinancialEntry() {
       const type = document.getElementById('entryType').value;
       const desc = document.getElementById('entryDesc').value.trim();
       const val = parseFloat(document.getElementById('entryValue').value) || 0;
@@ -490,7 +504,7 @@
 
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       entries.unshift({
-        id: Date.now(),
+        id: 'fe_' + Date.now(),
         type: type,
         description: desc,
         value: val,
@@ -499,19 +513,38 @@
       });
 
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+      await syncEntriesToCloud();
+
       closeEntryModal();
       loadFinancialData();
     }
 
-    function deleteFinancialEntry(id) {
+    async function deleteFinancialEntry(id) {
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       entries = entries.filter(e => String(e.id) !== String(id));
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+      await syncEntriesToCloud();
       loadFinancialData();
     }
 
-    function loadFinancialData() {
+    async function loadFinancialData() {
       applyTheme();
+
+      // Sincroniza do Supabase se disponível
+      try {
+        if (typeof dbFetchFinancialEntries === 'function') {
+          const cloudEntries = await dbFetchFinancialEntries();
+          if (cloudEntries && cloudEntries.length > 0) {
+            localStorage.setItem('vortex_financial_entries', JSON.stringify(cloudEntries));
+          }
+        }
+        if (typeof dbFetchSales === 'function') {
+          const cloudSales = await dbFetchSales();
+          if (cloudSales && cloudSales.length > 0) {
+            localStorage.setItem('vortex_sales_history', JSON.stringify(cloudSales));
+          }
+        }
+      } catch (e) {}
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
@@ -545,9 +578,10 @@
 
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(i => {
-              let qty = i.qty || 1;
-              let unitCost = getProductCostFromCardapio(i.name);
-              if (unitCost === 0 && i.price) unitCost = i.price * 0.35;
+              let qty = i.qty || i.quantity || 1;
+              let itemName = i.name || i.title || '';
+              let unitCost = getProductCostFromCardapio(itemName);
+              if (unitCost === 0 && (i.price || i.unitPrice)) unitCost = (i.price || i.unitPrice) * 0.35;
               totalCmv += (unitCost * qty);
             });
           } else {
@@ -630,7 +664,7 @@
             <td><strong>${e.description}</strong></td>
             <td style="${valColor} font-weight:bold;">R$ ${formatFloatToCurrency(e.value)}</td>
             <td style="text-align:center;">
-              <button class="btn-delete-entry" onclick="deleteFinancialEntry(${e.id})">🗑️ Apagar</button>
+              <button class="btn-delete-entry" onclick="deleteFinancialEntry('${e.id}')">🗑️ Apagar</button>
             </td>
           </tr>
         `;

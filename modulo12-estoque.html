@@ -376,13 +376,7 @@
 
   <script>
     let activeTab = 'all';
-    const defaultStockItems = [
-      { id: 'st_1', name: 'Carne Smash (Blend)', category: 'Ingrediente', qty: 15.5, unit: 'kg', minStock: 5, cost: 28.00, barcode: '7891001' },
-      { id: 'st_2', name: 'Pão Brioche Artesanal', category: 'Ingrediente', qty: 80, unit: 'un', minStock: 30, cost: 1.20, barcode: '7891002' },
-      { id: 'st_3', name: 'Queijo Mussarela', category: 'Ingrediente', qty: 3.2, unit: 'kg', minStock: 4, cost: 34.50, barcode: '7891003' },
-      { id: 'st_4', name: 'Coca-Cola Lata 350ml', category: 'Revenda', qty: 120, unit: 'un', minStock: 40, cost: 3.20, barcode: '7891004' },
-      { id: 'st_5', name: 'Caixa Delivery Hamburguer', category: 'Embalagem', qty: 250, unit: 'un', minStock: 50, cost: 0.85, barcode: '7891005' }
-    ];
+    const defaultStockItems = []; // Nenhum item predefinido (zerado)
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -399,8 +393,8 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
@@ -453,7 +447,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item encontrado no estoque.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item cadastrado no estoque. Clique em "Novo Item" para começar.</td></tr>`;
       } else {
         filtered.forEach(item => {
           let qty = parseFloat(item.qty || 0);
@@ -588,6 +582,10 @@
       let items = getStockItems();
       const select = document.getElementById('movItemId');
       select.innerHTML = '';
+      if (items.length === 0) {
+        showNoticeModal('Atenção', 'Cadastre pelo menos um item no estoque antes de realizar movimentações.', '⚠️');
+        return;
+      }
       items.forEach(i => {
         select.innerHTML += `<option value="${i.id}">${i.name} (Atual: ${i.qty} ${i.unit})</option>`;
       });

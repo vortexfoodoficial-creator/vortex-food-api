@@ -333,6 +333,17 @@
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
 
+      // Remove do KDS ordens cujas vendas principais foram apagadas do histórico geral
+      kdsOrders = kdsOrders.filter(order => {
+        let existsInSales = salesHistory.some(s => String(s.id) === String(order.id));
+        // Se a ordem for antiga ou ativa na cozinha, mantemos, mas se veio das vendas e foi deletada, removemos.
+        let isFromSales = (order.status === 'finished' || order.status === 'cancelled');
+        if (isFromSales && !existsInSales) {
+          return false; 
+        }
+        return true;
+      });
+
       salesHistory.forEach(sale => {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
 
@@ -510,7 +521,6 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        // Atualiza também no histórico geral se existir
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         let saleMatch = salesHistory.find(s => String(s.id) === String(id));
         if (saleMatch) {
@@ -575,10 +585,11 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
+    // Corrigido para rodar a cada 1 segundo (1000ms) para os segundos correrem fluidos
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
       renderKds();
-    }, 2000);
+    }, 1000);
 
     window.onload = function() {
       renderKds();

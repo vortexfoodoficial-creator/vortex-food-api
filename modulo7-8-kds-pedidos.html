@@ -242,6 +242,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let activeFilter = 'all';
     let pendingCancelOrderId = null;
@@ -328,15 +332,33 @@
       return '';
     }
 
-    function syncSalesHistoryToKds() {
+    async function syncSalesHistoryToKds() {
       const todayDateStr = getLocalDateStr(new Date());
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      let kdsOrders = [];
+      let salesHistory = [];
 
-      // Remove do KDS ordens cujas vendas principais foram apagadas do histórico geral
+      try {
+        if (typeof dbFetchKdsOrders === 'function') {
+          kdsOrders = await dbFetchKdsOrders();
+        }
+        if (kdsOrders.length === 0) {
+          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        }
+
+        if (typeof dbFetchSales === 'function') {
+          salesHistory = await dbFetchSales();
+        }
+        if (salesHistory.length === 0) {
+          salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        }
+      } catch (e) {
+        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      }
+
+      // Remove do KDS ordens cujas vendas principais foram apagadas
       kdsOrders = kdsOrders.filter(order => {
         let existsInSales = salesHistory.some(s => String(s.id) === String(order.id));
-        // Se a ordem for antiga ou ativa na cozinha, mantemos, mas se veio das vendas e foi deletada, removemos.
         let isFromSales = (order.status === 'finished' || order.status === 'cancelled');
         if (isFromSales && !existsInSales) {
           return false; 
@@ -344,38 +366,52 @@
         return true;
       });
 
-      salesHistory.forEach(sale => {
+      for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
 
         if (saleDateStr === todayDateStr) {
           let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id));
           if (!foundInKds) {
-            kdsOrders.unshift({
-              id: sale.id || Math.floor(Math.random() * 9000) + 1000,
+            const newKdsItem = {
+              id: String(sale.id || Math.floor(Math.random() * 9000) + 1000),
               origin: sale.channel === 'pdv' || sale.channel === 'counter' ? 'PDV / Caixa' : (sale.channel || 'Balcão'),
               client: sale.client || 'Cliente Balcão',
               time: sale.time || new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
               date: todayDateStr,
               items: sale.items || [{ name: sale.description || 'Venda PDV', qty: 1, price: sale.total || 0 }],
-              total: sale.total || 0,
+              total: parseFloat(sale.total) || 0,
               observation: sale.observation || '',
               status: sale.status === 'cancelled' ? 'cancelled' : 'finished'
-            });
+            };
+            kdsOrders.unshift(newKdsItem);
+            try {
+              if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
+            } catch (err) {}
           }
         }
-      });
+      }
 
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
     }
 
-    function renderKds() {
+    async function renderKds() {
       loadStoreSettings();
-      syncSalesHistoryToKds();
+      await syncSalesHistoryToKds();
 
       const todayDateStr = getLocalDateStr(new Date());
-      let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let orders = [];
+      try {
+        if (typeof dbFetchKdsOrders === 'function') {
+          orders = await dbFetchKdsOrders();
+        }
+        if (orders.length === 0) {
+          orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        }
+      } catch (e) {
+        orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      }
 
-      // Regra da virada do dia: remove da tela KDS pedidos finalizados ou cancelados de dias anteriores
+      // Regra da virada do dia
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
@@ -429,25 +465,25 @@
         let actionsHtml = '';
         if (order.status === 'new') {
           actionsHtml = `
-            <button class="btn-action-kds btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">👨‍🍳 Iniciar Preparo</button>
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-start" onclick="updateOrderStatus('${order.id}', 'preparing')">👨‍🍳 Iniciar Preparo</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'preparing') {
           actionsHtml = `
-            <button class="btn-action-kds btn-ready" onclick="updateOrderStatus(${order.id}, 'ready')">✅ Marcar como Pronto</button>
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')">✅ Marcar como Pronto</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'ready') {
           actionsHtml = `
-            <button class="btn-action-kds btn-finish" onclick="updateOrderStatus(${order.id}, 'finished')">🎯 Finalizar / Entregar Pedido</button>
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder(${order.id})">❌ Cancelar Pedido</button>
+            <button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else {
           actionsHtml = `
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket(${order.id})">🖨️ Imprimir Comanda</button>
+            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
           `;
         }
 
@@ -476,19 +512,28 @@
       });
     }
 
-    function updateOrderStatus(id, newStatus) {
+    async function updateOrderStatus(id, newStatus) {
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
 
       if (order) {
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+        
+        try {
+          if (typeof dbSaveKdsOrder === 'function') {
+            await dbSaveKdsOrder(order);
+          }
+        } catch (err) {
+          console.error('Erro ao atualizar status KDS no Supabase:', err);
+        }
+
         renderKds();
 
         let msg = '';
         if (newStatus === 'preparing') msg = `Pedido #${id} em preparo.`;
         else if (newStatus === 'ready') msg = `Pedido #${id} marcado como PRONTO!`;
-        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e sincronizado.`;
+        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e sincronizado na nuvem.`;
 
         showNoticeModal('Atualização do Pedido', msg, '👨‍🍳');
       }
@@ -496,7 +541,7 @@
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros e relatórios do sistema.`;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros na nuvem e relatórios do sistema.`;
       
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
@@ -511,7 +556,7 @@
       document.getElementById('confirmCancelModal').classList.remove('active');
     }
 
-    function confirmCancelOrder(id) {
+    async function confirmCancelOrder(id) {
       closeConfirmCancelModal();
 
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -521,11 +566,22 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
+        try {
+          if (typeof dbSaveKdsOrder === 'function') {
+            await dbSaveKdsOrder(order);
+          }
+        } catch (err) {}
+
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         let saleMatch = salesHistory.find(s => String(s.id) === String(id));
         if (saleMatch) {
           saleMatch.status = 'cancelled';
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+          try {
+            if (typeof dbSaveSale === 'function') {
+              await dbSaveSale(saleMatch);
+            }
+          } catch (err) {}
         }
 
         renderKds();
@@ -585,7 +641,6 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
-    // Corrigido para rodar a cada 1 segundo (1000ms) para os segundos correrem fluidos
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
       renderKds();

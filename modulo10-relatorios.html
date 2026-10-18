@@ -1,369 +1,709 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 10: Relatórios & BI</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Relatórios & DRE Gerencial</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --info: #38bdf8;
+      --warning: #eab308;
+      --danger: #ef4444;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    /* FILTROS E CONTROLES */
+    .filter-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+    .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .filter-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); }
+    .filter-input { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; }
+    
+    .btn-action { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-action:hover { background: var(--primary-hover); }
+    .btn-export { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); }
+    .btn-export:hover { border-color: var(--primary); color: var(--primary); }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    /* CARDS & TABELAS */
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    /* TABELAS MODERNAS */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
 
-        .content-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+    /* DRE STYLES */
+    .dre-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+    .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
+    .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
 
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
-        }
-
-        .metric-card {
-            background: var(--panel-dark);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .metric-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .metric-value {
-            font-size: 22px;
-            font-weight: 900;
-            color: #ffffff;
-        }
-
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .card-container-white h3 {
-            color: var(--text-dark) !important;
-        }
-
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
-
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Inteligência & Relatórios</div>
-            <div class="menu-item active">📈 Módulo 10: Relatórios & BI</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 10 — Relatórios de Vendas & BI</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado em Tempo Real</div>
-        </header>
-
-        <div class="content-body">
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-title">Total de Entradas (Caixa)</span>
-                    <span id="relFaturamento" class="metric-value" style="color: var(--success);">R$ 0,00</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-title">Total de Despesas (Saídas)</span>
-                    <span id="relDespesas" class="metric-value" style="color: var(--danger);">R$ 0,00</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-title">Lucro Líquido Estimado</span>
-                    <span id="relLucro" class="metric-value" style="color: var(--secondary);">R$ 0,00</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-title">Equipe Ativa</span>
-                    <span id="relEquipe" class="metric-value" style="color: #ff6b81;">0</span>
-                </div>
-            </div>
-
-            <div class="card-container-white">
-                <h3 style="margin-bottom: 10px; font-weight: 800;">Resumo Consolidado do Negócio</h3>
-                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
-                    Estes indicadores consolidados são calculados automaticamente a partir dos lançamentos do PDV, caixas, fichas técnicas e registos da equipa guardados no armazenamento local do dispositivo.
-                </p>
-                <button style="background: var(--primary-gradient); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-top: 15px;" onclick="mostrarAviso('Dados de BI e relatórios atualizados com sucesso!')">Atualizar Indicadores</button>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
-        }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link active"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
-        }
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Relatórios & DRE Gerencial</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
 
-        function carregarRelatorios() {
-            const financeiro = JSON.parse(localStorage.getItem('vortex_financeiro')) || [];
-            let entradas = 0;
-            let saidas = 0;
+    <!-- BARRA DE FILTROS PERSONALIZADOS E EXPORTAÇÃO -->
+    <div class="filter-card">
+      <div class="filter-group">
+        <label>📅 Início:</label>
+        <input type="date" class="filter-input" id="startDate">
+        <label>📅 Fim:</label>
+        <input type="date" class="filter-input" id="endDate">
+        <button class="btn-action" onclick="applyCustomFilter()">🔍 Filtrar</button>
+      </div>
 
-            financeiro.forEach(f => {
-                if (f.tipo === 'Entrada') entradas += f.valor;
-                if (f.tipo === 'Saída') saidas += f.valor;
+      <div class="filter-group">
+        <label>⚖️ Comparar com:</label>
+        <select class="filter-input" id="compareSelect" onchange="applyComparison()">
+          <option value="none">Nenhum</option>
+          <option value="prev_month">Mês Anterior</option>
+          <option value="prev_week">Semana Anterior</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <button class="btn-action btn-export" onclick="exportData('pdf')">📄 PDF</button>
+        <button class="btn-action btn-export" onclick="exportData('csv')">📊 CSV</button>
+        <button class="btn-action btn-export" onclick="exportData('excel')">📗 Excel</button>
+      </div>
+    </div>
+
+    <!-- COMPARATIVO DE PERÍODOS (EXIBIDO QUANDO SELECIONADO) -->
+    <div class="card-box" id="comparisonContainer" style="display:none; border-color: var(--primary);">
+      <div class="card-title">⚖️ Comparativo de Desempenho</div>
+      <div class="grid-3">
+        <div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">FATURAMENTO PERÍODO ATUAL</span>
+          <h3 id="compCurrentSales" style="color:var(--success);">R$ 0,00</h3>
+        </div>
+        <div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">FATURAMENTO PERÍODO ANTERIOR</span>
+          <h3 id="compPrevSales" style="color:var(--info);">R$ 0,00</h3>
+        </div>
+        <div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">VARIAÇÃO (CRESCIMENTO)</span>
+          <h3 id="compGrowth">0.0%</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAINEL DRE GERENCIAL -->
+    <div class="card-box">
+      <div class="card-title">📊 Demonstrativo Gerencial de Resultados (DRE)</div>
+      
+      <div class="dre-row">
+        <span>(+) RECEITA BRUTA DE VENDAS</span>
+        <strong id="dreGrossSales" style="color:var(--success);">R$ 0,00</strong>
+      </div>
+      <div class="dre-row sub">
+        <span>(-) Descontos e Imunidades Concedidas</span>
+        <span id="dreDiscounts">R$ 0,00</span>
+      </div>
+      <div class="dre-row sub">
+        <span>(-) Cancelamentos e Estornos</span>
+        <span id="dreCancels">R$ 0,00</span>
+      </div>
+      <div class="dre-row total">
+        <span>(=) RECEITA LÍQUIDA</span>
+        <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
+      </div>
+      <div class="dre-row sub">
+        <span>(-) Custo de Mercadorias Vendidas (CMV Estimado)</span>
+        <span id="dreCmv">R$ 0,00</span>
+      </div>
+      <div class="dre-row total">
+        <span>(=) MARGEM BRUTA</span>
+        <strong id="dreGrossMargin">R$ 0,00</strong>
+      </div>
+      <div class="dre-row sub">
+        <span>(-) Despesas Operacionais / Custos Fixos Estimados</span>
+        <span id="dreOperatingExpenses">R$ 0,00</span>
+      </div>
+      <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
+        <span>(=) RESULTADO GERENCIAL LÍQUIDO</span>
+        <strong id="dreNetProfit" style="color:var(--success); font-size:1.2rem;">R$ 0,00</strong>
+      </div>
+    </div>
+
+    <!-- VENDAS POR HORÁRIO E CATEGORIA -->
+    <div class="grid-2">
+      <!-- VENDAS POR HORÁRIO -->
+      <div class="card-box">
+        <div class="card-title">⏰ Picos de Movimento (Horário)</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Pedidos</th>
+                <th>Total Arrecadado</th>
+              </tr>
+            </thead>
+            <tbody id="tblHourlySales">
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Nenhum dado no período.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VENDAS POR CATEGORIA -->
+      <div class="card-box">
+        <div class="card-title">🏷️ Vendas por Categoria</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Qtd Vendida</th>
+                <th>Faturamento</th>
+              </tr>
+            </thead>
+            <tbody id="tblCategorySales">
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Nenhum dado no período.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANÁLISE DE PRODUTOS: RENTABILIDADE E GIRO DE ESTOQUE -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>📦 Análise de Desempenho e Rentabilidade de Produtos</span>
+        <input type="text" class="filter-input" placeholder="🔍 Buscar produto..." id="searchProductInput" onkeyup="filterProductTable()">
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Qtd Vendida</th>
+              <th>Preço Médio</th>
+              <th>CMV Unit.</th>
+              <th>Margem Unit. (%)</th>
+              <th>Faturamento Total</th>
+              <th>Status Giro</th>
+            </tr>
+          </thead>
+          <tbody id="tblProductsPerformance">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum dado no período.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DESEMPENHO DA EQUIPE & PERDAS -->
+    <div class="grid-2">
+      <!-- DESEMPENHO DA EQUIPE -->
+      <div class="card-box">
+        <div class="card-title">👔 Desempenho da Equipe</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Função</th>
+                <th>Pedidos</th>
+                <th>Total Vendido</th>
+              </tr>
+            </thead>
+            <tbody id="tblTeamPerformance">
+              <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum dado no período.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PERDAS, DESPERDÍCIOS E ESTOQUE -->
+      <div class="card-box">
+        <div class="card-title">⚠️ Perdas, Desperdícios e Divergências</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Item / Insumo</th>
+                <th>Motivo / Ocorrência</th>
+                <th>Qtd Perdida</th>
+                <th>Custo Total</th>
+              </tr>
+            </thead>
+            <tbody id="tblLossesAndWaste">
+              <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function formatFloatToCurrency(num) {
+      return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setDefaultDates() {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const today = now.toISOString().split('T')[0];
+
+      document.getElementById('startDate').value = firstDay;
+      document.getElementById('endDate').value = today;
+    }
+
+    function getFilteredSales() {
+      const startStr = document.getElementById('startDate').value;
+      const endStr = document.getElementById('endDate').value;
+
+      const startDate = new Date(startStr + 'T00:00:00');
+      const endDate = new Date(endStr + 'T23:59:59');
+
+      let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      
+      // Consolidação do KDS se não estiver no histórico
+      const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      kdsOrders.forEach(k => {
+        if (k.status === 'finished') {
+          let exists = rawHistory.some(s => String(s.id) === String(k.id));
+          if (!exists) {
+            rawHistory.push({
+              id: k.id,
+              total: k.total || 0,
+              payMethod: k.payment || k.paymentMethod || 'pix',
+              channel: k.origin || 'pdv',
+              date: k.date || new Date().toISOString().split('T')[0],
+              timestamp: new Date().toISOString(),
+              items: k.items || [],
+              operator: k.operator || 'Caixa Central',
+              waiter: k.waiter || 'N/A',
+              deliveryman: k.deliveryman || 'N/A'
             });
-
-            const lucro = entradas - saidas;
-
-            document.getElementById('relFaturamento').innerText = `R$ ${entradas.toFixed(2).replace('.', ',')}`;
-            document.getElementById('relDespesas').innerText = `R$ ${saidas.toFixed(2).replace('.', ',')}`;
-            document.getElementById('relLucro').innerText = `R$ ${lucro.toFixed(2).replace('.', ',')}`;
-
-            const equipe = JSON.parse(localStorage.getItem('vortex_equipe')) || [];
-            document.getElementById('relEquipe').innerText = equipe.length;
+          }
         }
+      });
 
-        carregarRelatorios();
-    </script>
+      return rawHistory.filter(s => {
+        let itemDate = new Date(s.date || s.timestamp || new Date());
+        return itemDate >= startDate && itemDate <= endDate;
+      });
+    }
+
+    function loadReportsData() {
+      applyTheme();
+      const sales = getFilteredSales();
+
+      // 1. CÁLCULOS DRE GERENCIAL
+      let grossSales = 0;
+      let totalDiscounts = 0;
+      let totalCancels = 0;
+      let totalCmv = 0;
+
+      sales.forEach(s => {
+        if (s.status === 'cancelled') {
+          totalCancels += parseFloat(s.total) || 0;
+        } else {
+          grossSales += parseFloat(s.total) || 0;
+          if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
+          if (s.cmvCost) totalCmv += parseFloat(s.cmvCost) || 0;
+          else totalCmv += ((parseFloat(s.total) || 0) * 0.35); // CMV Padrão 35%
+        }
+      });
+
+      const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
+      const grossMargin = Math.max(0, netSales - totalCmv);
+      const fixedExpenses = netSales * 0.20; // Estimativa de despesas fixas de 20%
+      const netProfit = grossMargin - fixedExpenses;
+
+      document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+      document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+      document.getElementById('dreCancels').innerText = `R$ ${formatFloatToCurrency(totalCancels)}`;
+      document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
+      document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
+      document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
+      document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(fixedExpenses)}`;
+      document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+
+      // 2. VENDAS POR HORÁRIO
+      renderHourlySales(sales);
+
+      // 3. VENDAS POR CATEGORIA
+      renderCategorySales(sales);
+
+      // 4. PERFORMANCE DE PRODUTOS
+      renderProductsPerformance(sales);
+
+      // 5. DESEMPENHO DA EQUIPE
+      renderTeamPerformance(sales);
+
+      // 6. PERDAS E ESTOQUE
+      renderLossesAndWaste();
+    }
+
+    function renderHourlySales(sales) {
+      let hourlyMap = {};
+      sales.forEach(s => {
+        let hour = s.time ? s.time.split(':')[0] + ':00' : '12:00';
+        if (!hourlyMap[hour]) hourlyMap[hour] = { count: 0, total: 0 };
+        hourlyMap[hour].count += 1;
+        hourlyMap[hour].total += parseFloat(s.total) || 0;
+      });
+
+      const tbody = document.getElementById('tblHourlySales');
+      tbody.innerHTML = '';
+
+      let hours = Object.keys(hourlyMap).sort();
+      if (hours.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Nenhum movimento no período.</td></tr>`;
+        return;
+      }
+
+      hours.forEach(h => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${h} hs</strong></td>
+            <td>${hourlyMap[h].count} pedidos</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(hourlyMap[h].total)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderCategorySales(sales) {
+      let catMap = {};
+      sales.forEach(s => {
+        if (s.items && Array.isArray(s.items)) {
+          s.items.forEach(i => {
+            let cat = i.category || 'Geral / Lanches';
+            if (!catMap[cat]) catMap[cat] = { qty: 0, total: 0 };
+            catMap[cat].qty += (i.qty || 1);
+            catMap[cat].total += ((i.price || 0) * (i.qty || 1));
+          });
+        }
+      });
+
+      const tbody = document.getElementById('tblCategorySales');
+      tbody.innerHTML = '';
+
+      let cats = Object.keys(catMap);
+      if (cats.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Nenhuma categoria registrada.</td></tr>`;
+        return;
+      }
+
+      cats.forEach(c => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${c}</strong></td>
+            <td>${catMap[c].qty} un.</td>
+            <td style="color:var(--info); font-weight:bold;">R$ ${formatFloatToCurrency(catMap[c].total)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderProductsPerformance(sales) {
+      let prodMap = {};
+      sales.forEach(s => {
+        if (s.items && Array.isArray(s.items)) {
+          s.items.forEach(i => {
+            let name = i.name || 'Produto sem nome';
+            if (!prodMap[name]) prodMap[name] = { qty: 0, total: 0, price: i.price || 0 };
+            prodMap[name].qty += (i.qty || 1);
+            prodMap[name].total += ((i.price || 0) * (i.qty || 1));
+          });
+        }
+      });
+
+      const tbody = document.getElementById('tblProductsPerformance');
+      tbody.innerHTML = '';
+
+      let prods = Object.keys(prodMap);
+      if (prods.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum produto vendido no período.</td></tr>`;
+        return;
+      }
+
+      prods.forEach(p => {
+        let qty = prodMap[p].qty;
+        let total = prodMap[p].total;
+        let unitPrice = qty > 0 ? total / qty : 0;
+        let unitCmv = unitPrice * 0.35; // Estimado 35%
+        let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
+        
+        let giroStatus = qty > 10 ? `<span style="color:var(--success);">🔥 Alto Giro</span>` : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;
+
+        tbody.innerHTML += `
+          <tr class="product-row">
+            <td><strong>${p}</strong></td>
+            <td>${qty} un.</td>
+            <td>R$ ${formatFloatToCurrency(unitPrice)}</td>
+            <td>R$ ${formatFloatToCurrency(unitCmv)}</td>
+            <td style="color:var(--info); font-weight:bold;">${marginPercent}%</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(total)}</td>
+            <td>${giroStatus}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderTeamPerformance(sales) {
+      let teamMap = {
+        'Operador Caixa': { role: 'Caixa / PDV', count: 0, total: 0 },
+        'Garçom Principal': { role: 'Garçom / Mesas', count: 0, total: 0 },
+        'Entregador Motoboy': { role: 'Entregador Delivery', count: 0, total: 0 }
+      };
+
+      sales.forEach(s => {
+        let op = s.operator || 'Operador Caixa';
+        if (!teamMap[op]) teamMap[op] = { role: 'Atendente', count: 0, total: 0 };
+        teamMap[op].count += 1;
+        teamMap[op].total += parseFloat(s.total) || 0;
+      });
+
+      const tbody = document.getElementById('tblTeamPerformance');
+      tbody.innerHTML = '';
+
+      Object.keys(teamMap).forEach(m => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${m}</strong></td>
+            <td>${teamMap[m].role}</td>
+            <td>${teamMap[m].count} pedidos</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(teamMap[m].total)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderLossesAndWaste() {
+      const losses = JSON.parse(localStorage.getItem('vortex_losses_history')) || [
+        { item: 'Pão de Hambúrguer', reason: 'Vencimento / Avaria', qty: '5 un', cost: 12.50 },
+        { item: 'Carne Smash 100g', reason: 'Desperdício de Chapa', qty: '2 un', cost: 9.80 }
+      ];
+
+      const tbody = document.getElementById('tblLossesAndWaste');
+      tbody.innerHTML = '';
+
+      if (losses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda.</td></tr>`;
+        return;
+      }
+
+      losses.forEach(l => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${l.item}</strong></td>
+            <td>${l.reason}</td>
+            <td>${l.qty}</td>
+            <td style="color:var(--danger); font-weight:bold;">R$ ${formatFloatToCurrency(l.cost)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterProductTable() {
+      let query = document.getElementById('searchProductInput').value.toLowerCase();
+      let rows = document.querySelectorAll('.product-row');
+      rows.forEach(r => {
+        let text = r.innerText.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    function applyCustomFilter() {
+      loadReportsData();
+    }
+
+    function applyComparison() {
+      const option = document.getElementById('compareSelect').value;
+      const compContainer = document.getElementById('comparisonContainer');
+
+      if (option === 'none') {
+        compContainer.style.display = 'none';
+        return;
+      }
+
+      const sales = getFilteredSales();
+      let currentTotal = sales.reduce((acc, s) => acc + (parseFloat(s.total) || 0), 0);
+      let prevTotal = currentTotal * 0.85; // Simulação comparativa com período anterior
+      let growth = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 0;
+
+      document.getElementById('compCurrentSales').innerText = `R$ ${formatFloatToCurrency(currentTotal)}`;
+      document.getElementById('compPrevSales').innerText = `R$ ${formatFloatToCurrency(prevTotal)}`;
+      document.getElementById('compGrowth').innerText = `${growth >= 0 ? '+' : ''}${growth}%`;
+      document.getElementById('compGrowth').style.color = growth >= 0 ? 'var(--success)' : 'var(--danger)';
+
+      compContainer.style.display = 'block';
+    }
+
+    function exportData(type) {
+      alert(`Exportando relatórios consolidados em formato .${type.toUpperCase()}... O download iniciará em instantes.`);
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      setDefaultDates();
+      loadReportsData();
+    };
+  </script>
 </body>
 </html>

@@ -428,14 +428,34 @@
       }
     }
 
-    function parseCurrencyToFloat(valStr) {
-      if (!valStr) return 0;
-      let cleaned = valStr.toString().replace(/\./g, '').replace(',', '.');
-      return parseFloat(cleaned) || 0;
+    function formatFloatToCurrency(num) {
+      return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function formatFloatToCurrency(num) {
-      return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Função utilitária para extrair a data YYYY-MM-DD em Fuso Horário Local (evita bug de UTC no JS)
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Extrai YYYY-MM-DD de qualquer formato de string ou data armazenada
+    function parseToLocalDateStr(rawDate) {
+      if (!rawDate) return '';
+      if (typeof rawDate === 'string') {
+        // Se já contiver T ou formato ISO/data pura
+        const cleanStr = rawDate.split('T')[0].split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+          return cleanStr;
+        }
+      }
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        return getLocalDateStr(d);
+      }
+      return '';
     }
 
     function setPeriodFilter(period, btnElement) {
@@ -447,50 +467,51 @@
       loadDashboardData();
     }
 
-    // Helper rigoroso para filtrar datas locais sem problemas de fuso horário
+    // Filtro rigoroso com fuso horário local
     function isDateInFilter(rawDate, filterType) {
-      const now = new Date();
-      const todayY = now.getFullYear();
-      const todayM = now.getMonth();
-      const todayD = now.getDate();
+      const todayStr = getLocalDateStr(new Date());
+      const itemDateStr = parseToLocalDateStr(rawDate);
 
-      if (!rawDate) {
-        return filterType === 'today'; // Se não tiver data, por segurança não acumula no histórico retroativo
-      }
+      if (!itemDateStr) return false;
 
-      let itemDate = new Date(rawDate);
-      if (isNaN(itemDate.getTime())) {
-        const parts = String(rawDate).split('T')[0].split('-');
-        if (parts.length === 3) {
-          itemDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        } else {
-          itemDate = new Date();
-        }
-      }
+      const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
+      const [iYear, iMonth, iDay] = itemDateStr.split('-').map(Number);
 
-      const itemY = itemDate.getFullYear();
-      const itemM = itemDate.getMonth();
-      const itemD = itemDate.getDate();
+      const todayObj = new Date(tYear, tMonth - 1, tDay);
+      const itemObj = new Date(iYear, iMonth - 1, iDay);
 
       if (filterType === 'today') {
-        return itemY === todayY && itemM === todayM && itemD === todayD;
+        return itemDateStr === todayStr;
       } 
       else if (filterType === 'yesterday') {
-        const yesterday = new Date(todayY, todayM, todayD - 1);
-        return itemY === yesterday.getFullYear() && itemM === yesterday.getMonth() && itemD === yesterday.getDate();
+        const yesterdayObj = new Date(tYear, tMonth - 1, tDay - 1);
+        const yesterdayStr = getLocalDateStr(yesterdayObj);
+        return itemDateStr === yesterdayStr;
       } 
       else if (filterType === 'week') {
-        const sevenDaysAgo = new Date(todayY, todayM, todayD - 6, 0, 0, 0);
-        return itemDate >= sevenDaysAgo && itemDate <= new Date(todayY, todayM, todayD, 23, 59, 59);
+        const sevenDaysAgoObj = new Date(tYear, tMonth - 1, tDay - 6);
+        return itemObj >= sevenDaysAgoObj && itemObj <= todayObj;
       } 
       else if (filterType === 'month') {
-        return itemY === todayY && itemM === todayM;
+        return iYear === tYear && iMonth === tMonth;
       }
       return true;
     }
 
+    function checkAndResetDailyCache() {
+      const todayStr = getLocalDateStr(new Date());
+      const lastActiveDay = localStorage.getItem('vortex_last_active_day');
+
+      // Se mudou o dia, reseta forçadamente a chave rápida de vendas do dia anterior
+      if (lastActiveDay !== todayStr) {
+        localStorage.setItem('vortex_vendas_hoje', '0,00');
+        localStorage.setItem('vortex_last_active_day', todayStr);
+      }
+    }
+
     function loadDashboardData() {
       applyTheme();
+      checkAndResetDailyCache();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
@@ -504,17 +525,10 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Verificação da virada do dia automática para o cache rápido de hoje
-      const todayStr = new Date().toISOString().split('T')[0];
-      const lastSavedDay = localStorage.getItem('vortex_last_active_day');
-      if (lastSavedDay !== todayStr) {
-        // Se mudou o dia, reseta a string rápida de hoje do PDV para garantir zeragem visual imediata
-        localStorage.setItem('vortex_last_active_day', todayStr);
-      }
-
-      // Histórico central de vendas
+      // 1. Busca histórico central de vendas
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       
+      // Consolida vendas finalizadas da cozinha sem duplicar
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.forEach(k => {
         if (k.status === 'finished') {
@@ -525,48 +539,38 @@
               total: k.total || 0,
               payMethod: k.payment || k.paymentMethod || k.formaPagamento || 'pix',
               channel: k.origin || k.channel || 'pdv',
-              date: k.date || todayStr,
-              timestamp: new Date().toISOString(),
+              date: k.date || getLocalDateStr(new Date()),
+              timestamp: k.timestamp || new Date().toISOString(),
               items: k.items || []
             });
           }
         }
       });
 
-      // Filtra estritamente pelo período selecionado
+      // 2. Filtra o histórico estritamente pela data selecionada
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 
+      // 3. Cálculo de Faturamento e Métricas Finanacerias
       let grossSales = 0;
-      if (currentFilter === 'today' && salesHistory.length === 0) {
-        const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-        grossSales = parseCurrencyToFloat(salesRaw);
-      } else {
-        salesHistory.forEach(s => {
-          if (s.status !== 'cancelled') {
-            grossSales += parseFloat(s.total) || 0;
-          }
-        });
-      }
-
-      document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
-
-      const totalOrdersCount = salesHistory.length || (grossSales > 0 && currentFilter === 'today' ? 1 : 0);
-      
       let totalDiscounts = 0;
       let totalCancelled = 0;
       let estimatedCmvCost = 0;
 
       salesHistory.forEach(s => {
-        if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
-        if (s.status === 'cancelled') totalCancelled++;
-        if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
-        else if (s.total) estimatedCmvCost += (s.total * 0.35);
+        if (s.status === 'cancelled') {
+          totalCancelled++;
+        } else {
+          let val = parseFloat(s.total) || 0;
+          grossSales += val;
+          if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
+          if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
+          else estimatedCmvCost += (val * 0.35); // CMV estimado padrão de 35% caso não tenha ficheiro
+        }
       });
 
-      if (grossSales > 0 && salesHistory.length === 0) {
-        estimatedCmvCost = grossSales * 0.35;
-      }
+      document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
 
+      const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
       const netSales = Math.max(0, grossSales - totalDiscounts);
       const grossProfit = Math.max(0, netSales - estimatedCmvCost);
       const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
@@ -587,6 +591,7 @@
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
+      // Métricas Operacionais
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
 
@@ -610,25 +615,23 @@
       const totalClientsCount = Object.keys(clientsLoyalty).length;
       document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
 
-      const cancelRate = totalOrdersCount > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
+      const cancelRate = (totalOrdersCount + totalCancelled) > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // Canais
+      // 4. Canais de Venda
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
-        const ch = String(s.channel || s.origin || '').toLowerCase();
-        if (ch.includes('ifood')) channelIFood += parseFloat(s.total) || 0;
-        else if (ch.includes('99') || ch.includes('99food')) channel99 += parseFloat(s.total) || 0;
-        else if (ch.includes('keeta')) channelKeeta += parseFloat(s.total) || 0;
-        else if (ch.includes('table') || ch.includes('mesa')) channelMesas += parseFloat(s.total) || 0;
-        else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += parseFloat(s.total) || 0;
-        else channelPdv += parseFloat(s.total) || 0;
+        if (s.status !== 'cancelled') {
+          const ch = String(s.channel || s.origin || '').toLowerCase();
+          if (ch.includes('ifood')) channelIFood += parseFloat(s.total) || 0;
+          else if (ch.includes('99') || ch.includes('99food')) channel99 += parseFloat(s.total) || 0;
+          else if (ch.includes('keeta')) channelKeeta += parseFloat(s.total) || 0;
+          else if (ch.includes('table') || ch.includes('mesa')) channelMesas += parseFloat(s.total) || 0;
+          else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += parseFloat(s.total) || 0;
+          else channelPdv += parseFloat(s.total) || 0;
+        }
       });
-
-      if (grossSales > 0 && (channelPdv + channelMesas + channelDelivery + channelIFood + channel99 + channelKeeta) === 0) {
-        channelPdv = grossSales;
-      }
 
       const pPdv = grossSales > 0 ? Math.round((channelPdv / grossSales) * 100) : 0;
       const pMesas = grossSales > 0 ? Math.round((channelMesas / grossSales) * 100) : 0;
@@ -655,31 +658,29 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // Formas de Pagamento
+      // 5. Formas de Pagamento
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
-        const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
-        
-        if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) {
-          payDebit += parseFloat(s.total) || 0;
-        } else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit') || pm === 'card') {
-          payCredit += parseFloat(s.total) || 0;
-        } else if (pm.includes('pix')) {
-          payPix += parseFloat(s.total) || 0;
-        } else if (pm.includes('vr') || pm.includes('refeicao') || pm.includes('refeição')) {
-          payVr += parseFloat(s.total) || 0;
-        } else if (pm.includes('va') || pm.includes('alimentacao') || pm.includes('alimentação')) {
-          payVa += parseFloat(s.total) || 0;
-        } else if (pm.includes('cash') || pm.includes('dinheiro')) {
-          payDinheiro += parseFloat(s.total) || 0;
-        } else {
-          payPix += parseFloat(s.total) || 0;
+        if (s.status !== 'cancelled') {
+          const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
+          
+          if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) {
+            payDebit += parseFloat(s.total) || 0;
+          } else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit') || pm === 'card') {
+            payCredit += parseFloat(s.total) || 0;
+          } else if (pm.includes('pix')) {
+            payPix += parseFloat(s.total) || 0;
+          } else if (pm.includes('vr') || pm.includes('refeicao') || pm.includes('refeição')) {
+            payVr += parseFloat(s.total) || 0;
+          } else if (pm.includes('va') || pm.includes('alimentacao') || pm.includes('alimentação')) {
+            payVa += parseFloat(s.total) || 0;
+          } else if (pm.includes('cash') || pm.includes('dinheiro')) {
+            payDinheiro += parseFloat(s.total) || 0;
+          } else {
+            payPix += parseFloat(s.total) || 0;
+          }
         }
       });
-
-      if (grossSales > 0 && (payPix + payDebit + payCredit + payVr + payVa + payDinheiro) === 0) {
-        payPix = grossSales;
-      }
 
       const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
       const pDebit = grossSales > 0 ? Math.round((payDebit / grossSales) * 100) : 0;
@@ -715,7 +716,7 @@
       let productMap = {};
 
       history.forEach(s => {
-        if (s.items && Array.isArray(s.items)) {
+        if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
           s.items.forEach(item => {
             const pName = item.name || 'Produto sem nome';
             if (!productMap[pName]) productMap[pName] = 0;

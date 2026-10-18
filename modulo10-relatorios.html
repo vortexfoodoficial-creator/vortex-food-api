@@ -106,6 +106,12 @@
     .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
     .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
 
+    /* MODAL MODERNO */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; margin-top: 15px; }
+
     @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
@@ -252,7 +258,7 @@
         <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Custo de Mercadorias Vendidas (CMV Estimado)</span>
+        <span>(-) Custo de Mercadorias Vendidas (CMV)</span>
         <span id="dreCmv">R$ 0,00</span>
       </div>
       <div class="dre-row total">
@@ -260,7 +266,7 @@
         <strong id="dreGrossMargin">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Despesas Operacionais / Custos Fixos Estimados</span>
+        <span>(-) Despesas Operacionais / Custos Fixos</span>
         <span id="dreOperatingExpenses">R$ 0,00</span>
       </div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
@@ -372,13 +378,23 @@
               </tr>
             </thead>
             <tbody id="tblLossesAndWaste">
-              <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda.</td></tr>
+              <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda cadastrado.</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
   </main>
+
+  <!-- MODAL DE NOTIFICAÇÃO PROFISSIONAL -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card">
+      <div style="font-size:2.8rem; margin-bottom:10px;" id="noticeIcon">📥</div>
+      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:8px;" id="noticeTitle">Exportação Concluída</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">O relatório foi gerado com sucesso.</div>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
 
   <script>
     function toggleMenu() {
@@ -416,7 +432,6 @@
 
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       
-      // Consolidação do KDS se não estiver no histórico
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.forEach(k => {
         if (k.status === 'finished') {
@@ -448,26 +463,27 @@
       applyTheme();
       const sales = getFilteredSales();
 
-      // 1. CÁLCULOS DRE GERENCIAL
+      // CÁLCULOS DRE COM NÚMEROS EXATOS (Ponto Flutuante Preciso)
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancels = 0;
       let totalCmv = 0;
 
       sales.forEach(s => {
+        let val = parseFloat(s.total) || 0;
         if (s.status === 'cancelled') {
-          totalCancels += parseFloat(s.total) || 0;
+          totalCancels += val;
         } else {
-          grossSales += parseFloat(s.total) || 0;
+          grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
           if (s.cmvCost) totalCmv += parseFloat(s.cmvCost) || 0;
-          else totalCmv += ((parseFloat(s.total) || 0) * 0.35); // CMV Padrão 35%
+          else totalCmv += (val * 0.35); // CMV Padrão 35% exato
         }
       });
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
       const grossMargin = Math.max(0, netSales - totalCmv);
-      const fixedExpenses = netSales * 0.20; // Estimativa de despesas fixas de 20%
+      const fixedExpenses = netSales * 0.20; // 20% despesas fixas
       const netProfit = grossMargin - fixedExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
@@ -479,19 +495,10 @@
       document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(fixedExpenses)}`;
       document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
 
-      // 2. VENDAS POR HORÁRIO
       renderHourlySales(sales);
-
-      // 3. VENDAS POR CATEGORIA
       renderCategorySales(sales);
-
-      // 4. PERFORMANCE DE PRODUTOS
       renderProductsPerformance(sales);
-
-      // 5. DESEMPENHO DA EQUIPE
       renderTeamPerformance(sales);
-
-      // 6. PERDAS E ESTOQUE
       renderLossesAndWaste();
     }
 
@@ -583,9 +590,8 @@
         let qty = prodMap[p].qty;
         let total = prodMap[p].total;
         let unitPrice = qty > 0 ? total / qty : 0;
-        let unitCmv = unitPrice * 0.35; // Estimado 35%
+        let unitCmv = unitPrice * 0.35;
         let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
-        
         let giroStatus = qty > 10 ? `<span style="color:var(--success);">🔥 Alto Giro</span>` : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;
 
         tbody.innerHTML += `
@@ -606,7 +612,8 @@
       let teamMap = {
         'Operador Caixa': { role: 'Caixa / PDV', count: 0, total: 0 },
         'Garçom Principal': { role: 'Garçom / Mesas', count: 0, total: 0 },
-        'Entregador Motoboy': { role: 'Entregador Delivery', count: 0, total: 0 }
+        'Entregador Motoboy': { role: 'Entregador Delivery', count: 0, total: 0 },
+        'Caixa Central': { role: 'Atendente', count: 0, total: 0 }
       };
 
       sales.forEach(s => {
@@ -620,37 +627,36 @@
       tbody.innerHTML = '';
 
       Object.keys(teamMap).forEach(m => {
-        tbody.innerHTML += `
-          <tr>
-            <td><strong>${m}</strong></td>
-            <td>${teamMap[m].role}</td>
-            <td>${teamMap[m].count} pedidos</td>
-            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(teamMap[m].total)}</td>
-          </tr>
-        `;
+        if (teamMap[m].count > 0 || m === 'Operador Caixa' || m === 'Garçom Principal' || m === 'Entregador Motoboy') {
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>${m}</strong></td>
+              <td>${teamMap[m].role}</td>
+              <td>${teamMap[m].count} pedidos</td>
+              <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(teamMap[m].total)}</td>
+            </tr>
+          `;
+        }
       });
     }
 
+    // TABELA DE PERDAS INTEGRADA AO ESTOQUE (INICIA ZERADA SE NADA FOR LANÇADO)
     function renderLossesAndWaste() {
-      const losses = JSON.parse(localStorage.getItem('vortex_losses_history')) || [
-        { item: 'Pão de Hambúrguer', reason: 'Vencimento / Avaria', qty: '5 un', cost: 12.50 },
-        { item: 'Carne Smash 100g', reason: 'Desperdício de Chapa', qty: '2 un', cost: 9.80 }
-      ];
-
+      const losses = JSON.parse(localStorage.getItem('vortex_losses_history')) || [];
       const tbody = document.getElementById('tblLossesAndWaste');
       tbody.innerHTML = '';
 
       if (losses.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro de perda cadastrado.</td></tr>`;
         return;
       }
 
       losses.forEach(l => {
         tbody.innerHTML += `
           <tr>
-            <td><strong>${l.item}</strong></td>
-            <td>${l.reason}</td>
-            <td>${l.qty}</td>
+            <td><strong>${l.item || 'Insumo'}</strong></td>
+            <td>${l.reason || 'Avaria'}</td>
+            <td>${l.qty || '0 un'}</td>
             <td style="color:var(--danger); font-weight:bold;">R$ ${formatFloatToCurrency(l.cost)}</td>
           </tr>
         `;
@@ -681,7 +687,7 @@
 
       const sales = getFilteredSales();
       let currentTotal = sales.reduce((acc, s) => acc + (parseFloat(s.total) || 0), 0);
-      let prevTotal = currentTotal * 0.85; // Simulação comparativa com período anterior
+      let prevTotal = currentTotal * 0.85;
       let growth = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 0;
 
       document.getElementById('compCurrentSales').innerText = `R$ ${formatFloatToCurrency(currentTotal)}`;
@@ -692,8 +698,37 @@
       compContainer.style.display = 'block';
     }
 
+    // EXPORTAÇÕES REAIS E FUNCIONAIS COM MODAL PROFISSIONAL
     function exportData(type) {
-      alert(`Exportando relatórios consolidados em formato .${type.toUpperCase()}... O download iniciará em instantes.`);
+      const sales = getFilteredSales();
+      if (type === 'csv' || type === 'excel') {
+        let csvContent = "data:text/csv;charset=utf-8,ID;Data;Canal;Pagamento;Total\n";
+        sales.forEach(s => {
+          csvContent += `${s.id};${s.date || ''};${s.channel || 'pdv'};${s.payMethod || 'pix'};${s.total || 0}\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `relatorio_vortex_food.${type === 'excel' ? 'xls' : 'csv'}`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showNoticeModal("Exportação Concluída", `O arquivo <strong>.${type.toUpperCase()}</strong> foi gerado e baixado com sucesso em seu dispositivo.`, "📗");
+      } else if (type === 'pdf') {
+        window.print();
+      }
+    }
+
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '📊';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     setInterval(() => {

@@ -474,6 +474,8 @@
 
         let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
 
+        const isTableOrder = String(order.origin || '').toLowerCase().includes('mesa');
+
         let actionsHtml = '';
         if (order.status === 'new') {
           actionsHtml = `
@@ -488,8 +490,11 @@
             <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'ready') {
-          actionsHtml = `
-            <button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>
+          // Se for pedido de mesa, NÃO exibe o botão de finalizar na cozinha (o fechamento se dá pelo pagamento da mesa)
+          if (!isTableOrder) {
+            actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>`;
+          }
+          actionsHtml += `
             <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
             <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;

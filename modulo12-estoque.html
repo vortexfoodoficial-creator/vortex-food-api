@@ -1,448 +1,655 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 12: Estoque e Insumos</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Módulo 12: Estoque & Inventário</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    .stats-summary-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: bold; flex: 1; min-width: 180px; }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .action-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .search-input { flex: 1; min-width: 200px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 8px; outline: none; font-size: 0.88rem; }
+    
+    .btn-action { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: opacity 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-action:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 10px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    .tabs-nav { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; overflow-x: auto; }
+    .tab-btn { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+    .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .content-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
-        }
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
 
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            height: fit-content;
-        }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: bold; text-transform: uppercase; display: inline-block; }
+    .badge-ok { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .badge-warning { background: rgba(234, 179, 8, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-        .card-container-white h3, 
-        .card-container-white td, 
-        .card-container-white th,
-        .card-container-white label {
-            color: var(--text-dark) !important;
-        }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; overflow-y: auto; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; margin: auto; }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
+    input[type="text"], input[type="number"], input[type="date"], select, textarea { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
 
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 13px;
-        }
-
-        .stock-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .stock-table th {
-            background: #f8f9fa;
-            color: var(--text-muted);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 10px;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .stock-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #edf2f7;
-            vertical-align: middle;
-        }
-
-        .badge-stock {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-        .stock-ok { background: rgba(46, 213, 115, 0.15); color: #27ae60; }
-        .stock-baixo { background: rgba(234, 32, 39, 0.15); color: var(--danger); }
-
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
-
-        @media (max-width: 900px) {
-            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
-        }
-
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 12px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Retaguarda & Suprimentos</div>
-            <div class="menu-item active">📦 Módulo 12: Estoque</div>
-            <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 12 — Gestão de Estoque & Insumos</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
-        </header>
-
-        <div class="content-body">
-            <div class="card-container-white" style="overflow-x: auto;">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">Saldo de Insumos & Embalagens</h3>
-                <table class="stock-table">
-                    <thead>
-                        <tr>
-                            <th>Insumo</th>
-                            <th>Quantidade</th>
-                            <th>Unidade</th>
-                            <th>Estado</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listaEstoqueTable">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card-container-white">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Cadastrar Insumo</h3>
-                <form id="formEstoque" onsubmit="salvarInsumo(event)">
-                    <div class="form-group">
-                        <label>Nome do Insumo *</label>
-                        <input type="text" id="nomeInsumo" placeholder="Ex: Blend de Carne 160g" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Quantidade Atual *</label>
-                        <input type="number" id="qtdInsumo" placeholder="Ex: 50" step="1" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Unidade de Medida *</label>
-                        <select id="unidadeInsumo">
-                            <option value="unidades">Unidades (un)</option>
-                            <option value="kg">Quilogramas (kg)</option>
-                            <option value="litros">Litros (L)</option>
-                            <option value="pacotes">Pacotes (pct)</option>
-                        </select>
-                    </div>
-                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Insumo</button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link active"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Estoque, Insumos & Inventário</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <div class="stats-summary-bar">
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">📦</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">TOTAL DE ITENS</div>
+          <div style="font-size:1rem;" id="statTotalItems">0</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">⚠️</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">ESTOQUE BAIXO / CRÍTICO</div>
+          <div style="font-size:1rem; color:var(--warning);" id="statWarningItems">0</div>
+        </div>
+      </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">🚨</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">ZERADOS / SEM ESTOQUE</div>
+          <div style="font-size:1rem; color:var(--danger);" id="statZeroItems">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-box">
+      <div class="card-title">
+        <span>📋 Gestão de Itens & Insumos</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-secondary" onclick="openMovementModal('entry')">➕ Entrada</button>
+          <button class="btn-secondary" onclick="openMovementModal('exit')">➖ Saída / Perda</button>
+          <button class="btn-action" onclick="openItemModal()">➕ Novo Item</button>
+        </div>
+      </div>
+
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchCategoryTab('all')">Todos os Itens</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Ingrediente')">Ingredientes</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Revenda')">Revenda</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Embalagem')">Embalagens</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Limpeza')">Limpeza / Consumo</button>
+      </div>
+
+      <div class="action-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome ou código..." oninput="renderStockTable()">
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Item / Nome</th>
+              <th>Categoria</th>
+              <th>Qtd. Atual</th>
+              <th>Mínimo</th>
+              <th>Custo Médio</th>
+              <th>Status</th>
+              <th style="text-align:center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Carregando estoque...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE ITEM -->
+  <div class="modal-overlay" id="itemModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.05rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="itemModalTitle">Cadastrar Novo Item</span>
+        <button onclick="closeItemModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <input type="hidden" id="editItemId">
+
+      <div class="form-group">
+        <label for="itemName">Nome do Item *:</label>
+        <input type="text" id="itemName" placeholder="Ex: Queijo Mussarela Fatiado">
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+          <label for="itemCategory">Categoria *:</label>
+          <select id="itemCategory">
+            <option value="Ingrediente">Ingrediente</option>
+            <option value="Revenda">Produto para Revenda</option>
+            <option value="Embalagem">Embalagem</option>
+            <option value="Limpeza">Material de Limpeza / Consumo</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label for="itemUnit">Unidade de Medida *:</label>
+          <select id="itemUnit">
+            <option value="kg">Quilograma (kg)</option>
+            <option value="g">Grama (g)</option>
+            <option value="l">Litro (l)</option>
+            <option value="ml">Mililitro (ml)</option>
+            <option value="un">Unidade (un)</option>
+            <option value="pct">Pacote (pct)</option>
+            <option value="cx">Caixa (cx)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+          <label for="itemQty">Quantidade Inicial:</label>
+          <input type="number" step="0.01" id="itemQty" placeholder="0">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label for="itemCost">Custo Médio (R$):</label>
+          <input type="number" step="0.01" id="itemCost" placeholder="0,00">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+          <label for="itemMinStock">Estoque Mínimo:</label>
+          <input type="number" step="0.01" id="itemMinStock" placeholder="Ex: 5">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label for="itemBarcode">Código de Barras:</label>
+          <input type="text" id="itemBarcode" placeholder="EAN / Leitor">
+        </div>
+      </div>
+
+      <button class="btn-action" style="width:100%; margin-top:10px; justify-content:center;" onclick="saveStockItem()">Salvar Item 💾</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE ENTRADA / SAÍDA / PERDA -->
+  <div class="modal-overlay" id="movementModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.05rem; font-weight:bold; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="movementModalTitle">Movimentação de Estoque</span>
+        <button onclick="closeMovementModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label for="movType">Tipo de Movimentação *:</label>
+        <select id="movType">
+          <option value="entry">📥 Entrada de Mercadorias (Compra)</option>
+          <option value="exit">📤 Saída / Consumo</option>
+          <option value="loss">⚠️ Registro de Perda / Avaria</option>
+          <option value="waste">🗑️ Registro de Desperdício</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="movItemId">Selecionar Item *:</label>
+        <select id="movItemId"></select>
+      </div>
+
+      <div class="form-group">
+        <label for="movQty">Quantidade *:</label>
+        <input type="number" step="0.01" id="movQty" placeholder="Ex: 10">
+      </div>
+
+      <div class="form-group">
+        <label for="movReason">Motivo / Observação:</label>
+        <input type="text" id="movReason" placeholder="Ex: Nota Fiscal 1234 / Validade vencida">
+      </div>
+
+      <button class="btn-action" style="width:100%; margin-top:10px; justify-content:center;" onclick="executeMovement()">Confirmar Movimentação ⚡</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE AVISO -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="custom-modal-card" style="text-align:center; max-width:380px;">
+      <div style="font-size:2.5rem; margin-bottom:8px;" id="noticeIcon">🎉</div>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px;" id="noticeTitle">Sucesso!</div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Ação concluída.</div>
+      <button class="btn-action" style="width:100%; justify-content:center;" onclick="closeNoticeModal()">Entendido</button>
+    </div>
+  </div>
+
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
+  <script>
+    let activeTab = 'all';
+    const defaultStockItems = [
+      { id: 'st_1', name: 'Carne Smash (Blend)', category: 'Ingrediente', qty: 15.5, unit: 'kg', minStock: 5, cost: 28.00, barcode: '7891001' },
+      { id: 'st_2', name: 'Pão Brioche Artesanal', category: 'Ingrediente', qty: 80, unit: 'un', minStock: 30, cost: 1.20, barcode: '7891002' },
+      { id: 'st_3', name: 'Queijo Mussarela', category: 'Ingrediente', qty: 3.2, unit: 'kg', minStock: 4, cost: 34.50, barcode: '7891003' },
+      { id: 'st_4', name: 'Coca-Cola Lata 350ml', category: 'Revenda', qty: 120, unit: 'un', minStock: 40, cost: 3.20, barcode: '7891004' },
+      { id: 'st_5', name: 'Caixa Delivery Hamburguer', category: 'Embalagem', qty: 250, unit: 'un', minStock: 50, cost: 0.85, barcode: '7891005' }
+    ];
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function loadStoreSettings() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
+    }
+
+    function getStockItems() {
+      let saved = localStorage.getItem('vortex_stock_items');
+      if (!saved) {
+        localStorage.setItem('vortex_stock_items', JSON.stringify(defaultStockItems));
+        return defaultStockItems;
+      }
+      return JSON.parse(saved);
+    }
+
+    async function syncStockToCloud() {
+      try {
+        if (typeof dbSaveStock === 'function') {
+          await dbSaveStock(getStockItems());
         }
+      } catch (e) {
+        console.error('Erro ao sincronizar estoque no Supabase:', e);
+      }
+    }
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
+    async function renderStockTable() {
+      loadStoreSettings();
+
+      try {
+        if (typeof dbFetchStock === 'function') {
+          const cloudStock = await dbFetchStock();
+          if (cloudStock && cloudStock.length > 0) {
+            localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
+          }
         }
+      } catch (e) {}
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
+      let items = getStockItems();
+      const search = document.getElementById('searchInput').value.toUpperCase().trim();
+      const tbody = document.getElementById('stockTableBody');
+      tbody.innerHTML = '';
+
+      let totalItems = items.length;
+      let warningCount = 0;
+      let zeroCount = 0;
+
+      let filtered = items.filter(item => {
+        let matchTab = (activeTab === 'all' || item.category === activeTab);
+        let matchSearch = item.name.toUpperCase().includes(search) || (item.barcode && item.barcode.includes(search));
+        return matchTab && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item encontrado no estoque.</td></tr>`;
+      } else {
+        filtered.forEach(item => {
+          let qty = parseFloat(item.qty || 0);
+          let min = parseFloat(item.minStock || 0);
+
+          let statusBadge = `<span class="badge badge-ok">Normal</span>`;
+          if (qty <= 0) {
+            zeroCount++;
+            statusBadge = `<span class="badge badge-danger">Zerado</span>`;
+          } else if (qty <= min) {
+            warningCount++;
+            statusBadge = `<span class="badge badge-warning">Baixo</span>`;
+          }
+
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>${item.name}</strong></td>
+              <td>${item.category}</td>
+              <td><strong>${qty.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit}</strong></td>
+              <td>${min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit}</td>
+              <td>R$ ${(parseFloat(item.cost || 0)).toFixed(2).replace('.', ',')}</td>
+              <td>${statusBadge}</td>
+              <td style="text-align:center;">
+                <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="editStockItem('${item.id}')">✏️</button>
+                <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem; background:rgba(239, 68, 68, 0.2); color:var(--danger);" onclick="deleteStockItem('${item.id}')">🗑️</button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+
+      document.getElementById('statTotalItems').innerText = totalItems;
+      document.getElementById('statWarningItems').innerText = warningCount;
+      document.getElementById('statZeroItems').innerText = zeroCount;
+    }
+
+    function switchCategoryTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderStockTable();
+    }
+
+    function openItemModal() {
+      document.getElementById('editItemId').value = '';
+      document.getElementById('itemModalTitle').innerText = 'Cadastrar Novo Item';
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemCategory').value = 'Ingrediente';
+      document.getElementById('itemUnit').value = 'kg';
+      document.getElementById('itemQty').value = '';
+      document.getElementById('itemCost').value = '';
+      document.getElementById('itemMinStock').value = '';
+      document.getElementById('itemBarcode').value = '';
+      document.getElementById('itemModal').classList.add('active');
+    }
+
+    function closeItemModal() {
+      document.getElementById('itemModal').classList.remove('active');
+    }
+
+    async function saveStockItem() {
+      const id = document.getElementById('editItemId').value;
+      const name = document.getElementById('itemName').value.trim();
+      const category = document.getElementById('itemCategory').value;
+      const unit = document.getElementById('itemUnit').value;
+      const qty = parseFloat(document.getElementById('itemQty').value) || 0;
+      const cost = parseFloat(document.getElementById('itemCost').value) || 0;
+      const minStock = parseFloat(document.getElementById('itemMinStock').value) || 0;
+      const barcode = document.getElementById('itemBarcode').value.trim();
+
+      if (!name) {
+        showNoticeModal('Atenção', 'Informe o nome do item.', '⚠️');
+        return;
+      }
+
+      let items = getStockItems();
+
+      if (id) {
+        let item = items.find(i => String(i.id) === String(id));
+        if (item) {
+          item.name = name;
+          item.category = category;
+          item.unit = unit;
+          item.qty = qty;
+          item.cost = cost;
+          item.minStock = minStock;
+          item.barcode = barcode;
         }
+      } else {
+        items.push({
+          id: 'st_' + Date.now(),
+          name, category, unit, qty, cost, minStock, barcode
+        });
+      }
 
-        let estoque = JSON.parse(localStorage.getItem('vortex_estoque')) || [
-            { nome: 'Blend de Carne 160g', qtd: 42, unidade: 'unidades' },
-            { nome: 'Pão Brioche Artesanal', qtd: 15, unidade: 'unidades' },
-            { nome: 'Queijo Cheddar Fatiado', qtd: 8, unidade: 'kg' },
-            { nome: 'Batata Congelada Rústica', qtd: 25, unidade: 'kg' }
-        ];
+      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
+      await syncStockToCloud();
 
-        function carregarEstoque() {
-            const tbody = document.getElementById('listaEstoqueTable');
-            tbody.innerHTML = '';
+      closeItemModal();
+      renderStockTable();
+      showNoticeModal('Salvo!', 'Item de estoque cadastrado com sucesso.', '📦');
+    }
 
-            estoque.forEach((item, index) => {
-                const statusBadge = item.qtd > 10 
-                    ? '<span class="badge-stock stock-ok">Normal</span>' 
-                    : '<span class="badge-stock stock-baixo">Crítico</span>';
+    function editStockItem(id) {
+      let items = getStockItems();
+      let item = items.find(i => String(i.id) === String(id));
+      if (!item) return;
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${item.nome}</strong></td>
-                        <td style="font-weight: 700;">${item.qtd}</td>
-                        <td>${item.unidade}</td>
-                        <td>${statusBadge}</td>
-                        <td style="text-align: right;">
-                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerInsumo(${index})">Excluir</button>
-                        </td>
-                    </tr>
-                `;
-            });
+      openItemModal();
+      document.getElementById('editItemId').value = item.id;
+      document.getElementById('itemModalTitle').innerText = 'Editar Item';
+      document.getElementById('itemName').value = item.name;
+      document.getElementById('itemCategory').value = item.category;
+      document.getElementById('itemUnit').value = item.unit;
+      document.getElementById('itemQty').value = item.qty;
+      document.getElementById('itemCost').value = item.cost;
+      document.getElementById('itemMinStock').value = item.minStock;
+      document.getElementById('itemBarcode').value = item.barcode || '';
+    }
 
-            localStorage.setItem('vortex_estoque', JSON.stringify(estoque));
-        }
+    async function deleteStockItem(id) {
+      if (!confirm('Deseja realmente excluir este item do estoque?')) return;
+      let items = getStockItems();
+      items = items.filter(i => String(i.id) !== String(id));
+      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
+      await syncStockToCloud();
+      renderStockTable();
+      showNoticeModal('Removido', 'Item excluído do estoque.', '🗑️');
+    }
 
-        function salvarInsumo(event) {
-            event.preventDefault();
-            const nome = document.getElementById('nomeInsumo').value;
-            const qtd = parseInt(document.getElementById('qtdInsumo').value);
-            const unidade = document.getElementById('unidadeInsumo').value;
+    function openMovementModal(type) {
+      let items = getStockItems();
+      const select = document.getElementById('movItemId');
+      select.innerHTML = '';
+      items.forEach(i => {
+        select.innerHTML += `<option value="${i.id}">${i.name} (Atual: ${i.qty} ${i.unit})</option>`;
+      });
 
-            estoque.push({ nome, qtd, unidade });
-            carregarEstoque();
-            document.getElementById('formEstoque').reset();
-            mostrarAviso('Insumo cadastrado e salvo com sucesso!');
-        }
+      document.getElementById('movType').value = type === 'entry' ? 'entry' : 'exit';
+      document.getElementById('movementModalTitle').innerText = type === 'entry' ? 'Entrada de Mercadorias' : 'Saída / Perda de Estoque';
+      document.getElementById('movQty').value = '';
+      document.getElementById('movReason').value = '';
+      document.getElementById('movementModal').classList.add('active');
+    }
 
-        function removerInsumo(index) {
-            estoque.splice(index, 1);
-            carregarEstoque();
-            mostrarAviso('Insumo removido do estoque!');
-        }
+    function closeMovementModal() {
+      document.getElementById('movementModal').classList.remove('active');
+    }
 
-        carregarEstoque();
-    </script>
+    async function executeMovement() {
+      const movType = document.getElementById('movType').value;
+      const itemId = document.getElementById('movItemId').value;
+      const qty = parseFloat(document.getElementById('movQty').value) || 0;
+      const reason = document.getElementById('movReason').value.trim();
+
+      if (qty <= 0) {
+        showNoticeModal('Atenção', 'Informe uma quantidade válida.', '⚠️');
+        return;
+      }
+
+      let items = getStockItems();
+      let item = items.find(i => String(i.id) === String(itemId));
+      if (!item) return;
+
+      if (movType === 'entry') {
+        item.qty += qty;
+      } else {
+        item.qty = Math.max(0, item.qty - qty);
+      }
+
+      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
+      await syncStockToCloud();
+
+      closeMovementModal();
+      renderStockTable();
+      showNoticeModal('Movimentação Concluída', `Estoque de <strong>${item.name}</strong> atualizado com sucesso!`, '⚡');
+    }
+
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || '🎉';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      renderStockTable();
+    };
+  </script>
 </body>
 </html>

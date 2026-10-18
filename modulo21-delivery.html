@@ -318,6 +318,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let deliveryCart = [];
     let rawCashGiven = 0;
@@ -525,7 +529,7 @@
       return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
-    function submitDeliveryOrder() {
+    async function submitDeliveryOrder() {
       const clientName = document.getElementById('clientNameInput').value.trim();
       const clientPhone = document.getElementById('clientPhoneInput').value.trim();
       const number = document.getElementById('streetNumberInput').value.trim();
@@ -568,20 +572,48 @@
       const todayDateStr = now.toISOString().split('T')[0];
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const saleId = 'DELV-' + Date.now();
 
+      // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
+      // Salva no Histórico de Vendas
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const newSaleRecord = {
+        id: saleId,
+        client: `${clientName} (${clientPhone})`,
+        channel: 'Delivery 🛵',
+        total: total,
+        subtotal: total,
+        discount: 0,
+        payMethod: payment,
+        status: 'finished',
+        date: todayDateStr,
+        time: timeStr,
+        items: [...deliveryCart]
+      };
+      salesHistory.unshift(newSaleRecord);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+
+      try {
+        if (typeof dbSaveSale === 'function') {
+          await dbSaveSale(newSaleRecord);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar venda de delivery no Supabase:', err);
+      }
+
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
 
       const deliveryCode = generateDeliveryCode();
 
       const newOrder = {
-        id: nextKdsId,
+        id: String(nextKdsId),
         origin: 'Delivery 🛵',
         client: `${clientName} (${clientPhone})`,
         address: fullAddress,
@@ -601,6 +633,14 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
+      try {
+        if (typeof dbSaveKdsOrder === 'function') {
+          await dbSaveKdsOrder(newOrder);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar KDS delivery no Supabase:', err);
+      }
+
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -616,12 +656,23 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado e enviado ao KDS!`, '🛵');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado, enviado ao KDS e sincronizado na nuvem!`, '🛵');
     }
 
-    function loadActiveOrders() {
+    async function loadActiveOrders() {
       const todayDateStr = new Date().toISOString().split('T')[0];
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let kdsOrders = [];
+
+      try {
+        if (typeof dbFetchKdsOrders === 'function') {
+          kdsOrders = await dbFetchKdsOrders();
+        }
+        if (kdsOrders.length === 0) {
+          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        }
+      } catch (e) {
+        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      }
       
       kdsOrders = kdsOrders.filter(o => {
         if (!o.origin || !o.origin.includes('Delivery')) return true;
@@ -657,7 +708,7 @@
         } else if (o.status === 'ready') {
           statusClass = 'status-ready';
           statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrder(${o.id})">Enviar para Entrega 🛵</button>`;
+          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrder('${o.id}')">Enviar para Entrega 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route';
           statusText = 'Em Rota de Entrega 🛵';
@@ -665,9 +716,9 @@
             <div style="margin-top:6px;">
               <div class="code-input-row">
                 <input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Digitar Código" maxlength="4">
-                <button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode(${o.id})">Validar Código ✅</button>
+                <button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button>
               </div>
-              <button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder(${o.id})">Marcar como Entregue ✅</button>
+              <button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue ✅</button>
             </div>
           `;
         } else if (o.status === 'finished') {
@@ -697,41 +748,56 @@
               💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
             </div>
             ${actionAreaHtml}
-            <button class="btn-print-ticket" onclick="printDeliveryTicket(${o.id})">🖨️ Imprimir Comanda Delivery</button>
+            <button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button>
           </div>
         `;
       });
     }
 
-    function dispatchOrder(orderId) {
+    async function dispatchOrder(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => item.id === orderId);
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        try {
+          if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
+        } catch (err) {
+          console.error(err);
+        }
         loadActiveOrders();
       }
     }
 
-    function finishDeliveryOrder(orderId) {
+    async function finishDeliveryOrder(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => item.id === orderId);
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'finished';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        try {
+          if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
+        } catch (err) {
+          console.error(err);
+        }
         loadActiveOrders();
         showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
       }
     }
 
-    function confirmDeliveryWithCode(orderId) {
+    async function confirmDeliveryWithCode(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => item.id === orderId);
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
         if (inputVal === o.code) {
           o.status = 'finished';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+          try {
+            if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
+          } catch (err) {
+            console.error(err);
+          }
           loadActiveOrders();
           showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
         } else {
@@ -742,7 +808,7 @@
 
     function printDeliveryTicket(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => item.id === orderId);
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!o) return;
 
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };

@@ -388,6 +388,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     const defaultRewards = [
       { id: 'rw1', title: '1 Refrigerante Lata 350ml', cost: 80, type: 'points' },
@@ -422,7 +426,6 @@
       }
     }
 
-    // Máscaras fluidas e inteligentes sem travamento ao apagar
     function maskCurrency(input) {
       let value = input.value.replace(/\D/g, '');
       if (!value) {
@@ -508,7 +511,21 @@
       }
     }
 
-    function saveLoyaltySettings() {
+    async function syncLoyaltyToCloud() {
+      try {
+        if (typeof dbSaveLoyalty === 'function') {
+          await dbSaveLoyalty({
+            settings: JSON.parse(localStorage.getItem('vortex_loyalty_settings')) || {},
+            rewards: getRewards(),
+            clients: JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {}
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar fidelidade no Supabase:', e);
+      }
+    }
+
+    async function saveLoyaltySettings() {
       let selectedMode = 'disabled';
       if (document.getElementById('modePointsOrder').checked) selectedMode = 'points_order';
       if (document.getElementById('modePointsValue').checked) selectedMode = 'points_value';
@@ -525,7 +542,8 @@
       };
 
       localStorage.setItem('vortex_loyalty_settings', JSON.stringify(settings));
-      showNoticeModal('Configurações Salvas!', 'Regras do programa de fidelidade/cashback atualizadas com sucesso.', '⭐');
+      await syncLoyaltyToCloud();
+      showNoticeModal('Configurações Salvas!', 'Regras do programa de fidelidade/cashback atualizadas e sincronizadas na nuvem.', '⭐');
     }
 
     function getRewards() {
@@ -573,7 +591,7 @@
       document.getElementById('rewardModal').classList.remove('active');
     }
 
-    function saveReward() {
+    async function saveReward() {
       const title = document.getElementById('rewardTitle').value.trim();
       const type = document.getElementById('rewardType').value;
       const cost = parseFormattedFloat(document.getElementById('rewardPointsCost').value);
@@ -586,20 +604,22 @@
       let rewards = getRewards();
       rewards.push({ id: 'rw_' + Date.now(), title, cost, type });
       localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(rewards));
+      await syncLoyaltyToCloud();
 
       closeRewardModal();
       renderRewards();
-      showNoticeModal('Prêmio Cadastrado', 'Novo prêmio adicionado ao catálogo!', '🎁');
+      showNoticeModal('Prêmio Cadastrado', 'Novo prêmio adicionado ao catálogo e sincronizado!', '🎁');
     }
 
-    function deleteReward(id) {
+    async function deleteReward(id) {
       let rewards = getRewards();
-      rewards = rewards.filter(r => r.id !== id);
+      rewards = rewards.filter(r => String(r.id) !== String(id));
       localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(rewards));
+      await syncLoyaltyToCloud();
       renderRewards();
     }
 
-    function handleClientAction(action) {
+    async function handleClientAction(action) {
       const phoneInput = document.getElementById('searchClientPhone').value.trim();
       const phoneClean = phoneInput.replace(/\D/g, '');
       const qty = parseFormattedFloat(document.getElementById('adjustPointsQty').value);
@@ -639,6 +659,8 @@
       }
 
       localStorage.setItem('vortex_clients_loyalty', JSON.stringify(clients));
+      await syncLoyaltyToCloud();
+
       document.getElementById('adjustPointsQty').value = '';
       updateDashboardStats();
     }
@@ -671,8 +693,21 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
+    window.onload = async function() {
       loadStoreSettings();
+
+      // Sincroniza do Supabase se disponível
+      try {
+        if (typeof dbFetchLoyalty === 'function') {
+          const cloudLoyalty = await dbFetchLoyalty();
+          if (cloudLoyalty) {
+            if (cloudLoyalty.settings) localStorage.setItem('vortex_loyalty_settings', JSON.stringify(cloudLoyalty.settings));
+            if (cloudLoyalty.rewards) localStorage.setItem('vortex_loyalty_rewards', JSON.stringify(cloudLoyalty.rewards));
+            if (cloudLoyalty.clients) localStorage.setItem('vortex_clients_loyalty', JSON.stringify(cloudLoyalty.clients));
+          }
+        }
+      } catch (e) {}
+
       renderRewards();
       updateDashboardStats();
 

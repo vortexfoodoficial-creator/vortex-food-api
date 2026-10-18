@@ -274,6 +274,8 @@
               <option value="l">L (Litros)</option>
               <option value="ml">ML (Mililitros)</option>
               <option value="un">UN (Unidade)</option>
+              <option value="pct">Pacote (pct)</option>
+              <option value="cx">Caixa (cx)</option>
             </select>
           </div>
           <div style="display:flex; align-items:flex-end;">
@@ -320,14 +322,6 @@
   <script>
     let draftIngredients = [];
 
-    const defaultInsumos = [
-      { id: 'i1', name: 'Pão Brioche', unit: 'un', cost: 1.20 },
-      { id: 'i2', name: 'Carne Moída Angus (Hamburguer)', unit: 'kg', cost: 32.00 },
-      { id: 'i3', name: 'Fatias de Queijo Cheddar', unit: 'un', cost: 0.60 },
-      { id: 'i4', name: 'Massa de Pastel Tradicional', unit: 'kg', cost: 14.00 },
-      { id: 'i5', name: 'Queijo Muçarela Ralado', unit: 'kg', cost: 38.00 }
-    ];
-
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -343,20 +337,25 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
     }
 
     function getInsumos() {
-      let saved = localStorage.getItem('vortex_estoque_insumos');
-      if (!saved) {
-        localStorage.setItem('vortex_estoque_insumos', JSON.stringify(defaultInsumos));
-        return defaultInsumos;
-      }
-      return JSON.parse(saved);
+      // Lê exclusivamente os insumos reais cadastrados no módulo de estoque (vortex_stock_items)
+      let saved = localStorage.getItem('vortex_stock_items');
+      if (!saved) return [];
+      let items = JSON.parse(saved);
+      // Filtra para garantir que apenas itens válidos do estoque sejam usados como insumos/ingredientes
+      return items.map(i => ({
+        id: i.id,
+        name: i.name,
+        unit: i.unit,
+        cost: parseFloat(i.cost || 0)
+      }));
     }
 
     function getProducts() {
@@ -382,7 +381,6 @@
     async function renderRecipes() {
       loadStoreSettings();
 
-      // Sincroniza com Supabase se disponível
       try {
         if (typeof dbFetchRecipes === 'function') {
           const cloudRecipes = await dbFetchRecipes();
@@ -416,7 +414,7 @@
 
           let calculatedCost = 0;
           let itemsHtml = r.ingredients.map(ing => {
-            let insumoObj = insumos.find(i => i.id === ing.insumoId || i.name === ing.name);
+            let insumoObj = insumos.find(i => String(i.id) === String(ing.insumoId) || i.name === ing.name);
             let unitCost = insumoObj ? parseFloat(insumoObj.cost) : (ing.unitCost || 0);
             
             let itemCost = 0;
@@ -496,15 +494,23 @@
 
       const prodSelect = document.getElementById('recipeProductSelect');
       prodSelect.innerHTML = '';
-      products.forEach(p => {
-        prodSelect.innerHTML += `<option value="${p.id}">${p.name} (R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')})</option>`;
-      });
+      if (products.length === 0) {
+        prodSelect.innerHTML = `<option value="">Nenhum produto cadastrado no cardápio</option>`;
+      } else {
+        products.forEach(p => {
+          prodSelect.innerHTML += `<option value="${p.id}">${p.name} (R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')})</option>`;
+        });
+      }
 
       const insumoSelect = document.getElementById('ingredientStockSelect');
       insumoSelect.innerHTML = '';
-      insumos.forEach(i => {
-        insumoSelect.innerHTML += `<option value="${i.id}">${i.name} (Custo: R$ ${parseFloat(i.cost).toFixed(2).replace('.', ',')} / ${i.unit})</option>`;
-      });
+      if (insumos.length === 0) {
+        insumoSelect.innerHTML = `<option value="">Nenhum item cadastrado no estoque</option>`;
+      } else {
+        insumos.forEach(i => {
+          insumoSelect.innerHTML += `<option value="${i.id}">${i.name} (Custo: R$ ${parseFloat(i.cost).toFixed(2).replace('.', ',')} / ${i.unit})</option>`;
+        });
+      }
 
       renderDraftIngredients();
       updateProductPriceDisplay();
@@ -526,7 +532,7 @@
       }
 
       let insumos = getInsumos();
-      let insumoObj = insumos.find(i => i.id === insumoId);
+      let insumoObj = insumos.find(i => String(i.id) === String(insumoId));
       if (!insumoObj) return;
 
       draftIngredients.push({
@@ -599,7 +605,7 @@
       let totalCalculatedCost = 0;
       let insumos = getInsumos();
       draftIngredients.forEach(ing => {
-        let insumoObj = insumos.find(i => i.id === ing.insumoId || i.name === ing.name);
+        let insumoObj = insumos.find(i => String(i.id) === String(ing.insumoId) || i.name === ing.name);
         let unitCost = insumoObj ? parseFloat(insumoObj.cost) : (ing.unitCost || 0);
         if (ing.unit === 'g' || ing.unit === 'ml') totalCalculatedCost += (ing.qty / 1000) * unitCost;
         else totalCalculatedCost += ing.qty * unitCost;

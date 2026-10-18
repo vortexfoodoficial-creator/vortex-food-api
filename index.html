@@ -77,7 +77,7 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .filter-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; flex-wrap: wrap; }
-    .filter-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .filter-btn { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
     .filter-btn.active, .filter-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -432,7 +432,6 @@
       return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Função utilitária para extrair a data YYYY-MM-DD em Fuso Horário Local (evita bug de UTC no JS)
     function getLocalDateStr(dateObj) {
       const d = dateObj || new Date();
       const year = d.getFullYear();
@@ -441,11 +440,9 @@
       return `${year}-${month}-${day}`;
     }
 
-    // Extrai YYYY-MM-DD de qualquer formato de string ou data armazenada
     function parseToLocalDateStr(rawDate) {
       if (!rawDate) return '';
       if (typeof rawDate === 'string') {
-        // Se já contiver T ou formato ISO/data pura
         const cleanStr = rawDate.split('T')[0].split(' ')[0];
         if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
           return cleanStr;
@@ -467,7 +464,6 @@
       loadDashboardData();
     }
 
-    // Filtro rigoroso com fuso horário local
     function isDateInFilter(rawDate, filterType) {
       const todayStr = getLocalDateStr(new Date());
       const itemDateStr = parseToLocalDateStr(rawDate);
@@ -502,7 +498,6 @@
       const todayStr = getLocalDateStr(new Date());
       const lastActiveDay = localStorage.getItem('vortex_last_active_day');
 
-      // Se mudou o dia, reseta forçadamente a chave rápida de vendas do dia anterior
       if (lastActiveDay !== todayStr) {
         localStorage.setItem('vortex_vendas_hoje', '0,00');
         localStorage.setItem('vortex_last_active_day', todayStr);
@@ -513,8 +508,8 @@
       applyTheme();
       checkAndResetDailyCache();
 
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -525,32 +520,12 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // 1. Busca histórico central de vendas
+      // Lê exclusivamente o histórico real gravado pelo sistema
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      
-      // Consolida vendas finalizadas da cozinha sem duplicar
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      kdsOrders.forEach(k => {
-        if (k.status === 'finished') {
-          let exists = rawHistory.some(s => String(s.id) === String(k.id));
-          if (!exists) {
-            rawHistory.push({
-              id: k.id,
-              total: k.total || 0,
-              payMethod: k.payment || k.paymentMethod || k.formaPagamento || 'pix',
-              channel: k.origin || k.channel || 'pdv',
-              date: k.date || getLocalDateStr(new Date()),
-              timestamp: k.timestamp || new Date().toISOString(),
-              items: k.items || []
-            });
-          }
-        }
-      });
 
-      // 2. Filtra o histórico estritamente pela data selecionada
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 
-      // 3. Cálculo de Faturamento e Métricas Finanacerias
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancelled = 0;
@@ -564,7 +539,7 @@
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
           if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
-          else estimatedCmvCost += (val * 0.35); // CMV estimado padrão de 35% caso não tenha ficheiro
+          else estimatedCmvCost += (val * 0.35);
         }
       });
 
@@ -591,7 +566,6 @@
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
-      // Métricas Operacionais
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
 
@@ -618,7 +592,7 @@
       const cancelRate = (totalOrdersCount + totalCancelled) > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // 4. Canais de Venda
+      // Canais
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
@@ -658,7 +632,7 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // 5. Formas de Pagamento
+      // Formas de Pagamento
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
         if (s.status !== 'cancelled') {

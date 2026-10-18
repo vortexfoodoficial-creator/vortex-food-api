@@ -422,10 +422,14 @@
 
     function calculateChange() {
       const payment = document.getElementById('pdvPaymentSelect').value;
-      if (payment !== 'Dinheiro') return;
-
       const total = pdvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const display = document.getElementById('calculatedChangeDisplay');
+
+      if (payment !== 'Dinheiro') {
+        display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
+        return;
+      }
 
       if (rawCashGiven >= total && total > 0) {
         const change = rawCashGiven - total;
@@ -438,6 +442,14 @@
         display.innerText = 'R$ 0,00';
         display.style.color = 'var(--text-main)';
       }
+    }
+
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
     async function finalizePdvOrder() {
@@ -457,9 +469,19 @@
       }
 
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const saleId = 'PDV-' + Date.now();
+
+      // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
+      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
+      const cleanOrderId = String(nextSeqNumber);
+
+      let changeVal = 0;
+      if (payment === 'Dinheiro' && rawCashGiven > total) {
+        changeVal = rawCashGiven - total;
+      }
 
       // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
@@ -471,13 +493,15 @@
       // Histórico local de contingência
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
-        id: saleId,
+        id: cleanOrderId,
         client: clientName,
         channel: `Balcão (${selectedConsumptionType})`,
         total: total,
         subtotal: total,
         discount: 0,
         payMethod: payment,
+        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
+        changeValue: changeVal,
         status: 'finished',
         date: dateStr,
         time: timeStr,
@@ -495,22 +519,17 @@
         console.error('Erro ao salvar venda no Supabase:', err);
       }
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
-
-      let changeVal = 0;
-      if (payment === 'Dinheiro' && rawCashGiven > total) {
-        changeVal = rawCashGiven - total;
-      }
-
       const newKdsOrder = {
-        id: String(nextKdsId),
+        id: cleanOrderId,
         origin: `Balcão (${selectedConsumptionType})`,
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
-        cashGiven: payment === 'Dinheiro' ? rawCashGiven : 0,
-        change: payment === 'Dinheiro' ? changeVal : 0,
+        payMethod: payment,
+        cashGiven: payment === 'Dinheiro' ? rawCashGiven : total,
+        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
+        changeValue: changeVal,
+        change: changeVal,
         observation: observation,
         items: [...pdvCart],
         total: total,
@@ -538,7 +557,7 @@
       document.getElementById('cashGivenInput').value = '';
       renderPdvCart();
 
-      showNoticeModal('Venda Realizada!', `Pedido #${nextKdsId} (${selectedConsumptionType}) enviado com sucesso para a Cozinha e nuvem!`, '🚀');
+      showNoticeModal('Venda Realizada!', `Pedido #${cleanOrderId} (${selectedConsumptionType}) enviado com sucesso para a Cozinha e nuvem!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {

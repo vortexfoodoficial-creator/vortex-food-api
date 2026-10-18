@@ -269,6 +269,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let pdvCart = [];
     let selectedConsumptionType = 'Consumo no Local';
@@ -436,7 +440,7 @@
       }
     }
 
-    function finalizePdvOrder() {
+    async function finalizePdvOrder() {
       if (pdvCart.length === 0) {
         showNoticeModal('Carrinho Vazio', 'Adicione itens ao carrinho antes de finalizar.', '⚠️');
         return;
@@ -453,24 +457,54 @@
       }
 
       const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const saleId = 'PDV-' + Date.now();
 
+      // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
+      // Histórico local de contingência
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const newSaleRecord = {
+        id: saleId,
+        client: clientName,
+        channel: `Balcão (${selectedConsumptionType})`,
+        total: total,
+        subtotal: total,
+        discount: 0,
+        payMethod: payment,
+        status: 'finished',
+        date: dateStr,
+        time: timeStr,
+        items: [...pdvCart]
+      };
+      salesHistory.unshift(newSaleRecord);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+
+      // Salva no Supabase (Nuvem)
+      try {
+        if (typeof dbSaveSale === 'function') {
+          await dbSaveSale(newSaleRecord);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar venda no Supabase:', err);
+      }
+
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
 
       let changeVal = 0;
       if (payment === 'Dinheiro' && rawCashGiven > total) {
         changeVal = rawCashGiven - total;
       }
 
-      const newOrder = {
-        id: nextKdsId,
+      const newKdsOrder = {
+        id: String(nextKdsId),
         origin: `Balcão (${selectedConsumptionType})`,
         client: clientName,
         address: selectedConsumptionType,
@@ -481,11 +515,21 @@
         items: [...pdvCart],
         total: total,
         status: 'new',
+        date: dateStr,
         time: timeStr
       };
 
-      kdsOrders.unshift(newOrder);
+      kdsOrders.unshift(newKdsOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+      // Salva pedido KDS no Supabase (Nuvem)
+      try {
+        if (typeof dbSaveKdsOrder === 'function') {
+          await dbSaveKdsOrder(newKdsOrder);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar KDS no Supabase:', err);
+      }
 
       pdvCart = [];
       rawCashGiven = 0;
@@ -494,7 +538,7 @@
       document.getElementById('cashGivenInput').value = '';
       renderPdvCart();
 
-      showNoticeModal('Venda Realizada!', `Pedido #${nextKdsId} (${selectedConsumptionType}) enviado com sucesso para a Cozinha!`, '🚀');
+      showNoticeModal('Venda Realizada!', `Pedido #${nextKdsId} (${selectedConsumptionType}) enviado com sucesso para a Cozinha e nuvem!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {

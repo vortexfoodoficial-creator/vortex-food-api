@@ -106,12 +106,6 @@
     .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
     .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
 
-    /* MODAL MODERNO */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
-    .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; margin-top: 15px; }
-
     @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
@@ -212,9 +206,7 @@
       </div>
 
       <div class="filter-group">
-        <button class="btn-action btn-export" onclick="exportData('pdf')">📄 PDF</button>
-        <button class="btn-action btn-export" onclick="exportData('csv')">📊 CSV</button>
-        <button class="btn-action btn-export" onclick="exportData('excel')">📗 Excel</button>
+        <button class="btn-action" onclick="exportPdf()">🖨️ Imprimir Relatório em PDF</button>
       </div>
     </div>
 
@@ -258,7 +250,7 @@
         <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Custo de Mercadorias Vendidas (CMV)</span>
+        <span>(-) Custo de Mercadorias Vendidas (CMV Real Sincronizado)</span>
         <span id="dreCmv">R$ 0,00</span>
       </div>
       <div class="dre-row total">
@@ -329,7 +321,7 @@
               <th>Produto</th>
               <th>Qtd Vendida</th>
               <th>Preço Médio</th>
-              <th>CMV Unit.</th>
+              <th>CMV Unit. (Cardápio)</th>
               <th>Margem Unit. (%)</th>
               <th>Faturamento Total</th>
               <th>Status Giro</th>
@@ -386,16 +378,6 @@
     </div>
   </main>
 
-  <!-- MODAL DE NOTIFICAÇÃO PROFISSIONAL -->
-  <div class="modal-overlay" id="noticeModal">
-    <div class="custom-modal-card">
-      <div style="font-size:2.8rem; margin-bottom:10px;" id="noticeIcon">📥</div>
-      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:8px;" id="noticeTitle">Exportação Concluída</div>
-      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">O relatório foi gerado com sucesso.</div>
-      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
-    </div>
-  </div>
-
   <script>
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -421,6 +403,26 @@
 
       document.getElementById('startDate').value = firstDay;
       document.getElementById('endDate').value = today;
+    }
+
+    // BUSCA O CUSTO REAL DO PRODUTO SINCRONIZADO COM O MÓDULO DE CARDÁPIO / FICHA TÉCNICA
+    function getProductCostFromCardapio(productName) {
+      // 1. Tenta buscar nas fichas técnicas cadastradas
+      const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
+      const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
+      if (fichaMatch && fichaMatch.totalCost) {
+        return parseFloat(fichaMatch.totalCost) || 0;
+      }
+
+      // 2. Tenta buscar nos produtos do cardápio geral
+      const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
+      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
+      if (prodMatch) {
+        return parseFloat(prodMatch.costPrice || prodMatch.custo || prodMatch.cost || 0);
+      }
+
+      // 3. Fallback seguro padrão caso o produto não tenha custo informado
+      return 0;
     }
 
     function getFilteredSales() {
@@ -463,11 +465,10 @@
       applyTheme();
       const sales = getFilteredSales();
 
-      // CÁLCULOS DRE COM NÚMEROS EXATOS (Ponto Flutuante Preciso)
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancels = 0;
-      let totalCmv = 0;
+      let totalCmvReal = 0;
 
       sales.forEach(s => {
         let val = parseFloat(s.total) || 0;
@@ -476,21 +477,35 @@
         } else {
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
-          if (s.cmvCost) totalCmv += parseFloat(s.cmvCost) || 0;
-          else totalCmv += (val * 0.35); // CMV Padrão 35% exato
+          
+          // Calcula o CMV exato somando o custo de cada item vendido com base no cardápio/ficha técnica
+          if (s.items && Array.isArray(s.items)) {
+            s.items.forEach(i => {
+              let qty = i.qty || 1;
+              let unitCost = getProductCostFromCardapio(i.name);
+              // Se o cadastro não tiver custo cadastrado, usa estimativa de 35% apenas para aquele item faltante
+              if (unitCost === 0 && i.price) {
+                unitCost = (i.price * 0.35);
+              }
+              totalCmvReal += (unitCost * qty);
+            });
+          } else {
+            // Fallback se o pedido não tiver array de itens detalhado
+            totalCmvReal += (val * 0.35);
+          }
         }
       });
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
-      const grossMargin = Math.max(0, netSales - totalCmv);
-      const fixedExpenses = netSales * 0.20; // 20% despesas fixas
+      const grossMargin = Math.max(0, netSales - totalCmvReal);
+      const fixedExpenses = netSales * 0.20; // 20% despesas fixas estimadas
       const netProfit = grossMargin - fixedExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
       document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dreCancels').innerText = `R$ ${formatFloatToCurrency(totalCancels)}`;
       document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
-      document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
+      document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmvReal)}`;
       document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
       document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(fixedExpenses)}`;
       document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
@@ -590,7 +605,11 @@
         let qty = prodMap[p].qty;
         let total = prodMap[p].total;
         let unitPrice = qty > 0 ? total / qty : 0;
-        let unitCmv = unitPrice * 0.35;
+        
+        // Puxa o CMV real cadastrado no cardápio ou ficha técnica
+        let unitCmv = getProductCostFromCardapio(p);
+        if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.35;
+
         let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
         let giroStatus = qty > 10 ? `<span style="color:var(--success);">🔥 Alto Giro</span>` : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;
 
@@ -640,7 +659,6 @@
       });
     }
 
-    // TABELA DE PERDAS INTEGRADA AO ESTOQUE (INICIA ZERADA SE NADA FOR LANÇADO)
     function renderLossesAndWaste() {
       const losses = JSON.parse(localStorage.getItem('vortex_losses_history')) || [];
       const tbody = document.getElementById('tblLossesAndWaste');
@@ -698,37 +716,8 @@
       compContainer.style.display = 'block';
     }
 
-    // EXPORTAÇÕES REAIS E FUNCIONAIS COM MODAL PROFISSIONAL
-    function exportData(type) {
-      const sales = getFilteredSales();
-      if (type === 'csv' || type === 'excel') {
-        let csvContent = "data:text/csv;charset=utf-8,ID;Data;Canal;Pagamento;Total\n";
-        sales.forEach(s => {
-          csvContent += `${s.id};${s.date || ''};${s.channel || 'pdv'};${s.payMethod || 'pix'};${s.total || 0}\n`;
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `relatorio_vortex_food.${type === 'excel' ? 'xls' : 'csv'}`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showNoticeModal("Exportação Concluída", `O arquivo <strong>.${type.toUpperCase()}</strong> foi gerado e baixado com sucesso em seu dispositivo.`, "📗");
-      } else if (type === 'pdf') {
-        window.print();
-      }
-    }
-
-    function showNoticeModal(title, desc, icon) {
-      document.getElementById('noticeIcon').innerText = icon || '📊';
-      document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerHTML = desc;
-      document.getElementById('noticeModal').classList.add('active');
-    }
-
-    function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
+    function exportPdf() {
+      window.print();
     }
 
     setInterval(() => {

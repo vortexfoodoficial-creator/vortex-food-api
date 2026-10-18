@@ -356,8 +356,9 @@
         salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
 
-      // Remove do KDS ordens cujas vendas principais foram apagadas
+      // Remove do KDS ordens cujas vendas principais foram apagadas ou que sejam IDs fantasmas travados (como PDV antigo)
       kdsOrders = kdsOrders.filter(order => {
+        if (String(order.id).includes('PDV-1792362693403')) return false; // Remove explicitamente o pedido fantasma relatado
         let existsInSales = salesHistory.some(s => String(s.id) === String(order.id));
         let isFromSales = (order.status === 'finished' || order.status === 'cancelled');
         if (isFromSales && !existsInSales) {
@@ -369,7 +370,7 @@
       for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
 
-        if (saleDateStr === todayDateStr) {
+        if (saleDateStr === todayDateStr && sale.status !== 'cancelled') {
           let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id));
           if (!foundInKds) {
             const newKdsItem = {
@@ -381,7 +382,10 @@
               items: sale.items || [{ name: sale.description || 'Venda PDV', qty: 1, price: sale.total || 0 }],
               total: parseFloat(sale.total) || 0,
               observation: sale.observation || '',
-              status: sale.status === 'cancelled' ? 'cancelled' : 'finished'
+              payMethod: sale.payMethod || sale.payment || '',
+              amountPaid: sale.amountPaid || 0,
+              changeValue: sale.changeValue || 0,
+              status: sale.status === 'cancelled' ? 'cancelled' : 'new'
             };
             kdsOrders.unshift(newKdsItem);
             try {
@@ -411,8 +415,9 @@
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
-      // Regra da virada do dia
+      // Limpeza de IDs fantasmas também no array carregado
       orders = orders.filter(o => {
+        if (String(o.id).includes('PDV-1792362693403')) return false;
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
@@ -528,12 +533,25 @@
           console.error('Erro ao atualizar status KDS no Supabase:', err);
         }
 
+        // Sincroniza também no histórico de vendas se for finalizado
+        if (newStatus === 'finished') {
+          let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+          let saleMatch = salesHistory.find(s => String(s.id) === String(id));
+          if (saleMatch) {
+            saleMatch.status = 'finished';
+            localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+            try {
+              if (typeof dbSaveSale === 'function') await dbSaveSale(saleMatch);
+            } catch (err) {}
+          }
+        }
+
         renderKds();
 
         let msg = '';
         if (newStatus === 'preparing') msg = `Pedido #${id} em preparo.`;
         else if (newStatus === 'ready') msg = `Pedido #${id} marcado como PRONTO!`;
-        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e sincronizado na nuvem.`;
+        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e movido com sucesso.`;
 
         showNoticeModal('Atualização do Pedido', msg, '👨‍🍳');
       }
@@ -541,7 +559,7 @@
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros na nuvem e relatórios do sistema.`;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros na nuvem e mover o pedido para a aba de cancelados.`;
       
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
@@ -585,7 +603,7 @@
         }
 
         renderKds();
-        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
+        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado e movido para a aba de cancelados.`, '🔴');
       }
     }
 
@@ -604,6 +622,26 @@
         </tr>
       `).join('');
 
+      // Formatação da forma de pagamento e troco para balcão/dinheiro
+      let payMethodStr = order.payMethod || 'Dinheiro';
+      let paymentDetailsHtml = `<p>Pagamento: ${payMethodStr}</p>`;
+      
+      const pmLower = String(payMethodStr).toLowerCase();
+      if (pmLower.includes('dinheiro') || pmLower.includes('cash')) {
+        let totalVal = parseFloat(order.total || 0);
+        let amountPaid = parseFloat(order.amountPaid || totalVal);
+        let changeVal = parseFloat(order.changeValue || (amountPaid > totalVal ? amountPaid - totalVal : 0));
+        
+        if (changeVal > 0) {
+          paymentDetailsHtml += `
+            <p>Valor Recebido: R$ ${amountPaid.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</p>
+            <p><strong>Troco a Devolver: R$ ${changeVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
+          `;
+        } else {
+          paymentDetailsHtml += `<p>Troco: Sem troco necessário</p>`;
+        }
+      }
+
       printWin.document.write(`
         <html>
           <head><title>Comanda - Pedido #${order.id}</title></head>
@@ -620,6 +658,8 @@
               ${itemsTxt}
             </table>
             ${order.observation ? `<hr><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
+            <hr>
+            ${paymentDetailsHtml}
             <hr>
             <p style="text-align:right; font-size:14px;"><strong>TOTAL: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
             <p style="text-align:center; margin-top:20px;">🌪️ Vortex Food System</p>

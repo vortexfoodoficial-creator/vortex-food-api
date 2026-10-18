@@ -447,7 +447,7 @@
       loadDashboardData();
     }
 
-    // Helper preciso para comparar datas locais sem sofrer interferência do fuso horário UTC
+    // Helper rigoroso para filtrar datas locais sem problemas de fuso horário
     function isDateInFilter(rawDate, filterType) {
       const now = new Date();
       const todayY = now.getFullYear();
@@ -455,7 +455,7 @@
       const todayD = now.getDate();
 
       if (!rawDate) {
-        return filterType === 'today' || filterType === 'week' || filterType === 'month';
+        return filterType === 'today'; // Se não tiver data, por segurança não acumula no histórico retroativo
       }
 
       let itemDate = new Date(rawDate);
@@ -504,13 +504,20 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // 1. Consolida o histórico do localStorage
+      // Verificação da virada do dia automática para o cache rápido de hoje
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastSavedDay = localStorage.getItem('vortex_last_active_day');
+      if (lastSavedDay !== todayStr) {
+        // Se mudou o dia, reseta a string rápida de hoje do PDV para garantir zeragem visual imediata
+        localStorage.setItem('vortex_last_active_day', todayStr);
+      }
+
+      // Histórico central de vendas
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       
-      // Fallback: Se existirem vendas gravadas no KDS que não estejam no histórico financeiro, traz para o relatório
       const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.forEach(k => {
-        if (k.status === 'finished' || k.status === 'ready' || k.status === 'preparing') {
+        if (k.status === 'finished') {
           let exists = rawHistory.some(s => String(s.id) === String(k.id));
           if (!exists) {
             rawHistory.push({
@@ -518,7 +525,7 @@
               total: k.total || 0,
               payMethod: k.payment || k.paymentMethod || k.formaPagamento || 'pix',
               channel: k.origin || k.channel || 'pdv',
-              date: k.date || new Date().toISOString().split('T')[0],
+              date: k.date || todayStr,
               timestamp: new Date().toISOString(),
               items: k.items || []
             });
@@ -526,10 +533,9 @@
         }
       });
 
-      // 2. Filtra o histórico conforme o botão de período ativado
+      // Filtra estritamente pelo período selecionado
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 
-      // 3. Faturamento Bruto
       let grossSales = 0;
       if (currentFilter === 'today' && salesHistory.length === 0) {
         const salesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
@@ -572,26 +578,21 @@
       document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
       document.getElementById('dashMargemLucro').innerText = `Margem Média: ${profitMargin}%`;
 
-      // Ticket Médio
       const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
 
-      // Meta Ponto de Equilíbrio (R$ 15.000)
       const monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
 
-      // Pedidos Ativos na Cozinha (KDS)
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       document.getElementById('dashPedidosKds').innerText = activeKds;
 
-      // Entregas em Rota
       const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
       document.getElementById('dashEntregasRota').innerText = deliveringCount;
 
-      // Mesas Ocupadas
       const totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
       const tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       
@@ -605,16 +606,14 @@
       const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
       document.getElementById('dashMesasPercent').innerText = `${tablesPercent}% de ocupação`;
 
-      // Clientes Fidelizados
       const clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
       const totalClientsCount = Object.keys(clientsLoyalty).length;
       document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
 
-      // Taxa de Cancelamento
       const cancelRate = totalOrdersCount > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // 4. Canais de Venda Normalizados (iFood, 99 Food, Keeta, Balcão, Mesas)
+      // Canais
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
@@ -656,7 +655,7 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // 5. Formas de Pagamento Normalizadas (Cartão Débito, Crédito, PIX, Dinheiro, VR, VA)
+      // Formas de Pagamento
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
         const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
@@ -674,7 +673,7 @@
         } else if (pm.includes('cash') || pm.includes('dinheiro')) {
           payDinheiro += parseFloat(s.total) || 0;
         } else {
-          payPix += parseFloat(s.total) || 0; // Fallback
+          payPix += parseFloat(s.total) || 0;
         }
       });
 
@@ -707,10 +706,7 @@
       document.getElementById('valPayDinheiro').innerText = `R$ ${formatFloatToCurrency(payDinheiro)} (${pDinheiro}%)`;
       document.getElementById('barPayDinheiro').style.width = `${pDinheiro}%`;
 
-      // Top Produtos Vendidos
       renderTopProducts(salesHistory);
-
-      // Alertas Automáticos
       checkSystemAlerts(activeKds, cancelRate);
     }
 

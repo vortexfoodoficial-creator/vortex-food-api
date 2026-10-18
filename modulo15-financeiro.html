@@ -1,454 +1,649 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 15: Financeiro</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Financeiro & DRE</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    /* FILTROS E CONTROLES */
+    .filter-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+    .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .filter-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); }
+    
+    .btn-quick-filter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+    .btn-quick-filter.active, .btn-quick-filter:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .btn-action { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-action:hover { background: var(--primary-hover); }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    /* CARDS & MÉTRICAS */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+    .metric-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
+    .metric-sub { font-size: 0.72rem; color: var(--text-muted); }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-        .content-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
-        }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            height: fit-content;
-        }
+    /* DRE STYLES */
+    .dre-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+    .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
+    .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
 
-        .card-container-white h3, 
-        .card-container-white td, 
-        .card-container-white th,
-        .card-container-white label {
-            color: var(--text-dark) !important;
-        }
+    /* TABELAS MODERNAS */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    .scroll-table-container { max-height: 350px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    .btn-delete-entry { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); padding: 4px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
+    .btn-delete-entry:hover { background: var(--danger); color: white; }
 
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
+    /* FORMULÁRIO E INPUTS */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px; }
+    .form-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; outline: none; }
 
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 13px;
-        }
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 440px; }
 
-        .fin-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .fin-table th {
-            background: #f8f9fa;
-            color: var(--text-muted);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 10px;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .fin-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #edf2f7;
-            vertical-align: middle;
-        }
-
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
-
-        @media (max-width: 900px) {
-            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
-        }
-
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Gestão & Caixa</div>
-            <div class="menu-item active">💰 Módulo 15: Financeiro</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 15 — Financeiro & Fluxo de Caixa</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
-        </header>
-
-        <div class="content-body">
-            <div class="card-container-white" style="overflow-x: auto;">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">Lançamentos de Caixa</h3>
-                <table class="fin-table">
-                    <thead>
-                        <tr>
-                            <th>Descrição</th>
-                            <th>Tipo</th>
-                            <th>Valor</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listaFinanceiroTable">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card-container-white">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Novo Lançamento</h3>
-                <form id="formFinanceiro" onsubmit="salvarLancamento(event)">
-                    <div class="form-group">
-                        <label>Descrição *</label>
-                        <input type="text" id="descLancamento" placeholder="Ex: Compra de Embalagens" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tipo de Lançamento *</label>
-                        <select id="tipoLancamento">
-                            <option value="Entrada">Entrada (Receita)</option>
-                            <option value="Saída">Saída (Despesa)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Valor (R$) *</label>
-                        <input type="text" id="valorLancamento" placeholder="0,00" oninput="mascaraMoeda(this)" required>
-                    </div>
-                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Lançamento</button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link active"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Financeiro & Fluxo de Caixa</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- BARRA DE FILTROS E NOVO LANÇAMENTO -->
+    <div class="filter-card">
+      <div class="filter-group">
+        <label>🗓️ Período:</label>
+        <button class="btn-quick-filter active" id="btnFilterToday" onclick="setQuickFilter('today')">Hoje</button>
+        <button class="btn-quick-filter" id="btnFilterYesterday" onclick="setQuickFilter('yesterday')">Ontem</button>
+        <button class="btn-quick-filter" id="btnFilterWeek" onclick="setQuickFilter('week')">Esta Semana</button>
+        <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
+      </div>
+
+      <div class="filter-group">
+        <button class="btn-action" onclick="openEntryModal()">➕ Lançar Despesa / Receita Extra</button>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS FINANCEIRAS PRINCIPAIS -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Faturamento Vendas</span>
+        <span class="metric-value" style="color:var(--success);" id="finSalesTotal">R$ 0,00</span>
+        <span class="metric-sub" id="finSalesCount">0 vendas efetuadas</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Despesas / Sangrias</span>
+        <span class="metric-value" style="color:var(--danger);" id="finExpensesTotal">R$ 0,00</span>
+        <span class="metric-sub">Contas e custos operacionais</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">CMV Total Estimado</span>
+        <span class="metric-value" style="color:var(--warning);" id="finCmvTotal">R$ 0,00</span>
+        <span class="metric-sub">Custo de mercadoria vendida</span>
+      </div>
+
+      <div class="metric-card" style="border-color:var(--primary);">
+        <span class="metric-title">Lucro Líquido Real</span>
+        <span class="metric-value" style="color:var(--primary);" id="finNetProfit">R$ 0,00</span>
+        <span class="metric-sub" id="finProfitMargin">Margem Líquida: 0.0%</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- PAINEL DRE SINTÉTICO -->
+      <div class="card-box">
+        <div class="card-title">📊 Demonstrativo de Resultados (DRE)</div>
+        
+        <div class="dre-row">
+          <span>(+) RECEITA BRUTA DE VENDAS</span>
+          <strong id="dreGrossSales" style="color:var(--success);">R$ 0,00</strong>
+        </div>
+        <div class="dre-row sub">
+          <span>(-) Descontos Concedidos</span>
+          <span id="dreDiscounts">R$ 0,00</span>
+        </div>
+        <div class="dre-row sub">
+          <span>(-) Cancelamentos</span>
+          <span id="dreCancels">R$ 0,00</span>
+        </div>
+        <div class="dre-row total">
+          <span>(=) RECEITA LÍQUIDA</span>
+          <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
+        </div>
+        <div class="dre-row sub">
+          <span>(-) Custo de Mercadorias Vendidas (CMV)</span>
+          <span id="dreCmv">R$ 0,00</span>
+        </div>
+        <div class="dre-row total">
+          <span>(=) LUCRO BRUTO</span>
+          <strong id="dreGrossMargin">R$ 0,00</strong>
+        </div>
+        <div class="dre-row sub">
+          <span>(-) Despesas Operacionais e Lançamentos</span>
+          <span id="dreOperatingExpenses">R$ 0,00</span>
+        </div>
+        <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 12px 10px; border-radius: 8px; margin-top: 10px;">
+          <span>(=) RESULTADO LÍQUIDO DO PERÍODO</span>
+          <strong id="dreNetProfit" style="color:var(--success); font-size:1.15rem;">R$ 0,00</strong>
+        </div>
+      </div>
+
+      <!-- FORMAS DE RECEBIMENTO E SALDOS -->
+      <div class="card-box">
+        <div class="card-title">💳 Recebimentos por Forma de Pagamento</div>
+        
+        <div class="dre-row">
+          <span>⚡ PIX</span>
+          <strong id="payPixVal" style="color:var(--success);">R$ 0,00</strong>
+        </div>
+        <div class="dre-row">
+          <span>💳 Cartão de Crédito</span>
+          <strong id="payCreditVal" style="color:#8b5cf6;">R$ 0,00</strong>
+        </div>
+        <div class="dre-row">
+          <span>💳 Cartão de Débito</span>
+          <strong id="payDebitVal" style="color:var(--info);">R$ 0,00</strong>
+        </div>
+        <div class="dre-row">
+          <span>💵 Dinheiro em Espécie</span>
+          <strong id="payCashVal" style="color:var(--warning);">R$ 0,00</strong>
+        </div>
+        <div class="dre-row">
+          <span>🍴 Vale Refeição (VR)</span>
+          <strong id="payVrVal" style="color:#ec4899;">R$ 0,00</strong>
+        </div>
+        <div class="dre-row">
+          <span>🛒 Vale Alimentação (VA)</span>
+          <strong id="payVaVal" style="color:#14b8a6;">R$ 0,00</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA DE LANÇAMENTOS DE SAÍDAS E DESPESAS -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>💸 Lançamentos de Despesas e Saídas de Caixa</span>
+        <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);" id="entriesCount">0 registro(s)</span>
+      </div>
+      <div class="table-responsive scroll-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Tipo</th>
+              <th>Descrição / Categoria</th>
+              <th>Valor (R$)</th>
+              <th style="text-align:center;">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tblFinancialEntries">
+            <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Nenhuma despesa ou saída cadastrada.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL DE NOVO LANÇAMENTO -->
+  <div class="modal-overlay" id="entryModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-size:space-between; align-items:center;">
+        <span>➕ Novo Lançamento Financeiro</span>
+        <button onclick="closeEntryModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>Tipo de Lançamento:</label>
+        <select class="form-input" id="entryType">
+          <option value="expense">🔴 Despesa / Saída de Caixa</option>
+          <option value="income">🟢 Receita Extra / Entradas</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Descrição:</label>
+        <input type="text" class="form-input" id="entryDesc" placeholder="Ex: Compra Embalagens, Luz, Motoboy">
+      </div>
+
+      <div class="form-group">
+        <label>Valor (R$):</label>
+        <input type="number" step="0.01" class="form-input" id="entryValue" placeholder="0,00">
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeEntryModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" onclick="saveFinancialEntry()">Salvar Lançamento</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentQuickFilter = 'today';
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function formatFloatToCurrency(num) {
+      return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseToLocalDateStr(rawDate) {
+      if (!rawDate) return '';
+      if (typeof rawDate === 'string') {
+        const cleanStr = rawDate.split('T')[0].split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+          return cleanStr;
         }
+      }
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        return getLocalDateStr(d);
+      }
+      return '';
+    }
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
-        }
+    function setQuickFilter(type) {
+      currentQuickFilter = type;
+      document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+      
+      if (type === 'today') document.getElementById('btnFilterToday').classList.add('active');
+      else if (type === 'yesterday') document.getElementById('btnFilterYesterday').classList.add('active');
+      else if (type === 'week') document.getElementById('btnFilterWeek').classList.add('active');
+      else if (type === 'month') document.getElementById('btnFilterMonth').classList.add('active');
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+      loadFinancialData();
+    }
 
-        function mascaraMoeda(input) {
-            let valor = input.value.replace(/\D/g, "");
-            if (valor === "") {
-                input.value = "";
-                return;
-            }
-            let numero = (parseInt(valor) / 100).toFixed(2);
-            let partes = numero.split(".");
-            partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            input.value = partes.join(",");
-        }
+    function isDateInFilter(rawDate) {
+      const today = new Date();
+      const todayStr = getLocalDateStr(today);
+      const itemDateStr = parseToLocalDateStr(rawDate);
 
-        function textoParaFloat(texto) {
-            if (!texto) return 0;
-            let limpo = texto.replace(/\./g, "").replace(",", ".");
-            return parseFloat(limpo) || 0;
-        }
+      if (!itemDateStr) return false;
 
-        let financeiro = JSON.parse(localStorage.getItem('vortex_financeiro')) || [
-            { desc: 'Venda Balcão PDV', tipo: 'Entrada', valor: 240.00 },
-            { desc: 'Pagamento Fornecedor de Carnes', tipo: 'Saída', valor: 450.00 },
-            { desc: 'Venda Mesas Salão', tipo: 'Entrada', valor: 312.00 }
-        ];
+      if (currentQuickFilter === 'today') {
+        return itemDateStr === todayStr;
+      } else if (currentQuickFilter === 'yesterday') {
+        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        return itemDateStr === getLocalDateStr(yesterday);
+      } else if (currentQuickFilter === 'week') {
+        const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+        return itemDateStr >= getLocalDateStr(sevenDaysAgo) && itemDateStr <= todayStr;
+      } else if (currentQuickFilter === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        return itemDateStr >= getLocalDateStr(firstDay) && itemDateStr <= todayStr;
+      }
+      return true;
+    }
 
-        function carregarFinanceiro() {
-            const tbody = document.getElementById('listaFinanceiroTable');
-            tbody.innerHTML = '';
+    function getProductCostFromCardapio(productName) {
+      const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
+      const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
+      if (fichaMatch && fichaMatch.totalCost) {
+        return parseFloat(fichaMatch.totalCost) || 0;
+      }
 
-            financeiro.forEach((f, index) => {
-                const corValor = f.tipo === 'Entrada' ? '#27ae60' : '#ea2027';
-                const sinal = f.tipo === 'Entrada' ? '+' : '-';
+      const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
+      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
+      if (prodMatch) {
+        return parseFloat(prodMatch.costPrice || prodMatch.custo || prodMatch.cost || 0);
+      }
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${f.desc}</strong></td>
-                        <td>${f.tipo}</td>
-                        <td style="font-weight: 700; color: ${corValor};">${sinal} R$ ${f.valor.toFixed(2).replace('.', ',')}</td>
-                        <td style="text-align: right;">
-                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerLancamento(${index})">Excluir</button>
-                        </td>
-                    </tr>
-                `;
+      return 0;
+    }
+
+    function openEntryModal() {
+      document.getElementById('entryModal').classList.add('active');
+    }
+
+    function closeEntryModal() {
+      document.getElementById('entryModal').classList.remove('active');
+      document.getElementById('entryDesc').value = '';
+      document.getElementById('entryValue').value = '';
+    }
+
+    function saveFinancialEntry() {
+      const type = document.getElementById('entryType').value;
+      const desc = document.getElementById('entryDesc').value.trim();
+      const val = parseFloat(document.getElementById('entryValue').value) || 0;
+
+      if (!desc || val <= 0) {
+        alert('Por favor, preencha a descrição e um valor válido.');
+        return;
+      }
+
+      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      entries.unshift({
+        id: Date.now(),
+        type: type,
+        description: desc,
+        value: val,
+        date: getLocalDateStr(new Date()),
+        timestamp: new Date().toISOString()
+      });
+
+      localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+      closeEntryModal();
+      loadFinancialData();
+    }
+
+    function deleteFinancialEntry(id) {
+      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      entries = entries.filter(e => String(e.id) !== String(id));
+      localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+      loadFinancialData();
+    }
+
+    function loadFinancialData() {
+      applyTheme();
+
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+
+      let rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const sales = rawSales.filter(s => isDateInFilter(s.date || s.timestamp));
+
+      let grossSales = 0;
+      let totalDiscounts = 0;
+      let totalCancels = 0;
+      let totalCmv = 0;
+
+      let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0, payVa = 0;
+
+      sales.forEach(s => {
+        let val = parseFloat(s.total) || 0;
+        if (s.status === 'cancelled') {
+          totalCancels += val;
+        } else {
+          grossSales += val;
+          if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
+
+          if (s.items && Array.isArray(s.items)) {
+            s.items.forEach(i => {
+              let qty = i.qty || 1;
+              let unitCost = getProductCostFromCardapio(i.name);
+              if (unitCost === 0 && i.price) unitCost = i.price * 0.35;
+              totalCmv += (unitCost * qty);
             });
+          } else {
+            totalCmv += (val * 0.35);
+          }
 
-            localStorage.setItem('vortex_financeiro', JSON.stringify(financeiro));
+          let pm = String(s.payMethod || s.payment || s.paymentMethod || '').toLowerCase();
+          if (pm.includes('pix')) payPix += val;
+          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += val;
+          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += val;
+          else if (pm.includes('dinheiro') || pm.includes('cash')) payCash += val;
+          else if (pm.includes('vr')) payVr += val;
+          else if (pm.includes('va')) payVa += val;
+          else payPix += val;
         }
+      });
 
-        function salvarLancamento(event) {
-            event.preventDefault();
-            const desc = document.getElementById('descLancamento').value;
-            const tipo = document.getElementById('tipoLancamento').value;
-            const valor = textoParaFloat(document.getElementById('valorLancamento').value);
+      let rawEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      const entries = rawEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
-            if (valor <= 0) {
-                mostrarAviso('Insira um valor válido maior que zero.');
-                return;
-            }
+      let manualExpenses = 0;
+      let manualIncome = 0;
 
-            financeiro.push({ desc, tipo, valor });
-            carregarFinanceiro();
-            document.getElementById('formFinanceiro').reset();
-            mostrarAviso('Lançamento financeiro guardado com sucesso!');
-        }
+      entries.forEach(e => {
+        if (e.type === 'expense') manualExpenses += parseFloat(e.value) || 0;
+        else if (e.type === 'income') manualIncome += parseFloat(e.value) || 0;
+      });
 
-        function removerLancamento(index) {
-            financeiro.splice(index, 1);
-            carregarFinanceiro();
-            mostrarAviso('Lançamento excluído!');
-        }
+      const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels + manualIncome);
+      const grossMargin = Math.max(0, netSales - totalCmv);
+      const netProfit = grossMargin - manualExpenses;
+      const profitMarginPct = netSales > 0 ? ((netProfit / netSales) * 100).toFixed(1) : '0.0';
 
-        carregarFinanceiro();
-    </script>
+      document.getElementById('finSalesTotal').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+      document.getElementById('finSalesCount').innerText = `${sales.filter(s => s.status !== 'cancelled').length} venda(s) realizada(s)`;
+      
+      document.getElementById('finExpensesTotal').innerText = `R$ ${formatFloatToCurrency(manualExpenses)}`;
+      document.getElementById('finCmvTotal').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
+      document.getElementById('finNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+      document.getElementById('finProfitMargin').innerText = `Margem Líquida: ${profitMarginPct}%`;
+
+      document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+      document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+      document.getElementById('dreCancels').innerText = `R$ ${formatFloatToCurrency(totalCancels)}`;
+      document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
+      document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
+      document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
+      document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(manualExpenses)}`;
+      document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+
+      document.getElementById('payPixVal').innerText = `R$ ${formatFloatToCurrency(payPix)}`;
+      document.getElementById('payCreditVal').innerText = `R$ ${formatFloatToCurrency(payCredit)}`;
+      document.getElementById('payDebitVal').innerText = `R$ ${formatFloatToCurrency(payDebit)}`;
+      document.getElementById('payCashVal').innerText = `R$ ${formatFloatToCurrency(payCash)}`;
+      document.getElementById('payVrVal').innerText = `R$ ${formatFloatToCurrency(payVr)}`;
+      document.getElementById('payVaVal').innerText = `R$ ${formatFloatToCurrency(payVa)}`;
+
+      renderFinancialEntriesTable(entries);
+    }
+
+    function renderFinancialEntriesTable(entries) {
+      const tbody = document.getElementById('tblFinancialEntries');
+      document.getElementById('entriesCount').innerText = `${entries.length} registro(s)`;
+      tbody.innerHTML = '';
+
+      if (entries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Nenhuma despesa ou saída cadastrada no período.</td></tr>`;
+        return;
+      }
+
+      entries.forEach(e => {
+        const isExpense = e.type === 'expense';
+        const typeBadge = isExpense ? `<span style="color:var(--danger); font-weight:bold;">🔴 Saída</span>` : `<span style="color:var(--success); font-weight:bold;">🟢 Entrada</span>`;
+        const valColor = isExpense ? 'color:var(--danger);' : 'color:var(--success);';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${e.date || 'Hoje'}</td>
+            <td>${typeBadge}</td>
+            <td><strong>${e.description}</strong></td>
+            <td style="${valColor} font-weight:bold;">R$ ${formatFloatToCurrency(e.value)}</td>
+            <td style="text-align:center;">
+              <button class="btn-delete-entry" onclick="deleteFinancialEntry(${e.id})">🗑️ Apagar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      setQuickFilter('today');
+    };
+  </script>
 </body>
 </html>

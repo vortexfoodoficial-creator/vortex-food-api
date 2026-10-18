@@ -247,7 +247,6 @@
     let pendingCancelOrderId = null;
     let lastKnownNewOrdersCount = -1;
 
-    // ALERTA SONORO INTELIGENTE PARA NOVOS PEDIDOS
     function playNewOrderSound() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -255,8 +254,8 @@
         const gainNode = audioCtx.createGain();
 
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Dó5
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // Lá5
+        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
 
         gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
@@ -267,7 +266,7 @@
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.5);
       } catch (e) {
-        console.log('Áudio automático restrito pelo navegador até primeira interação.');
+        console.log('Áudio automático restrito pelo navegador.');
       }
     }
 
@@ -286,8 +285,8 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -306,19 +305,39 @@
       renderKds();
     }
 
-    // Sincroniza e garante que vendas finalizadas no PDV também apareçam no KDS como 'finished'
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseToLocalDateStr(rawDate) {
+      if (!rawDate) return '';
+      if (typeof rawDate === 'string') {
+        const cleanStr = rawDate.split('T')[0].split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+          return cleanStr;
+        }
+      }
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        return getLocalDateStr(d);
+      }
+      return '';
+    }
+
     function syncSalesHistoryToKds() {
-      const todayDateStr = new Date().toISOString().split('T')[0];
+      const todayDateStr = getLocalDateStr(new Date());
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
 
       salesHistory.forEach(sale => {
-        let saleDateStr = sale.date || sale.timestamp || '';
-        if (saleDateStr.includes('T')) saleDateStr = saleDateStr.split('T')[0];
+        let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
 
-        // Se for venda de hoje, checa se já está no KDS
-        if (saleDateStr === todayDateStr || !saleDateStr) {
-          let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id) || (o.total === sale.total && o.client === sale.client));
+        if (saleDateStr === todayDateStr) {
+          let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id));
           if (!foundInKds) {
             kdsOrders.unshift({
               id: sale.id || Math.floor(Math.random() * 9000) + 1000,
@@ -329,10 +348,8 @@
               items: sale.items || [{ name: sale.description || 'Venda PDV', qty: 1, price: sale.total || 0 }],
               total: sale.total || 0,
               observation: sale.observation || '',
-              status: 'finished'
+              status: sale.status === 'cancelled' ? 'cancelled' : 'finished'
             });
-          } else if (foundInKds.status !== 'finished' && foundInKds.status !== 'cancelled') {
-            foundInKds.status = 'finished';
           }
         }
       });
@@ -344,12 +361,12 @@
       loadStoreSettings();
       syncSalesHistoryToKds();
 
-      const todayDateStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+      const todayDateStr = getLocalDateStr(new Date());
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
-      // Regra da virada do dia: Remove da tela KDS pedidos finalizados ou cancelados de dias anteriores
+      // Regra da virada do dia: remove da tela KDS pedidos finalizados ou cancelados de dias anteriores
       orders = orders.filter(o => {
-        let itemDate = o.date || todayDateStr;
+        let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
         }
@@ -357,7 +374,6 @@
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-      // Verifica se chegou pedido novo para disparar o Alerta Sonoro Inteligente
       let currentNewCount = orders.filter(o => o.status === 'new').length;
       if (lastKnownNewOrdersCount !== -1 && currentNewCount > lastKnownNewOrdersCount) {
         playNewOrderSound();
@@ -393,7 +409,7 @@
         let itemsHtml = (order.items || []).map(i => `
           <div class="item-row">
             <span>${i.qty || 1}x ${i.name || 'Item'}</span>
-            <span>R$ ${((i.price || 0) * (i.qty || 1)).toFixed(2).replace('.', ',')}</span>
+            <span>R$ ${((i.price || 0) * (i.qty || 1)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         `).join('');
 
@@ -439,7 +455,7 @@
               ${obsHtml}
               
               <div style="font-weight:bold; font-size:0.9rem; margin-top:10px; color:var(--success);">
-                Total: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}
+                Total: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}
               </div>
             </div>
 
@@ -461,7 +477,7 @@
         let msg = '';
         if (newStatus === 'preparing') msg = `Pedido #${id} em preparo.`;
         else if (newStatus === 'ready') msg = `Pedido #${id} marcado como PRONTO!`;
-        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e movido para a aba de finalizados.`;
+        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e sincronizado.`;
 
         showNoticeModal('Atualização do Pedido', msg, '👨‍🍳');
       }
@@ -469,7 +485,7 @@
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá reverter as vendas do dia e atualizar as telas do sistema.`;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros e relatórios do sistema.`;
       
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
@@ -494,15 +510,16 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-        let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-        let currentSales = parseFloat(cleanedSalesStr) || 0;
-        currentSales = Math.max(0, currentSales - order.total);
-
-        localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        // Atualiza também no histórico geral se existir
+        let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        let saleMatch = salesHistory.find(s => String(s.id) === String(id));
+        if (saleMatch) {
+          saleMatch.status = 'cancelled';
+          localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+        }
 
         renderKds();
-        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso e o valor de R$ ${(order.total || 0).toFixed(2).replace('.', ',')} foi abatido do Dashboard.`, '🔴');
+        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
       }
     }
 
@@ -511,13 +528,13 @@
       let order = orders.find(o => String(o.id) === String(id));
       if (!order) return;
 
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       const printWin = window.open('', '_blank', 'width=380,height=600');
 
       let itemsTxt = (order.items || []).map(i => `
         <tr>
           <td style="text-align:left;">${i.qty || 1}x ${i.name || 'Item'}</td>
-          <td style="text-align:right;">R$ ${((i.price || 0) * (i.qty || 1)).toFixed(2).replace('.', ',')}</td>
+          <td style="text-align:right;">R$ ${((i.price || 0) * (i.qty || 1)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         </tr>
       `).join('');
 
@@ -538,7 +555,7 @@
             </table>
             ${order.observation ? `<hr><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
             <hr>
-            <p style="text-align:right; font-size:14px;"><strong>TOTAL: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</strong></p>
+            <p style="text-align:right; font-size:14px;"><strong>TOTAL: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
             <p style="text-align:center; margin-top:20px;">🌪️ Vortex Food System</p>
             <script>window.onload = function() { window.print(); window.close(); }<\/script>
           </body>

@@ -82,10 +82,11 @@
     .filter-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); }
     .filter-input { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; }
     
+    .btn-quick-filter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+    .btn-quick-filter.active, .btn-quick-filter:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
     .btn-action { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-action:hover { background: var(--primary-hover); }
-    .btn-export { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); }
-    .btn-export:hover { border-color: var(--primary); color: var(--primary); }
 
     /* CARDS & TABELAS */
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
@@ -96,15 +97,26 @@
 
     /* TABELAS MODERNAS */
     .table-responsive { width: 100%; overflow-x: auto; }
+    .scroll-table-container { max-height: 420px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
-    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
     td { padding: 12px; border-bottom: 1px solid var(--border); }
     tr:last-child td { border-bottom: none; }
+
+    .btn-delete-sale { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.78rem; transition: all 0.2s; }
+    .btn-delete-sale:hover { background: var(--danger); color: white; }
 
     /* DRE STYLES */
     .dre-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
     .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
     .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
+
+    /* MODAL DE CONFIRMAÇÃO */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
+    .btn-modal-cancel { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 18px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-modal-confirm-danger { background: var(--danger); color: white; padding: 10px 18px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.85rem; }
 
     @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
@@ -186,46 +198,52 @@
       </div>
     </header>
 
-    <!-- BARRA DE FILTROS PERSONALIZADOS E EXPORTAÇÃO -->
+    <!-- BARRA DE FILTROS PERSONALIZADOS E RÁPIDOS -->
     <div class="filter-card">
       <div class="filter-group">
-        <label>📅 Início:</label>
+        <label>⚡ Atalho Rápido:</label>
+        <button class="btn-quick-filter active" id="btnFilterToday" onclick="setQuickFilter('today')">Hoje</button>
+        <button class="btn-quick-filter" id="btnFilterYesterday" onclick="setQuickFilter('yesterday')">Ontem</button>
+        <button class="btn-quick-filter" id="btnFilterWeek" onclick="setQuickFilter('week')">Esta Semana</button>
+        <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
+      </div>
+
+      <div class="filter-group">
+        <label>📅 De:</label>
         <input type="date" class="filter-input" id="startDate">
-        <label>📅 Fim:</label>
+        <label>Até:</label>
         <input type="date" class="filter-input" id="endDate">
-        <button class="btn-action" onclick="applyCustomFilter()">🔍 Filtrar</button>
+        <button class="btn-action" onclick="applyCustomDateFilter()">🔍 Filtrar</button>
       </div>
 
       <div class="filter-group">
-        <label>⚖️ Comparar com:</label>
-        <select class="filter-input" id="compareSelect" onchange="applyComparison()">
-          <option value="none">Nenhum</option>
-          <option value="prev_month">Mês Anterior</option>
-          <option value="prev_week">Semana Anterior</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <button class="btn-action" onclick="exportPdf()">🖨️ Imprimir Relatório em PDF</button>
+        <button class="btn-action" onclick="exportPdf()">🖨️ Imprimir PDF</button>
       </div>
     </div>
 
-    <!-- COMPARATIVO DE PERÍODOS (EXIBIDO QUANDO SELECIONADO) -->
-    <div class="card-box" id="comparisonContainer" style="display:none; border-color: var(--primary);">
-      <div class="card-title">⚖️ Comparativo de Desempenho</div>
-      <div class="grid-3">
-        <div>
-          <span style="font-size:0.8rem; color:var(--text-muted);">FATURAMENTO PERÍODO ATUAL</span>
-          <h3 id="compCurrentSales" style="color:var(--success);">R$ 0,00</h3>
-        </div>
-        <div>
-          <span style="font-size:0.8rem; color:var(--text-muted);">FATURAMENTO PERÍODO ANTERIOR</span>
-          <h3 id="compPrevSales" style="color:var(--info);">R$ 0,00</h3>
-        </div>
-        <div>
-          <span style="font-size:0.8rem; color:var(--text-muted);">VARIAÇÃO (CRESCIMENTO)</span>
-          <h3 id="compGrowth">0.0%</h3>
-        </div>
+    <!-- LISTAGEM DETALHADA DE CADA VENDA REGISTRADA COM OPÇÃO DE APAGAR -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>🧾 Histórico Detalhado de Vendas Efetuadas</span>
+        <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);" id="salesListCount">0 venda(s) registrada(s)</span>
+      </div>
+      <div class="table-responsive scroll-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID / Pedido</th>
+              <th>Data / Hora</th>
+              <th>Origem / Canal</th>
+              <th>Forma de Pagamento</th>
+              <th>Troco / Detalhe</th>
+              <th>Valor Total</th>
+              <th style="text-align:center;">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tblIndividualSales">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhuma venda registrada no período selecionado.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -238,7 +256,7 @@
         <strong id="dreGrossSales" style="color:var(--success);">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Descontos e Imunidades Concedidas</span>
+        <span>(-) Descontos e Concessões</span>
         <span id="dreDiscounts">R$ 0,00</span>
       </div>
       <div class="dre-row sub">
@@ -250,7 +268,7 @@
         <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Custo de Mercadorias Vendidas (CMV Real Sincronizado)</span>
+        <span>(-) Custo de Mercadorias Vendidas (CMV Real Sincronizado Fichas/Cardápio)</span>
         <span id="dreCmv">R$ 0,00</span>
       </div>
       <div class="dre-row total">
@@ -258,7 +276,7 @@
         <strong id="dreGrossMargin">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Despesas Operacionais / Custos Fixos</span>
+        <span>(-) Despesas Operacionais / Custos Fixos Estimados (20%)</span>
         <span id="dreOperatingExpenses">R$ 0,00</span>
       </div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
@@ -321,7 +339,7 @@
               <th>Produto</th>
               <th>Qtd Vendida</th>
               <th>Preço Médio</th>
-              <th>CMV Unit. (Cardápio)</th>
+              <th>CMV Unit. (Cardápio/Ficha)</th>
               <th>Margem Unit. (%)</th>
               <th>Faturamento Total</th>
               <th>Status Giro</th>
@@ -378,7 +396,25 @@
     </div>
   </main>
 
+  <!-- MODAL DE CONFIRMAÇÃO PARA APAGAR VENDA INDIVIDUAL -->
+  <div class="modal-overlay" id="deleteSaleModal">
+    <div class="custom-modal-card">
+      <div style="font-size:2.8rem; margin-bottom:10px;">🗑️</div>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px; color:var(--danger);">Apagar Venda Permanentemente?</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px; line-height:1.4;">
+        Tem certeza que deseja apagar permanentemente este registro de venda? Esta ação atualizará imediatamente o DRE e o Dashboard.
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
+        <button class="btn-modal-confirm-danger" onclick="confirmDeleteSale()">Sim, Apagar Permanetemente</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    let currentQuickFilter = 'today';
+    let saleIdToDelete = null;
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -396,32 +432,78 @@
       return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function setDefaultDates() {
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const today = now.toISOString().split('T')[0];
-
-      document.getElementById('startDate').value = firstDay;
-      document.getElementById('endDate').value = today;
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
-    // BUSCA O CUSTO REAL DO PRODUTO SINCRONIZADO COM O MÓDULO DE CARDÁPIO / FICHA TÉCNICA
+    function parseToLocalDateStr(rawDate) {
+      if (!rawDate) return '';
+      if (typeof rawDate === 'string') {
+        const cleanStr = rawDate.split('T')[0].split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+          return cleanStr;
+        }
+      }
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        return getLocalDateStr(d);
+      }
+      return '';
+    }
+
+    function setQuickFilter(type) {
+      currentQuickFilter = type;
+      document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+      
+      const today = new Date();
+      let startStr = getLocalDateStr(today);
+      let endStr = getLocalDateStr(today);
+
+      if (type === 'today') {
+        document.getElementById('btnFilterToday').classList.add('active');
+      } else if (type === 'yesterday') {
+        document.getElementById('btnFilterYesterday').classList.add('active');
+        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        startStr = getLocalDateStr(yesterday);
+        endStr = getLocalDateStr(yesterday);
+      } else if (type === 'week') {
+        document.getElementById('btnFilterWeek').classList.add('active');
+        const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+        startStr = getLocalDateStr(sevenDaysAgo);
+      } else if (type === 'month') {
+        document.getElementById('btnFilterMonth').classList.add('active');
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        startStr = getLocalDateStr(firstDayOfMonth);
+      }
+
+      document.getElementById('startDate').value = startStr;
+      document.getElementById('endDate').value = endStr;
+
+      loadReportsData();
+    }
+
+    function applyCustomDateFilter() {
+      document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+      loadReportsData();
+    }
+
     function getProductCostFromCardapio(productName) {
-      // 1. Tenta buscar nas fichas técnicas cadastradas
       const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
       const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
       if (fichaMatch && fichaMatch.totalCost) {
         return parseFloat(fichaMatch.totalCost) || 0;
       }
 
-      // 2. Tenta buscar nos produtos do cardápio geral
       const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
       const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
       if (prodMatch) {
         return parseFloat(prodMatch.costPrice || prodMatch.custo || prodMatch.cost || 0);
       }
 
-      // 3. Fallback seguro padrão caso o produto não tenha custo informado
       return 0;
     }
 
@@ -429,41 +511,58 @@
       const startStr = document.getElementById('startDate').value;
       const endStr = document.getElementById('endDate').value;
 
-      const startDate = new Date(startStr + 'T00:00:00');
-      const endDate = new Date(endStr + 'T23:59:59');
-
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       
-      const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      kdsOrders.forEach(k => {
-        if (k.status === 'finished') {
-          let exists = rawHistory.some(s => String(s.id) === String(k.id));
-          if (!exists) {
-            rawHistory.push({
-              id: k.id,
-              total: k.total || 0,
-              payMethod: k.payment || k.paymentMethod || 'pix',
-              channel: k.origin || 'pdv',
-              date: k.date || new Date().toISOString().split('T')[0],
-              timestamp: new Date().toISOString(),
-              items: k.items || [],
-              operator: k.operator || 'Caixa Central',
-              waiter: k.waiter || 'N/A',
-              deliveryman: k.deliveryman || 'N/A'
-            });
-          }
-        }
-      });
-
       return rawHistory.filter(s => {
-        let itemDate = new Date(s.date || s.timestamp || new Date());
-        return itemDate >= startDate && itemDate <= endDate;
+        const itemDateStr = parseToLocalDateStr(s.date || s.timestamp);
+        if (!itemDateStr) return false;
+        return itemDateStr >= startStr && itemDateStr <= endStr;
       });
+    }
+
+    function openDeleteModal(saleId) {
+      saleIdToDelete = saleId;
+      document.getElementById('deleteSaleModal').classList.add('active');
+    }
+
+    function closeDeleteModal() {
+      saleIdToDelete = null;
+      document.getElementById('deleteSaleModal').classList.remove('active');
+    }
+
+    function confirmDeleteSale() {
+      if (!saleIdToDelete) return;
+
+      let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      rawHistory = rawHistory.filter(s => String(s.id) !== String(saleIdToDelete));
+      localStorage.setItem('vortex_sales_history', JSON.stringify(rawHistory));
+
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      kdsOrders = kdsOrders.filter(k => String(k.id) !== String(saleIdToDelete));
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+
+      closeDeleteModal();
+      loadReportsData();
     }
 
     function loadReportsData() {
       applyTheme();
+      
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+
       const sales = getFilteredSales();
+
+      renderIndividualSalesList(sales);
 
       let grossSales = 0;
       let totalDiscounts = 0;
@@ -478,19 +577,16 @@
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
           
-          // Calcula o CMV exato somando o custo de cada item vendido com base no cardápio/ficha técnica
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(i => {
               let qty = i.qty || 1;
               let unitCost = getProductCostFromCardapio(i.name);
-              // Se o cadastro não tiver custo cadastrado, usa estimativa de 35% apenas para aquele item faltante
               if (unitCost === 0 && i.price) {
                 unitCost = (i.price * 0.35);
               }
               totalCmvReal += (unitCost * qty);
             });
           } else {
-            // Fallback se o pedido não tiver array de itens detalhado
             totalCmvReal += (val * 0.35);
           }
         }
@@ -498,7 +594,7 @@
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
       const grossMargin = Math.max(0, netSales - totalCmvReal);
-      const fixedExpenses = netSales * 0.20; // 20% despesas fixas estimadas
+      const fixedExpenses = netSales * 0.20; 
       const netProfit = grossMargin - fixedExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
@@ -517,13 +613,69 @@
       renderLossesAndWaste();
     }
 
+    function renderIndividualSalesList(sales) {
+      const tbody = document.getElementById('tblIndividualSales');
+      document.getElementById('salesListCount').innerText = `${sales.length} venda(s) registrada(s)`;
+      tbody.innerHTML = '';
+
+      if (sales.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhuma venda registrada no período selecionado.</td></tr>`;
+        return;
+      }
+
+      sales.forEach(s => {
+        const val = parseFloat(s.total) || 0;
+        const dateDisplay = s.date || parseToLocalDateStr(s.timestamp) || 'Hoje';
+        const timeDisplay = s.time || (s.timestamp ? new Date(s.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--');
+        
+        let channelLabel = '💻 PDV / Caixa';
+        const ch = String(s.channel || s.origin || '').toLowerCase();
+        if (ch.includes('ifood')) channelLabel = '🔴 iFood';
+        else if (ch.includes('99')) channelLabel = '🟠 99Food';
+        else if (ch.includes('keeta')) channelLabel = '🟡 Keeta';
+        else if (ch.includes('table') || ch.includes('mesa')) channelLabel = '🍽️ Mesa / Comanda';
+        else if (ch.includes('delivery')) channelLabel = '🛵 Delivery';
+
+        let payLabel = String(s.payMethod || s.payment || s.paymentMethod || 'PIX').toUpperCase();
+        if (payLabel.includes('CREDIT') || payLabel.includes('CREDITO')) payLabel = '💳 Cartão de Crédito';
+        else if (payLabel.includes('DEBIT') || payLabel.includes('DEBITO')) payLabel = '💳 Cartão de Débito';
+        else if (payLabel.includes('PIX')) payLabel = '⚡ PIX';
+        else if (payLabel.includes('CASH') || payLabel.includes('DINHEIRO')) payLabel = '💵 Dinheiro';
+        else if (payLabel.includes('VR')) payLabel = '🍴 Vale Refeição (VR)';
+        else if (payLabel.includes('VA')) payLabel = '🛒 Vale Alimentação (VA)';
+
+        let detailTroco = '-';
+        if (s.change && parseFloat(s.change) > 0) {
+          detailTroco = `Troco: R$ ${formatFloatToCurrency(s.change)}`;
+        } else if (s.received && parseFloat(s.received) > 0) {
+          detailTroco = `Recebido: R$ ${formatFloatToCurrency(s.received)}`;
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>#${s.id || 'N/A'}</strong></td>
+            <td>${dateDisplay} <small style="color:var(--text-muted);">${timeDisplay}</small></td>
+            <td>${channelLabel}</td>
+            <td><strong>${payLabel}</strong></td>
+            <td style="font-size:0.8rem; color:var(--text-muted);">${detailTroco}</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(val)}</td>
+            <td style="text-align:center;">
+              <button class="btn-delete-sale" onclick="openDeleteModal('${s.id}')" title="Apagar permanente">🗑️ Apagar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
     function renderHourlySales(sales) {
       let hourlyMap = {};
       sales.forEach(s => {
-        let hour = s.time ? s.time.split(':')[0] + ':00' : '12:00';
-        if (!hourlyMap[hour]) hourlyMap[hour] = { count: 0, total: 0 };
-        hourlyMap[hour].count += 1;
-        hourlyMap[hour].total += parseFloat(s.total) || 0;
+        if (s.status !== 'cancelled') {
+          let hour = s.time ? s.time.split(':')[0] + ':00' : '12:00';
+          if (!hourlyMap[hour]) hourlyMap[hour] = { count: 0, total: 0 };
+          hourlyMap[hour].count += 1;
+          hourlyMap[hour].total += parseFloat(s.total) || 0;
+        }
       });
 
       const tbody = document.getElementById('tblHourlySales');
@@ -549,7 +701,7 @@
     function renderCategorySales(sales) {
       let catMap = {};
       sales.forEach(s => {
-        if (s.items && Array.isArray(s.items)) {
+        if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
           s.items.forEach(i => {
             let cat = i.category || 'Geral / Lanches';
             if (!catMap[cat]) catMap[cat] = { qty: 0, total: 0 };
@@ -582,7 +734,7 @@
     function renderProductsPerformance(sales) {
       let prodMap = {};
       sales.forEach(s => {
-        if (s.items && Array.isArray(s.items)) {
+        if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
           s.items.forEach(i => {
             let name = i.name || 'Produto sem nome';
             if (!prodMap[name]) prodMap[name] = { qty: 0, total: 0, price: i.price || 0 };
@@ -606,7 +758,6 @@
         let total = prodMap[p].total;
         let unitPrice = qty > 0 ? total / qty : 0;
         
-        // Puxa o CMV real cadastrado no cardápio ou ficha técnica
         let unitCmv = getProductCostFromCardapio(p);
         if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.35;
 
@@ -628,34 +779,35 @@
     }
 
     function renderTeamPerformance(sales) {
-      let teamMap = {
-        'Operador Caixa': { role: 'Caixa / PDV', count: 0, total: 0 },
-        'Garçom Principal': { role: 'Garçom / Mesas', count: 0, total: 0 },
-        'Entregador Motoboy': { role: 'Entregador Delivery', count: 0, total: 0 },
-        'Caixa Central': { role: 'Atendente', count: 0, total: 0 }
-      };
+      let teamMap = {};
 
       sales.forEach(s => {
-        let op = s.operator || 'Operador Caixa';
-        if (!teamMap[op]) teamMap[op] = { role: 'Atendente', count: 0, total: 0 };
-        teamMap[op].count += 1;
-        teamMap[op].total += parseFloat(s.total) || 0;
+        if (s.status !== 'cancelled') {
+          let op = s.operator || 'Caixa Central';
+          if (!teamMap[op]) teamMap[op] = { role: 'Operador / Caixa', count: 0, total: 0 };
+          teamMap[op].count += 1;
+          teamMap[op].total += parseFloat(s.total) || 0;
+        }
       });
 
       const tbody = document.getElementById('tblTeamPerformance');
       tbody.innerHTML = '';
 
-      Object.keys(teamMap).forEach(m => {
-        if (teamMap[m].count > 0 || m === 'Operador Caixa' || m === 'Garçom Principal' || m === 'Entregador Motoboy') {
-          tbody.innerHTML += `
-            <tr>
-              <td><strong>${m}</strong></td>
-              <td>${teamMap[m].role}</td>
-              <td>${teamMap[m].count} pedidos</td>
-              <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(teamMap[m].total)}</td>
-            </tr>
-          `;
-        }
+      const operators = Object.keys(teamMap);
+      if (operators.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Nenhum registro no período.</td></tr>`;
+        return;
+      }
+
+      operators.forEach(m => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${m}</strong></td>
+            <td>${teamMap[m].role}</td>
+            <td>${teamMap[m].count} pedidos</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(teamMap[m].total)}</td>
+          </tr>
+        `;
       });
     }
 
@@ -690,32 +842,6 @@
       });
     }
 
-    function applyCustomFilter() {
-      loadReportsData();
-    }
-
-    function applyComparison() {
-      const option = document.getElementById('compareSelect').value;
-      const compContainer = document.getElementById('comparisonContainer');
-
-      if (option === 'none') {
-        compContainer.style.display = 'none';
-        return;
-      }
-
-      const sales = getFilteredSales();
-      let currentTotal = sales.reduce((acc, s) => acc + (parseFloat(s.total) || 0), 0);
-      let prevTotal = currentTotal * 0.85;
-      let growth = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 0;
-
-      document.getElementById('compCurrentSales').innerText = `R$ ${formatFloatToCurrency(currentTotal)}`;
-      document.getElementById('compPrevSales').innerText = `R$ ${formatFloatToCurrency(prevTotal)}`;
-      document.getElementById('compGrowth').innerText = `${growth >= 0 ? '+' : ''}${growth}%`;
-      document.getElementById('compGrowth').style.color = growth >= 0 ? 'var(--success)' : 'var(--danger)';
-
-      compContainer.style.display = 'block';
-    }
-
     function exportPdf() {
       window.print();
     }
@@ -725,8 +851,7 @@
     }, 1000);
 
     window.onload = function() {
-      setDefaultDates();
-      loadReportsData();
+      setQuickFilter('today');
     };
   </script>
 </body>

@@ -545,33 +545,43 @@
       totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     }
 
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     async function submitTableOrderToKds() {
       if (tempCart.length === 0) {
         showNoticeModal('Comanda Vazia', 'Adicione itens à mesa antes de enviar.', '⚠️');
         return;
       }
 
-      const clientName = document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`;
+      const clientName = document.getElementById('tableClientNameInput'].value.trim() || `Mesa ${activeTableId}`;
       const observation = document.getElementById('tableObsInput').value.trim();
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let currentData = tableCarts[activeTableId] || {};
       let existingOrderId = currentData.orderId;
 
-      let targetOrder = kdsOrders.find(o => o.id === existingOrderId);
+      let targetOrder = kdsOrders.find(o => String(o.id) === String(existingOrderId));
 
       if (targetOrder && targetOrder.status !== 'finished' && targetOrder.status !== 'cancelled') {
         targetOrder.items = [...tempCart];
         targetOrder.total = total;
         targetOrder.observation = observation;
       } else {
-        const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
-        existingOrderId = String(nextKdsId);
+        // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
+        const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
+        const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
+        existingOrderId = String(nextSeqNumber);
 
         targetOrder = {
           id: existingOrderId,
@@ -579,6 +589,7 @@
           client: clientName,
           address: 'Consumo Local',
           payment: 'Comanda de Mesa',
+          payMethod: 'Comanda de Mesa',
           observation: observation,
           items: [...tempCart],
           total: total,
@@ -657,10 +668,14 @@
 
     function calculateTableChange() {
       const payment = document.getElementById('tablePaymentMethod').value;
-      if (payment !== 'Dinheiro') return;
-
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const display = document.getElementById('tableChangeDisplay');
+
+      if (payment !== 'Dinheiro') {
+        display.innerText = 'R$ 0,00';
+        display.style.color = 'var(--text-main)';
+        return;
+      }
 
       if (rawCashGiven >= total && total > 0) {
         const change = rawCashGiven - total;
@@ -685,9 +700,23 @@
       }
 
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const saleId = 'MESA-' + activeTableId + '-' + Date.now();
+
+      let currentData = tableCarts[activeTableId] || {};
+      let saleId = currentData.orderId;
+
+      if (!saleId) {
+        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
+        const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
+        saleId = String(nextSeqNumber);
+      }
+
+      let changeVal = 0;
+      if (payment === 'Dinheiro' && rawCashGiven > total) {
+        changeVal = rawCashGiven - total;
+      }
 
       // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
@@ -706,6 +735,8 @@
         subtotal: total,
         discount: 0,
         payMethod: payment,
+        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
+        changeValue: changeVal,
         status: 'finished',
         date: dateStr,
         time: timeStr,
@@ -723,21 +754,45 @@
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
       }
 
-      let currentData = tableCarts[activeTableId] || {};
-      if (currentData.orderId) {
-        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        let kdsOrder = kdsOrders.find(o => String(o.id) === String(currentData.orderId));
-        if (kdsOrder) {
-          kdsOrder.status = 'finished';
-          localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-          try {
-            if (typeof dbSaveKdsOrder === 'function') {
-              await dbSaveKdsOrder(kdsOrder);
-            }
-          } catch (err) {
-            console.error('Erro ao atualizar KDS no Supabase:', err);
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let kdsOrder = kdsOrders.find(o => String(o.id) === String(saleId));
+      if (kdsOrder) {
+        kdsOrder.status = 'finished';
+        kdsOrder.payMethod = payment;
+        kdsOrder.amountPaid = payment === 'Dinheiro' ? rawCashGiven : total;
+        kdsOrder.changeValue = changeVal;
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        try {
+          if (typeof dbSaveKdsOrder === 'function') {
+            await dbSaveKdsOrder(kdsOrder);
           }
+        } catch (err) {
+          console.error('Erro ao atualizar KDS no Supabase:', err);
         }
+      } else {
+        // Se não estava na cozinha, cria o registro finalizado direto com a numeração limpa
+        const newKdsOrder = {
+          id: saleId,
+          origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
+          client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
+          address: 'Consumo Local',
+          payMethod: payment,
+          amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
+          changeValue: changeVal,
+          observation: document.getElementById('tableObsInput').value.trim(),
+          items: [...tempCart],
+          total: total,
+          status: 'finished',
+          date: dateStr,
+          time: timeStr
+        };
+        kdsOrders.unshift(newKdsOrder);
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        try {
+          if (typeof dbSaveKdsOrder === 'function') {
+            await dbSaveKdsOrder(newKdsOrder);
+          }
+        } catch (err) {}
       }
 
       delete tableCarts[activeTableId];
@@ -747,7 +802,7 @@
       closeMesaModal();
       renderMesas();
 
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} (Pedido #${saleId}) foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
     }
 
     function openQrModal(mesaNum) {

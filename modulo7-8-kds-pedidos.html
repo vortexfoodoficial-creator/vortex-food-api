@@ -356,21 +356,25 @@
         salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
 
-      // Remove IDs fantasmas antigos (como PDV-...)
+      // Remove IDs fantasmas antigos (como PDV-... ou MESA-...) do KDS
       kdsOrders = kdsOrders.filter(order => {
-        if (String(order.id).includes('PDV-')) return false;
+        let strId = String(order.id);
+        if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
         return true;
       });
 
       // Sincroniza vendas do dia que ainda não estão no KDS
       for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
+        let strSaleId = String(sale.id);
+
+        if (strSaleId.includes('PDV-') || strSaleId.includes('MESA-')) continue;
 
         if (saleDateStr === todayDateStr && sale.status !== 'cancelled') {
-          let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id));
+          let foundInKds = kdsOrders.find(o => String(o.id) === strSaleId);
           if (!foundInKds) {
             const newKdsItem = {
-              id: String(sale.id),
+              id: strSaleId,
               origin: sale.channel || 'Balcão',
               client: sale.client || 'Cliente Balcão',
               time: sale.time || new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
@@ -387,6 +391,12 @@
             try {
               if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
             } catch (err) {}
+          } else {
+            // Atualiza os dados de pagamento caso tenham sido fechados na mesa
+            foundInKds.payMethod = sale.payMethod || foundInKds.payMethod;
+            foundInKds.amountPaid = sale.amountPaid || foundInKds.amountPaid;
+            foundInKds.changeValue = sale.changeValue || foundInKds.changeValue;
+            foundInKds.status = sale.status || foundInKds.status;
           }
         }
       }
@@ -411,9 +421,10 @@
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
-      // Filtra apenas os pedidos do dia atual ou pendentes
+      // Limpeza rigorosa de IDs antigos ou com prefixos de mesa/PDV
       orders = orders.filter(o => {
-        if (String(o.id).includes('PDV-')) return false;
+        let strId = String(o.id);
+        if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
@@ -631,7 +642,7 @@
             <p><strong>Troco a Devolver: R$ ${changeVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
           `;
         } else {
-          paymentDetailsHtml += `<p>Troco: Sem troco necessário</p>`;
+          paymentDetailsHtml += `<p>Valor Recebido: R$ ${totalVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</p><p>Troco: Sem troco necessário</p>`;
         }
       }
 

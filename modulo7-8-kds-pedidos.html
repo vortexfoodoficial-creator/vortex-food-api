@@ -356,14 +356,12 @@
         salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
 
-      // Remove IDs fantasmas antigos (como PDV-... ou MESA-...) do KDS
       kdsOrders = kdsOrders.filter(order => {
         let strId = String(order.id);
         if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
         return true;
       });
 
-      // Sincroniza vendas do dia que ainda não estão no KDS
       for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
         let strSaleId = String(sale.id);
@@ -392,7 +390,6 @@
               if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
             } catch (err) {}
           } else {
-            // Atualiza os dados de pagamento caso tenham sido fechados na mesa
             foundInKds.payMethod = sale.payMethod || foundInKds.payMethod;
             foundInKds.amountPaid = sale.amountPaid || foundInKds.amountPaid;
             foundInKds.changeValue = sale.changeValue || foundInKds.changeValue;
@@ -421,7 +418,6 @@
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
-      // Limpeza rigorosa de IDs antigos ou com prefixos de mesa/PDV
       orders = orders.filter(o => {
         let strId = String(o.id);
         if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
@@ -490,7 +486,7 @@
             <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'ready') {
-          // Se for pedido de mesa, NÃO exibe o botão de finalizar na cozinha (o fechamento se dá pelo pagamento da mesa)
+          // Pedidos de mesa só finalizam no pagamento do caixa/mesa; outros canais podem finalizar aqui
           if (!isTableOrder) {
             actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>`;
           }
@@ -545,7 +541,6 @@
           console.error('Erro ao atualizar status KDS no Supabase:', err);
         }
 
-        // Sincroniza também no histórico de vendas se for finalizado
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         let saleMatch = salesHistory.find(s => String(s.id) === String(id));
         if (saleMatch) {

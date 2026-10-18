@@ -516,6 +516,7 @@
       // Busca dados diretamente do Supabase com fallback para localStorage
       let rawHistory = [];
       let kdsOrders = [];
+      let recipesCatalog = [];
       
       try {
         if (typeof dbFetchSales === 'function') {
@@ -531,10 +532,18 @@
         if (kdsOrders.length === 0) {
           kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         }
+
+        if (typeof dbFetchRecipes === 'function') {
+          recipesCatalog = await dbFetchRecipes();
+        }
+        if (recipesCatalog.length === 0) {
+          recipesCatalog = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+        }
       } catch (e) {
         console.log('Usando armazenamento local por contingência:', e);
         rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        recipesCatalog = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
       }
 
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
@@ -542,7 +551,7 @@
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancelled = 0;
-      let estimatedCmvCost = 0;
+      let totalCmvCost = 0;
 
       salesHistory.forEach(s => {
         if (s.status === 'cancelled') {
@@ -551,8 +560,38 @@
           let val = parseFloat(s.total) || 0;
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
-          if (s.cmvCost) estimatedCmvCost += parseFloat(s.cmvCost) || 0;
-          else estimatedCmvCost += (val * 0.35);
+
+          // Calcula o CMV real dos itens vendidos com base nas fichas técnicas cadastradas ou custo gravado
+          let orderCmv = 0;
+          if (s.items && Array.isArray(s.items)) {
+            s.items.forEach(item => {
+              const qtySold = parseFloat(item.qty || 1);
+              // Procura ficha técnica para este produto
+              const rec = recipesCatalog.find(r => String(r.productId) === String(item.id) || r.productName === item.name);
+              if (rec && rec.ingredients) {
+                let itemUnitCost = 0;
+                rec.ingredients.forEach(ing => {
+                  let ingCost = parseFloat(ing.unitCost || 0);
+                  if (ing.unit === 'g' || ing.unit === 'ml') itemUnitCost += (parseFloat(ing.qty || 0) / 1000) * ingCost;
+                  else itemUnitCost += parseFloat(ing.qty || 0) * ingCost;
+                });
+                orderCmv += itemUnitCost * qtySold;
+              } else if (item.cost) {
+                orderCmv += parseFloat(item.cost) * qtySold;
+              } else {
+                // Fallback padrão se não houver ficha técnica (35% do valor do item)
+                orderCmv += (parseFloat(item.price || item.total || 0) * 0.35);
+              }
+            });
+          }
+
+          if (orderCmv > 0) {
+            totalCmvCost += orderCmv;
+          } else if (s.cmvCost) {
+            totalCmvCost += parseFloat(s.cmvCost) || 0;
+          } else {
+            totalCmvCost += (val * 0.35);
+          }
         }
       });
 
@@ -560,7 +599,9 @@
 
       const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
       const netSales = Math.max(0, grossSales - totalDiscounts);
-      const grossProfit = Math.max(0, netSales - estimatedCmvCost);
+      
+      // Lucro Bruto = Vendas Líquidas - Custo Total dos Insumos (CMV)
+      const grossProfit = Math.max(0, netSales - totalCmvCost);
       const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
 
       document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;

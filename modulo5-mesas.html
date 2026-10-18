@@ -272,7 +272,7 @@
         <span id="tableTotalDisplay" style="color:var(--success);">R$ 0,00</span>
       </div>
 
-      <button class="btn-modal-primary" onclick="submitTableOrderToKds()">Enviar Pedido p/ Cozinha 👨‍🍳</button>
+      <button class="btn-modal-primary" onclick="submitTableOrderToKds()">Adicionar / Enviar Novos Itens p/ Cozinha 👨‍🍳</button>
       <button class="btn-modal-primary" style="background:#2563eb; margin-top:8px;" onclick="openPaymentModal()">💳 Fechar Conta da Mesa</button>
       <button class="btn-modal-secondary" onclick="closeMesaModal()">Manter Comanda Aberta</button>
     </div>
@@ -573,10 +573,12 @@
 
       let targetOrder = kdsOrders.find(o => String(o.id) === String(existingOrderId));
 
+      // Se já houver um pedido ativo na mesa (mesmo se já estava pronto), acumula os novos itens, atualiza o total e reabre/mantém ativo na cozinha
       if (targetOrder && targetOrder.status !== 'finished' && targetOrder.status !== 'cancelled') {
         targetOrder.items = [...tempCart];
         targetOrder.total = total;
         targetOrder.observation = observation;
+        targetOrder.status = 'new'; // Volta para novo/preparar para a cozinha ver os novos itens adicionados!
       } else {
         // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
         const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
@@ -621,7 +623,7 @@
 
       closeMesaModal();
       renderMesas();
-      showNoticeModal('Pedido Enviado!', `Pedido #${existingOrderId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha e nuvem!`, '👨‍🍳');
+      showNoticeModal('Itens Adicionados!', `Pedido #${existingOrderId} da Mesa ${activeTableId} atualizado e enviado para a Cozinha!`, '👨‍🍳');
     }
 
     function openPaymentModal() {
@@ -747,6 +749,7 @@
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
       }
 
+      // Finaliza o pedido na cozinha (KDS) SOMENTE AGORA no fechamento da conta
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let kdsOrder = kdsOrders.find(o => String(o.id) === String(orderIdToFinalize));
       if (kdsOrder) {
@@ -771,7 +774,7 @@
       closeMesaModal();
       renderMesas();
 
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, enviada para finalizados na Cozinha e liberada com sucesso!`, '✅');
     }
 
     function openQrModal(mesaNum) {

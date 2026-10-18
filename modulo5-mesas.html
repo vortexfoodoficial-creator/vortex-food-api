@@ -559,7 +559,7 @@
         return;
       }
 
-      const clientName = document.getElementById('tableClientNameInput'].value.trim() || `Mesa ${activeTableId}`;
+      const clientName = document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`;
       const observation = document.getElementById('tableObsInput').value.trim();
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
@@ -704,14 +704,7 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let currentData = tableCarts[activeTableId] || {};
-      let saleId = currentData.orderId;
-
-      if (!saleId) {
-        let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
-        const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
-        saleId = String(nextSeqNumber);
-      }
+      const orderIdToFinalize = currentData.orderId || '1';
 
       let changeVal = 0;
       if (payment === 'Dinheiro' && rawCashGiven > total) {
@@ -728,7 +721,7 @@
       // Histórico local
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
-        id: saleId,
+        id: orderIdToFinalize,
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
         channel: `Mesa ${activeTableId}`,
         total: total,
@@ -755,7 +748,7 @@
       }
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      let kdsOrder = kdsOrders.find(o => String(o.id) === String(saleId));
+      let kdsOrder = kdsOrders.find(o => String(o.id) === String(orderIdToFinalize));
       if (kdsOrder) {
         kdsOrder.status = 'finished';
         kdsOrder.payMethod = payment;
@@ -769,30 +762,6 @@
         } catch (err) {
           console.error('Erro ao atualizar KDS no Supabase:', err);
         }
-      } else {
-        // Se não estava na cozinha, cria o registro finalizado direto com a numeração limpa
-        const newKdsOrder = {
-          id: saleId,
-          origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
-          client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
-          address: 'Consumo Local',
-          payMethod: payment,
-          amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
-          changeValue: changeVal,
-          observation: document.getElementById('tableObsInput').value.trim(),
-          items: [...tempCart],
-          total: total,
-          status: 'finished',
-          date: dateStr,
-          time: timeStr
-        };
-        kdsOrders.unshift(newKdsOrder);
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        try {
-          if (typeof dbSaveKdsOrder === 'function') {
-            await dbSaveKdsOrder(newKdsOrder);
-          }
-        } catch (err) {}
       }
 
       delete tableCarts[activeTableId];
@@ -802,7 +771,7 @@
       closeMesaModal();
       renderMesas();
 
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} (Pedido #${saleId}) foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
     }
 
     function openQrModal(mesaNum) {

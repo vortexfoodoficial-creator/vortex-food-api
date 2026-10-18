@@ -356,17 +356,13 @@
         salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
 
-      // Remove do KDS ordens cujas vendas principais foram apagadas ou que sejam IDs fantasmas travados (como PDV antigo)
+      // Remove IDs fantasmas antigos (como PDV-...)
       kdsOrders = kdsOrders.filter(order => {
-        if (String(order.id).includes('PDV-1792362693403')) return false; // Remove explicitamente o pedido fantasma relatado
-        let existsInSales = salesHistory.some(s => String(s.id) === String(order.id));
-        let isFromSales = (order.status === 'finished' || order.status === 'cancelled');
-        if (isFromSales && !existsInSales) {
-          return false; 
-        }
+        if (String(order.id).includes('PDV-')) return false;
         return true;
       });
 
+      // Sincroniza vendas do dia que ainda não estão no KDS
       for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
 
@@ -374,18 +370,18 @@
           let foundInKds = kdsOrders.find(o => String(o.id) === String(sale.id));
           if (!foundInKds) {
             const newKdsItem = {
-              id: String(sale.id || Math.floor(Math.random() * 9000) + 1000),
-              origin: sale.channel === 'pdv' || sale.channel === 'counter' ? 'PDV / Caixa' : (sale.channel || 'Balcão'),
+              id: String(sale.id),
+              origin: sale.channel || 'Balcão',
               client: sale.client || 'Cliente Balcão',
               time: sale.time || new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
               date: todayDateStr,
-              items: sale.items || [{ name: sale.description || 'Venda PDV', qty: 1, price: sale.total || 0 }],
+              items: sale.items || [],
               total: parseFloat(sale.total) || 0,
               observation: sale.observation || '',
-              payMethod: sale.payMethod || sale.payment || '',
-              amountPaid: sale.amountPaid || 0,
-              changeValue: sale.changeValue || 0,
-              status: sale.status === 'cancelled' ? 'cancelled' : 'new'
+              payMethod: sale.payMethod || sale.payment || 'Dinheiro',
+              amountPaid: sale.amountPaid || sale.total || 0,
+              changeValue: sale.changeValue || sale.change || 0,
+              status: sale.status || 'new'
             };
             kdsOrders.unshift(newKdsItem);
             try {
@@ -415,9 +411,9 @@
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
-      // Limpeza de IDs fantasmas também no array carregado
+      // Filtra apenas os pedidos do dia atual ou pendentes
       orders = orders.filter(o => {
-        if (String(o.id).includes('PDV-1792362693403')) return false;
+        if (String(o.id).includes('PDV-')) return false;
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
@@ -534,16 +530,14 @@
         }
 
         // Sincroniza também no histórico de vendas se for finalizado
-        if (newStatus === 'finished') {
-          let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-          let saleMatch = salesHistory.find(s => String(s.id) === String(id));
-          if (saleMatch) {
-            saleMatch.status = 'finished';
-            localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-            try {
-              if (typeof dbSaveSale === 'function') await dbSaveSale(saleMatch);
-            } catch (err) {}
-          }
+        let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        let saleMatch = salesHistory.find(s => String(s.id) === String(id));
+        if (saleMatch) {
+          saleMatch.status = newStatus;
+          localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+          try {
+            if (typeof dbSaveSale === 'function') await dbSaveSale(saleMatch);
+          } catch (err) {}
         }
 
         renderKds();
@@ -622,15 +616,14 @@
         </tr>
       `).join('');
 
-      // Formatação da forma de pagamento e troco para balcão/dinheiro
-      let payMethodStr = order.payMethod || 'Dinheiro';
+      let payMethodStr = order.payMethod || order.payment || 'Dinheiro';
       let paymentDetailsHtml = `<p>Pagamento: ${payMethodStr}</p>`;
       
       const pmLower = String(payMethodStr).toLowerCase();
       if (pmLower.includes('dinheiro') || pmLower.includes('cash')) {
         let totalVal = parseFloat(order.total || 0);
-        let amountPaid = parseFloat(order.amountPaid || totalVal);
-        let changeVal = parseFloat(order.changeValue || (amountPaid > totalVal ? amountPaid - totalVal : 0));
+        let amountPaid = parseFloat(order.amountPaid || order.cashGiven || totalVal);
+        let changeVal = parseFloat(order.changeValue || order.change || (amountPaid > totalVal ? amountPaid - totalVal : 0));
         
         if (changeVal > 0) {
           paymentDetailsHtml += `

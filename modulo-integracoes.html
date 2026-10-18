@@ -267,6 +267,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -350,14 +354,15 @@
       }
     }
 
-    function simulateExternalOrder(platform) {
+    async function simulateExternalOrder(platform) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 301;
+      const nextId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 301))) + 1 : 301;
       const now = new Date();
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = now.toISOString().split('T')[0];
 
       const newOrder = {
-        id: nextId,
+        id: String(nextId),
         origin: `Delivery (${platform})`,
         client: `Cliente ${platform} #${Math.floor(Math.random() * 900 + 100)}`,
         payment: 'Cartão de Crédito Online',
@@ -369,20 +374,56 @@
         total: 50.90,
         status: 'new',
         time: timeStr,
-        date: now.toISOString().split('T')[0]
+        date: dateStr
       };
 
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Atualiza vendas do dia no dashboard
+      // Grava pedido KDS no Supabase
+      try {
+        if (typeof dbSaveKdsOrder === 'function') {
+          await dbSaveKdsOrder(newOrder);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar KDS no Supabase:', err);
+      }
+
+      // Salva no histórico de vendas do Supabase
+      const saleRecord = {
+        id: 'APP-' + platform + '-' + Date.now(),
+        client: newOrder.client,
+        channel: platform,
+        total: newOrder.total,
+        subtotal: newOrder.total,
+        discount: 0,
+        payMethod: 'Cartão de Crédito',
+        status: 'finished',
+        date: dateStr,
+        time: timeStr,
+        items: newOrder.items
+      };
+
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      salesHistory.unshift(saleRecord);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+
+      try {
+        if (typeof dbSaveSale === 'function') {
+          await dbSaveSale(saleRecord);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar venda no Supabase:', err);
+      }
+
+      // Atualiza vendas do dia no caixa local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += newOrder.total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      showNoticeModal('Novo Pedido Recebido!', `Pedido #${nextId} simulado do ${platform} entrou na fila do KDS e abateu no caixa com sucesso!`, '🚀');
+      showNoticeModal('Novo Pedido Recebido!', `Pedido #${nextId} simulado do ${platform} entrou na fila do KDS e foi sincronizado na nuvem!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {

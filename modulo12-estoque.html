@@ -360,6 +360,20 @@
     </div>
   </div>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO (PROFISSIONAL) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="custom-modal-card" style="text-align:center; max-width:380px;">
+      <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px;">Excluir Item</div>
+      <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:15px;" id="confirmDesc">Deseja realmente excluir este item do estoque?</div>
+      <input type="hidden" id="deleteTargetId">
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeConfirmModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1; background:var(--danger); justify-content:center;" onclick="confirmDeleteStockItem()">Excluir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center; max-width:380px;">
@@ -568,14 +582,25 @@
       document.getElementById('itemBarcode').value = item.barcode || '';
     }
 
-    async function deleteStockItem(id) {
-      if (!confirm('Deseja realmente excluir este item do estoque?')) return;
+    function deleteStockItem(id) {
+      document.getElementById('deleteTargetId').value = id;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+    }
+
+    async function confirmDeleteStockItem() {
+      const id = document.getElementById('deleteTargetId').value;
+      closeConfirmModal();
+
       let items = getStockItems();
       items = items.filter(i => String(i.id) !== String(id));
       localStorage.setItem('vortex_stock_items', JSON.stringify(items));
       await syncStockToCloud();
       renderStockTable();
-      showNoticeModal('Removido', 'Item excluído do estoque.', '🗑️');
+      showNoticeModal('Removido', 'Item excluído do estoque com sucesso.', '🗑️');
     }
 
     function openMovementModal(type) {

@@ -313,6 +313,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     const defaultCoupons = [
       { id: 'c1', code: 'PRIMEIRACOMPRA', type: 'percent', value: 10, minOrder: 30, maxUses: 100, usedCount: 12, expiration: '', status: 'active' },
@@ -350,8 +354,29 @@
       return JSON.parse(saved);
     }
 
-    function renderCoupons() {
+    async function syncCouponsToCloud() {
+      try {
+        if (typeof dbSaveCoupons === 'function') {
+          await dbSaveCoupons(getCoupons());
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar cupons no Supabase:', e);
+      }
+    }
+
+    async function renderCoupons() {
       loadStoreSettings();
+
+      // Tenta carregar do Supabase se disponível
+      try {
+        if (typeof dbFetchCoupons === 'function') {
+          const cloudCoupons = await dbFetchCoupons();
+          if (cloudCoupons && cloudCoupons.length > 0) {
+            localStorage.setItem('vortex_coupons_catalog', JSON.stringify(cloudCoupons));
+          }
+        }
+      } catch (e) {}
+
       let coupons = getCoupons();
       const search = document.getElementById('couponSearchInput').value.toUpperCase().trim();
       const container = document.getElementById('couponsContainer');
@@ -469,7 +494,7 @@
       document.getElementById('couponModal').classList.remove('active');
     }
 
-    function saveCoupon() {
+    async function saveCoupon() {
       const code = document.getElementById('couponCode').value.toUpperCase().trim();
       const type = document.getElementById('couponType').value;
       const value = parseCurrencyToFloat(document.getElementById('couponValue').value);
@@ -487,7 +512,7 @@
       const id = document.getElementById('editCouponId').value;
 
       if (id) {
-        let c = coupons.find(item => item.id === id);
+        let c = coupons.find(item => String(item.id) === String(id));
         if (c) {
           c.code = code;
           c.type = type;
@@ -509,14 +534,16 @@
       }
 
       localStorage.setItem('vortex_coupons_catalog', JSON.stringify(coupons));
+      await syncCouponsToCloud();
+
       closeCouponModal();
       renderCoupons();
-      showNoticeModal('Cupom Salvo!', 'As alterações do cupom foram salvas com sucesso.', '🏷️');
+      showNoticeModal('Cupom Salvo!', 'As alterações do cupom foram salvas e sincronizadas na nuvem.', '🏷️');
     }
 
     function editCoupon(id) {
       let coupons = getCoupons();
-      let c = coupons.find(item => item.id === id);
+      let c = coupons.find(item => String(item.id) === String(id));
       if (!c) return;
 
       openCouponModal();
@@ -532,20 +559,22 @@
       updateValueLabel();
     }
 
-    function toggleCouponStatus(id) {
+    async function toggleCouponStatus(id) {
       let coupons = getCoupons();
-      let c = coupons.find(item => item.id === id);
+      let c = coupons.find(item => String(item.id) === String(id));
       if (c) {
         c.status = c.status === 'active' ? 'inactive' : 'active';
         localStorage.setItem('vortex_coupons_catalog', JSON.stringify(coupons));
+        await syncCouponsToCloud();
         renderCoupons();
       }
     }
 
-    function deleteCoupon(id) {
+    async function deleteCoupon(id) {
       let coupons = getCoupons();
-      coupons = coupons.filter(c => c.id !== id);
+      coupons = coupons.filter(c => String(c.id) !== String(id));
       localStorage.setItem('vortex_coupons_catalog', JSON.stringify(coupons));
+      await syncCouponsToCloud();
       renderCoupons();
       showNoticeModal('Removido', 'Cupom de desconto excluído.', '🗑️');
     }

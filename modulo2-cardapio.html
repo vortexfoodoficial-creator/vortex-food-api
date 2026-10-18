@@ -474,6 +474,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let rawPrice = 0;
     let rawCost = 0;
@@ -581,8 +585,20 @@
       else fields.style.display = 'none';
     }
 
-    function renderCardapio() {
+    async function renderCardapio() {
       loadStoreSettings();
+      
+      // Tenta carregar do Supabase se disponível
+      try {
+        if (typeof dbFetchCatalog === 'function') {
+          const cloudCatalog = await dbFetchCatalog();
+          if (cloudCatalog && cloudCatalog.products && cloudCatalog.groups) {
+            localStorage.setItem('vortex_products_catalog', JSON.stringify(cloudCatalog.products));
+            localStorage.setItem('vortex_groups_catalog', JSON.stringify(cloudCatalog.groups));
+          }
+        }
+      } catch (e) {}
+
       let groups = getGroups();
       let products = getProducts();
       syncWithOtherModules(products);
@@ -686,6 +702,19 @@
       });
     }
 
+    async function syncCatalogToCloud() {
+      try {
+        if (typeof dbSaveCatalog === 'function') {
+          await dbSaveCatalog({
+            products: getProducts(),
+            groups: getGroups()
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar cardápio na nuvem:', e);
+      }
+    }
+
     function openGroupModal() {
       document.getElementById('editGroupId').value = '';
       document.getElementById('groupModalTitle').innerText = 'Criar Novo Grupo';
@@ -699,7 +728,7 @@
       document.getElementById('groupModal').classList.remove('active');
     }
 
-    function saveGroup() {
+    async function saveGroup() {
       const id = document.getElementById('editGroupId').value;
       const name = document.getElementById('groupNameInput').value.trim().toUpperCase();
       const desc = document.getElementById('groupDescInput').value.trim();
@@ -720,9 +749,10 @@
       }
 
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      await syncCatalogToCloud();
       closeGroupModal();
       renderCardapio();
-      showNoticeModal('Salvo!', 'Grupo de produtos atualizado com sucesso.', '📁');
+      showNoticeModal('Salvo!', 'Grupo de produtos atualizado e sincronizado na nuvem.', '📁');
     }
 
     function editGroup(id) {
@@ -737,17 +767,18 @@
       document.getElementById('groupModal').classList.add('active');
     }
 
-    function toggleGroupHighlight(id) {
+    async function toggleGroupHighlight(id) {
       let groups = getGroups();
       let g = groups.find(item => item.id === id);
       if (g) {
         g.isHighlight = !g.isHighlight;
         localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+        await syncCatalogToCloud();
         renderCardapio();
       }
     }
 
-    function deleteGroup(id) {
+    async function deleteGroup(id) {
       let groups = getGroups();
       let trash = getTrash();
       let g = groups.find(item => item.id === id);
@@ -757,21 +788,23 @@
       }
       groups = groups.filter(item => item.id !== id);
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      await syncCatalogToCloud();
       renderCardapio();
       showNoticeModal('Movido para a Lixeira', 'Grupo enviado para a lixeira com sucesso.', '🗑️');
     }
 
-    function toggleGroupStatus(id) {
+    async function toggleGroupStatus(id) {
       let groups = getGroups();
       let g = groups.find(item => item.id === id);
       if (g) {
         g.active = g.active === false ? true : false;
         localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+        await syncCatalogToCloud();
         renderCardapio();
       }
     }
 
-    function moveGroup(index, direction) {
+    async function moveGroup(index, direction) {
       let groups = getGroups();
       const newIndex = index + direction;
       if (newIndex < 0 || newIndex >= groups.length) return;
@@ -779,6 +812,7 @@
       groups[index] = groups[newIndex];
       groups[newIndex] = temp;
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      await syncCatalogToCloud();
       renderCardapio();
     }
 
@@ -855,7 +889,7 @@
       document.getElementById('productModal').classList.add('active');
     }
 
-    function saveProduct() {
+    async function saveProduct() {
       const id = document.getElementById('editProductId').value;
       const name = document.getElementById('prodName').value.trim();
       const desc = document.getElementById('prodDesc').value.trim();
@@ -905,23 +939,25 @@
 
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
+      await syncCatalogToCloud();
       closeProductModal();
       renderCardapio();
-      showNoticeModal('Salvo com Sucesso!', 'Produto atualizado e sincronizado em tempo real.', '💾');
+      showNoticeModal('Salvo com Sucesso!', 'Produto atualizado e sincronizado na nuvem em tempo real.', '💾');
     }
 
-    function toggleProductStatus(id) {
+    async function toggleProductStatus(id) {
       let products = getProducts();
       let p = products.find(prod => prod.id === id);
       if (p) {
         p.active = p.active === false ? true : false;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
         syncWithOtherModules(products);
+        await syncCatalogToCloud();
         renderCardapio();
       }
     }
 
-    function deleteProduct(id) {
+    async function deleteProduct(id) {
       let products = getProducts();
       let trash = getTrash();
       let p = products.find(prod => prod.id === id);
@@ -932,6 +968,7 @@
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
+      await syncCatalogToCloud();
       renderCardapio();
       showNoticeModal('Movido para a Lixeira', 'Produto enviado para a lixeira.', '🗑️');
     }
@@ -1122,18 +1159,19 @@
       document.getElementById('trashModal').classList.add('active');
     }
 
-    function restoreGroup(idx) {
+    async function restoreGroup(idx) {
       let trash = getTrash();
       let groups = getGroups();
       let restored = trash.groups.splice(idx, 1)[0];
       groups.push(restored);
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
+      await syncCatalogToCloud();
       openTrashModal();
       renderCardapio();
     }
 
-    function restoreProduct(idx) {
+    async function restoreProduct(idx) {
       let trash = getTrash();
       let products = getProducts();
       let restored = trash.products.splice(idx, 1)[0];
@@ -1141,6 +1179,7 @@
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
+      await syncCatalogToCloud();
       openTrashModal();
       renderCardapio();
     }
@@ -1186,8 +1225,8 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
-      renderCardapio();
+    window.onload = async function() {
+      await renderCardapio();
     };
   </script>
 </body>

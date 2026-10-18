@@ -412,6 +412,10 @@
     </div>
   </main>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let currentFilter = 'today';
 
@@ -494,19 +498,8 @@
       return true;
     }
 
-    function checkAndResetDailyCache() {
-      const todayStr = getLocalDateStr(new Date());
-      const lastActiveDay = localStorage.getItem('vortex_last_active_day');
-
-      if (lastActiveDay !== todayStr) {
-        localStorage.setItem('vortex_vendas_hoje', '0,00');
-        localStorage.setItem('vortex_last_active_day', todayStr);
-      }
-    }
-
-    function loadDashboardData() {
+    async function loadDashboardData() {
       applyTheme();
-      checkAndResetDailyCache();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
@@ -520,9 +513,29 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Lê exclusivamente o histórico real gravado pelo sistema
-      let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      const kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      // Busca dados diretamente do Supabase com fallback para localStorage
+      let rawHistory = [];
+      let kdsOrders = [];
+      
+      try {
+        if (typeof dbFetchSales === 'function') {
+          rawHistory = await dbFetchSales();
+        }
+        if (rawHistory.length === 0) {
+          rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        }
+
+        if (typeof dbFetchKdsOrders === 'function') {
+          kdsOrders = await dbFetchKdsOrders();
+        }
+        if (kdsOrders.length === 0) {
+          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        }
+      } catch (e) {
+        console.log('Usando armazenamento local por contingência:', e);
+        rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      }
 
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 

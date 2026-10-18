@@ -334,6 +334,10 @@
     </div>
   </div>
 
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
     let totalTablesCount = 10;
     let activeTableId = null;
@@ -541,7 +545,7 @@
       totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     }
 
-    function submitTableOrderToKds() {
+    async function submitTableOrderToKds() {
       if (tempCart.length === 0) {
         showNoticeModal('Comanda Vazia', 'Adicione itens à mesa antes de enviar.', '⚠️');
         return;
@@ -552,6 +556,7 @@
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
       const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -565,11 +570,11 @@
         targetOrder.total = total;
         targetOrder.observation = observation;
       } else {
-        const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => o.id)) + 1 : 201;
-        existingOrderId = nextKdsId;
+        const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
+        existingOrderId = String(nextKdsId);
 
         targetOrder = {
-          id: nextKdsId,
+          id: existingOrderId,
           origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
           client: clientName,
           address: 'Consumo Local',
@@ -578,6 +583,7 @@
           items: [...tempCart],
           total: total,
           status: 'new',
+          date: dateStr,
           time: timeStr
         };
         kdsOrders.unshift(targetOrder);
@@ -593,9 +599,18 @@
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
+      // Salva no Supabase (KDS)
+      try {
+        if (typeof dbSaveKdsOrder === 'function') {
+          await dbSaveKdsOrder(targetOrder);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar KDS mesa no Supabase:', err);
+      }
+
       closeMesaModal();
       renderMesas();
-      showNoticeModal('Pedido Enviado!', `Pedido #${existingOrderId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha!`, '👨‍🍳');
+      showNoticeModal('Pedido Enviado!', `Pedido #${existingOrderId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha e nuvem!`, '👨‍🍳');
     }
 
     function openPaymentModal() {
@@ -660,7 +675,7 @@
       }
     }
 
-    function finalizeTablePayment() {
+    async function finalizeTablePayment() {
       const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('tablePaymentMethod').value;
 
@@ -669,19 +684,59 @@
         return;
       }
 
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const saleId = 'MESA-' + activeTableId + '-' + Date.now();
+
+      // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
+      // Histórico local
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const newSaleRecord = {
+        id: saleId,
+        client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
+        channel: `Mesa ${activeTableId}`,
+        total: total,
+        subtotal: total,
+        discount: 0,
+        payMethod: payment,
+        status: 'finished',
+        date: dateStr,
+        time: timeStr,
+        items: [...tempCart]
+      };
+      salesHistory.unshift(newSaleRecord);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+
+      // Salva venda no Supabase
+      try {
+        if (typeof dbSaveSale === 'function') {
+          await dbSaveSale(newSaleRecord);
+        }
+      } catch (err) {
+        console.error('Erro ao salvar venda da mesa no Supabase:', err);
+      }
+
       let currentData = tableCarts[activeTableId] || {};
       if (currentData.orderId) {
         let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        let kdsOrder = kdsOrders.find(o => o.id === currentData.orderId);
+        let kdsOrder = kdsOrders.find(o => String(o.id) === String(currentData.orderId));
         if (kdsOrder) {
           kdsOrder.status = 'finished';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+          try {
+            if (typeof dbSaveKdsOrder === 'function') {
+              await dbSaveKdsOrder(kdsOrder);
+            }
+          } catch (err) {
+            console.error('Erro ao atualizar KDS no Supabase:', err);
+          }
         }
       }
 
@@ -692,7 +747,7 @@
       closeMesaModal();
       renderMesas();
 
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, enviada para pedidos finalizados na Cozinha e liberada com sucesso!`, '✅');
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
     }
 
     function openQrModal(mesaNum) {

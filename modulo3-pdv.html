@@ -308,19 +308,19 @@
 
     // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
     function getCatalogProducts() {
-      const saved = localStorage.getItem('vortex_products_catalog');
+      const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
       if (saved) {
         let products = JSON.parse(saved);
         return products.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
-          price: parseFloat(p.price) || 0,
-          category: p.category
+          price: parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0),
+          category: p.category || p.categoria || 'Geral'
         }));
       }
       return [
-        { id: 1, name: 'X-Burger Especial', price: 28.50 },
-        { id: 2, name: 'X-Salada Duplo', price: 32.00 }
+        { id: 1, name: 'X-Burger Especial', price: 28.50, category: 'Lanches' },
+        { id: 2, name: 'X-Salada Duplo', price: 32.00, category: 'Lanches' }
       ];
     }
 
@@ -347,7 +347,7 @@
 
       catalogProducts.forEach(p => {
         grid.innerHTML += `
-          <div class="catalog-item-card" onclick="addToPdvCart('${p.name.replace(/'/g, "\\'")}', ${p.price})">
+          <div class="catalog-item-card" onclick="addToPdvCart('${p.name.replace(/'/g, "\\'")}', ${p.price}, '${(p.category || 'Geral').replace(/'/g, "\\'")}')">
             <div class="catalog-item-name">${p.name}</div>
             <div class="catalog-item-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>
@@ -355,10 +355,10 @@
       });
     }
 
-    function addToPdvCart(name, price) {
+    function addToPdvCart(name, price, category) {
       const existing = pdvCart.find(i => i.name === name);
       if (existing) existing.qty += 1;
-      else pdvCart.push({ name, price, qty: 1 });
+      else pdvCart.push({ name, price, qty: 1, category: category || 'Geral' });
       renderPdvCart();
     }
 
@@ -490,29 +490,43 @@
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // Histórico local de contingência
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      // Objeto unificado compatível com Relatórios, Financeiro, Dashboard e DRE
+      const channelLabel = `Balcão (${selectedConsumptionType})`;
       const newSaleRecord = {
         id: cleanOrderId,
         client: clientName,
-        channel: `Balcão (${selectedConsumptionType})`,
+        channel: channelLabel,
+        origin: channelLabel,
         total: total,
         subtotal: total,
         discount: 0,
         payMethod: payment,
+        payment: payment,
+        paymentMethod: payment,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
         changeValue: changeVal,
+        change: changeVal,
         status: 'finished',
         date: dateStr,
         time: timeStr,
-        items: [...pdvCart]
+        items: pdvCart.map(i => ({
+          name: i.name,
+          price: parseFloat(i.price) || 0,
+          qty: parseFloat(i.qty) || 1,
+          category: i.category || 'Geral'
+        }))
       };
+
+      // Histórico local de contingência
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
       // Salva no Supabase (Nuvem)
       try {
-        if (typeof dbSaveSale === 'function') {
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
+        } else if (typeof dbSaveSale === 'function') {
           await dbSaveSale(newSaleRecord);
         }
       } catch (err) {
@@ -521,17 +535,18 @@
 
       const newKdsOrder = {
         id: cleanOrderId,
-        origin: `Balcão (${selectedConsumptionType})`,
+        origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
         payMethod: payment,
+        paymentMethod: payment,
         cashGiven: payment === 'Dinheiro' ? rawCashGiven : total,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
         changeValue: changeVal,
         change: changeVal,
         observation: observation,
-        items: [...pdvCart],
+        items: [...newSaleRecord.items],
         total: total,
         status: 'new',
         date: dateStr,
@@ -543,7 +558,9 @@
 
       // Salva pedido KDS no Supabase (Nuvem)
       try {
-        if (typeof dbSaveKdsOrder === 'function') {
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_kds_orders').upsert([newKdsOrder]);
+        } else if (typeof dbSaveKdsOrder === 'function') {
           await dbSaveKdsOrder(newKdsOrder);
         }
       } catch (err) {

@@ -93,7 +93,6 @@
     .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
 
     /* TABELAS MODERNAS */
     .table-responsive { width: 100%; overflow-x: auto; }
@@ -488,22 +487,27 @@
 
     function applyCustomDateFilter() {
       document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
-      loadReportsData();
+      loadReportsData(); // CORRIGIDO: Força recálculo imediato ao clicar no botão Filtrar
     }
 
     function getProductCostFromCardapio(productName) {
-      // 1. Procura primeiro nas Fichas Técnicas
+      if (!productName) return 0;
+      const cleanName = productName.trim().toLowerCase();
+
+      // 1. Procura exata ou parcial nas Fichas Técnicas
       const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
-      const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
-      if (fichaMatch && (fichaMatch.totalCost !== undefined || fichaMatch.custo !== undefined)) {
-        return parseFloat(fichaMatch.totalCost || fichaMatch.custo) || 0;
+      const fichaMatch = fichas.find(f => f.name && f.name.trim().toLowerCase() === cleanName);
+      if (fichaMatch) {
+        let val = parseFloat(fichaMatch.totalCost ?? fichaMatch.custo ?? fichaMatch.cost ?? fichaMatch.unitCost ?? 0);
+        if (val > 0) return val;
       }
 
-      // 2. Procura no Cardápio de Produtos
+      // 2. Procura no Cardápio de Produtos (verificando todas as variações possíveis de chave de custo)
       const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
-      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
+      const prodMatch = cardapio.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
       if (prodMatch) {
-        return parseFloat(prodMatch.costPrice || prodMatch.custo || prodMatch.cost || 0);
+        let val = parseFloat(prodMatch.costPrice ?? prodMatch.custo ?? prodMatch.cost ?? prodMatch.unitCost ?? prodMatch.priceCost ?? 0);
+        if (val > 0) return val;
       }
 
       return 0;
@@ -581,13 +585,12 @@
           
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(i => {
-              let qty = i.qty || 1;
+              let qty = parseFloat(i.qty) || 1;
               let unitCost = getProductCostFromCardapio(i.name);
-              // CORREÇÃO CRUCIAL: Multiplica corretamente o custo unitário pela quantidade do item
               totalCmvReal += (unitCost * qty);
             });
           } else {
-            totalCmvReal += (val * 0.65); // Proporção padrão se não houver array de itens
+            totalCmvReal += (val * 0.65);
           }
         }
       });

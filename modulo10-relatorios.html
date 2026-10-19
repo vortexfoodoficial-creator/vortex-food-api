@@ -277,7 +277,7 @@
         <strong id="dreGrossMargin">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Despesas Operacionais / Custos Fixos Estimados (20%)</span>
+        <span>(-) Despesas Operacionais / Custos Fixos</span>
         <span id="dreOperatingExpenses">R$ 0,00</span>
       </div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
@@ -418,6 +418,8 @@
     let cloudFichas = [];
     let cloudCardapio = [];
     let cloudSales = [];
+    let cloudExpenses = [];
+    let cloudRecipes = [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -495,12 +497,19 @@
       loadReportsData();
     }
 
-    // Busca o custo unitário sincronizado com Supabase e localStorage (fichas e cardápio)
+    // Busca o custo unitário rigorosamente unificado com o Módulo de Fichas Técnicas e Cardápio
     function getProductCostFromCardapio(productName) {
       if (!productName) return 0;
       const cleanName = productName.trim().toLowerCase();
 
-      // 1. Procura nas Fichas Técnicas (Nuvem ou Local)
+      // 1. Procura nas Fichas Técnicas cadastradas (Nuvem ou Local)
+      const recipes = cloudRecipes.length > 0 ? cloudRecipes : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
+      const recMatch = recipes.find(r => r.productName && r.productName.trim().toLowerCase() === cleanName);
+      if (recMatch) {
+        let val = parseFloat(recMatch.totalCost ?? recMatch.cost ?? 0);
+        if (val > 0) return val;
+      }
+
       const fichas = cloudFichas.length > 0 ? cloudFichas : (JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || []);
       const fichaMatch = fichas.find(f => f.name && f.name.trim().toLowerCase() === cleanName);
       if (fichaMatch) {
@@ -509,10 +518,10 @@
       }
 
       // 2. Procura no Cardápio de Produtos (Nuvem ou Local)
-      const cardapio = cloudCardapio.length > 0 ? cloudCardapio : (JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || []);
+      const cardapio = cloudCardapio.length > 0 ? cloudCardapio : (JSON.parse(localStorage.getItem('vortex_cardapio_produtos') || localStorage.getItem('vortex_products_catalog')) || []);
       const prodMatch = cardapio.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
       if (prodMatch) {
-        let val = parseFloat(prodMatch.costPrice ?? prodMatch.custo ?? prodMatch.cost ?? prodMatch.unitCost ?? prodMatch.priceCost ?? 0);
+        let val = parseFloat(prodMatch.costPrice ?? prodMatch.cost ?? prodMatch.custo ?? prodMatch.unitCost ?? prodMatch.priceCost ?? 0);
         if (val > 0) return val;
       }
 
@@ -532,6 +541,19 @@
       });
     }
 
+    function getFilteredExpenses() {
+      const startStr = document.getElementById('startDate').value;
+      const endStr = document.getElementById('endDate').value;
+
+      let rawExpenses = cloudExpenses.length > 0 ? cloudExpenses : (JSON.parse(localStorage.getItem('vortex_expenses_history') || localStorage.getItem('vortex_despesas')) || []);
+      
+      return rawExpenses.filter(e => {
+        const itemDateStr = parseToLocalDateStr(e.date || e.timestamp);
+        if (!itemDateStr) return true; // Se não tiver data explícita, inclui para alinhar com o financeiro
+        return itemDateStr >= startStr && itemDateStr <= endStr;
+      });
+    }
+
     function openDeleteModal(saleId) {
       saleIdToDelete = saleId;
       document.getElementById('deleteSaleModal').classList.add('active');
@@ -545,7 +567,6 @@
     async function confirmDeleteSale() {
       if (!saleIdToDelete) return;
 
-      // Remove do localStorage local
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       rawHistory = rawHistory.filter(s => String(s.id) !== String(saleIdToDelete));
       localStorage.setItem('vortex_sales_history', JSON.stringify(rawHistory));
@@ -554,7 +575,6 @@
       kdsOrders = kdsOrders.filter(k => String(k.id) !== String(saleIdToDelete));
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Se houver Supabase configurado, tenta deletar da nuvem também
       if (window.supabaseClient) {
         try {
           await window.supabaseClient.from('vortex_sales_history').delete().eq('id', saleIdToDelete);
@@ -583,18 +603,21 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Tenta carregar dados do Supabase se o client global existir
       if (window.supabaseClient) {
         try {
-          const [resSales, resFichas, resCardapio] = await Promise.all([
+          const [resSales, resFichas, resCardapio, resExpenses, resRecipes] = await Promise.all([
             window.supabaseClient.from('vortex_sales_history').select('*'),
             window.supabaseClient.from('vortex_fichas_tecnicas').select('*'),
-            window.supabaseClient.from('vortex_cardapio_produtos').select('*')
+            window.supabaseClient.from('vortex_cardapio_produtos').select('*'),
+            window.supabaseClient.from('vortex_expenses_history').select('*'),
+            window.supabaseClient.from('vortex_recipes_catalog').select('*')
           ]);
 
           if (resSales.data && resSales.data.length > 0) cloudSales = resSales.data;
           if (resFichas.data && resFichas.data.length > 0) cloudFichas = resFichas.data;
           if (resCardapio.data && resCardapio.data.length > 0) cloudCardapio = resCardapio.data;
+          if (resExpenses.data && resExpenses.data.length > 0) cloudExpenses = resExpenses.data;
+          if (resRecipes.data && resRecipes.data.length > 0) cloudRecipes = resRecipes.data;
         } catch (err) {
           console.warn('Aviso: Utilizando fallback local devido a falha na nuvem Supabase:', err);
         }
@@ -605,6 +628,7 @@
 
     function loadReportsData() {
       const sales = getFilteredSales();
+      const expenses = getFilteredExpenses();
 
       renderIndividualSalesList(sales);
 
@@ -628,15 +652,21 @@
               totalCmvReal += (unitCost * qty);
             });
           } else {
-            totalCmvReal += (val * 0.65);
+            totalCmvReal += (val * 0.50); // Fallback padrão alinhado com o financeiro
           }
         }
       });
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
       const grossMargin = Math.max(0, netSales - totalCmvReal);
-      const fixedExpenses = netSales * 0.20; 
-      const netProfit = grossMargin - fixedExpenses;
+      
+      // Soma exata das despesas operacionais lançadas (igual ao financeiro)
+      let totalOperatingExpenses = 0;
+      expenses.forEach(e => {
+        totalOperatingExpenses += parseFloat(e.value || e.amount || e.valor || 0);
+      });
+
+      const netProfit = grossMargin - totalOperatingExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
       document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
@@ -644,7 +674,7 @@
       document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
       document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmvReal)}`;
       document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
-      document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(fixedExpenses)}`;
+      document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(totalOperatingExpenses)}`;
       document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
 
       renderHourlySales(sales);
@@ -809,7 +839,7 @@
         let unitPrice = qty > 0 ? total / qty : 0;
         
         let unitCmv = getProductCostFromCardapio(p);
-        if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.65;
+        if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.50;
 
         let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
         let giroStatus = qty > 10 ? `<span style="color:var(--success);">🔥 Alto Giro</span>` : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;

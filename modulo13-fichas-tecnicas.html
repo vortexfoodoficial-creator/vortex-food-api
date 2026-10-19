@@ -345,11 +345,9 @@
     }
 
     function getInsumos() {
-      // Lê exclusivamente os insumos reais cadastrados no módulo de estoque (vortex_stock_items)
       let saved = localStorage.getItem('vortex_stock_items');
       if (!saved) return [];
       let items = JSON.parse(saved);
-      // Filtra para garantir que apenas itens válidos do estoque sejam usados como insumos/ingredientes
       return items.map(i => ({
         id: i.id,
         name: i.name,
@@ -359,7 +357,7 @@
     }
 
     function getProducts() {
-      let saved = localStorage.getItem('vortex_products_catalog');
+      let saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
       return saved ? JSON.parse(saved) : [];
     }
 
@@ -370,7 +368,9 @@
 
     async function syncRecipesToCloud() {
       try {
-        if (typeof dbSaveRecipes === 'function') {
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_recipes_catalog').upsert(getRecipes());
+        } else if (typeof dbSaveRecipes === 'function') {
           await dbSaveRecipes(getRecipes());
         }
       } catch (e) {
@@ -382,7 +382,12 @@
       loadStoreSettings();
 
       try {
-        if (typeof dbFetchRecipes === 'function') {
+        if (window.supabaseClient) {
+          const { data, error } = await window.supabaseClient.from('vortex_recipes_catalog').select('*');
+          if (data && data.length > 0) {
+            localStorage.setItem('vortex_recipes_catalog', JSON.stringify(data));
+          }
+        } else if (typeof dbFetchRecipes === 'function') {
           const cloudRecipes = await dbFetchRecipes();
           if (cloudRecipes && cloudRecipes.length > 0) {
             localStorage.setItem('vortex_recipes_catalog', JSON.stringify(cloudRecipes));
@@ -410,7 +415,7 @@
       } else {
         filteredRecipes.forEach(r => {
           let p = products.find(prod => String(prod.id) === String(r.productId));
-          let sellPrice = p ? parseFloat(p.price) : (r.sellPrice || 0);
+          let sellPrice = p ? parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0) : (r.sellPrice || 0);
 
           let calculatedCost = 0;
           let itemsHtml = r.ingredients.map(ing => {
@@ -498,7 +503,8 @@
         prodSelect.innerHTML = `<option value="">Nenhum produto cadastrado no cardápio</option>`;
       } else {
         products.forEach(p => {
-          prodSelect.innerHTML += `<option value="${p.id}">${p.name} (R$ ${parseFloat(p.price).toFixed(2).replace('.', ',')})</option>`;
+          let price = parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0);
+          prodSelect.innerHTML += `<option value="${p.id}">${p.name} (R$ ${price.toFixed(2).replace('.', ',')})</option>`;
         });
       }
 
@@ -573,7 +579,7 @@
       let products = getProducts();
       let selectedProdId = document.getElementById('recipeProductSelect').value;
       let p = products.find(prod => String(prod.id) === String(selectedProdId));
-      let sellPrice = p ? parseFloat(p.price) : 0;
+      let sellPrice = p ? parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0) : 0;
       let margin = sellPrice - totalDraftCost;
       let marginPercent = sellPrice > 0 ? (margin / sellPrice) * 100 : 0;
 
@@ -611,13 +617,31 @@
         else totalCalculatedCost += ing.qty * unitCost;
       });
 
+      // GARANTIA TOTAL DE SINCRONIZAÇÃO: Atualiza todas as chaves de custo possíveis no produto
       p.cost = totalCalculatedCost;
+      p.costPrice = totalCalculatedCost;
+      p.custo = totalCalculatedCost;
+      p.totalCost = totalCalculatedCost;
+      p.unitCost = totalCalculatedCost;
+
+      // Salva o cardápio atualizado localmente e na nuvem
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+      localStorage.setItem('vortex_cardapio_produtos', JSON.stringify(products));
+      
+      try {
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_cardapio_produtos').upsert([p]);
+        }
+      } catch (err) {
+        console.warn('Erro ao atualizar custo do produto na nuvem:', err);
+      }
 
       const recipeData = {
         productId: p.id,
         productName: p.name,
-        sellPrice: parseFloat(p.price),
+        sellPrice: parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0),
+        totalCost: totalCalculatedCost,
+        cost: totalCalculatedCost,
         ingredients: [...draftIngredients]
       };
 
@@ -634,7 +658,7 @@
       
       closeRecipeModal();
       renderRecipes();
-      showNoticeModal('Ficha Técnica Salva!', 'Ficha atualizada e Custo Base sincronizado na nuvem com sucesso!', '📖');
+      showNoticeModal('Ficha Técnica Salva!', 'Ficha atualizada e Custo Base sincronizado perfeitamente com Relatórios e DRE!', '📖');
     }
 
     function editRecipe(id) {

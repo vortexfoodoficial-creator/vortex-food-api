@@ -256,23 +256,28 @@
       </div>
 
       <div class="form-group">
-        <label>Itens Adicionados na Comanda:</label>
+        <label>Novos Itens Selecionados para Adicionar:</label>
         <div class="table-cart-list" id="tableCartList">
-          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item adicionado.</div>
+          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item novo selecionado.</div>
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="alreadySentItemsBox" style="font-size:0.8rem; color:var(--text-muted); background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; display:none;">
+        <strong>Já entregue / enviado anteriormente:</strong>
+        <div id="alreadySentItemsText" style="margin-top:2px;"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:8px;">
         <label for="tableObsInput">Observações do Pedido (Envio p/ Cozinha):</label>
         <input type="text" id="tableObsInput" placeholder="Ex: Carne bem passada, sem cebola...">
       </div>
 
       <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:bold; margin:12px 0;">
-        <span>Total da Comanda:</span>
+        <span>Total Acumulado da Mesa:</span>
         <span id="tableTotalDisplay" style="color:var(--success);">R$ 0,00</span>
       </div>
 
-      <button class="btn-modal-primary" onclick="submitTableOrderToKds()">Adicionar / Enviar Novos Itens p/ Cozinha 👨‍🍳</button>
+      <button class="btn-modal-primary" onclick="submitTableOrderToKds()">Enviar Novos Itens p/ Cozinha 👨‍🍳</button>
       <button class="btn-modal-primary" style="background:#2563eb; margin-top:8px;" onclick="openPaymentModal()">💳 Fechar Conta da Mesa</button>
       <button class="btn-modal-secondary" onclick="closeMesaModal()">Manter Comanda Aberta</button>
     </div>
@@ -342,7 +347,7 @@
     let totalTablesCount = 10;
     let activeTableId = null;
     let tableCarts = {};
-    let tempCart = [];
+    let tempCart = []; // Armazena APENAS OS NOVOS ITENS ADICIONADOS NA VEZ ATUAL
     let rawCashGiven = 0;
     let isQrEnabled = false;
 
@@ -380,7 +385,6 @@
       document.getElementById('qrStatusText').style.color = isQrEnabled ? 'var(--success)' : 'var(--text-muted)';
     }
 
-    // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
     function getCatalogProducts() {
       const saved = localStorage.getItem('vortex_products_catalog');
       if (saved) {
@@ -417,8 +421,8 @@
 
       for (let i = 1; i <= totalTablesCount; i++) {
         let tData = tableCarts[i];
-        let isOccupied = tData && tData.items && tData.items.length > 0;
-        let totalVal = isOccupied ? tData.items.reduce((acc, item) => acc + (item.price * item.qty), 0) : 0;
+        let isOccupied = tData && tData.totalAccumulated && tData.totalAccumulated > 0;
+        let totalVal = isOccupied ? tData.totalAccumulated : 0;
 
         grid.innerHTML += `
           <div class="mesa-card ${isOccupied ? 'occupied' : 'free'}">
@@ -469,11 +473,24 @@
       document.getElementById('modalMesaTitle').innerText = `Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
 
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
-      let currentData = tableCarts[activeTableId] || { client: '', items: [], obs: '', orderIds: [] };
+      let currentData = tableCarts[activeTableId] || { client: '', allItems: [], sentItems: [], totalAccumulated: 0, orderIds: [] };
 
       document.getElementById('tableClientNameInput').value = currentData.client || '';
-      document.getElementById('tableObsInput').value = currentData.obs || '';
-      tempCart = currentData.items ? [...currentData.items] : [];
+      document.getElementById('tableObsInput').value = '';
+      
+      // O carrinho temporário começa VAZIO para permitir adicionar apenas novos itens adicionais
+      tempCart = [];
+
+      // Exibe os itens já enviados anteriormente, se houver
+      const sentBox = document.getElementById('alreadySentItemsBox');
+      const sentText = document.getElementById('alreadySentItemsText');
+      if (currentData.sentItems && currentData.sentItems.length > 0) {
+        sentBox.style.display = 'block';
+        sentText.innerHTML = currentData.sentItems.map(i => `${i.qty}x ${i.name} (R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')})`).join(', ');
+      } else {
+        sentBox.style.display = 'none';
+        sentText.innerHTML = '';
+      }
 
       renderTableCatalog();
       renderTableCart();
@@ -521,28 +538,33 @@
       const list = document.getElementById('tableCartList');
       const totalDisplay = document.getElementById('tableTotalDisplay');
 
+      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      let currentData = tableCarts[activeTableId] || { totalAccumulated: 0 };
+
+      // Calcula o total acumulado (itens já enviados anteriormente + novos itens selecionados no carrinho temp)
+      let tempTotal = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      let alreadySentTotal = currentData.sentItems ? currentData.sentItems.reduce((acc, i) => acc + (i.price * i.qty), 0) : 0;
+      let grandTotal = alreadySentTotal + tempTotal;
+
       if (tempCart.length === 0) {
-        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item na comanda.</div>`;
-        totalDisplay.innerText = 'R$ 0,00';
-        return;
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item novo selecionado.</div>`;
+      } else {
+        let html = '';
+        tempCart.forEach((item, idx) => {
+          html += `
+            <div class="cart-item-row">
+              <span><strong>${item.qty}x</strong> ${item.name}</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span>R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
+                <button class="btn-delete-item" onclick="removeFromTempCart(${idx})" title="Remover Item">🗑️</button>
+              </div>
+            </div>
+          `;
+        });
+        list.innerHTML = html;
       }
 
-      let html = '';
-      let total = 0;
-      tempCart.forEach((item, idx) => {
-        total += item.price * item.qty;
-        html += `
-          <div class="cart-item-row">
-            <span><strong>${item.qty}x</strong> ${item.name}</span>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span>R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
-              <button class="btn-delete-item" onclick="removeFromTempCart(${idx})" title="Remover Item">🗑️</button>
-            </div>
-          </div>
-        `;
-      });
-      list.innerHTML = html;
-      totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+      totalDisplay.innerText = `R$ ${grandTotal.toFixed(2).replace('.', ',')}`;
     }
 
     function getLocalDateStr(dateObj) {
@@ -555,39 +577,22 @@
 
     async function submitTableOrderToKds() {
       if (tempCart.length === 0) {
-        showNoticeModal('Comanda Vazia', 'Adicione itens à mesa antes de enviar.', '⚠️');
+        showNoticeModal('Nenhum Item Novo', 'Selecione novos itens do cardápio para enviar para a cozinha.', '⚠️');
         return;
       }
 
       const clientName = document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`;
       const observation = document.getElementById('tableObsInput').value.trim();
-      const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const incrementalTotal = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
 
       const now = new Date();
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      let currentData = tableCarts[activeTableId] || { orderIds: [] };
+      let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [] };
 
-      // Identifica apenas os novos itens que foram adicionados e ainda não enviados em lote separado, ou dispara o lote incremental
-      // Para manter simples e perfeito: se já havia itens enviados, calcula o acréscimo ou envia o novo lote de itens adicionais para a cozinha como um pedido independente (#novo ID)
-      let existingItemsMap = {};
-      (currentData.lastSentItems || []).forEach(i => { existingItemsMap[i.name] = i.qty; });
-
-      let incrementalItems = [];
-      tempCart.forEach(i => {
-        let sentQty = existingItemsMap[i.name] || 0;
-        if (i.qty > sentQty) {
-          incrementalItems.push({ name: i.name, price: i.price, qty: i.qty - sentQty });
-        }
-      });
-
-      // Se não houver itens novos, mas o usuário clicou em enviar, avisa ou envia o carrinho atual
-      let itemsToSend = incrementalItems.length > 0 ? incrementalItems : [...tempCart];
-      let incrementalTotal = itemsToSend.reduce((acc, i) => acc + (i.price * i.qty), 0);
-
-      // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia para o novo lote
+      // Gera numeração sequencial limpa (#1, #2, #3...) para o novo lote de acréscimo
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
       const newOrderId = String(nextSeqNumber);
@@ -600,7 +605,7 @@
         payment: 'Comanda de Mesa',
         payMethod: 'Comanda de Mesa',
         observation: observation,
-        items: itemsToSend,
+        items: [...tempCart], // Apenas os novos itens para a cozinha preparar!
         total: incrementalTotal,
         status: 'new',
         date: dateStr,
@@ -612,11 +617,23 @@
       if (!currentData.orderIds) currentData.orderIds = [];
       currentData.orderIds.push(newOrderId);
 
+      // Junta os novos itens aos itens já enviados anteriormente
+      let combinedSentItems = [...(currentData.sentItems || [])];
+      tempCart.forEach(newItem => {
+        let existing = combinedSentItems.find(i => i.name === newItem.name);
+        if (existing) {
+          existing.qty += newItem.qty;
+        } else {
+          combinedSentItems.push({ ...newItem });
+        }
+      });
+
+      let accumulatedTotal = combinedSentItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+
       tableCarts[activeTableId] = {
         client: clientName,
-        items: [...tempCart], // Guarda o total acumulado da mesa para a conta final
-        lastSentItems: [...tempCart], // Guarda o estado atual enviado
-        obs: observation,
+        sentItems: combinedSentItems,
+        totalAccumulated: accumulatedTotal,
         orderIds: currentData.orderIds
       };
 
@@ -634,16 +651,19 @@
 
       closeMesaModal();
       renderMesas();
-      showNoticeModal('Pedido Enviado!', `Novo lote de pedidos #${newOrderId} da Mesa ${activeTableId} enviado com sucesso para a Cozinha!`, '👨‍🍳');
+      showNoticeModal('Pedido Adicional Enviado!', `Novo lote de pedidos #${newOrderId} enviado para a Cozinha com sucesso!`, '👨‍🍳');
     }
 
     function openPaymentModal() {
-      if (tempCart.length === 0) {
+      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      let currentData = tableCarts[activeTableId];
+
+      if (!currentData || !currentData.sentItems || currentData.sentItems.length === 0) {
         showNoticeModal('Sem Consumo', 'Não há itens na comanda para fechar conta.', '⚠️');
         return;
       }
 
-      const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const total = currentData.totalAccumulated;
       document.getElementById('payMesaTitle').innerText = `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`;
       document.getElementById('payTotalDisplay').innerText = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
 
@@ -681,7 +701,9 @@
 
     function calculateTableChange() {
       const payment = document.getElementById('tablePaymentMethod').value;
-      const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      let currentData = tableCarts[activeTableId] || { totalAccumulated: 0 };
+      const total = currentData.totalAccumulated;
       const display = document.getElementById('tableChangeDisplay');
 
       if (payment !== 'Dinheiro') {
@@ -704,7 +726,11 @@
     }
 
     async function finalizeTablePayment() {
-      const total = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      let currentData = tableCarts[activeTableId];
+      if (!currentData) return;
+
+      const total = currentData.totalAccumulated;
       const payment = document.getElementById('tablePaymentMethod').value;
 
       if (payment === 'Dinheiro' && rawCashGiven < total) {
@@ -716,7 +742,6 @@
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      let currentData = tableCarts[activeTableId] || { orderIds: [] };
       const primaryOrderId = currentData.orderIds && currentData.orderIds.length > 0 ? currentData.orderIds[0] : '1';
 
       let changeVal = 0;
@@ -746,7 +771,7 @@
         status: 'finished',
         date: dateStr,
         time: timeStr,
-        items: [...tempCart]
+        items: currentData.sentItems
       };
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));

@@ -3,29 +3,38 @@ const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDU0OTAsImV4cCI6MjEwNzkyMTQ5MH0.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
 
 // Inicialização do cliente Supabase a partir do SDK oficial
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (window.supabase) {
+  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
-// Helper para sincronizar vendas (History)
+const supabase = window.supabaseClient;
+
+// Helper para sincronizar vendas (History / Dashboard / Financeiro)
 async function dbSaveSale(saleData) {
-  const { data, error } = await supabase.from('vortex_sales').upsert([{
+  if (!supabase) return { error: 'Supabase não inicializado' };
+  
+  const record = {
     id: String(saleData.id),
     client: saleData.client || 'Cliente Balcão',
     channel: saleData.channel || 'pdv',
     total: parseFloat(saleData.total) || 0,
     subtotal: parseFloat(saleData.subtotal) || 0,
     discount: parseFloat(saleData.discount) || 0,
-    pay_method: saleData.payMethod || saleData.paymentMethod || 'PIX',
+    payMethod: saleData.payMethod || saleData.pay_method || saleData.paymentMethod || 'PIX',
     status: saleData.status || 'finished',
     date: saleData.date || new Date().toISOString().split('T')[0],
     time: saleData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     items: saleData.items || []
-  }]);
-  if (error) console.error('Erro ao salvar venda no Supabase:', error);
+  };
+
+  const { data, error } = await supabase.from('vortex_sales_history').upsert([record]);
+  if (error) console.error('Erro ao salvar venda no Supabase (vortex_sales_history):', error);
   return { data, error };
 }
 
 async function dbFetchSales() {
-  const { data, error } = await supabase.from('vortex_sales').select('*').order('created_at', { ascending: false });
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('vortex_sales_history').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error('Erro ao buscar vendas no Supabase:', error);
     return [];
@@ -34,36 +43,47 @@ async function dbFetchSales() {
     id: item.id,
     client: item.client,
     channel: item.channel,
-    total: item.total,
-    subtotal: item.subtotal,
-    discount: item.discount,
-    payMethod: item.pay_method,
+    total: parseFloat(item.total) || 0,
+    subtotal: parseFloat(item.subtotal) || 0,
+    discount: parseFloat(item.discount) || 0,
+    payMethod: item.payMethod || item.pay_method || 'Pix',
     status: item.status,
     date: item.date,
     time: item.time,
-    items: item.items
+    items: item.items || []
   }));
 }
 
-// Helper para KDS (Cozinha)
+// Helper para KDS (Cozinha & Delivery)
 async function dbSaveKdsOrder(orderData) {
-  const { data, error } = await supabase.from('vortex_kds').upsert([{
+  if (!supabase) return { error: 'Supabase não inicializado' };
+
+  const record = {
     id: String(orderData.id),
     origin: orderData.origin || 'Balcão',
     client: orderData.client || 'Cliente Balcão',
+    address: orderData.address || '',
+    payment: orderData.payment || orderData.payMethod || 'Dinheiro',
+    cashGiven: parseFloat(orderData.cashGiven || 0),
+    change: parseFloat(orderData.change || 0),
     time: orderData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     date: orderData.date || new Date().toISOString().split('T')[0],
+    dateFormatted: orderData.dateFormatted || new Date().toLocaleDateString('pt-BR'),
     items: orderData.items || [],
     total: parseFloat(orderData.total) || 0,
     observation: orderData.observation || '',
-    status: orderData.status || 'new'
-  }]);
-  if (error) console.error('Erro ao salvar pedido KDS no Supabase:', error);
+    status: orderData.status || 'new',
+    code: orderData.code || ''
+  };
+
+  const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
+  if (error) console.error('Erro ao salvar pedido KDS no Supabase (vortex_kds_orders):', error);
   return { data, error };
 }
 
 async function dbFetchKdsOrders() {
-  const { data, error } = await supabase.from('vortex_kds').select('*').order('created_at', { ascending: false });
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('vortex_kds_orders').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error('Erro ao buscar pedidos KDS no Supabase:', error);
     return [];
@@ -72,17 +92,24 @@ async function dbFetchKdsOrders() {
     id: item.id,
     origin: item.origin,
     client: item.client,
+    address: item.address,
+    payment: item.payment,
+    cashGiven: item.cashGiven,
+    change: item.change,
     time: item.time,
     date: item.date,
-    items: item.items,
-    total: item.total,
+    dateFormatted: item.dateFormatted,
+    items: item.items || [],
+    total: parseFloat(item.total) || 0,
     observation: item.observation,
-    status: item.status
+    status: item.status,
+    code: item.code
   }));
 }
 
 // Helper para Lançamentos Financeiros
 async function dbSaveFinancialEntry(entryData) {
+  if (!supabase) return { error: 'Supabase não inicializado' };
   const { data, error } = await supabase.from('vortex_financial').upsert([{
     id: String(entryData.id),
     type: entryData.type,
@@ -95,6 +122,7 @@ async function dbSaveFinancialEntry(entryData) {
 }
 
 async function dbFetchFinancialEntries() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_financial').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error('Erro ao buscar financeiros no Supabase:', error);
@@ -105,6 +133,7 @@ async function dbFetchFinancialEntries() {
 
 // Exclusão genérica
 async function dbDeleteRecord(tableName, id) {
+  if (!supabase) return { error: 'Supabase não inicializado' };
   const { data, error } = await supabase.from(tableName).delete().eq('id', String(id));
   if (error) console.error(`Erro ao deletar id ${id} da tabela ${tableName}:`, error);
   return { data, error };

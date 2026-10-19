@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Relatórios & DRE Gerencial</title>
+  <!-- Importação do cliente Supabase para sincronização em nuvem -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -413,6 +416,8 @@
   <script>
     let currentQuickFilter = 'today';
     let saleIdToDelete = null;
+    let globalFichasCache = [];
+    let globalCardapioCache = [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -487,23 +492,30 @@
 
     function applyCustomDateFilter() {
       document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
-      loadReportsData(); // CORRIGIDO: Força recálculo imediato ao clicar no botão Filtrar
+      loadReportsData();
     }
 
-    function getProductCostFromCardapio(productName) {
+    // Busca unificada de custos priorizando o Supabase com fallback local
+    async function getProductCostAsync(productName) {
       if (!productName) return 0;
       const cleanName = productName.trim().toLowerCase();
 
-      // 1. Procura exata ou parcial nas Fichas Técnicas
-      const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
+      // 1. Tenta buscar no cache ou localStorage de Fichas Técnicas
+      let fichas = globalFichasCache;
+      if (!fichas.length) {
+        fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
+      }
       const fichaMatch = fichas.find(f => f.name && f.name.trim().toLowerCase() === cleanName);
       if (fichaMatch) {
         let val = parseFloat(fichaMatch.totalCost ?? fichaMatch.custo ?? fichaMatch.cost ?? fichaMatch.unitCost ?? 0);
         if (val > 0) return val;
       }
 
-      // 2. Procura no Cardápio de Produtos (verificando todas as variações possíveis de chave de custo)
-      const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
+      // 2. Tenta buscar no cache ou localStorage de Cardápio
+      let cardapio = globalCardapioCache;
+      if (!cardapio.length) {
+        cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
+      }
       const prodMatch = cardapio.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
       if (prodMatch) {
         let val = parseFloat(prodMatch.costPrice ?? prodMatch.custo ?? prodMatch.cost ?? prodMatch.unitCost ?? prodMatch.priceCost ?? 0);
@@ -513,11 +525,39 @@
       return 0;
     }
 
-    function getFilteredSales() {
+    async *sincronizarDadosNuvem() {
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data: fichasCloud } = await supabaseClient.from('vortex_fichas_tecnicas').select('*');
+          if (fichasCloud) globalFichasCache = fichasCloud;
+
+          const { data: cardapioCloud } = await supabaseClient.from('vortex_cardapio_produtos').select('*');
+          if (cardapioCloud) globalCardapioCache = cardapioCloud;
+        } catch (e) {
+          console.warn('Usando base local devido a restrição de rede/nuvem:', e);
+        }
+      }
+    }
+
+    async function getFilteredSalesAsync() {
       const startStr = document.getElementById('startDate').value;
       const endStr = document.getElementById('endDate').value;
 
-      let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      let rawHistory = [];
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.from('vortex_sales_history').select('*');
+          if (!error && data && data.length > 0) {
+            rawHistory = data;
+          }
+        } catch (e) {
+          console.warn('Erro ao ler vendas do Supabase, recorrendo ao localStorage');
+        }
+      }
+
+      if (rawHistory.length === 0) {
+        rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      }
       
       return rawHistory.filter(s => {
         const itemDateStr = parseToLocalDateStr(s.date || s.timestamp);
@@ -536,22 +576,24 @@
       document.getElementById('deleteSaleModal').classList.remove('active');
     }
 
-    function confirmDeleteSale() {
+    async function confirmDeleteSale() {
       if (!saleIdToDelete) return;
 
       let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       rawHistory = rawHistory.filter(s => String(s.id) !== String(saleIdToDelete));
       localStorage.setItem('vortex_sales_history', JSON.stringify(rawHistory));
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      kdsOrders = kdsOrders.filter(k => String(k.id) !== String(saleIdToDelete));
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          await supabaseClient.from('vortex_sales_history').delete().eq('id', saleIdToDelete);
+        } catch (e) { console.error(e); }
+      }
 
       closeDeleteModal();
       loadReportsData();
     }
 
-    function loadReportsData() {
+    async function loadReportsData() {
       applyTheme();
       
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
@@ -566,7 +608,10 @@
         sidebarLogo.style.display = 'none';
       }
 
-      const sales = getFilteredSales();
+      // Sincroniza dados da nuvem antes de calcular os relatórios
+      for await (let _ of sincronizarDadosNuvem()) {}
+
+      const sales = await getFilteredSalesAsync();
 
       renderIndividualSalesList(sales);
 
@@ -575,7 +620,7 @@
       let totalCancels = 0;
       let totalCmvReal = 0;
 
-      sales.forEach(s => {
+      for (const s of sales) {
         let val = parseFloat(s.total) || 0;
         if (s.status === 'cancelled') {
           totalCancels += val;
@@ -584,16 +629,16 @@
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
           
           if (s.items && Array.isArray(s.items)) {
-            s.items.forEach(i => {
+            for (const i of s.items) {
               let qty = parseFloat(i.qty) || 1;
-              let unitCost = getProductCostFromCardapio(i.name);
+              let unitCost = await getProductCostAsync(i.name);
               totalCmvReal += (unitCost * qty);
-            });
+            }
           } else {
             totalCmvReal += (val * 0.65);
           }
         }
-      });
+      }
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
       const grossMargin = Math.max(0, netSales - totalCmvReal);
@@ -611,7 +656,7 @@
 
       renderHourlySales(sales);
       renderCategorySales(sales);
-      renderProductsPerformance(sales);
+      await renderProductsPerformanceAsync(sales);
       renderTeamPerformance(sales);
       renderLossesAndWaste();
     }
@@ -743,7 +788,7 @@
       });
     }
 
-    function renderProductsPerformance(sales) {
+    async function renderProductsPerformanceAsync(sales) {
       let prodMap = {};
       sales.forEach(s => {
         if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
@@ -765,12 +810,12 @@
         return;
       }
 
-      prods.forEach(p => {
+      for (const p of prods) {
         let qty = prodMap[p].qty;
         let total = prodMap[p].total;
         let unitPrice = qty > 0 ? total / qty : 0;
         
-        let unitCmv = getProductCostFromCardapio(p);
+        let unitCmv = await getProductCostAsync(p);
         if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.65;
 
         let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
@@ -787,7 +832,7 @@
             <td>${giroStatus}</td>
           </tr>
         `;
-      });
+      }
     }
 
     function renderTeamPerformance(sales) {

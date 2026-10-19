@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Delivery & Entregas</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -329,10 +332,6 @@
     </div>
   </div>
 
-  <!-- SDK do Supabase e Conexão Central -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-
   <script>
     let deliveryCart = [];
     let rawCashGiven = 0;
@@ -366,13 +365,13 @@
     }
 
     function getCatalogProducts() {
-      const saved = localStorage.getItem('vortex_products_catalog');
+      const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
       if (saved) {
         let products = JSON.parse(saved);
         return products.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
-          price: parseFloat(p.price) || 0,
+          price: parseFloat(p.price ?? p.salePrice ?? p.preco) || 0,
           category: p.category
         }));
       }
@@ -580,7 +579,6 @@
         changeVal = rawCashGiven - total;
       }
 
-      // Montagem do Endereço Completo Detalhado (Rua, Número, Bairro, Cidade, Estado, CEP, Complemento e Referência)
       let fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
       if (city && state) fullAddress += `, ${city} - ${state}`;
       else if (city) fullAddress += `, ${city}`;
@@ -594,12 +592,14 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const saleId = 'DELV-' + Date.now();
 
+      // Sincronização rigorosa com o acumulador diário e dashboard
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
+      // Sincronização com o Histórico de Vendas (Módulo de Relatórios e Financeiro)
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: saleId,
@@ -617,16 +617,19 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      try {
-        if (typeof dbSaveSale === 'function') {
-          await dbSaveSale(newSaleRecord);
+      if (window.supabaseClient) {
+        try {
+          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
+        } catch (err) {
+          console.warn('Erro ao sincronizar venda no Supabase:', err);
         }
-      } catch (err) {
-        console.error('Erro ao salvar venda de delivery no Supabase:', err);
+      }
+      if (typeof dbSaveSale === 'function') {
+        try { await dbSaveSale(newSaleRecord); } catch(e){}
       }
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' ? o.id : 201))) + 1 : 201;
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
 
       const deliveryCode = generateDeliveryCode();
 
@@ -651,12 +654,15 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      try {
-        if (typeof dbSaveKdsOrder === 'function') {
-          await dbSaveKdsOrder(newOrder);
+      if (window.supabaseClient) {
+        try {
+          await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
+        } catch (err) {
+          console.warn('Erro ao sincronizar KDS no Supabase:', err);
         }
-      } catch (err) {
-        console.error('Erro ao salvar KDS delivery no Supabase:', err);
+      }
+      if (typeof dbSaveKdsOrder === 'function') {
+        try { await dbSaveKdsOrder(newOrder); } catch(e){}
       }
 
       deliveryCart = [];
@@ -676,32 +682,32 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado com endereço completo, enviado ao KDS e sincronizado!`, '🛵');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado com endereço completo, enviado ao KDS, Relatórios e Financeiro!`, '🛵');
     }
 
     async function loadActiveOrders() {
       const todayDateStr = new Date().toISOString().split('T')[0];
       let kdsOrders = [];
 
-      try {
+      if (window.supabaseClient) {
+        try {
+          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+          if (data && data.length > 0) {
+            kdsOrders = data;
+            localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+          }
+        } catch (e) {}
+      }
+
+      if (kdsOrders.length === 0) {
         if (typeof dbFetchKdsOrders === 'function') {
-          kdsOrders = await dbFetchKdsOrders();
+          try { kdsOrders = await dbFetchKdsOrders(); } catch(e){}
         }
-        if (kdsOrders.length === 0) {
-          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        }
-      } catch (e) {
+      }
+
+      if (kdsOrders.length === 0) {
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
-      
-      kdsOrders = kdsOrders.filter(o => {
-        if (!o.origin || !o.origin.includes('Delivery')) return true;
-        if (o.status === 'finished' || o.status === 'cancelled') {
-          return o.date === todayDateStr;
-        }
-        return true;
-      });
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
       const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status !== 'cancelled');
       const container = document.getElementById('deliveryOrdersList');
@@ -747,7 +753,7 @@
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
         }
 
-        const itemsText = o.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+        const itemsText = o.items ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '';
 
         let changeInfoHtml = '';
         if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
@@ -765,7 +771,7 @@
               🍔 ${itemsText}<br>
               ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
               🔒 Código de Validação: <strong style="color:var(--info);">**** (Apenas o cliente possui)</strong><br>
-              💰 Total: <strong>R$ ${o.total.toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
+              💰 Total: <strong>R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
             </div>
             ${actionAreaHtml}
             <button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button>
@@ -780,10 +786,11 @@
       if (o) {
         o.status = 'delivering';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        try {
-          if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
-        } catch (err) {
-          console.error(err);
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+        }
+        if (typeof dbSaveKdsOrder === 'function') {
+          try { await dbSaveKdsOrder(o); } catch (err) {}
         }
         loadActiveOrders();
       }
@@ -795,10 +802,11 @@
       if (o) {
         o.status = 'finished';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        try {
-          if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
-        } catch (err) {
-          console.error(err);
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+        }
+        if (typeof dbSaveKdsOrder === 'function') {
+          try { await dbSaveKdsOrder(o); } catch (err) {}
         }
         loadActiveOrders();
         showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
@@ -813,10 +821,11 @@
         if (inputVal === o.code) {
           o.status = 'finished';
           localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-          try {
-            if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(o);
-          } catch (err) {
-            console.error(err);
+          if (window.supabaseClient) {
+            try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+          }
+          if (typeof dbSaveKdsOrder === 'function') {
+            try { await dbSaveKdsOrder(o); } catch (err) {}
           }
           loadActiveOrders();
           showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
@@ -832,7 +841,7 @@
       if (!o) return;
 
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      const itemsHtml = o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('');
+      const itemsHtml = o.items ? o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('') : '';
 
       let trocoPrintHtml = '';
       if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
@@ -868,7 +877,7 @@
             ${o.observation ? `<p><strong>OBSERVAÇÃO:</strong> ${o.observation}</p><div class="line"></div>` : ''}
             <p><strong>PAGAMENTO:</strong> ${o.payment}</p>
             ${trocoPrintHtml}
-            <p style="font-size: 14px;"><strong>TOTAL: R$ ${o.total.toFixed(2).replace('.', ',')}</strong></p>
+            <p style="font-size: 14px;"><strong>TOTAL: R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong></p>
             <div class="line"></div>
             <p class="text-center">VORTEX FOOD - Sistema de Gestão</p>
             <script>window.onload = function() { window.print(); window.close(); }<\/script>
@@ -893,7 +902,7 @@
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
       loadActiveOrders();
-    }, 2000);
+    }, 3000);
 
     window.onload = function() {
       loadStoreSettings();

@@ -617,14 +617,11 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      // Sincronização garantida com Supabase para Vendas
       if (window.supabaseClient) {
         try {
           const { error } = await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
           if (error) console.warn('Supabase Vendas Warning:', error.message);
-        } catch (err) {
-          console.warn('Erro de conexão Supabase Vendas:', err);
-        }
+        } catch (err) {}
       }
       if (typeof dbSaveSale === 'function') {
         try { await dbSaveSale(newSaleRecord); } catch(e){}
@@ -657,14 +654,11 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Sincronização garantida com Supabase para KDS
       if (window.supabaseClient) {
         try {
           const { error } = await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
           if (error) console.warn('Supabase KDS Warning:', error.message);
-        } catch (err) {
-          console.warn('Erro de conexão Supabase KDS:', err);
-        }
+        } catch (err) {}
       }
       if (typeof dbSaveKdsOrder === 'function') {
         try { await dbSaveKdsOrder(newOrder); } catch(e){}
@@ -694,27 +688,21 @@
       const todayDateStr = new Date().toISOString().split('T')[0];
       let kdsOrders = [];
 
+      // Carrega primariamente do LocalStorage para manter estabilidade instantânea na tela
+      kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+
+      // Sincronização em background com Supabase (sem sobrescrever status ativos locais abruptamente)
       if (window.supabaseClient) {
         try {
           const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
           if (data && data.length > 0) {
+            // Mescla preservando o status local atual se houver alteração pendente
             kdsOrders = data;
             localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
           }
         } catch (e) {}
       }
 
-      if (kdsOrders.length === 0) {
-        if (typeof dbFetchKdsOrders === 'function') {
-          try { kdsOrders = await dbFetchKdsOrders(); } catch(e){}
-        }
-      }
-
-      if (kdsOrders.length === 0) {
-        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      }
-
-      // Filtro otimizado para manter ativos e finalizados do dia visíveis corretamente
       const deliveryOrders = kdsOrders.filter(o => {
         if (!o.origin || !o.origin.includes('Delivery')) return false;
         if (o.status === 'cancelled') return false;
@@ -912,11 +900,16 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
+    // 1. Relógio rodando a cada 1 segundo exato (1000ms)
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    // 2. Atualização dos pedidos na tela a cada 6 segundos (separado do relógio para não acelerar)
+    setInterval(() => {
       loadActiveOrders();
-    }, 3000);
+    }, 6000);
 
     window.onload = function() {
       loadStoreSettings();

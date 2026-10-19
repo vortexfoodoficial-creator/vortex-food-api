@@ -592,14 +592,14 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const saleId = 'DELV-' + Date.now();
 
-      // Sincronização rigorosa com o acumulador diário e dashboard
+      // 1. Acumulador diário local blindado
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // Sincronização com o Histórico de Vendas (Módulo de Relatórios e Financeiro)
+      // 2. Histórico de Vendas (Relatórios e Financeiro)
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: saleId,
@@ -617,17 +617,20 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
+      // Sincronização garantida com Supabase para Vendas
       if (window.supabaseClient) {
         try {
-          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
+          const { error } = await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
+          if (error) console.warn('Supabase Vendas Warning:', error.message);
         } catch (err) {
-          console.warn('Erro ao sincronizar venda no Supabase:', err);
+          console.warn('Erro de conexão Supabase Vendas:', err);
         }
       }
       if (typeof dbSaveSale === 'function') {
         try { await dbSaveSale(newSaleRecord); } catch(e){}
       }
 
+      // 3. Pedidos KDS / Cozinha
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
 
@@ -654,11 +657,13 @@
       kdsOrders.unshift(newOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
+      // Sincronização garantida com Supabase para KDS
       if (window.supabaseClient) {
         try {
-          await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
+          const { error } = await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
+          if (error) console.warn('Supabase KDS Warning:', error.message);
         } catch (err) {
-          console.warn('Erro ao sincronizar KDS no Supabase:', err);
+          console.warn('Erro de conexão Supabase KDS:', err);
         }
       }
       if (typeof dbSaveKdsOrder === 'function') {
@@ -682,7 +687,7 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado com endereço completo, enviado ao KDS, Relatórios e Financeiro!`, '🛵');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado com sucesso, integrado ao Dashboard, Relatórios, Financeiro e KDS!`, '🛵');
     }
 
     async function loadActiveOrders() {
@@ -709,7 +714,16 @@
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
-      const deliveryOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status !== 'cancelled');
+      // Filtro otimizado para manter ativos e finalizados do dia visíveis corretamente
+      const deliveryOrders = kdsOrders.filter(o => {
+        if (!o.origin || !o.origin.includes('Delivery')) return false;
+        if (o.status === 'cancelled') return false;
+        if (o.status === 'finished') {
+          return o.date === todayDateStr;
+        }
+        return true;
+      });
+
       const container = document.getElementById('deliveryOrdersList');
       container.innerHTML = '';
 

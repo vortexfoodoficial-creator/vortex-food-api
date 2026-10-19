@@ -338,61 +338,57 @@
       let salesHistory = [];
 
       try {
-        if (typeof dbFetchKdsOrders === 'function') {
-          kdsOrders = await dbFetchKdsOrders();
-        }
-        if (kdsOrders.length === 0) {
-          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        }
+        if (window.supabaseClient) {
+          const { data: cloudKds } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+          if (cloudKds && cloudKds.length > 0) kdsOrders = cloudKds;
 
-        if (typeof dbFetchSales === 'function') {
-          salesHistory = await dbFetchSales();
+          const { data: cloudSales } = await window.supabaseClient.from('vortex_sales_history').select('*');
+          if (cloudSales && cloudSales.length > 0) salesHistory = cloudSales;
         }
-        if (salesHistory.length === 0) {
-          salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-        }
-      } catch (e) {
+      } catch (e) {}
+
+      if (kdsOrders.length === 0) {
+        if (typeof dbFetchKdsOrders === 'function') kdsOrders = await dbFetchKdsOrders();
+      }
+      if (kdsOrders.length === 0) {
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
 
-      kdsOrders = kdsOrders.filter(order => {
-        let strId = String(order.id);
-        if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
-        return true;
-      });
+      if (salesHistory.length === 0) {
+        if (typeof dbFetchSales === 'function') salesHistory = await dbFetchSales();
+      }
+      if (salesHistory.length === 0) {
+        salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      }
 
       for (let sale of salesHistory) {
         let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
         let strSaleId = String(sale.id);
 
-        if (strSaleId.includes('PDV-') || strSaleId.includes('MESA-')) continue;
-
         if (saleDateStr === todayDateStr && sale.status !== 'cancelled') {
-          let foundInKds = kdsOrders.find(o => String(o.id) === strSaleId);
+          let foundInKds = kdsOrders.find(o => String(o.id) === strSaleId || (o.origin && o.origin.includes('Delivery') && o.client === sale.client && Math.abs((o.total || 0) - (sale.total || 0)) < 0.01));
+          
           if (!foundInKds) {
             const newKdsItem = {
               id: strSaleId,
-              origin: sale.channel || 'Balcão',
-              client: sale.client || 'Cliente Balcão',
+              origin: sale.channel || 'Delivery 🛵',
+              client: sale.client || 'Cliente',
               time: sale.time || new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
               date: todayDateStr,
               items: sale.items || [],
               total: parseFloat(sale.total) || 0,
               observation: sale.observation || '',
               payMethod: sale.payMethod || sale.payment || 'Dinheiro',
-              amountPaid: sale.amountPaid || sale.total || 0,
-              changeValue: sale.changeValue || sale.change || 0,
               status: sale.status || 'new'
             };
             kdsOrders.unshift(newKdsItem);
             try {
+              if (window.supabaseClient) {
+                await window.supabaseClient.from('vortex_kds_orders').upsert([newKdsItem]);
+              }
               if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
             } catch (err) {}
           } else {
-            foundInKds.payMethod = sale.payMethod || foundInKds.payMethod;
-            foundInKds.amountPaid = sale.amountPaid || foundInKds.amountPaid;
-            foundInKds.changeValue = sale.changeValue || foundInKds.changeValue;
             foundInKds.status = sale.status || foundInKds.status;
           }
         }
@@ -408,19 +404,21 @@
       const todayDateStr = getLocalDateStr(new Date());
       let orders = [];
       try {
-        if (typeof dbFetchKdsOrders === 'function') {
+        if (window.supabaseClient) {
+          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+          if (data && data.length > 0) orders = data;
+        }
+        if (orders.length === 0 && typeof dbFetchKdsOrders === 'function') {
           orders = await dbFetchKdsOrders();
         }
-        if (orders.length === 0) {
-          orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        }
-      } catch (e) {
+      } catch (e) {}
+
+      if (orders.length === 0) {
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       }
 
+      // Filtro para manter visíveis na cozinha os pedidos ativos e os finalizados/cancelados do dia corrente
       orders = orders.filter(o => {
-        let strId = String(o.id);
-        if (strId.includes('PDV-') || strId.includes('MESA-')) return false;
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
@@ -458,7 +456,7 @@
         if (order.status === 'new') statusLabel = '🟡 NOVO';
         else if (order.status === 'preparing') statusLabel = '🔵 EM PREPARO';
         else if (order.status === 'ready') statusLabel = '🟢 PRONTO';
-        else if (order.status === 'finished') statusLabel = '🏁 FINALIZADO';
+        else if (order.status === 'finished') statusLabel = '🏁 FINALIZADO / ENTREGUE';
         else if (order.status === 'cancelled') statusLabel = '🔴 CANCELADO';
 
         let itemsHtml = (order.items || []).map(i => `
@@ -486,7 +484,6 @@
             <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
           `;
         } else if (order.status === 'ready') {
-          // Pedidos de mesa só finalizam no pagamento do caixa/mesa; outros canais podem finalizar aqui
           if (!isTableOrder) {
             actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>`;
           }
@@ -533,12 +530,11 @@
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         
-        try {
-          if (typeof dbSaveKdsOrder === 'function') {
-            await dbSaveKdsOrder(order);
-          }
-        } catch (err) {
-          console.error('Erro ao atualizar status KDS no Supabase:', err);
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([order]); } catch(e){}
+        }
+        if (typeof dbSaveKdsOrder === 'function') {
+          try { await dbSaveKdsOrder(order); } catch (err) {}
         }
 
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -546,9 +542,12 @@
         if (saleMatch) {
           saleMatch.status = newStatus;
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-          try {
-            if (typeof dbSaveSale === 'function') await dbSaveSale(saleMatch);
-          } catch (err) {}
+          if (window.supabaseClient) {
+            try { await window.supabaseClient.from('vortex_sales_history').upsert([saleMatch]); } catch(e){}
+          }
+          if (typeof dbSaveSale === 'function') {
+            try { await dbSaveSale(saleMatch); } catch (err) {}
+          }
         }
 
         renderKds();
@@ -556,7 +555,7 @@
         let msg = '';
         if (newStatus === 'preparing') msg = `Pedido #${id} em preparo.`;
         else if (newStatus === 'ready') msg = `Pedido #${id} marcado como PRONTO!`;
-        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e movido com sucesso.`;
+        else if (newStatus === 'finished') msg = `Pedido #${id} FINALIZADO e movido para a aba de finalizados.`;
 
         showNoticeModal('Atualização do Pedido', msg, '👨‍🍳');
       }
@@ -564,7 +563,7 @@
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação irá atualizar os registros na nuvem e mover o pedido para a aba de cancelados.`;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?<br><br>Esta ação atualizará o status na nuvem e moverá o pedido para a aba de cancelados.`;
       
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
@@ -589,22 +588,24 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        try {
-          if (typeof dbSaveKdsOrder === 'function') {
-            await dbSaveKdsOrder(order);
-          }
-        } catch (err) {}
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([order]); } catch(e){}
+        }
+        if (typeof dbSaveKdsOrder === 'function') {
+          try { await dbSaveKdsOrder(order); } catch (err) {}
+        }
 
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         let saleMatch = salesHistory.find(s => String(s.id) === String(id));
         if (saleMatch) {
           saleMatch.status = 'cancelled';
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-          try {
-            if (typeof dbSaveSale === 'function') {
-              await dbSaveSale(saleMatch);
-            }
-          } catch (err) {}
+          if (window.supabaseClient) {
+            try { await window.supabaseClient.from('vortex_sales_history').upsert([saleMatch]); } catch(e){}
+          }
+          if (typeof dbSaveSale === 'function') {
+            try { await dbSaveSale(saleMatch); } catch (err) {}
+          }
         }
 
         renderKds();
@@ -627,25 +628,6 @@
         </tr>
       `).join('');
 
-      let payMethodStr = order.payMethod || order.payment || 'Dinheiro';
-      let paymentDetailsHtml = `<p>Pagamento: ${payMethodStr}</p>`;
-      
-      const pmLower = String(payMethodStr).toLowerCase();
-      if (pmLower.includes('dinheiro') || pmLower.includes('cash')) {
-        let totalVal = parseFloat(order.total || 0);
-        let amountPaid = parseFloat(order.amountPaid || order.cashGiven || totalVal);
-        let changeVal = parseFloat(order.changeValue || order.change || (amountPaid > totalVal ? amountPaid - totalVal : 0));
-        
-        if (changeVal > 0) {
-          paymentDetailsHtml += `
-            <p>Valor Recebido: R$ ${amountPaid.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</p>
-            <p><strong>Troco a Devolver: R$ ${changeVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
-          `;
-        } else {
-          paymentDetailsHtml += `<p>Valor Recebido: R$ ${totalVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</p><p>Troco: Sem troco necessário</p>`;
-        }
-      }
-
       printWin.document.write(`
         <html>
           <head><title>Comanda - Pedido #${order.id}</title></head>
@@ -662,8 +644,6 @@
               ${itemsTxt}
             </table>
             ${order.observation ? `<hr><p><strong>OBS:</strong> ${order.observation}</p>` : ''}
-            <hr>
-            ${paymentDetailsHtml}
             <hr>
             <p style="text-align:right; font-size:14px;"><strong>TOTAL: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></p>
             <p style="text-align:center; margin-top:20px;">🌪️ Vortex Food System</p>
@@ -688,7 +668,7 @@
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
       renderKds();
-    }, 1000);
+    }, 3000);
 
     window.onload = function() {
       renderKds();

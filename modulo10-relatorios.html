@@ -492,12 +492,14 @@
     }
 
     function getProductCostFromCardapio(productName) {
+      // 1. Procura primeiro nas Fichas Técnicas
       const fichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || [];
       const fichaMatch = fichas.find(f => f.name && f.name.toLowerCase() === productName.toLowerCase());
-      if (fichaMatch && fichaMatch.totalCost) {
-        return parseFloat(fichaMatch.totalCost) || 0;
+      if (fichaMatch && (fichaMatch.totalCost !== undefined || fichaMatch.custo !== undefined)) {
+        return parseFloat(fichaMatch.totalCost || fichaMatch.custo) || 0;
       }
 
+      // 2. Procura no Cardápio de Produtos
       const cardapio = JSON.parse(localStorage.getItem('vortex_cardapio_produtos')) || [];
       const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
       if (prodMatch) {
@@ -581,14 +583,11 @@
             s.items.forEach(i => {
               let qty = i.qty || 1;
               let unitCost = getProductCostFromCardapio(i.name);
-              if (unitCost === 0 && i.price) {
-                unitCost = getProductCostFromCardapio(i.name);
-              }
-              // CORREÇÃO: Utiliza o custo exato cadastrado (sem fallback automático de 35% se houver custo real)
+              // CORREÇÃO CRUCIAL: Multiplica corretamente o custo unitário pela quantidade do item
               totalCmvReal += (unitCost * qty);
             });
           } else {
-            totalCmvReal += (val * 0.65); // Caso não haja itens detalhados, assume proporção padrão
+            totalCmvReal += (val * 0.65); // Proporção padrão se não houver array de itens
           }
         }
       });

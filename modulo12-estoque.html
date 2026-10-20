@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Módulo 12: Estoque & Inventário</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -184,7 +187,7 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Estoque, Insumos & Inventário</h1>
+        <h1>Estoque, Insumos & Reposição Inteligente</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
@@ -213,11 +216,18 @@
           <div style="font-size:1rem; color:var(--danger);" id="statZeroItems">0</div>
         </div>
       </div>
+      <div class="stat-badge">
+        <span style="font-size:1.4rem;">💡</span>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">EST. REPOSIÇÃO TOTAL</div>
+          <div style="font-size:1rem; color:var(--info);" id="statSuggestCost">R$ 0,00</div>
+        </div>
+      </div>
     </div>
 
     <div class="card-box">
       <div class="card-title">
-        <span>📋 Gestão de Itens & Insumos</span>
+        <span>📋 Gestão de Itens & Reposição</span>
         <div style="display:flex; gap:8px;">
           <button class="btn-secondary" onclick="openMovementModal('entry')">➕ Entrada</button>
           <button class="btn-secondary" onclick="openMovementModal('exit')">➖ Saída / Perda</button>
@@ -226,20 +236,22 @@
       </div>
 
       <div class="tabs-nav">
-        <button class="tab-btn active" onclick="switchCategoryTab('all')">Todos os Itens</button>
-        <button class="tab-btn" onclick="switchCategoryTab('Ingrediente')">Ingredientes</button>
-        <button class="tab-btn" onclick="switchCategoryTab('Revenda')">Revenda</button>
-        <button class="tab-btn" onclick="switchCategoryTab('Embalagem')">Embalagens</button>
-        <button class="tab-btn" onclick="switchCategoryTab('Limpeza')">Limpeza / Consumo</button>
+        <button class="tab-btn active" onclick="switchCategoryTab('all', this)">Todos os Itens</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Ingrediente', this)">Ingredientes</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Revenda', this)">Revenda</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Embalagem', this)">Embalagens</button>
+        <button class="tab-btn" onclick="switchCategoryTab('Limpeza', this)">Limpeza / Consumo</button>
+        <button class="tab-btn" style="background:rgba(234, 179, 8, 0.15); color:var(--warning); border-color:var(--warning);" onclick="switchCategoryTab('suggestions', this)">💡 Sugestões de Compra</button>
+        <button class="tab-btn" style="background:rgba(239, 68, 68, 0.15); color:var(--danger); border-color:var(--danger);" onclick="switchCategoryTab('losses', this)">🗑️ Perdas & Avarias</button>
       </div>
 
-      <div class="action-bar">
+      <div class="action-bar" id="searchBarContainer">
         <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome ou código..." oninput="renderStockTable()">
       </div>
 
       <div class="table-responsive">
-        <table>
-          <thead>
+        <table id="mainStockTable">
+          <thead id="stockTableHead">
             <tr>
               <th>Item / Nome</th>
               <th>Categoria</th>
@@ -333,11 +345,11 @@
 
       <div class="form-group">
         <label for="movType">Tipo de Movimentação *:</label>
-        <select id="movType">
+        <select id="movType" onchange="toggleCostInput(this.value)">
           <option value="entry">📥 Entrada de Mercadorias (Compra)</option>
           <option value="exit">📤 Saída / Consumo</option>
           <option value="loss">⚠️ Registro de Perda / Avaria</option>
-          <option value="waste">🗑️ Registro de Desperdício</option>
+          <option value="waste">🗑️ Registro de Desperdício / Vencido</option>
         </select>
       </div>
 
@@ -346,21 +358,27 @@
         <select id="movItemId"></select>
       </div>
 
-      <div class="form-group">
-        <label for="movQty">Quantidade *:</label>
-        <input type="number" step="0.01" id="movQty" placeholder="Ex: 10">
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+          <label for="movQty">Quantidade *:</label>
+          <input type="number" step="0.01" id="movQty" placeholder="Ex: 10">
+        </div>
+        <div class="form-group" style="flex:1;" id="unitCostGroup">
+          <label for="movUnitCost">Novo Custo Unitário (R$):</label>
+          <input type="number" step="0.01" id="movUnitCost" placeholder="Opcional">
+        </div>
       </div>
 
       <div class="form-group">
-        <label for="movReason">Motivo / Observação:</label>
-        <input type="text" id="movReason" placeholder="Ex: Nota Fiscal 1234 / Validade vencida">
+        <label for="movReason">Motivo / Observação / Nota Fiscal:</label>
+        <input type="text" id="movReason" placeholder="Ex: NF 1234 / Validade vencida">
       </div>
 
       <button class="btn-action" style="width:100%; margin-top:10px; justify-content:center;" onclick="executeMovement()">Confirmar Movimentação ⚡</button>
     </div>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO (PROFISSIONAL) -->
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
   <div class="modal-overlay" id="confirmModal">
     <div class="custom-modal-card" style="text-align:center; max-width:380px;">
       <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
@@ -384,13 +402,9 @@
     </div>
   </div>
 
-  <!-- SDK do Supabase e Conexão Central -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-
   <script>
     let activeTab = 'all';
-    const defaultStockItems = []; // Nenhum item predefinido (zerado)
+    const defaultStockItems = [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -423,6 +437,11 @@
       return JSON.parse(saved);
     }
 
+    function getStockMovements() {
+      let saved = localStorage.getItem('vortex_stock_movements');
+      return saved ? JSON.parse(saved) : [];
+    }
+
     async function syncStockToCloud() {
       try {
         if (typeof dbSaveStock === 'function') {
@@ -448,11 +467,122 @@
       let items = getStockItems();
       const search = document.getElementById('searchInput').value.toUpperCase().trim();
       const tbody = document.getElementById('stockTableBody');
+      const thead = document.getElementById('stockTableHead');
       tbody.innerHTML = '';
 
       let totalItems = items.length;
       let warningCount = 0;
       let zeroCount = 0;
+      let totalSuggestCost = 0;
+
+      // Calcular Indicadores Gerais
+      items.forEach(item => {
+        let qty = parseFloat(item.qty || 0);
+        let min = parseFloat(item.minStock || 0);
+        let cost = parseFloat(item.cost || 0);
+
+        if (qty <= 0) zeroCount++;
+        else if (qty <= min) warningCount++;
+
+        if (qty < min) {
+          let diff = min - qty;
+          totalSuggestCost += (diff * cost);
+        }
+      });
+
+      document.getElementById('statTotalItems').innerText = totalItems;
+      document.getElementById('statWarningItems').innerText = warningCount;
+      document.getElementById('statZeroItems').innerText = zeroCount;
+      document.getElementById('statSuggestCost').innerText = 'R$ ' + totalSuggestCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      // ABA 1: SUGESTÕES DE COMPRA
+      if (activeTab === 'suggestions') {
+        thead.innerHTML = `
+          <tr>
+            <th>Item / Insumo</th>
+            <th>Qtd. Atual</th>
+            <th>Est. Mínimo</th>
+            <th>Sugerido Comprar</th>
+            <th>Custo Est. (R$)</th>
+            <th style="text-align:center;">Ação Rápida</th>
+          </tr>
+        `;
+
+        let alertItems = items.filter(i => (parseFloat(i.qty || 0) < parseFloat(i.minStock || 0)));
+
+        if (alertItems.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--success); padding:30px;">🎉 Excelente! Nenhum item necessita de reposição no momento.</td></tr>`;
+          return;
+        }
+
+        alertItems.forEach(i => {
+          let qty = parseFloat(i.qty || 0);
+          let min = parseFloat(i.minStock || 0);
+          let cost = parseFloat(i.cost || 0);
+          let needed = min - qty;
+          let estCost = needed * cost;
+
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>${i.name}</strong></td>
+              <td style="color:${qty <= 0 ? 'var(--danger)' : 'var(--warning)'}; font-weight:bold;">${qty} ${i.unit}</td>
+              <td>${min} ${i.unit}</td>
+              <td style="font-weight:bold; color:var(--info);">+ ${needed.toFixed(2)} ${i.unit}</td>
+              <td>R$ ${estCost.toFixed(2).replace('.', ',')}</td>
+              <td style="text-align:center;">
+                <button class="btn-action" style="padding:4px 8px; font-size:0.75rem;" onclick="sendWhatsappOrder('${i.name}', '${needed}', '${i.unit}')">📱 Pedir via WhatsApp</button>
+              </td>
+            </tr>
+          `;
+        });
+        return;
+      }
+
+      // ABA 2: PERDAS & AVARIAS
+      if (activeTab === 'losses') {
+        thead.innerHTML = `
+          <tr>
+            <th>Data / Hora</th>
+            <th>Item / Insumo</th>
+            <th>Tipo</th>
+            <th>Qtd. Perda</th>
+            <th>Motivo / Obs</th>
+          </tr>
+        `;
+
+        let movs = getStockMovements().filter(m => m.type === 'loss' || m.type === 'waste');
+
+        if (movs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">Nenhum registro de perda ou desperdício encontrado.</td></tr>`;
+          return;
+        }
+
+        movs.forEach(m => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${m.date}</td>
+              <td><strong>${m.itemName}</strong></td>
+              <td><span class="badge badge-danger">${m.type === 'loss' ? 'Avaria / Perda' : 'Desperdício / Vencido'}</span></td>
+              <td style="font-weight:bold; color:var(--danger);">- ${m.qty}</td>
+              <td>${m.reason || 'Sem observação'}</td>
+            </tr>
+          `;
+        });
+        return;
+      }
+
+      // ABAS PADRÃO (TODOS / CATEGORIAS)
+      thead.innerHTML = `
+        <tr>
+          <th>Item / Nome</th>
+          <th>Categoria</th>
+          <th>Qtd. Atual</th>
+          <th>Mínimo</th>
+          <th>Custo Médio</th>
+          <th>Status</th>
+          <th style="text-align:center;">Ações</th>
+        </tr>
+      `;
 
       let filtered = items.filter(item => {
         let matchTab = (activeTab === 'all' || item.category === activeTab);
@@ -469,10 +599,8 @@
 
           let statusBadge = `<span class="badge badge-ok">Normal</span>`;
           if (qty <= 0) {
-            zeroCount++;
             statusBadge = `<span class="badge badge-danger">Zerado</span>`;
           } else if (qty <= min) {
-            warningCount++;
             statusBadge = `<span class="badge badge-warning">Baixo</span>`;
           }
 
@@ -492,17 +620,18 @@
           `;
         });
       }
-
-      document.getElementById('statTotalItems').innerText = totalItems;
-      document.getElementById('statWarningItems').innerText = warningCount;
-      document.getElementById('statZeroItems').innerText = zeroCount;
     }
 
-    function switchCategoryTab(tab) {
+    function switchCategoryTab(tab, btnEl) {
       activeTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      if (btnEl) btnEl.classList.add('active');
       renderStockTable();
+    }
+
+    function sendWhatsappOrder(itemName, qty, unit) {
+      const text = `Olá! Gostaria de cotar/pedir a reposição de *${itemName}*: Qtd *${qty} ${unit}*.`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
     function openItemModal() {
@@ -603,6 +732,10 @@
       showNoticeModal('Removido', 'Item excluído do estoque com sucesso.', '🗑️');
     }
 
+    function toggleCostInput(type) {
+      document.getElementById('unitCostGroup').style.display = type === 'entry' ? 'block' : 'none';
+    }
+
     function openMovementModal(type) {
       let items = getStockItems();
       const select = document.getElementById('movItemId');
@@ -616,8 +749,10 @@
       });
 
       document.getElementById('movType').value = type === 'entry' ? 'entry' : 'exit';
+      toggleCostInput(type === 'entry' ? 'entry' : 'exit');
       document.getElementById('movementModalTitle').innerText = type === 'entry' ? 'Entrada de Mercadorias' : 'Saída / Perda de Estoque';
       document.getElementById('movQty').value = '';
+      document.getElementById('movUnitCost').value = '';
       document.getElementById('movReason').value = '';
       document.getElementById('movementModal').classList.add('active');
     }
@@ -630,6 +765,7 @@
       const movType = document.getElementById('movType').value;
       const itemId = document.getElementById('movItemId').value;
       const qty = parseFloat(document.getElementById('movQty').value) || 0;
+      const unitCost = parseFloat(document.getElementById('movUnitCost').value) || 0;
       const reason = document.getElementById('movReason').value.trim();
 
       if (qty <= 0) {
@@ -642,10 +778,28 @@
       if (!item) return;
 
       if (movType === 'entry') {
+        // Cálculo de Custo Ponderado caso informado
+        if (unitCost > 0) {
+          let currentTotal = item.qty * item.cost;
+          let newTotal = qty * unitCost;
+          item.cost = (currentTotal + newTotal) / (item.qty + qty);
+        }
         item.qty += qty;
       } else {
         item.qty = Math.max(0, item.qty - qty);
       }
+
+      // Registrar histórico de movimentações/perdas
+      let movs = getStockMovements();
+      movs.unshift({
+        date: new Date().toLocaleString('pt-BR'),
+        itemId: item.id,
+        itemName: item.name,
+        type: movType,
+        qty: qty,
+        reason: reason
+      });
+      localStorage.setItem('vortex_stock_movements', JSON.stringify(movs));
 
       localStorage.setItem('vortex_stock_items', JSON.stringify(items));
       await syncStockToCloud();

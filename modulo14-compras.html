@@ -80,6 +80,16 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
+    /* Cards de Resumo */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px;
+    }
+    .metric-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .metric-title { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .metric-value { font-size: 1.3rem; font-weight: 800; color: var(--text-main); }
+
     /* Ações e Filtros Superior */
     .actions-bar {
       display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
@@ -118,6 +128,11 @@
     .badge-approved { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
     .badge-delivered { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid var(--border); }
 
+    .phone-link {
+      color: var(--primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .phone-link:hover { text-decoration: underline; }
+
     .action-icon-btn {
       background: none; border: none; cursor: pointer; font-size: 1rem; padding: 4px; color: var(--text-muted); transition: color 0.2s;
     }
@@ -132,10 +147,11 @@
     
     .custom-modal-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px;
-      width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+      width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; text-align: left;
     }
     .modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 16px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
     
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-group { margin-bottom: 14px; }
     label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 600; }
     input, select, textarea {
@@ -147,8 +163,10 @@
     .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
     .btn-modal-save { background: var(--primary); color: white; flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; }
     .btn-modal-cancel { background: var(--border); color: var(--text-main); flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; }
+    .btn-modal-danger { background: var(--danger); color: white; flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; }
 
     @media (max-width: 768px) {
+      .form-grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
@@ -229,8 +247,28 @@
       </div>
     </header>
 
+    <!-- CARDS DE METRICAS EM TEMPO REAL -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Total de Pedidos</span>
+        <span class="metric-value" id="totalOrdersMetric">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">Em Cotação</span>
+        <span class="metric-value" style="color:var(--info);" id="quotingMetric">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">Valor Aprovado</span>
+        <span class="metric-value" style="color:var(--success);" id="approvedValueMetric">R$ 0,00</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">Entregues</span>
+        <span class="metric-value" style="color:var(--text-muted);" id="deliveredMetric">0</span>
+      </div>
+    </div>
+
     <div class="actions-bar">
-      <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar pedido, item ou fornecedor..." oninput="renderComprasTable()">
+      <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar pedido, item, fornecedor ou telefone..." oninput="renderComprasTable()">
       <button class="btn-primary" onclick="openCompraModal()">➕ Novo Pedido / Cotação</button>
     </div>
 
@@ -244,6 +282,7 @@
               <th>Insumo / Item</th>
               <th>Qtd</th>
               <th>Fornecedor</th>
+              <th>WhatsApp / Tel</th>
               <th>Valor Est. (R$)</th>
               <th>Status</th>
               <th style="text-align: right;">Ações</th>
@@ -271,19 +310,26 @@
         <input type="text" id="itemInput" placeholder="Ex: Carne Bovina (Kg), Embalagens...">
       </div>
       
-      <div class="form-group">
-        <label for="qtdInput">Quantidade:</label>
-        <input type="text" id="qtdInput" placeholder="Ex: 50 Kg / 500 un">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="qtdInput">Quantidade:</label>
+          <input type="text" id="qtdInput" placeholder="Ex: 50 Kg / 500 un">
+        </div>
+        <div class="form-group">
+          <label for="priceInput">Valor Estimado / Cotado (R$):</label>
+          <input type="text" id="priceInput" placeholder="0,00" oninput="maskCurrency(this)">
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="supplierInput">Fornecedor:</label>
-        <input type="text" id="supplierInput" placeholder="Nome do Fornecedor / Atacadista">
-      </div>
-
-      <div class="form-group">
-        <label for="priceInput">Valor Estimado / Cotado (R$):</label>
-        <input type="text" id="priceInput" placeholder="0,00" oninput="maskCurrency(this)">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="supplierInput">Fornecedor / Loja:</label>
+          <input type="text" id="supplierInput" placeholder="Nome do Fornecedor">
+        </div>
+        <div class="form-group">
+          <label for="phoneInput">WhatsApp / Telefone:</label>
+          <input type="text" id="phoneInput" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
+        </div>
       </div>
 
       <div class="form-group">
@@ -296,6 +342,11 @@
         </select>
       </div>
 
+      <div class="form-group">
+        <label for="notesInput">Observações / Detalhes (Opcional):</label>
+        <textarea id="notesInput" rows="2" placeholder="Ex: Chave Pix do fornecedor, prazo de entrega, etc..."></textarea>
+      </div>
+
       <div class="modal-footer">
         <button class="btn-modal-cancel" onclick="closeCompraModal()">Cancelar</button>
         <button class="btn-modal-save" onclick="saveCompra()">Salvar Pedido</button>
@@ -303,8 +354,32 @@
     </div>
   </div>
 
+  <!-- MODAL CUSTOMIZADO DE AVISO / ALERTA -->
+  <div class="modal-overlay" id="customAlertModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;" id="alertIcon">⚠️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos obrigatórios.</div>
+      <button class="btn-modal-save" onclick="closeCustomAlert()" style="width: 100%;">Entendido</button>
+    </div>
+  </div>
+
+  <!-- MODAL CUSTOMIZADO DE CONFIRMAÇÃO DE EXCLUSÃO -->
+  <div class="modal-overlay" id="confirmDeleteModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;">🗑️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;">Excluir Pedido?</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;">Deseja realmente excluir este pedido de compra da lista? Essa ação não pode ser desfeita.</div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancel" onclick="closeConfirmDelete()">Cancelar</button>
+        <button class="btn-modal-danger" onclick="executeDeleteCompra()">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let comprasData = JSON.parse(localStorage.getItem('vortex_compras_data')) || [];
+    let pendingDeleteIndex = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -320,11 +395,56 @@
       }
     }
 
+    /* MÁSCARA INTELIGENTE DE TELEFONE SEM TRAVAMENTO */
+    function handlePhoneKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        let v = input.value;
+        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '').slice(0, -1);
+          formatAndSetPhone(input, digits);
+        }
+      }
+    }
+
+    function handlePhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetPhone(input, digits);
+    }
+
+    function formatAndSetPhone(input, digits) {
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      if (digits.length === 0) input.value = '';
+      else if (digits.length <= 2) input.value = `(${digits}`;
+      else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
     function maskCurrency(input) {
       let v = input.value.replace(/\D/g, '');
       if (!v) { input.value = ''; return; }
       let numeric = parseFloat(v) / 100;
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateMetrics() {
+      document.getElementById('totalOrdersMetric').innerText = comprasData.length;
+      
+      const quoting = comprasData.filter(c => c.status === 'quoting').length;
+      document.getElementById('quotingMetric').innerText = quoting;
+
+      const delivered = comprasData.filter(c => c.status === 'delivered').length;
+      document.getElementById('deliveredMetric').innerText = delivered;
+
+      const approvedTotal = comprasData
+        .filter(c => c.status === 'approved' || c.status === 'delivered')
+        .reduce((acc, c) => {
+          let raw = (c.price || '0').replace(/\./g, '').replace(',', '.');
+          return acc + (parseFloat(raw) || 0);
+        }, 0);
+
+      document.getElementById('approvedValueMetric').innerText = 'R$ ' + approvedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function renderComprasTable() {
@@ -333,12 +453,14 @@
       tbody.innerHTML = '';
 
       const filtered = comprasData.filter(c => 
-        c.item.toLowerCase().includes(search) || 
-        c.supplier.toLowerCase().includes(search)
+        (c.item || '').toLowerCase().includes(search) || 
+        (c.supplier || '').toLowerCase().includes(search) ||
+        (c.phone || '').toLowerCase().includes(search)
       );
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:30px;">Nenhum pedido de compra cadastrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:30px;">Nenhum pedido de compra encontrado.</td></tr>`;
+        updateMetrics();
         return;
       }
 
@@ -349,21 +471,30 @@
         else if (c.status === 'approved') { badgeClass = 'badge-approved'; badgeText = 'Aprovado'; }
         else if (c.status === 'delivered') { badgeClass = 'badge-delivered'; badgeText = 'Entregue'; }
 
+        let phoneDisplay = '—';
+        if (c.phone) {
+          const rawDigits = c.phone.replace(/\D/g, '');
+          phoneDisplay = `<a href="https://wa.me/55${rawDigits}" target="_blank" class="phone-link">📱 ${c.phone}</a>`;
+        }
+
         tbody.innerHTML += `
           <tr>
             <td>${c.date}</td>
             <td style="font-weight:bold;">${c.item}</td>
             <td>${c.qtd}</td>
             <td>${c.supplier || 'Não definido'}</td>
+            <td>${phoneDisplay}</td>
             <td>R$ ${c.price || '0,00'}</td>
             <td><span class="badge ${badgeClass}">${badgeText}</span></td>
             <td style="text-align: right;">
               <button class="action-icon-btn" onclick="editCompra(${idx})" title="Editar">✏️</button>
-              <button class="action-icon-btn" onclick="deleteCompra(${idx})" title="Excluir">🗑️</button>
+              <button class="action-icon-btn" onclick="askDeleteCompra(${idx})" title="Excluir">🗑️</button>
             </td>
           </tr>
         `;
       });
+
+      updateMetrics();
     }
 
     function openCompraModal() {
@@ -372,7 +503,9 @@
       document.getElementById('itemInput').value = '';
       document.getElementById('qtdInput').value = '';
       document.getElementById('supplierInput').value = '';
+      document.getElementById('phoneInput').value = '';
       document.getElementById('priceInput').value = '';
+      document.getElementById('notesInput').value = '';
       document.getElementById('statusInput').value = 'pending';
       document.getElementById('compraModal').classList.add('active');
     }
@@ -381,22 +514,34 @@
       document.getElementById('compraModal').classList.remove('active');
     }
 
+    function showCustomAlert(title, message, icon = '⚠️') {
+      document.getElementById('alertIcon').innerText = icon;
+      document.getElementById('alertTitle').innerText = title;
+      document.getElementById('alertMessage').innerText = message;
+      document.getElementById('customAlertModal').classList.add('active');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').classList.remove('active');
+    }
+
     function saveCompra() {
       const editIdx = document.getElementById('editIndexId').value;
       const item = document.getElementById('itemInput').value.trim();
       const qtd = document.getElementById('qtdInput').value.trim();
       const supplier = document.getElementById('supplierInput').value.trim();
+      const phone = document.getElementById('phoneInput').value.trim();
       const price = document.getElementById('priceInput').value.trim();
+      const notes = document.getElementById('notesInput').value.trim();
       const status = document.getElementById('statusInput').value;
 
       if (!item || !qtd) {
-        alert('Por favor, preencha o insumo e a quantidade.');
+        showCustomAlert('Atenção', 'Por favor, preencha pelo menos o insumo e a quantidade do pedido.', '⚠️');
         return;
       }
 
       const currentDate = new Date().toLocaleDateString('pt-BR');
-
-      const obj = { date: currentDate, item, qtd, supplier, price, status };
+      const obj = { date: currentDate, item, qtd, supplier, phone, price, notes, status };
 
       if (editIdx === '') {
         comprasData.push(obj);
@@ -409,26 +554,41 @@
       syncSupabaseCompras();
       closeCompraModal();
       renderComprasTable();
+      showCustomAlert('Sucesso!', 'Pedido de compra salvo com sucesso.', '🎉');
     }
 
     function editCompra(idx) {
       const c = comprasData[idx];
       document.getElementById('editIndexId').value = idx;
       document.getElementById('modalTitleText').innerText = 'Editar Pedido de Compra';
-      document.getElementById('itemInput').value = c.item;
-      document.getElementById('qtdInput').value = c.qtd;
-      document.getElementById('supplierInput').value = c.supplier;
-      document.getElementById('priceInput').value = c.price;
-      document.getElementById('statusInput').value = c.status;
+      document.getElementById('itemInput').value = c.item || '';
+      document.getElementById('qtdInput').value = c.qtd || '';
+      document.getElementById('supplierInput').value = c.supplier || '';
+      document.getElementById('phoneInput').value = c.phone || '';
+      document.getElementById('priceInput').value = c.price || '';
+      document.getElementById('notesInput').value = c.notes || '';
+      document.getElementById('statusInput').value = c.status || 'pending';
       document.getElementById('compraModal').classList.add('active');
     }
 
-    function deleteCompra(idx) {
-      if (confirm('Deseja realmente excluir este pedido de compra?')) {
-        comprasData.splice(idx, 1);
+    function askDeleteCompra(idx) {
+      pendingDeleteIndex = idx;
+      document.getElementById('confirmDeleteModal').classList.add('active');
+    }
+
+    function closeConfirmDelete() {
+      pendingDeleteIndex = null;
+      document.getElementById('confirmDeleteModal').classList.remove('active');
+    }
+
+    function executeDeleteCompra() {
+      if (pendingDeleteIndex !== null) {
+        comprasData.splice(pendingDeleteIndex, 1);
         localStorage.setItem('vortex_compras_data', JSON.stringify(comprasData));
         syncSupabaseCompras();
+        closeConfirmDelete();
         renderComprasTable();
+        showCustomAlert('Excluído', 'O pedido de compra foi removido.', '🗑️');
       }
     }
 

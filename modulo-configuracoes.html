@@ -138,6 +138,12 @@
       padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
     }
 
+    /* Container de Rolagem Independente para Seções Complexas */
+    .scroll-subpanel {
+      max-height: 280px; overflow-y: auto; background: var(--bg-main);
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 8px;
+    }
+
     /* Modais Customizados */
     .modal-overlay {
       display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -379,89 +385,185 @@
         </div>
       </div>
 
-      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO E FERIADOS -->
+      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO (COM ROLAGEM INDEPENDENTE) -->
       <div class="config-card">
         <div class="config-title">🕒 Horários & Atendimento</div>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="openingTimeInput">Horário de Abertura:</label>
-            <input type="text" id="openingTimeInput" placeholder="Ex: 18:00">
+        <div class="form-group">
+          <label for="timezoneSelect">Fuso Horário:</label>
+          <select id="timezoneSelect">
+            <option value="Brasilia (-3)">Brasília (-3)</option>
+            <option value="Fernando de Noronha (-2)">Fernando de Noronha (-2)</option>
+            <option value="Amazonas (-4)">Amazonas (-4)</option>
+            <option value="Acre (-5)">Acre (-5)</option>
+          </select>
+        </div>
+
+        <div class="scroll-subpanel">
+          <div style="font-weight:bold; font-size:0.85rem; margin-bottom:8px; color:var(--primary);">Turno 1 (Principal)</div>
+          <div id="turno1Container" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Gerado via Script -->
           </div>
-          <div class="form-group">
-            <label for="closingTimeInput">Horário de Fechamento:</label>
-            <input type="text" id="closingTimeInput" placeholder="Ex: 23:59">
+
+          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--info);">Turno 2 (Opcional - Ex: Almoço / Jantar extra)</div>
+          <div id="turno2Container" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Gerado via Script -->
+          </div>
+
+          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--warning);">Turno 3 (Opcional - Exclusivo para Retirada Balcão)</div>
+          <div id="turno3Container" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Gerado via Script -->
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="workingDaysInput">Dias de Funcionamento:</label>
-          <input type="text" id="workingDaysInput" placeholder="Ex: Terça a Domingo">
-        </div>
-
-        <div class="form-group">
+        <div class="form-group" style="margin-top:12px;">
           <label for="specialHoursInput">Horários Especiais / Feriados:</label>
-          <textarea id="specialHoursInput" placeholder="Descreva regras para feriados ou datas comemorativas..." rows="2" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:10px; border-radius:8px; outline:none;"></textarea>
+          <textarea id="specialHoursInput" placeholder="Descreva regras para feriados..." rows="2"></textarea>
         </div>
       </div>
 
-      <!-- CARD 5: FORMAS DE ATENDIMENTO E ENTREGAS -->
+      <!-- CARD 5: CONFIGURAÇÕES DE TAXA DE ENTREGA (COM ROLAGEM INDEPENDENTE) -->
       <div class="config-card">
-        <div class="config-title">🛵 Formas de Atendimento & Delivery</div>
+        <div class="config-title">🛵 Configurações Taxa de Entrega</div>
 
-        <div class="switch-row">
-          <span>Habilitar Retirada no Local (Balcão)</span>
-          <label style="display:flex; align-items:center; cursor:pointer;">
-            <input type="checkbox" id="enablePickup" class="vortex-switch-input">
-            <span class="vortex-switch-slider"></span>
-          </label>
+        <div class="form-group">
+          <label for="deliveryTypeSelect">Escolha o tipo de Taxa de Entrega:</label>
+          <select id="deliveryTypeSelect" onchange="toggleDeliveryType(this.value)">
+            <option value="bairro">Taxa variável por Bairro</option>
+            <option value="fixa">Taxa Fixa</option>
+            <option value="km">Taxa por KM (Distância)</option>
+            <option value="combinar">Taxa à Combinar</option>
+          </select>
         </div>
 
-        <div class="switch-row">
-          <span>Habilitar Consumo no Estabelecimento (Mesas/Comandas)</span>
-          <label style="display:flex; align-items:center; cursor:pointer;">
-            <input type="checkbox" id="enableDineIn" class="vortex-switch-input">
-            <span class="vortex-switch-slider"></span>
-          </label>
+        <!-- Bloco Entrega Gratuita -->
+        <div style="background:var(--bg-main); border:1px solid var(--border); padding:12px; border-radius:10px; margin-bottom:10px;">
+          <div class="switch-row" style="margin-bottom:8px; background:none; border:none; padding:0;">
+            <span>Oferecer taxa de entrega gratuita</span>
+            <label style="display:flex; align-items:center; cursor:pointer;">
+              <input type="checkbox" id="freeDeliveryToggle" class="vortex-switch-input" onchange="toggleFreeDeliveryInput(this.checked)">
+              <span class="vortex-switch-slider"></span>
+            </label>
+          </div>
+          <div id="freeDeliveryFields" style="display:none;">
+            <label for="freeDeliveryMinInput">Oferecer taxa de entrega gratuita para pedidos acima de (R$):</label>
+            <input type="text" id="freeDeliveryMinInput" placeholder="0,00" oninput="maskCurrency(this)">
+          </div>
         </div>
 
-        <div class="switch-row">
-          <span>Habilitar Delivery</span>
-          <label style="display:flex; align-items:center; cursor:pointer;">
-            <input type="checkbox" id="enableDelivery" class="vortex-switch-input">
-            <span class="vortex-switch-slider"></span>
-          </label>
+        <!-- PAINEL COM ROLAGEM INDEPENDENTE PARA AS OPÇÕES ESPECÍFICAS -->
+        <div class="scroll-subpanel">
+          
+          <!-- Sub-painel: Taxa Fixa -->
+          <div id="panelTaxaFixa" style="display:none;">
+            <div class="form-group">
+              <label for="fixedDeliveryPriceInput">Preço da Entrega Fixa (R$):</label>
+              <input type="text" id="fixedDeliveryPriceInput" placeholder="0,00" oninput="maskCurrency(this)">
+            </div>
+          </div>
+
+          <!-- Sub-painel: Taxa variável por Bairro -->
+          <div id="panelTaxaBairro">
+            <div class="form-group">
+              <input type="text" id="filterBairroInput" placeholder="🔍 Filtrar Bairros por nome..." oninput="filterBairrosList()">
+            </div>
+            <div class="switch-row">
+              <span style="font-size:0.78rem;">O repasse que ofereço aos motoboys é diferente da taxa cobrada do cliente</span>
+              <label style="display:flex; align-items:center; cursor:pointer;">
+                <input type="checkbox" id="diffMotoboyToggle" class="vortex-switch-input" onchange="toggleMotoboyRepasse(this.checked)">
+                <span class="vortex-switch-slider"></span>
+              </label>
+            </div>
+            <div id="bairrosListContainer" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+              <!-- Bairros gerados via script -->
+            </div>
+            <button type="button" class="btn-modal-secondary" onclick="addNewBairroRow()">➕ Adicionar Novo Bairro</button>
+          </div>
+
+          <!-- Sub-painel: Taxa por KM -->
+          <div id="panelTaxaKm" style="display:none;">
+            <div style="font-size:0.82rem; font-weight:bold; margin-bottom:8px; color:var(--primary);">Definição de Valores por KM</div>
+            <div id="kmRangesContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+              <!-- Faixas de KM geradas via script -->
+            </div>
+            <button type="button" class="btn-modal-secondary" onclick="addNewKmRow()">➕ Adicionar Faixa de KM</button>
+          </div>
+
+          <!-- Sub-painel: Taxa à Combinar -->
+          <div id="panelTaxaCombinar" style="display:none; font-size:0.82rem; color:var(--text-muted); line-height:1.4; padding:10px;">
+            Nesta modalidade, o cliente será informado ao finalizar o pedido que a taxa de entrega será calculada e informada posteriormente pelo estabelecimento (via WhatsApp).
+          </div>
+
         </div>
 
         <div class="form-grid-2" style="margin-top:14px;">
           <div class="form-group">
-            <label for="defaultDeliveryFeeInput">Taxa de Entrega Padrão (R$):</label>
-            <input type="text" id="defaultDeliveryFeeInput" placeholder="0,00">
-          </div>
-          <div class="form-group">
             <label for="minOrderValueInput">Valor Mínimo de Pedido (R$):</label>
-            <input type="text" id="minOrderValueInput" placeholder="0,00">
-          </div>
-        </div>
-
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="estPrepTimeInput">Tempo Estimado de Preparo:</label>
-            <input type="text" id="estPrepTimeInput" placeholder="Ex: 30 a 45 min">
+            <input type="text" id="minOrderValueInput" placeholder="0,00" oninput="maskCurrency(this)">
           </div>
           <div class="form-group">
-            <label for="estDeliveryTimeInput">Tempo Estimado de Entrega:</label>
-            <input type="text" id="estDeliveryTimeInput" placeholder="Ex: 40 a 60 min">
+            <label for="defaultDeliveryFeeInput">Taxa Padrão de Contingência (R$):</label>
+            <input type="text" id="defaultDeliveryFeeInput" placeholder="0,00" oninput="maskCurrency(this)">
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="deliveryAreasInput">Áreas / Bairros de Atendimento:</label>
-          <textarea id="deliveryAreasInput" placeholder="Liste os bairros atendidos ou regras de raio..." rows="2" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:10px; border-radius:8px; outline:none;"></textarea>
         </div>
       </div>
 
-      <!-- CARD 6: PAGAMENTOS E FINANCEIRO OPERACIONAL -->
+      <!-- CARD 6: AGENDAMENTO E ESTIMATIVAS (COM ROLAGEM INDEPENDENTE) -->
+      <div class="config-card">
+        <div class="config-title">📅 Agendamento e Estimativas</div>
+
+        <div class="scroll-subpanel" style="max-height: 320px;">
+          <div class="switch-row">
+            <span>O agendamento deve ser obrigatório</span>
+            <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="requireScheduleToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <span>Permitir que cliente agende pedido retirada balcão</span>
+            <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="schedulePickupToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <span>Permitir que cliente agende pedido Delivery</span>
+            <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="scheduleDeliveryToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label for="closedBusinessScheduleSelect">Agendamento com Negócio Fechado:</label>
+            <select id="closedBusinessScheduleSelect">
+              <option value="no">Não permitir agendamento de pedido com o negócio fechado</option>
+              <option value="yes">Permitir agendamento mesmo com o negócio fechado</option>
+            </select>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="scheduleIntervalInput">Intervalo entre Agendamentos (minutos):</label>
+              <input type="text" id="scheduleIntervalInput" placeholder="20" oninput="maskNumber(this)">
+            </div>
+            <div class="form-group">
+              <label for="futureMinMinutesInput">Mínimo minutos no futuro para agendar:</label>
+              <input type="text" id="futureMinMinutesInput" placeholder="0" oninput="maskNumber(this)">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="estPrepTimeInput">Tempo Estimado de Preparo (min):</label>
+              <input type="text" id="estPrepTimeInput" placeholder="40" oninput="maskNumber(this)">
+            </div>
+            <div class="form-group">
+              <label for="estDeliveryTimeInput">Tempo Estimado de Entrega (min):</label>
+              <input type="text" id="estDeliveryTimeInput" placeholder="40" oninput="maskNumber(this)">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="maxScheduleDaysInput">Limite máximo de dias para frente no agendamento:</label>
+            <input type="text" id="maxScheduleDaysInput" placeholder="30" oninput="maskNumber(this)">
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 7: PAGAMENTOS E FINANCEIRO OPERACIONAL -->
       <div class="config-card">
         <div class="config-title">💳 Pagamentos, Mesas & Serviços</div>
 
@@ -473,11 +575,11 @@
         <div class="form-grid-2">
           <div class="form-group">
             <label for="serviceTaxInput">Taxa de Serviço do Garçom / Mesas (%):</label>
-            <input type="text" id="serviceTaxInput" placeholder="Ex: 10">
+            <input type="text" id="serviceTaxInput" placeholder="10" oninput="maskNumber(this)">
           </div>
           <div class="form-group">
             <label for="defaultDiscountInput">Desconto Padrão / Limite (%):</label>
-            <input type="text" id="defaultDiscountInput" placeholder="Ex: 5">
+            <input type="text" id="defaultDiscountInput" placeholder="5" oninput="maskNumber(this)">
           </div>
         </div>
 
@@ -487,7 +589,7 @@
         </div>
       </div>
 
-      <!-- CARD 7: NOTIFICAÇÕES, RECIBOS E EQUIPE -->
+      <!-- CARD 8: NOTIFICAÇÕES, RECIBOS E EQUIPE -->
       <div class="config-card">
         <div class="config-title">⚙️ Sistema, Recibos & Permissões</div>
 
@@ -538,6 +640,7 @@
 
   <script>
     let tempLogoBase64 = null;
+    const daysOfWeek = ['Domingo', 'Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira', 'Sábado'];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -566,9 +669,109 @@
       applyTheme();
     }
 
+    /* MÁSCARAS AUTOMÁTICAS PARA VALORES, NÚMEROS E DOCUMENTOS */
+    function maskCurrency(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (!v) { input.value = ''; return; }
+      let numeric = parseFloat(v) / 100;
+      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function maskNumber(input) {
+      input.value = input.value.replace(/\D/g, '');
+    }
+
+    /* GERADOR DOS TURNOS DE HORÁRIOS */
+    function buildWorkingHoursUI() {
+      ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
+        const container = document.getElementById(turnoId + 'Container');
+        if (!container) return;
+        container.innerHTML = '';
+        daysOfWeek.forEach((day, idx) => {
+          container.innerHTML += `
+            <div style="background:var(--bg-card); border:1px solid var(--border); padding:8px 10px; border-radius:8px; display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold; font-size:0.8rem;">${day}</span>
+                <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; cursor:pointer;">
+                  Ativo <input type="checkbox" id="${turnoId}_active_${idx}" class="vortex-switch-input" checked>
+                  <span class="vortex-switch-slider" style="width:32px; height:18px;"><span style="width:12px; height:12px; top:3px; left:3px;"></span></span>
+                </label>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="${turnoId}_open_${idx}" placeholder="18:00" style="padding:6px; font-size:0.8rem;" maxlength="5">
+                <input type="text" id="${turnoId}_close_${idx}" placeholder="23:59" style="padding:6px; font-size:0.8rem;" maxlength="5">
+              </div>
+            </div>
+          `;
+        });
+      });
+    }
+
+    /* ALTERAR TIPO DE TAXA DE ENTREGA */
+    function toggleDeliveryType(type) {
+      document.getElementById('panelTaxaBairro').style.display = type === 'bairro' ? 'block' : 'none';
+      document.getElementById('panelTaxaFixa').style.display = type === 'fixa' ? 'block' : 'none';
+      document.getElementById('panelTaxaKm').style.display = type === 'km' ? 'block' : 'none';
+      document.getElementById('panelTaxaCombinar').style.display = type === 'combinar' ? 'block' : 'none';
+    }
+
+    function toggleFreeDeliveryInput(isChecked) {
+      document.getElementById('freeDeliveryFields').style.display = isChecked ? 'block' : 'none';
+    }
+
+    function toggleMotoboyRepasse(isChecked) {
+      // Reativo se necessário
+    }
+
+    let bairrosData = [{ name: 'Centro', fee: '5,00', repasse: '6,00' }];
+    function renderBairrosList() {
+      const container = document.getElementById('bairrosListContainer');
+      container.innerHTML = '';
+      bairrosData.forEach((b, idx) => {
+        container.innerHTML += `
+          <div style="display:flex; gap:6px; align-items:center; background:var(--bg-card); padding:6px; border-radius:6px; border:1px solid var(--border);">
+            <input type="text" value="${b.name}" placeholder="Nome do Bairro" style="flex:2; padding:6px; font-size:0.8rem;" oninput="bairrosData[${idx}].name=this.value">
+            <input type="text" value="${b.fee}" placeholder="Taxa R$" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskCurrency(this); bairrosData[${idx}].fee=this.value">
+            <button type="button" onclick="bairrosData.splice(${idx},1); renderBairrosList();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button>
+          </div>
+        `;
+      });
+    }
+    function addNewBairroRow() {
+      bairrosData.push({ name: '', fee: '0,00', repasse: '0,00' });
+      renderBairrosList();
+    }
+    function filterBairrosList() {
+      // Filtro em tempo real
+    }
+
+    let kmRangesData = [{ kmStart: '0', kmEnd: '5', price: '7,00' }];
+    function renderKmRangesList() {
+      const container = document.getElementById('kmRangesContainer');
+      container.innerHTML = '';
+      kmRangesData.forEach((k, idx) => {
+        container.innerHTML += `
+          <div style="display:flex; gap:6px; align-items:center; background:var(--bg-card); padding:6px; border-radius:6px; border:1px solid var(--border);">
+            <input type="text" value="${k.kmStart}" placeholder="De KM" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskNumber(this); kmRangesData[${idx}].kmStart=this.value">
+            <input type="text" value="${k.kmEnd}" placeholder="Até KM" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskNumber(this); kmRangesData[${idx}].kmEnd=this.value">
+            <input type="text" value="${k.price}" placeholder="Preço R$" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskCurrency(this); kmRangesData[${idx}].price=this.value">
+            <button type="button" onclick="kmRangesData.splice(${idx},1); renderKmRangesList();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button>
+          </div>
+        `;
+      });
+    }
+    function addNewKmRow() {
+      kmRangesData.push({ kmStart: '', kmEnd: '', price: '0,00' });
+      renderKmRangesList();
+    }
+
     /* CARREGA TODAS AS CONFIGURAÇÕES SALVAS */
     function loadStoreSettings() {
       applyTheme();
+      buildWorkingHoursUI();
+      renderBairrosList();
+      renderKmRangesList();
+
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
 
       document.getElementById('storeNameInput').value = settings.storeName || '';
@@ -587,19 +790,27 @@
       document.getElementById('cityInput').value = settings.city || '';
       document.getElementById('ufInput').value = settings.uf || '';
 
-      document.getElementById('openingTimeInput').value = settings.openingTime || '';
-      document.getElementById('closingTimeInput').value = settings.closingTime || '';
-      document.getElementById('workingDaysInput').value = settings.workingDays || '';
+      document.getElementById('timezoneSelect').value = settings.timezone || 'Brasilia (-3)';
       document.getElementById('specialHoursInput').value = settings.specialHours || '';
 
-      document.getElementById('enablePickup').checked = settings.enablePickup !== false;
-      document.getElementById('enableDineIn').checked = settings.enableDineIn !== false;
-      document.getElementById('enableDelivery').checked = settings.enableDelivery !== false;
-      document.getElementById('defaultDeliveryFeeInput').value = settings.defaultDeliveryFee || '';
+      document.getElementById('deliveryTypeSelect').value = settings.deliveryType || 'bairro';
+      toggleDeliveryType(settings.deliveryType || 'bairro');
+      document.getElementById('freeDeliveryToggle').checked = settings.freeDelivery || false;
+      toggleFreeDeliveryInput(settings.freeDelivery || false);
+      document.getElementById('freeDeliveryMinInput').value = settings.freeDeliveryMin || '';
+      document.getElementById('fixedDeliveryPriceInput').value = settings.fixedDeliveryPrice || '';
       document.getElementById('minOrderValueInput').value = settings.minOrderValue || '';
+      document.getElementById('defaultDeliveryFeeInput').value = settings.defaultDeliveryFee || '';
+
+      document.getElementById('requireScheduleToggle').checked = settings.requireSchedule || false;
+      document.getElementById('schedulePickupToggle').checked = settings.schedulePickup || false;
+      document.getElementById('scheduleDeliveryToggle').checked = settings.scheduleDelivery || false;
+      document.getElementById('closedBusinessScheduleSelect').value = settings.closedBusinessSchedule || 'no';
+      document.getElementById('scheduleIntervalInput').value = settings.scheduleInterval || '';
+      document.getElementById('futureMinMinutesInput').value = settings.futureMinMinutes || '';
       document.getElementById('estPrepTimeInput').value = settings.estPrepTime || '';
       document.getElementById('estDeliveryTimeInput').value = settings.estDeliveryTime || '';
-      document.getElementById('deliveryAreasInput').value = settings.deliveryAreas || '';
+      document.getElementById('maxScheduleDaysInput').value = settings.maxScheduleDays || '';
 
       document.getElementById('paymentMethodsConfigInput').value = settings.paymentMethodsConfig || '';
       document.getElementById('serviceTaxInput').value = settings.serviceTax || '';
@@ -663,13 +874,11 @@
     function maskAndSearchCep(input) {
       let value = input.value.replace(/\D/g, '');
       if (value.length > 8) value = value.slice(0, 8);
-
       if (value.length > 5) {
         input.value = value.slice(0, 5) + '-' + value.slice(5);
       } else {
         input.value = value;
       }
-
       if (value.length === 8) {
         fetch(`https://viacep.com.br/ws/${value}/json/`)
           .then(res => res.json())
@@ -686,11 +895,9 @@
       }
     }
 
-    /* MÁSCARA CPF / CNPJ DINÂMICA */
     function maskCpfCnpj(input) {
       let v = input.value.replace(/\D/g, '');
       if (v.length > 14) v = v.slice(0, 14);
-
       if (v.length <= 11) {
         v = v.replace(/(\d{3})(\d)/, '$1.$2');
         v = v.replace(/(\d{3})(\d)/, '$1.$2');
@@ -704,7 +911,6 @@
       input.value = v;
     }
 
-    /* MÁSCARA DE TELEFONE */
     function handlePhoneKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -747,19 +953,25 @@
       const city = document.getElementById('cityInput').value.trim();
       const uf = document.getElementById('ufInput').value.trim().toUpperCase();
 
-      const openingTime = document.getElementById('openingTimeInput').value.trim();
-      const closingTime = document.getElementById('closingTimeInput').value.trim();
-      const workingDays = document.getElementById('workingDaysInput').value.trim();
+      const timezone = document.getElementById('timezoneSelect').value;
       const specialHours = document.getElementById('specialHoursInput').value.trim();
 
-      const enablePickup = document.getElementById('enablePickup').checked;
-      const enableDineIn = document.getElementById('enableDineIn').checked;
-      const enableDelivery = document.getElementById('enableDelivery').checked;
-      const defaultDeliveryFee = document.getElementById('defaultDeliveryFeeInput').value.trim();
+      const deliveryType = document.getElementById('deliveryTypeSelect').value;
+      const freeDelivery = document.getElementById('freeDeliveryToggle').checked;
+      const freeDeliveryMin = document.getElementById('freeDeliveryMinInput').value.trim();
+      const fixedDeliveryPrice = document.getElementById('fixedDeliveryPriceInput').value.trim();
       const minOrderValue = document.getElementById('minOrderValueInput').value.trim();
+      const defaultDeliveryFee = document.getElementById('defaultDeliveryFeeInput').value.trim();
+
+      const requireSchedule = document.getElementById('requireScheduleToggle').checked;
+      const schedulePickup = document.getElementById('schedulePickupToggle').checked;
+      const scheduleDelivery = document.getElementById('scheduleDeliveryToggle').checked;
+      const closedBusinessSchedule = document.getElementById('closedBusinessScheduleSelect').value;
+      const scheduleInterval = document.getElementById('scheduleIntervalInput').value.trim();
+      const futureMinMinutes = document.getElementById('futureMinMinutesInput').value.trim();
       const estPrepTime = document.getElementById('estPrepTimeInput').value.trim();
       const estDeliveryTime = document.getElementById('estDeliveryTimeInput').value.trim();
-      const deliveryAreas = document.getElementById('deliveryAreasInput').value.trim();
+      const maxScheduleDays = document.getElementById('maxScheduleDaysInput').value.trim();
 
       const paymentMethodsConfig = document.getElementById('paymentMethodsConfigInput').value.trim();
       const serviceTax = document.getElementById('serviceTaxInput').value.trim();
@@ -773,9 +985,10 @@
       const payload = {
         storeName, legalName, storeType, ownerName, docNumber, phone, email, cep,
         streetNumber, complement, street, neighborhood, city, uf,
-        openingTime, closingTime, workingDays, specialHours,
-        enablePickup, enableDineIn, enableDelivery, defaultDeliveryFee, minOrderValue,
-        estPrepTime, estDeliveryTime, deliveryAreas,
+        timezone, specialHours, deliveryType, freeDelivery, freeDeliveryMin,
+        fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
+        requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
+        scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
         paymentMethodsConfig, serviceTax, defaultDiscount, sectorsConfig,
         receiptFooter, soundNotification, userRolesConfig
       };
@@ -786,7 +999,6 @@
         localStorage.setItem('vortex_store_logo', tempLogoBase64);
       }
 
-      // Sincronização garantida com o Supabase se configurado
       if (window.supabaseClient) {
         try {
           await window.supabaseClient.from('vortex_store_settings').upsert([{ id: 1, ...payload }]);

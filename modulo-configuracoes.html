@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Configurações</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -16,6 +19,7 @@
       --border: #334155;
       --success: #22c55e;
       --danger: #ef4444;
+      --warning: #eab308;
       --info: #38bdf8;
     }
 
@@ -40,7 +44,7 @@
       background: rgba(0, 0, 0, 0.6); z-index: 99;
     }
 
-    /* Menu Lateral */
+    /* Menu Lateral Completo Padronizado */
     .sidebar {
       width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -77,7 +81,7 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .config-container {
-      display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin-bottom: 40px;
+      display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin-bottom: 40px;
     }
 
     .config-card {
@@ -95,18 +99,32 @@
     .form-group { margin-bottom: 14px; }
     label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 600; }
     
-    input[type="text"], input[type="email"], input[type="file"] {
+    input[type="text"], input[type="email"], input[type="file"], select, textarea {
       background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main);
       width: 100%; padding: 10px; border-radius: 8px; font-size: 0.88rem; outline: none;
       transition: border-color 0.2s;
     }
-    input:focus { border-color: var(--primary); }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
 
     .logo-preview-box {
       display: flex; align-items: center; gap: 15px; margin-top: 10px; background: var(--bg-main);
       padding: 12px; border-radius: 10px; border: 1px solid var(--border);
     }
     .logo-preview-img { width: 50px; height: 50px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid var(--border); }
+
+    .switch-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-main); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; margin-bottom: 10px; font-size: 0.88rem; }
+    
+    .vortex-switch-input { display: none !important; }
+    .vortex-switch-slider {
+      width: 44px; height: 24px; background-color: #334155; border-radius: 20px;
+      position: relative; display: inline-block; transition: background-color 0.3s; cursor: pointer;
+    }
+    .vortex-switch-slider::before {
+      content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+      background-color: #ffffff; top: 3px; left: 3px; transition: transform 0.3s;
+    }
+    .vortex-switch-input:checked + .vortex-switch-slider { background-color: var(--primary); }
+    .vortex-switch-input:checked + .vortex-switch-slider::before { transform: translateX(20px); }
 
     .btn-save {
       background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 12px;
@@ -165,7 +183,7 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-  <!-- MENU LATERAL -->
+  <!-- MENU LATERAL COMPLETO -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="store-brand">
@@ -183,17 +201,21 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
-        <span class="nav-section-title">PRODUTOS</span>
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
         <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
         <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
         <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
         <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
         <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">ADMINISTRAÇÃO</span>
@@ -204,6 +226,9 @@
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
         <a href="modulo-configuracoes.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
       </div>
     </nav>
 
@@ -227,91 +252,52 @@
 
     <div class="config-container">
       
-      <!-- CARD DE CONFIGURAÇÃO DE TEMA DO SISTEMA -->
-<style>
-  .vortex-switch-input { display: none !important; }
-  .vortex-switch-slider {
-    width: 50px;
-    height: 26px;
-    background-color: #334155;
-    border-radius: 20px;
-    position: relative;
-    display: inline-block;
-    transition: background-color 0.3s;
-    cursor: pointer;
-  }
-  .vortex-switch-slider::before {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background-color: #ffffff;
-    top: 3px;
-    left: 3px;
-    transition: transform 0.3s;
-  }
-  .vortex-switch-input:checked + .vortex-switch-slider {
-    background-color: #f97316;
-  }
-  .vortex-switch-input:checked + .vortex-switch-slider::before {
-    transform: translateX(24px);
-  }
-</style>
+      <!-- CARD: APARÊNCIA E TEMA -->
+      <div class="config-card">
+        <div class="config-title">🎨 Aparência e Tema do Sistema</div>
+        <div class="switch-row">
+          <div>
+            <div style="font-weight:bold;">Modo de Visualização</div>
+            <div style="font-size:0.8rem; color:var(--text-muted);" id="themeDescText">Atualmente em Tema Escuro 🌙</div>
+          </div>
+          <label style="display: flex; align-items: center; cursor: pointer;">
+            <input type="checkbox" id="themeToggle" class="vortex-switch-input" onchange="changeTheme(this.checked)">
+            <span class="vortex-switch-slider"></span>
+          </label>
+        </div>
+      </div>
 
-<div class="card-box" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-  <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-    🎨 Aparência e Tema do Sistema
-  </div>
-  <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 14px 16px; border-radius: 10px;">
-    <div>
-      <div style="font-weight:bold; font-size:0.95rem;">Modo de Visualização</div>
-      <div style="font-size:0.8rem; color:var(--text-muted);" id="themeDescText">Atualmente em Tema Escuro 🌙</div>
-    </div>
-    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-      <input type="checkbox" id="themeToggle" class="vortex-switch-input" onchange="changeTheme(this.checked)">
-      <span class="vortex-switch-slider"></span>
-    </label>
-  </div>
-</div>
-
-<script>
-  function applyTheme() {
-    const savedTheme = localStorage.getItem('vortex_theme') || 'dark';
-    const toggle = document.getElementById('themeToggle');
-    const desc = document.getElementById('themeDescText');
-
-    if (savedTheme === 'light') {
-      document.body.classList.add('light-theme');
-      if (toggle) toggle.checked = true;
-      if (desc) desc.innerText = 'Atualmente em Tema Claro ☀️';
-    } else {
-      document.body.classList.remove('light-theme');
-      if (toggle) toggle.checked = false;
-      if (desc) desc.innerText = 'Atualmente em Tema Escuro 🌙';
-    }
-  }
-
-  function changeTheme(isLight) {
-    const theme = isLight ? 'light' : 'dark';
-    localStorage.setItem('vortex_theme', theme);
-    applyTheme();
-  }
-
-  window.addEventListener('DOMContentLoaded', applyTheme);
-</script>
-      
       <!-- CARD 1: IDENTIDADE E LOGOTIPO -->
       <div class="config-card">
         <div class="config-title">🏷️ Identidade da Loja</div>
 
-        <div class="form-group">
-          <label for="storeNameInput">Nome do Estabelecimento:</label>
-          <input type="text" id="storeNameInput" placeholder="Ex: BESTBURGUERS">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="storeNameInput">Nome Fantasia:</label>
+            <input type="text" id="storeNameInput" placeholder="">
+          </div>
+          <div class="form-group">
+            <label for="legalNameInput">Razão Social:</label>
+            <input type="text" id="legalNameInput" placeholder="">
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="storeLogoInput">Logotipo do Estabelecimento (Exibido no menu lateral):</label>
+          <label for="storeTypeSelect">Tipo de Estabelecimento:</label>
+          <select id="storeTypeSelect">
+            <option value="">Selecione o ramo...</option>
+            <option value="Hamburgueria">Hamburgueria / Lanchonete</option>
+            <option value="Pizzaria">Pizzaria</option>
+            <option value="Restaurante">Restaurante / Comida Caseira</option>
+            <option value="Padaria">Padaria / Confeitaria</option>
+            <option value="Japonesa">Culinária Japonesa / Oriental</option>
+            <option value="Acai">Açaí / Sorveteria</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="storeLogoInput">Logotipo do Estabelecimento:</label>
           <input type="file" id="storeLogoInput" accept="image/*" onchange="handleLogoUpload(this)">
           
           <div class="logo-preview-box" id="logoPreviewBox" style="display:none;">
@@ -324,72 +310,203 @@
         </div>
       </div>
 
-      <!-- CARD 2: DADOS DO RESPONSÁVEL E DOCUMENTOS -->
+      <!-- CARD 2: RESPONSÁVEL E CONTATOS -->
       <div class="config-card">
-        <div class="config-title">👤 Responsável & Documentos</div>
+        <div class="config-title">👤 Responsável & Contato</div>
 
         <div class="form-grid-2">
           <div class="form-group">
             <label for="ownerNameInput">Nome do Proprietário / Responsável:</label>
-            <input type="text" id="ownerNameInput" placeholder="Ex: Gabriel Gustavo">
+            <input type="text" id="ownerNameInput" placeholder="">
           </div>
           <div class="form-group">
             <label for="docNumberInput">CPF ou CNPJ:</label>
-            <input type="text" id="docNumberInput" placeholder="000.000.000-00 ou 00.000.000/0001-00" oninput="maskCpfCnpj(this)">
+            <input type="text" id="docNumberInput" placeholder="" oninput="maskCpfCnpj(this)">
           </div>
         </div>
 
         <div class="form-grid-2">
           <div class="form-group">
             <label for="storePhoneInput">WhatsApp / Telefone Principal:</label>
-            <input type="text" id="storePhoneInput" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
+            <input type="text" id="storePhoneInput" placeholder="" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
           </div>
           <div class="form-group">
             <label for="storeEmailInput">E-mail de Contato:</label>
-            <input type="email" id="storeEmailInput" placeholder="contato@estabelecimento.com">
+            <input type="email" id="storeEmailInput" placeholder="">
           </div>
         </div>
       </div>
 
-      <!-- CARD 3: ENDEREÇO E LOCALIZAÇÃO COM BUSCA DE CEP -->
+      <!-- CARD 3: ENDEREÇO -->
       <div class="config-card">
         <div class="config-title">📍 Endereço do Estabelecimento</div>
 
         <div class="form-grid-3">
           <div class="form-group">
-            <label for="cepInput">CEP (Busca Automática):</label>
-            <input type="text" id="cepInput" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)">
+            <label for="cepInput">CEP:</label>
+            <input type="text" id="cepInput" placeholder="" maxlength="9" oninput="maskAndSearchCep(this)">
           </div>
           <div class="form-group">
             <label for="streetNumberInput">Número:</label>
-            <input type="text" id="streetNumberInput" placeholder="Ex: 123">
+            <input type="text" id="streetNumberInput" placeholder="">
           </div>
           <div class="form-group">
             <label for="complementInput">Complemento:</label>
-            <input type="text" id="complementInput" placeholder="Ex: Sala 2 / Bloco A">
+            <input type="text" id="complementInput" placeholder="">
           </div>
         </div>
 
         <div class="form-group">
           <label for="streetInput">Rua / Logradouro:</label>
-          <input type="text" id="streetInput" placeholder="Rua do Estabelecimento">
+          <input type="text" id="streetInput" placeholder="">
         </div>
 
         <div class="form-grid-2">
           <div class="form-group">
             <label for="neighborhoodInput">Bairro:</label>
-            <input type="text" id="neighborhoodInput" placeholder="Bairro">
+            <input type="text" id="neighborhoodInput" placeholder="">
           </div>
           <div class="form-grid-2">
             <div class="form-group">
               <label for="cityInput">Cidade:</label>
-              <input type="text" id="cityInput" placeholder="Cidade">
+              <input type="text" id="cityInput" placeholder="">
             </div>
             <div class="form-group">
               <label for="ufInput">UF:</label>
-              <input type="text" id="ufInput" placeholder="SP" maxlength="2" style="text-transform:uppercase;">
+              <input type="text" id="ufInput" placeholder="" maxlength="2" style="text-transform:uppercase;">
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO E FERIADOS -->
+      <div class="config-card">
+        <div class="config-title">🕒 Horários & Atendimento</div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="openingTimeInput">Horário de Abertura:</label>
+            <input type="text" id="openingTimeInput" placeholder="Ex: 18:00">
+          </div>
+          <div class="form-group">
+            <label for="closingTimeInput">Horário de Fechamento:</label>
+            <input type="text" id="closingTimeInput" placeholder="Ex: 23:59">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="workingDaysInput">Dias de Funcionamento:</label>
+          <input type="text" id="workingDaysInput" placeholder="Ex: Terça a Domingo">
+        </div>
+
+        <div class="form-group">
+          <label for="specialHoursInput">Horários Especiais / Feriados:</label>
+          <textarea id="specialHoursInput" placeholder="Descreva regras para feriados ou datas comemorativas..." rows="2" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:10px; border-radius:8px; outline:none;"></textarea>
+        </div>
+      </div>
+
+      <!-- CARD 5: FORMAS DE ATENDIMENTO E ENTREGAS -->
+      <div class="config-card">
+        <div class="config-title">🛵 Formas de Atendimento & Delivery</div>
+
+        <div class="switch-row">
+          <span>Habilitar Retirada no Local (Balcão)</span>
+          <label style="display:flex; align-items:center; cursor:pointer;">
+            <input type="checkbox" id="enablePickup" class="vortex-switch-input">
+            <span class="vortex-switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <span>Habilitar Consumo no Estabelecimento (Mesas/Comandas)</span>
+          <label style="display:flex; align-items:center; cursor:pointer;">
+            <input type="checkbox" id="enableDineIn" class="vortex-switch-input">
+            <span class="vortex-switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <span>Habilitar Delivery</span>
+          <label style="display:flex; align-items:center; cursor:pointer;">
+            <input type="checkbox" id="enableDelivery" class="vortex-switch-input">
+            <span class="vortex-switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="form-grid-2" style="margin-top:14px;">
+          <div class="form-group">
+            <label for="defaultDeliveryFeeInput">Taxa de Entrega Padrão (R$):</label>
+            <input type="text" id="defaultDeliveryFeeInput" placeholder="0,00">
+          </div>
+          <div class="form-group">
+            <label for="minOrderValueInput">Valor Mínimo de Pedido (R$):</label>
+            <input type="text" id="minOrderValueInput" placeholder="0,00">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="estPrepTimeInput">Tempo Estimado de Preparo:</label>
+            <input type="text" id="estPrepTimeInput" placeholder="Ex: 30 a 45 min">
+          </div>
+          <div class="form-group">
+            <label for="estDeliveryTimeInput">Tempo Estimado de Entrega:</label>
+            <input type="text" id="estDeliveryTimeInput" placeholder="Ex: 40 a 60 min">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="deliveryAreasInput">Áreas / Bairros de Atendimento:</label>
+          <textarea id="deliveryAreasInput" placeholder="Liste os bairros atendidos ou regras de raio..." rows="2" style="background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); width:100%; padding:10px; border-radius:8px; outline:none;"></textarea>
+        </div>
+      </div>
+
+      <!-- CARD 6: PAGAMENTOS E FINANCEIRO OPERACIONAL -->
+      <div class="config-card">
+        <div class="config-title">💳 Pagamentos, Mesas & Serviços</div>
+
+        <div class="form-group">
+          <label for="paymentMethodsConfigInput">Formas de Pagamento Aceitas:</label>
+          <input type="text" id="paymentMethodsConfigInput" placeholder="Ex: Pix, Cartão de Crédito/Débito, Dinheiro, VR">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="serviceTaxInput">Taxa de Serviço do Garçom / Mesas (%):</label>
+            <input type="text" id="serviceTaxInput" placeholder="Ex: 10">
+          </div>
+          <div class="form-group">
+            <label for="defaultDiscountInput">Desconto Padrão / Limite (%):</label>
+            <input type="text" id="defaultDiscountInput" placeholder="Ex: 5">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="sectorsConfigInput">Configuração de Mesas, Balcões e Setores:</label>
+          <input type="text" id="sectorsConfigInput" placeholder="Ex: Salão Principal, Área Externa, Balcão">
+        </div>
+      </div>
+
+      <!-- CARD 7: NOTIFICAÇÕES, RECIBOS E EQUIPE -->
+      <div class="config-card">
+        <div class="config-title">⚙️ Sistema, Recibos & Permissões</div>
+
+        <div class="form-group">
+          <label for="receiptFooterInput">Texto de Rodapé para Recibos e Comprovantes:</label>
+          <input type="text" id="receiptFooterInput" placeholder="Ex: Obrigado pela preferência! Volte sempre.">
+        </div>
+
+        <div class="switch-row">
+          <span>Emitir Alerta Sonoro Automático para Novos Pedidos</span>
+          <label style="display:flex; align-items:center; cursor:pointer;">
+            <input type="checkbox" id="soundNotificationToggle" class="vortex-switch-input" checked>
+            <span class="vortex-switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label for="userRolesConfigInput">Configuração de Usuários, Funções e Permissões:</label>
+          <input type="text" id="userRolesConfigInput" placeholder="Ex: Administrador, Caixa, Cozinheiro, Entregador">
         </div>
       </div>
 
@@ -428,33 +545,36 @@
     }
 
     function applyTheme() {
-      if (localStorage.getItem('vortex_theme') === 'light') {
+      const savedTheme = localStorage.getItem('vortex_theme') || 'dark';
+      const toggle = document.getElementById('themeToggle');
+      const desc = document.getElementById('themeDescText');
+
+      if (savedTheme === 'light') {
         document.body.classList.add('light-theme');
+        if (toggle) toggle.checked = true;
+        if (desc) desc.innerText = 'Atualmente em Tema Claro ☀️';
       } else {
         document.body.classList.remove('light-theme');
+        if (toggle) toggle.checked = false;
+        if (desc) desc.innerText = 'Atualmente em Tema Escuro 🌙';
       }
+    }
+
+    function changeTheme(isLight) {
+      const theme = isLight ? 'light' : 'dark';
+      localStorage.setItem('vortex_theme', theme);
+      applyTheme();
     }
 
     /* CARREGA TODAS AS CONFIGURAÇÕES SALVAS */
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {
-        storeName: 'BESTBURGUERS',
-        ownerName: '',
-        docNumber: '',
-        phone: '',
-        email: '',
-        cep: '',
-        streetNumber: '',
-        complement: '',
-        street: '',
-        neighborhood: '',
-        city: '',
-        uf: ''
-      };
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
 
-      document.getElementById('storeNameInput').value = settings.storeName || 'BESTBURGUERS';
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      document.getElementById('storeNameInput').value = settings.storeName || '';
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      document.getElementById('legalNameInput').value = settings.legalName || '';
+      document.getElementById('storeTypeSelect').value = settings.storeType || '';
       document.getElementById('ownerNameInput').value = settings.ownerName || '';
       document.getElementById('docNumberInput').value = settings.docNumber || '';
       document.getElementById('storePhoneInput').value = settings.phone || '';
@@ -466,6 +586,29 @@
       document.getElementById('neighborhoodInput').value = settings.neighborhood || '';
       document.getElementById('cityInput').value = settings.city || '';
       document.getElementById('ufInput').value = settings.uf || '';
+
+      document.getElementById('openingTimeInput').value = settings.openingTime || '';
+      document.getElementById('closingTimeInput').value = settings.closingTime || '';
+      document.getElementById('workingDaysInput').value = settings.workingDays || '';
+      document.getElementById('specialHoursInput').value = settings.specialHours || '';
+
+      document.getElementById('enablePickup').checked = settings.enablePickup !== false;
+      document.getElementById('enableDineIn').checked = settings.enableDineIn !== false;
+      document.getElementById('enableDelivery').checked = settings.enableDelivery !== false;
+      document.getElementById('defaultDeliveryFeeInput').value = settings.defaultDeliveryFee || '';
+      document.getElementById('minOrderValueInput').value = settings.minOrderValue || '';
+      document.getElementById('estPrepTimeInput').value = settings.estPrepTime || '';
+      document.getElementById('estDeliveryTimeInput').value = settings.estDeliveryTime || '';
+      document.getElementById('deliveryAreasInput').value = settings.deliveryAreas || '';
+
+      document.getElementById('paymentMethodsConfigInput').value = settings.paymentMethodsConfig || '';
+      document.getElementById('serviceTaxInput').value = settings.serviceTax || '';
+      document.getElementById('defaultDiscountInput').value = settings.defaultDiscount || '';
+      document.getElementById('sectorsConfigInput').value = settings.sectorsConfig || '';
+
+      document.getElementById('receiptFooterInput').value = settings.receiptFooter || '';
+      document.getElementById('soundNotificationToggle').checked = settings.soundNotification !== false;
+      document.getElementById('userRolesConfigInput').value = settings.userRolesConfig || '';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -587,9 +730,11 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    /* SALVAR TODAS AS CONFIGURAÇÕES */
-    function saveAllSettings() {
-      const storeName = document.getElementById('storeNameInput').value.trim() || 'BESTBURGUERS';
+    /* SALVAR TODAS AS CONFIGURAÇÕES E SINCRONIZAR COM SUPABASE */
+    async function saveAllSettings() {
+      const storeName = document.getElementById('storeNameInput').value.trim();
+      const legalName = document.getElementById('legalNameInput').value.trim();
+      const storeType = document.getElementById('storeTypeSelect').value;
       const ownerName = document.getElementById('ownerNameInput').value.trim();
       const docNumber = document.getElementById('docNumberInput').value.trim();
       const phone = document.getElementById('storePhoneInput').value.trim();
@@ -602,9 +747,37 @@
       const city = document.getElementById('cityInput').value.trim();
       const uf = document.getElementById('ufInput').value.trim().toUpperCase();
 
+      const openingTime = document.getElementById('openingTimeInput').value.trim();
+      const closingTime = document.getElementById('closingTimeInput').value.trim();
+      const workingDays = document.getElementById('workingDaysInput').value.trim();
+      const specialHours = document.getElementById('specialHoursInput').value.trim();
+
+      const enablePickup = document.getElementById('enablePickup').checked;
+      const enableDineIn = document.getElementById('enableDineIn').checked;
+      const enableDelivery = document.getElementById('enableDelivery').checked;
+      const defaultDeliveryFee = document.getElementById('defaultDeliveryFeeInput').value.trim();
+      const minOrderValue = document.getElementById('minOrderValueInput').value.trim();
+      const estPrepTime = document.getElementById('estPrepTimeInput').value.trim();
+      const estDeliveryTime = document.getElementById('estDeliveryTimeInput').value.trim();
+      const deliveryAreas = document.getElementById('deliveryAreasInput').value.trim();
+
+      const paymentMethodsConfig = document.getElementById('paymentMethodsConfigInput').value.trim();
+      const serviceTax = document.getElementById('serviceTaxInput').value.trim();
+      const defaultDiscount = document.getElementById('defaultDiscountInput').value.trim();
+      const sectorsConfig = document.getElementById('sectorsConfigInput').value.trim();
+
+      const receiptFooter = document.getElementById('receiptFooterInput').value.trim();
+      const soundNotification = document.getElementById('soundNotificationToggle').checked;
+      const userRolesConfig = document.getElementById('userRolesConfigInput').value.trim();
+
       const payload = {
-        storeName, ownerName, docNumber, phone, email, cep,
-        streetNumber, complement, street, neighborhood, city, uf
+        storeName, legalName, storeType, ownerName, docNumber, phone, email, cep,
+        streetNumber, complement, street, neighborhood, city, uf,
+        openingTime, closingTime, workingDays, specialHours,
+        enablePickup, enableDineIn, enableDelivery, defaultDeliveryFee, minOrderValue,
+        estPrepTime, estDeliveryTime, deliveryAreas,
+        paymentMethodsConfig, serviceTax, defaultDiscount, sectorsConfig,
+        receiptFooter, soundNotification, userRolesConfig
       };
 
       localStorage.setItem('vortex_store_settings', JSON.stringify(payload));
@@ -613,8 +786,17 @@
         localStorage.setItem('vortex_store_logo', tempLogoBase64);
       }
 
+      // Sincronização garantida com o Supabase se configurado
+      if (window.supabaseClient) {
+        try {
+          await window.supabaseClient.from('vortex_store_settings').upsert([{ id: 1, ...payload }]);
+        } catch (err) {
+          console.warn('Aviso Supabase Configurações:', err);
+        }
+      }
+
       loadStoreSettings();
-      showNoticeModal('Configurações Salvas!', 'As informações e a identidade do seu estabelecimento foram atualizadas.', '🎉');
+      showNoticeModal('Configurações Salvas!', 'As informações e a identidade do seu estabelecimento foram atualizadas com sucesso.', '🎉');
     }
 
     function showNoticeModal(title, desc, icon) {

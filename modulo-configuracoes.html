@@ -99,7 +99,7 @@
     .form-group { margin-bottom: 14px; }
     label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 600; }
     
-    input[type="text"], input[type="email"], input[type="file"], select, textarea {
+    input[type="text"], input[type="email"], input[type="file"], input[type="time"], select, textarea {
       background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main);
       width: 100%; padding: 10px; border-radius: 8px; font-size: 0.88rem; outline: none;
       transition: border-color 0.2s;
@@ -385,7 +385,7 @@
         </div>
       </div>
 
-      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO (COM ROLAGEM INDEPENDENTE) -->
+      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO (SELETOR NATIVO COM RELOGINHO) -->
       <div class="config-card">
         <div class="config-title">🕒 Horários & Atendimento</div>
 
@@ -563,9 +563,9 @@
         </div>
       </div>
 
-      <!-- CARD 7: PAGAMENTOS E FINANCEIRO OPERACIONAL -->
+      <!-- CARD 7: PAGAMENTOS E TAXA DE SERVIÇO -->
       <div class="config-card">
-        <div class="config-title">💳 Pagamentos, Mesas & Serviços</div>
+        <div class="config-title">💳 Pagamentos & Taxa de Serviço</div>
 
         <div class="form-group">
           <label for="paymentMethodsConfigInput">Formas de Pagamento Aceitas:</label>
@@ -582,16 +582,11 @@
             <input type="text" id="defaultDiscountInput" placeholder="5" oninput="maskNumber(this)">
           </div>
         </div>
-
-        <div class="form-group">
-          <label for="sectorsConfigInput">Configuração de Mesas, Balcões e Setores:</label>
-          <input type="text" id="sectorsConfigInput" placeholder="Ex: Salão Principal, Área Externa, Balcão">
-        </div>
       </div>
 
-      <!-- CARD 8: NOTIFICAÇÕES, RECIBOS E EQUIPE -->
+      <!-- CARD 8: NOTIFICAÇÕES & RECIBOS -->
       <div class="config-card">
-        <div class="config-title">⚙️ Sistema, Recibos & Permissões</div>
+        <div class="config-title">⚙️ Sistema & Recibos</div>
 
         <div class="form-group">
           <label for="receiptFooterInput">Texto de Rodapé para Recibos e Comprovantes:</label>
@@ -604,11 +599,6 @@
             <input type="checkbox" id="soundNotificationToggle" class="vortex-switch-input" checked>
             <span class="vortex-switch-slider"></span>
           </label>
-        </div>
-
-        <div class="form-group" style="margin-top:10px;">
-          <label for="userRolesConfigInput">Configuração de Usuários, Funções e Permissões:</label>
-          <input type="text" id="userRolesConfigInput" placeholder="Ex: Administrador, Caixa, Cozinheiro, Entregador">
         </div>
       </div>
 
@@ -681,7 +671,7 @@
       input.value = input.value.replace(/\D/g, '');
     }
 
-    /* GERADOR DOS TURNOS DE HORÁRIOS */
+    /* GERADOR DOS TURNOS DE HORÁRIOS COM SELETOR NATIVO (RELÓGIO / TIME PICKER) */
     function buildWorkingHoursUI() {
       ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
         const container = document.getElementById(turnoId + 'Container');
@@ -698,8 +688,8 @@
                 </label>
               </div>
               <div style="display:flex; gap:6px;">
-                <input type="text" id="${turnoId}_open_${idx}" placeholder="18:00" style="padding:6px; font-size:0.8rem;" maxlength="5">
-                <input type="text" id="${turnoId}_close_${idx}" placeholder="23:59" style="padding:6px; font-size:0.8rem;" maxlength="5">
+                <input type="time" id="${turnoId}_open_${idx}" style="padding:6px; font-size:0.8rem; cursor:pointer;">
+                <input type="time" id="${turnoId}_close_${idx}" style="padding:6px; font-size:0.8rem; cursor:pointer;">
               </div>
             </div>
           `;
@@ -793,6 +783,22 @@
       document.getElementById('timezoneSelect').value = settings.timezone || 'Brasilia (-3)';
       document.getElementById('specialHoursInput').value = settings.specialHours || '';
 
+      // Carregando horários dos turnos nos campos tipo "time"
+      ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
+        daysOfWeek.forEach((_, idx) => {
+          const openEl = document.getElementById(`${turnoId}_open_${idx}`);
+          const closeEl = document.getElementById(`${turnoId}_close_${idx}`);
+          const activeEl = document.getElementById(`${turnoId}_active_${idx}`);
+
+          if (settings.workingHours && settings.workingHours[turnoId] && settings.workingHours[turnoId][idx]) {
+            const data = settings.workingHours[turnoId][idx];
+            if (openEl) openEl.value = data.open || '';
+            if (closeEl) closeEl.value = data.close || '';
+            if (activeEl) activeEl.checked = data.active !== false;
+          }
+        });
+      });
+
       document.getElementById('deliveryTypeSelect').value = settings.deliveryType || 'bairro';
       toggleDeliveryType(settings.deliveryType || 'bairro');
       document.getElementById('freeDeliveryToggle').checked = settings.freeDelivery || false;
@@ -815,11 +821,9 @@
       document.getElementById('paymentMethodsConfigInput').value = settings.paymentMethodsConfig || '';
       document.getElementById('serviceTaxInput').value = settings.serviceTax || '';
       document.getElementById('defaultDiscountInput').value = settings.defaultDiscount || '';
-      document.getElementById('sectorsConfigInput').value = settings.sectorsConfig || '';
 
       document.getElementById('receiptFooterInput').value = settings.receiptFooter || '';
       document.getElementById('soundNotificationToggle').checked = settings.soundNotification !== false;
-      document.getElementById('userRolesConfigInput').value = settings.userRolesConfig || '';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -956,6 +960,18 @@
       const timezone = document.getElementById('timezoneSelect').value;
       const specialHours = document.getElementById('specialHoursInput').value.trim();
 
+      // Mapeando horários de todos os turnos
+      const workingHours = {};
+      ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
+        workingHours[turnoId] = [];
+        daysOfWeek.forEach((_, idx) => {
+          const openVal = document.getElementById(`${turnoId}_open_${idx}`)?.value || '';
+          const closeVal = document.getElementById(`${turnoId}_close_${idx}`)?.value || '';
+          const activeVal = document.getElementById(`${turnoId}_active_${idx}`)?.checked !== false;
+          workingHours[turnoId].push({ open: openVal, close: closeVal, active: activeVal });
+        });
+      });
+
       const deliveryType = document.getElementById('deliveryTypeSelect').value;
       const freeDelivery = document.getElementById('freeDeliveryToggle').checked;
       const freeDeliveryMin = document.getElementById('freeDeliveryMinInput').value.trim();
@@ -976,21 +992,18 @@
       const paymentMethodsConfig = document.getElementById('paymentMethodsConfigInput').value.trim();
       const serviceTax = document.getElementById('serviceTaxInput').value.trim();
       const defaultDiscount = document.getElementById('defaultDiscountInput').value.trim();
-      const sectorsConfig = document.getElementById('sectorsConfigInput').value.trim();
 
       const receiptFooter = document.getElementById('receiptFooterInput').value.trim();
       const soundNotification = document.getElementById('soundNotificationToggle').checked;
-      const userRolesConfig = document.getElementById('userRolesConfigInput').value.trim();
 
       const payload = {
         storeName, legalName, storeType, ownerName, docNumber, phone, email, cep,
         streetNumber, complement, street, neighborhood, city, uf,
-        timezone, specialHours, deliveryType, freeDelivery, freeDeliveryMin,
+        timezone, specialHours, workingHours, deliveryType, freeDelivery, freeDeliveryMin,
         fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
         requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
         scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
-        paymentMethodsConfig, serviceTax, defaultDiscount, sectorsConfig,
-        receiptFooter, soundNotification, userRolesConfig
+        paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification
       };
 
       localStorage.setItem('vortex_store_settings', JSON.stringify(payload));

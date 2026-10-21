@@ -218,10 +218,7 @@
         <!-- CARRINHO ABANDONADO -->
         <div class="card-box">
           <div class="card-title">🛒 Recuperar Carrinho Abandonado</div>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Exibição de clientes que adicionaram produtos mas não concluíram o pedido.</p>
-          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-size: 0.8rem; color: var(--danger); margin-bottom: 15px;">
-            ⚠️ Com a API Oficial ativada, as mensagens de recuperação são disparadas automaticamente!
-          </div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Exibição sincronizada de clientes que adicionaram produtos no cardápio digital mas não concluíram o pedido.</p>
           <div id="abandonedCartsList" style="min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed var(--border); border-radius: 10px; padding: 20px;">
             <span style="font-size: 2rem;">🛒</span>
             <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Nenhum carrinho abandonado no momento.</span>
@@ -231,14 +228,13 @@
         <!-- MENSAGEM "OI SUMIDO" -->
         <div class="card-box">
           <div class="card-title">👋 Campanha "Oi Sumido"</div>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Envia automaticamente uma mensagem de reenagajamento se o cliente ficar 30 dias sem pedir.</p>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Envia automaticamente uma mensagem de reengajamento se o cliente ficar 30 dias sem pedir.</p>
           <div class="form-group">
             <label>Mensagem Personalizada:*</label>
-            <textarea class="form-input" id="oiSumidoMsg" rows="3">Olá %name%! Já faz tempo que você não pede com a gente. Que tal um delivery hoje? Acesse nosso cardápio: %menu%</textarea>
+            <textarea class="form-input" id="oiSumidoMsg" rows="3">Olá! Já faz tempo que você não pede com a gente. Que tal um delivery hoje? Acesse nosso cardápio: %menu%</textarea>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
-            <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="insertTag('oiSumidoMsg', '%name%')">Nome do Cliente</button>
-            <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="insertTag('oiSumidoMsg', '%menu%')">Link do Cardápio</button>
+            <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="insertTag('oiSumidoMsg', '%menu%')">🔗 Link do Cardápio</button>
           </div>
           <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('oiSumido')">Salvar Configuração</button>
         </div>
@@ -254,7 +250,7 @@
           </div>
           <div class="form-group">
             <label>Mensagem de Parabéns:*</label>
-            <textarea class="form-input" id="birthdayMsg" rows="3">Parabéns %name%! Desejamos muitas felicidades. Comemore conosco e ganhe um presente especial!</textarea>
+            <textarea class="form-input" id="birthdayMsg" rows="3">Parabéns! Desejamos muitas felicidades. Comemore conosco e ganhe um presente especial em nosso cardápio: %menu%</textarea>
           </div>
           <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('birthday')">Salvar Mensagem</button>
         </div>
@@ -262,7 +258,7 @@
         <!-- DISPARO EM MASSA -->
         <div class="card-box">
           <div class="card-title">📣 Disparo de Transmissão em Massa</div>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Envie uma oferta especial para toda a sua base de clientes cadastrados.</p>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Envie ofertas e cupons diretamente para toda a base de clientes cadastrados.</p>
           <div class="form-group">
             <label>Título / Assunto:*</label>
             <input type="text" class="form-input" id="broadcastTitle" placeholder="Ex: Cupom de R$ 10 OFF Apenas Hoje!">
@@ -380,17 +376,17 @@
       <div class="grid-2">
         <div class="card-box">
           <div class="card-title">📊 Rastreamento de Canais de Aquisição</div>
-          <div class="dre-row"><span>📸 Instagram Ads / Bio</span><strong style="color:var(--primary);">42% dos pedidos</strong></div>
-          <div class="dre-row"><span>💬 WhatsApp Direct</span><strong style="color:var(--success);">35% dos pedidos</strong></div>
-          <div class="dre-row"><span>🔍 Google Meu Negócio</span><strong style="color:var(--info);">15% dos pedidos</strong></div>
-          <div class="dre-row"><span>📄 Panfletos / QR Code Imprime</span><strong style="color:var(--warning);">8% dos pedidos</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>📸 Instagram Ads / Bio</span><strong style="color:var(--primary);">42% dos pedidos</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>💬 WhatsApp Direct</span><strong style="color:var(--success);">35% dos pedidos</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>🔍 Google Meu Negócio</span><strong style="color:var(--info);">15% dos pedidos</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0;"><span>📄 Panfletos / QR Code Imprime</span><strong style="color:var(--warning);">8% dos pedidos</strong></div>
         </div>
 
         <div class="card-box">
           <div class="card-title">💰 Cálculo de Retorno e CAC</div>
-          <div class="dre-row"><span>Custo de Aquisição por Cliente (CAC)</span><strong>R$ 3,45</strong></div>
-          <div class="dre-row"><span>Retorno sobre Investimento (ROI Marketing)</span><strong style="color:var(--success);">480%</strong></div>
-          <div class="dre-row"><span>Taxa de Conversão da Loja</span><strong style="color:var(--info);">8.2%</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>Custo de Aquisição por Cliente (CAC)</span><strong>R$ 3,45</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>Retorno sobre Investimento (ROI Marketing)</span><strong style="color:var(--success);">480%</strong></div>
+          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Taxa de Conversão da Loja</span><strong style="color:var(--info);">8.2%</strong></div>
         </div>
       </div>
     </div>
@@ -553,11 +549,32 @@
         return;
       }
 
+      let broadcasts = JSON.parse(localStorage.getItem('vortex_broadcast_queue')) || [];
+      broadcasts.unshift({
+        title,
+        body,
+        date: new Date().toISOString()
+      });
+      localStorage.setItem('vortex_broadcast_queue', JSON.stringify(broadcasts));
+
       showCustomAlert('Disparo Agendado!', 'A transmissão promocional foi enviada para a fila de transmissão de clientes.', '🚀');
     }
 
     function generateMenuPDF() {
       showCustomAlert('Gerando PDF', 'O download do seu cardápio em PDF foi iniciado.', '📥');
+    }
+
+    // Sincronização automática diária para aniversariantes
+    function checkAutomaticBirthdays() {
+      if (!document.getElementById('autoBirthdayToggle').checked) return;
+      const customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      const todayStr = new Date().toISOString().split('T')[0].slice(5); // MM-DD
+      
+      customers.forEach(c => {
+        if (c.birthdate && c.birthdate.slice(5) === todayStr) {
+          console.log(`Disparando parabéns automatizado para: ${c.name}`);
+        }
+      });
     }
 
     setInterval(() => {
@@ -572,6 +589,8 @@
       const todayStr = new Date().toISOString().split('T')[0];
       document.getElementById('drawStartDate').value = todayStr;
       document.getElementById('drawEndDate').value = todayStr;
+
+      checkAutomaticBirthdays();
     };
   </script>
 </body>

@@ -245,7 +245,7 @@
       </div>
 
       <div class="filter-group" style="gap:8px;">
-        <button class="btn-secondary" onclick="exportCustomersCSV()">📥 Exportar Dados (CSV)</button>
+        <button class="btn-secondary" onclick="exportCustomersPDF()">📄 Exportar Dados (PDF)</button>
         <button class="btn-action" onclick="openCustomerModal()">➕ Cadastrar Cliente</button>
       </div>
     </div>
@@ -380,11 +380,29 @@
       <div style="border-top:1px solid var(--border); padding-top:10px; margin-bottom:15px;">
         <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px;">📝 Atendimento & Reclamações</div>
         <div id="detailCustNotes" style="font-size:0.85rem; color:var(--text-muted);">Nenhuma observação cadastrada.</div>
-        <button class="btn-secondary" style="margin-top:8px; padding:4px 8px; font-size:0.75rem;" onclick="addCustomerNotePrompt()">➕ Adicionar Nota de Atendimento</button>
+        <button class="btn-secondary" style="margin-top:8px; padding:4px 8px; font-size:0.75rem;" onclick="openNoteModal()">➕ Adicionar Nota de Atendimento</button>
       </div>
 
       <div style="display:flex; justify-content:flex-end;">
         <button class="btn-action" onclick="closeCustomerDetailModal()">Fechar Perfil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PARA ADICIONAR NOTA DE ATENDIMENTO -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="custom-modal-card" style="max-width: 400px;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span>📝 Nova Nota / Reclamação</span>
+        <button onclick="closeNoteModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Descrição do Atendimento:</label>
+        <textarea class="form-input" id="noteTextInput" rows="4" placeholder="Digite a observação, elogio ou reclamação..."></textarea>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeNoteModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" onclick="saveCustomerNote()">Salvar Nota</button>
       </div>
     </div>
   </div>
@@ -606,10 +624,21 @@
       document.getElementById('customerDetailModal').classList.remove('active');
     }
 
-    function addCustomerNotePrompt() {
-      if (!selectedDetailCustomerId) return;
-      const text = prompt('Digite a nota ou reclamação para o histórico de atendimento:');
-      if (!text || !text.trim()) return;
+    function openNoteModal() {
+      document.getElementById('noteTextInput').value = '';
+      document.getElementById('noteModal').classList.add('active');
+    }
+
+    function closeNoteModal() {
+      document.getElementById('noteModal').classList.remove('active');
+    }
+
+    function saveCustomerNote() {
+      const text = document.getElementById('noteTextInput').value.trim();
+      if (!text) {
+        showCustomAlert('Atenção', 'Escreva a observação ou reclamação antes de salvar.', '⚠️');
+        return;
+      }
 
       let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
       let cust = customers.find(c => String(c.id) === String(selectedDetailCustomerId));
@@ -617,10 +646,12 @@
         if (!cust.notes) cust.notes = [];
         cust.notes.unshift({
           date: new Date().toLocaleDateString('pt-BR'),
-          text: text.trim()
+          text: text
         });
         localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+        closeNoteModal();
         openCustomerDetail(selectedDetailCustomerId);
+        showCustomAlert('Sucesso', 'Nota de atendimento adicionada com sucesso.', '✅');
       }
     }
 
@@ -635,7 +666,6 @@
       if (ordersCount >= 3) return { label: '⭐ Recorrente', class: 'badge-tag badge-recorrente', type: 'recorrente' };
       if (ordersCount === 0) return { label: '🆕 Novo', class: 'badge-tag badge-novo', type: 'novo' };
 
-      // Verificar inatividade
       const lastOrder = custSales.sort((a,b) => new Date(b.date||b.timestamp) - new Date(a.date||a.timestamp))[0];
       if (lastOrder) {
         const daysDiff = (new Date() - new Date(lastOrder.date||lastOrder.timestamp)) / (1000 * 60 * 60 * 24);
@@ -645,24 +675,74 @@
       return { label: '⭐ Recorrente', class: 'badge-tag badge-recorrente', type: 'recorrente' };
     }
 
-    function exportCustomersCSV() {
+    function exportCustomersPDF() {
       let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
       if (customers.length === 0) {
         showCustomAlert('Sem Dados', 'Não há clientes cadastrados para exportar.', '⚠️');
         return;
       }
 
-      let csv = 'Nome,Telefone,Email,Endereco,Aniversario,Aceita_Ofertas\n';
+      const storeName = JSON.parse(localStorage.getItem('vortex_store_settings'))?.storeName || 'ESTABELECIMENTO';
+      
+      let html = `
+        <html>
+        <head>
+          <title>Relatório de Clientes - ${storeName}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #111; padding: 20px; }
+            h1 { text-align: center; color: #f97316; margin-bottom: 5px; }
+            p.sub { text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 25px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+            th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+            th { background-color: #0f172a; color: #fff; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+          </style>
+        </head>
+        <body>
+          <h1>Relatório da Base de Clientes</h1>
+          <p class="sub">${storeName} • Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Endereço</th>
+                <th>Aniversário</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
       customers.forEach(c => {
-        csv += `"${c.name}","${c.phone||''}","${c.email||''}","${c.address||''}","${c.birthdate||''}","${c.optIn?'Sim':'Nao'}"\n`;
+        html += `
+          <tr>
+            <td><b>${c.name || '--'}</b></td>
+            <td>${c.phone || '--'}</td>
+            <td>${c.email || '--'}</td>
+            <td>${c.address || '--'}</td>
+            <td>${c.birthdate ? c.birthdate.split('-').reverse().join('/') : '--'}</td>
+          </tr>
+        `;
       });
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `VortexFood_Clientes_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
-      showCustomAlert('Exportação Concluída', 'O arquivo CSV com a base de clientes foi gerado.', '📥');
+      html += `
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const printWin = window.open('', '_blank');
+      printWin.document.write(html);
+      printWin.document.close();
+      printWin.focus();
+      setTimeout(() => {
+        printWin.print();
+        printWin.close();
+      }, 500);
+
+      showCustomAlert('Relatório PDF', 'Janela de impressão/geração de PDF aberta com sucesso.', '📄');
     }
 
     async function loadCRMData() {
@@ -683,7 +763,6 @@
       let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
       let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
 
-      // Sincronizar clientes vindos das vendas se ainda não cadastrados
       sales.forEach(s => {
         if (s.customerName && s.customerPhone) {
           const exists = customers.some(c => c.phone && c.phone.replace(/\D/g, '') === s.customerPhone.replace(/\D/g, ''));

@@ -306,41 +306,56 @@
         </div>
 
         <!-- PROGRAMA DE EMBAIXADORES CONFIGURAÇÃO -->
-        <div class="card-box">
-          <div class="card-title">👑 Programa de Embaixadores</div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Você pode compartilhar esta URL para convidar seus clientes a se tornarem embaixadores do seu negócio:</p>
-          <div style="background:var(--bg-main); padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.8rem; margin-bottom:10px; word-break:break-all; color:var(--info);" id="displayAmbassadorUrl">--</div>
-          <div class="toggle-switch">
-            <span style="font-size:0.85rem; font-weight:bold;">Ativar Indicações por Link</span>
-            <label class="switch"><input type="checkbox" id="embassadorToggle" checked><span class="slider"></span></label>
+        <div class="card-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="card-title">Marketing: Cadastro de Embaixadores</div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; line-height: 1.4;">
+              Você pode compartilhar esta URL para convidar seus clientes a se tornarem embaixadores do seu negócio:
+            </p>
+            <div style="background: var(--bg-main); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; margin-bottom: 12px; word-break: break-all; color: var(--info);" id="displayAmbassadorUrl">--</div>
           </div>
-          <div class="form-group">
-            <label>Recompensa a cada 10 pedidos gerados:</label>
-            <input type="text" class="form-input" id="embassadorReward" placeholder="Ex: 1 Triplo Cheddar com Batata">
+
+          <div>
+            <div class="card-title" style="font-size: 0.95rem; margin-bottom: 10px; border-top: 1px solid var(--border); padding-top: 12px;">Opções</div>
+            
+            <div class="toggle-switch" style="align-items: flex-start; gap: 15px;">
+              <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+                <strong style="display: block; color: var(--text-main); font-size: 0.88rem; margin-bottom: 4px;">Usar programa "embaixadores" no meu estabelecimento.</strong>
+                Com essa função habilitada, toda vez que qualquer cliente realizar um pedido, na tela "Status do Pedido" ele receberá um link personalizado do seu cardápio para compartilhar com amigos e conhecidos. Todos os pedidos a partir deste link serão contabilizados e ao atingir 10 pedidos o embaixador ganha uma recompensa.
+              </div>
+              <label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="embassadorToggle" checked><span class="slider"></span></label>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label style="color: var(--text-main); font-size: 0.82rem; margin-bottom: 6px;">
+                <strong>Retribuição</strong><br>
+                A cada 10 pedidos que um embaixador gerar para meu negócio, quero retribuir ele com:
+              </label>
+              <input type="text" class="form-input" id="embassadorReward" placeholder="Ex: 1 Triplo Cheddar 🍔" value="1 Triplo Cheddar 🍔">
+            </div>
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label style="color: var(--text-main); font-size: 0.82rem; margin-bottom: 6px;">
+                <strong>% de desconto para pedidos embaixadores</strong><br>
+                Para aumentar o número de pedidos você pode oferecer um % de desconto nos pedidos gerados por embaixadores!
+              </label>
+              <input type="number" class="form-input" id="embassadorDiscount" placeholder="0" value="0">
+            </div>
+
+            <button class="btn-action" style="width:100%; margin-top: 10px;" onclick="saveMarketingConfig('embassador')">Salvar</button>
           </div>
-          <div class="form-group">
-            <label>% de Desconto para indicados do embaixador:</label>
-            <input type="number" class="form-input" id="embassadorDiscount" placeholder="0">
-          </div>
-          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('embassador')">Salvar Embaixadores</button>
         </div>
       </div>
 
       <!-- LISTA DE EMBAIXADORES -->
       <div class="card-box">
         <div class="card-title">
-          <span>👥 Lista de Embaixadores Cadastrados</span>
+          <span>Lista de Embaixadores</span>
           <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="copyAmbassadorLink()">📋 Copiar Link do Programa</button>
         </div>
         <div id="embassadorsList">
-          <!-- Exemplo idêntico à imagem de referência -->
-          <div style="background:var(--bg-main); padding:15px; border-radius:12px; border:1px solid var(--border); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <strong style="display:block; font-size:0.95rem;">Dayse glecy chilaver</strong>
-              <span style="color:var(--text-muted); font-size:0.85rem;">Telefone: (17) 99773-4571</span>
-              <span style="display:block; margin-top:4px; font-size:0.85rem; font-weight:bold;">Total de Pedidos: 1</span>
-            </div>
-            <button class="btn-action" style="background:var(--info); font-size:0.75rem; padding:6px 10px;">Descontar 10 pedidos</button>
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 25px 10px; border: 1px dashed var(--border); border-radius: 10px;">
+            Nenhum embaixador ativo no momento. Os clientes que compartilharem o link de indicação gerado na tela de status do pedido após realizarem uma compra aparecerão automaticamente aqui assim que um amigo realizar o primeiro pedido pelo link.
           </div>
         </div>
       </div>

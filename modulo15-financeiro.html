@@ -90,6 +90,8 @@
     .btn-action { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-action:hover { background: var(--primary-hover); }
 
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+
     /* CARDS & MÉTRICAS */
     .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
     .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; position: relative; }
@@ -201,14 +203,14 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Financeiro & Fluxo de Caixa</h1>
+        <h1>Financeiro, Bancos & Fluxo de Caixa</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <!-- BARRA DE FILTROS E NOVO LANÇAMENTO -->
+    <!-- BARRA DE FILTROS E BOTÕES DE AÇÃO -->
     <div class="filter-card">
       <div class="filter-group">
         <label>🗓️ Período:</label>
@@ -218,7 +220,8 @@
         <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" style="gap:8px;">
+        <button class="btn-secondary" onclick="openBankModal()">🏦 Contas Bancárias</button>
         <button class="btn-action" onclick="openEntryModal()">➕ Lançar Despesa / Receita Extra</button>
       </div>
     </div>
@@ -247,6 +250,31 @@
         <span class="metric-title">Lucro Líquido Real</span>
         <span class="metric-value" style="color:var(--primary);" id="finNetProfit">R$ 0,00</span>
         <span class="metric-sub" id="finProfitMargin">Margem Líquida: 0.0%</span>
+      </div>
+    </div>
+
+    <!-- PAINEL DE CONTAS BANCÁRIAS E SOCIOS -->
+    <div class="grid-2">
+      <!-- GESTÃO DE CONTAS BANCÁRIAS -->
+      <div class="card-box">
+        <div class="card-title">
+          <span>🏦 Contas Bancárias & Saldos</span>
+          <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openBankModal()">Gerenciar</button>
+        </div>
+        <div id="bankAccountsListSummary" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma conta bancária cadastrada.</div>
+        </div>
+      </div>
+
+      <!-- APORTES & RETIRADAS DE SÓCIOS -->
+      <div class="card-box">
+        <div class="card-title">
+          <span>👥 Sócios & Pró-Labore</span>
+          <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openSocioModal()">➕ Lançar Retirada / Aporte</button>
+        </div>
+        <div id="sociosSummaryList" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Nenhum registro de sócios no período.</div>
+        </div>
       </div>
     </div>
 
@@ -289,20 +317,20 @@
         </div>
       </div>
 
-      <!-- FORMAS DE RECEBIMENTO E SALDOS -->
+      <!-- FORMAS DE RECEBIMENTO E TAXAS DE CARTÃO -->
       <div class="card-box">
-        <div class="card-title">💳 Recebimentos por Forma de Pagamento</div>
+        <div class="card-title">💳 Recebimentos & Taxas de Adquirentes</div>
         
         <div class="dre-row">
-          <span>⚡ PIX</span>
+          <span>⚡ PIX (Taxa 0%)</span>
           <strong id="payPixVal" style="color:var(--success);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>💳 Cartão de Crédito</span>
+          <span>💳 Cartão de Crédito (Liq. c/ Taxa)</span>
           <strong id="payCreditVal" style="color:#8b5cf6;">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>💳 Cartão de Débito</span>
+          <span>💳 Cartão de Débito (Liq. c/ Taxa)</span>
           <strong id="payDebitVal" style="color:var(--info);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
@@ -310,12 +338,8 @@
           <strong id="payCashVal" style="color:var(--warning);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>🍴 Vale Refeição (VR)</span>
+          <span>🍴 Vale Refeição (VR / VA)</span>
           <strong id="payVrVal" style="color:#ec4899;">R$ 0,00</strong>
-        </div>
-        <div class="dre-row">
-          <span>🛒 Vale Alimentação (VA)</span>
-          <strong id="payVaVal" style="color:#14b8a6;">R$ 0,00</strong>
         </div>
       </div>
     </div>
@@ -374,6 +398,57 @@
       <div style="display:flex; gap:10px; margin-top:20px;">
         <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeEntryModal()">Cancelar</button>
         <button class="btn-action" style="flex:1;" onclick="saveFinancialEntry()">Salvar Lançamento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONTAS BANCÁRIAS -->
+  <div class="modal-overlay" id="bankModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span>🏦 Cadastrar Conta Bancária</span>
+        <button onclick="closeBankModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Nome do Banco / Instituição:</label>
+        <input type="text" class="form-input" id="bankNameInput" placeholder="Ex: Nubank PJ, Itaú, Stone">
+      </div>
+      <div class="form-group">
+        <label>Saldo Inicial (R$):</label>
+        <input type="number" step="0.01" class="form-input" id="bankBalanceInput" placeholder="0,00">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeBankModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" onclick="saveBankAccount()">Salvar Banco</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE SÓCIOS / RETIRADAS -->
+  <div class="modal-overlay" id="socioModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span>👥 Pró-Labore / Aporte de Sócio</span>
+        <button onclick="closeSocioModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Operação:</label>
+        <select class="form-input" id="socioType">
+          <option value="retirada">🔴 Retirada de Sócio (Pró-Labore / Lucro)</option>
+          <option value="aporte">🟢 Aporte de Capital (Entrada)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nome do Sócio:</label>
+        <input type="text" class="form-input" id="socioName" placeholder="Nome do Sócio">
+      </div>
+      <div class="form-group">
+        <label>Valor (R$):</label>
+        <input type="number" step="0.01" class="form-input" id="socioValue" placeholder="0,00">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeSocioModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" onclick="saveSocioOperation()">Confirmar</button>
       </div>
     </div>
   </div>
@@ -471,24 +546,44 @@
       return 0;
     }
 
-    function openEntryModal() {
-      document.getElementById('entryModal').classList.add('active');
+    // MODALS
+    function openEntryModal() { document.getElementById('entryModal').classList.add('active'); }
+    function closeEntryModal() { document.getElementById('entryModal').classList.remove('active'); }
+    function openBankModal() { document.getElementById('bankModal').classList.add('active'); }
+    function closeBankModal() { document.getElementById('bankModal').classList.remove('active'); }
+    function openSocioModal() { document.getElementById('socioModal').classList.add('active'); }
+    function closeSocioModal() { document.getElementById('socioModal').classList.remove('active'); }
+
+    async function saveBankAccount() {
+      const name = document.getElementById('bankNameInput').value.trim();
+      const balance = parseFloat(document.getElementById('bankBalanceInput').value) || 0;
+      if (!name) { alert('Informe o nome do banco.'); return; }
+
+      let banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
+      banks.push({ id: 'bk_' + Date.now(), name, balance });
+      localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
+      closeBankModal();
+      loadFinancialData();
     }
 
-    function closeEntryModal() {
-      document.getElementById('entryModal').classList.remove('active');
-      document.getElementById('entryDesc').value = '';
-      document.getElementById('entryValue').value = '';
-    }
+    async function saveSocioOperation() {
+      const type = document.getElementById('socioType').value;
+      const name = document.getElementById('socioName').value.trim();
+      const val = parseFloat(document.getElementById('socioValue').value) || 0;
+      if (!name || val <= 0) { alert('Preencha o nome e um valor válido.'); return; }
 
-    async function syncEntriesToCloud() {
-      try {
-        if (typeof dbSaveFinancialEntries === 'function') {
-          await dbSaveFinancialEntries(JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
-        }
-      } catch (e) {
-        console.error('Erro ao sincronizar lançamentos financeiros no Supabase:', e);
-      }
+      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      entries.unshift({
+        id: 'fe_' + Date.now(),
+        type: type === 'retirada' ? 'expense' : 'income',
+        description: `${type === 'retirada' ? '[Pró-Labore/Retirada]' : '[Aporte Capital]'} - Sócio: ${name}`,
+        value: val,
+        date: getLocalDateStr(new Date()),
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+      closeSocioModal();
+      loadFinancialData();
     }
 
     async function saveFinancialEntry() {
@@ -512,8 +607,6 @@
       });
 
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
-      await syncEntriesToCloud();
-
       closeEntryModal();
       loadFinancialData();
     }
@@ -522,11 +615,10 @@
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       entries = entries.filter(e => String(e.id) !== String(id));
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
-      await syncEntriesToCloud();
       loadFinancialData();
     }
 
-    // INTEGRAÇÃO AUTOMÁTICA DAS CONTAS QUITADAS DO MÓDULO 16 PARA O CAIXA REALIZADO
+    // INTEGRAÇÃO AUTOMÁTICA DAS CONTAS QUITADAS DO MÓDULO 16
     function syncPaidContasToFinancial() {
       const contas = JSON.parse(localStorage.getItem('vortex_contas_data')) || [];
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
@@ -560,21 +652,6 @@
       applyTheme();
       syncPaidContasToFinancial();
 
-      try {
-        if (typeof dbFetchFinancialEntries === 'function') {
-          const cloudEntries = await dbFetchFinancialEntries();
-          if (cloudEntries && cloudEntries.length > 0) {
-            localStorage.setItem('vortex_financial_entries', JSON.stringify(cloudEntries));
-          }
-        }
-        if (typeof dbFetchSales === 'function') {
-          const cloudSales = await dbFetchSales();
-          if (cloudSales && cloudSales.length > 0) {
-            localStorage.setItem('vortex_sales_history', JSON.stringify(cloudSales));
-          }
-        }
-      } catch (e) {}
-
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
 
@@ -587,6 +664,18 @@
         sidebarLogo.style.display = 'none';
       }
 
+      // Renderizar Bancos
+      const banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
+      const bankSummaryEl = document.getElementById('bankAccountsListSummary');
+      bankSummaryEl.innerHTML = '';
+      if (banks.length === 0) {
+        bankSummaryEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma conta bancária cadastrada. Clique em "Gerenciar".</div>`;
+      } else {
+        banks.forEach(b => {
+          bankSummaryEl.innerHTML += `<div class="dre-row"><span>🏦 ${b.name}</span><strong>R$ ${formatFloatToCurrency(b.balance)}</strong></div>`;
+        });
+      }
+
       let rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const sales = rawSales.filter(s => isDateInFilter(s.date || s.timestamp));
 
@@ -595,7 +684,7 @@
       let totalCancels = 0;
       let totalCmv = 0;
 
-      let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0, payVa = 0;
+      let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0;
 
       sales.forEach(s => {
         let val = parseFloat(s.total) || 0;
@@ -618,18 +707,30 @@
           }
 
           let pm = String(s.payMethod || s.payment || s.paymentMethod || '').toLowerCase();
+          // Aplicando taxa média de adquirentes (ex: 2.5% no crédito, 1.2% no débito)
           if (pm.includes('pix')) payPix += val;
-          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += val;
-          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += val;
+          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += (val * 0.975);
+          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += (val * 0.988);
           else if (pm.includes('dinheiro') || pm.includes('cash')) payCash += val;
-          else if (pm.includes('vr')) payVr += val;
-          else if (pm.includes('va')) payVa += val;
+          else if (pm.includes('vr') || pm.includes('va')) payVr += (val * 0.95);
           else payPix += val;
         }
       });
 
       let rawEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       const entries = rawEntries.filter(e => isDateInFilter(e.date || e.timestamp));
+
+      // Resumo de Sócios
+      const socioEntries = entries.filter(e => e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]'));
+      const socioSummaryEl = document.getElementById('sociosSummaryList');
+      socioSummaryEl.innerHTML = '';
+      if (socioEntries.length === 0) {
+        socioSummaryEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Nenhum lançamento de sócios no período.</div>`;
+      } else {
+        socioEntries.slice(0, 3).forEach(se => {
+          socioSummaryEl.innerHTML += `<div class="dre-row"><span>👤 ${se.description}</span><strong style="${se.type==='expense'?'color:var(--danger)':'color:var(--success)'}">R$ ${formatFloatToCurrency(se.value)}</strong></div>`;
+        });
+      }
 
       let manualExpenses = 0;
       let manualIncome = 0;
@@ -666,7 +767,6 @@
       document.getElementById('payDebitVal').innerText = `R$ ${formatFloatToCurrency(payDebit)}`;
       document.getElementById('payCashVal').innerText = `R$ ${formatFloatToCurrency(payCash)}`;
       document.getElementById('payVrVal').innerText = `R$ ${formatFloatToCurrency(payVr)}`;
-      document.getElementById('payVaVal').innerText = `R$ ${formatFloatToCurrency(payVa)}`;
 
       renderFinancialEntriesTable(entries);
     }

@@ -1,450 +1,777 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Food - Módulo 18: CRM & Fidelidade</title>
-    <style>
-        :root {
-            --bg-dark: #141c24;
-            --panel-dark: #1e272e;
-            --primary: #ff4757;
-            --primary-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
-            --secondary: #2e86de;
-            --success: #2ed573;
-            --warning: #ffa500;
-            --danger: #ea2027;
-            --card-white: #ffffff;
-            --text-dark: #2f3542;
-            --text-muted: #747d8c;
-            --border-color: #ced6e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - CRM & Gestão de Clientes</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
 
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-        }
-        .sidebar-overlay.active { display: block; }
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
 
-        aside.sidebar {
-            width: 260px;
-            background-color: var(--panel-dark);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
 
-        aside.sidebar.collapsed { margin-left: -260px; }
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
 
-        .sidebar-brand {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
 
-        .sidebar-brand img {
-            width: 100%;
-            max-width: 160px;
-            height: auto;
-            border-radius: 8px;
-        }
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
 
-        .btn-close-sidebar {
-            background: transparent;
-            border: none;
-            color: #a4b0be;
-            font-size: 20px;
-            cursor: pointer;
-            display: none;
-        }
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
 
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-        }
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
 
-        .menu-group-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #a4b0be;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 18px 10px 8px 10px;
-        }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: #dcdde1;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 10px;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-        .menu-item:hover, .menu-item.active {
-            background: rgba(255, 71, 87, 0.15);
-            color: #ffffff;
-            border-left: 4px solid var(--primary);
-        }
+    /* FILTROS E CONTROLES */
+    .filter-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+    .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    
+    .btn-quick-filter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+    .btn-quick-filter.active, .btn-quick-filter:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-        main.main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            width: 100%;
-            background-color: var(--bg-dark);
-        }
+    .btn-action { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-action:hover { background: var(--primary-hover); }
 
-        header.top-header {
-            height: 60px;
-            background-color: var(--panel-dark);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
-        .btn-toggle-menu {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    /* CARDS & MÉTRICAS */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+    .metric-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
+    .metric-sub { font-size: 0.72rem; color: var(--text-muted); }
 
-        .content-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
-        }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-        .card-container-white {
-            background: var(--card-white);
-            color: var(--text-dark) !important;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            height: fit-content;
-        }
+    /* TABELAS MODERNAS */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    .scroll-table-container { max-height: 480px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
 
-        .card-container-white h3, 
-        .card-container-white td, 
-        .card-container-white th,
-        .card-container-white label {
-            color: var(--text-dark) !important;
-        }
+    .badge-tag { padding: 4px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: bold; display: inline-block; }
+    .badge-vip { background: rgba(249, 115, 22, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+    .badge-recorrente { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .badge-inativo { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-novo { background: rgba(56, 189, 248, 0.2); color: var(--info); border: 1px solid var(--info); }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    .action-icon-btn { background: none; border: none; cursor: pointer; font-size: 0.95rem; padding: 3px; color: var(--text-muted); transition: color 0.2s; }
+    .action-icon-btn:hover { color: var(--primary); }
 
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
+    /* FORMULÁRIO E INPUTS */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px; }
+    .form-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; outline: none; }
 
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 13px;
-        }
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; }
 
-        .crm-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .crm-table th {
-            background: #f8f9fa;
-            color: var(--text-muted);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 10px;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .crm-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #edf2f7;
-            vertical-align: middle;
-        }
-
-        /* MODAL CUSTOMIZADO VORTEX FOOD */
-        .vortex-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .vortex-modal-overlay.active { display: flex; }
-        .vortex-modal-card {
-            background: #ffffff !important;
-            color: #2f3542 !important;
-            width: 100%;
-            max-width: 360px;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .vortex-modal-card p {
-            color: #2f3542 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .btn-vortex-modal {
-            width: 100%;
-            background: var(--primary-gradient);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-        }
-
-        @media (max-width: 900px) {
-            .content-body { grid-template-columns: 1fr; overflow-y: auto; }
-        }
-
-        @media (max-width: 768px) {
-            aside.sidebar {
-                position: fixed;
-                top: 0; left: 0; height: 100%;
-                margin-left: -260px;
-            }
-            aside.sidebar.mobile-open { margin-left: 0 !important; }
-            .btn-close-sidebar { display: block; }
-        }
-    </style>
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
-
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Clientes & Vendas</div>
-            <div class="menu-item active">⭐ Módulo 18: CRM & Fidelidade</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-        <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 18 — CRM & Clube de Fidelidade</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado via LocalStorage</div>
-        </header>
-
-        <div class="content-body">
-            <div class="card-container-white" style="overflow-x: auto;">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">Clientes Cadastrados</h3>
-                <table class="crm-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Telefone / WhatsApp</th>
-                            <th>Pontos</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listaClientesTable">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card-container-white">
-                <h3 style="margin-bottom: 15px; font-weight: 800;">+ Cadastrar Cliente</h3>
-                <form id="formCliente" onsubmit="salvarCliente(event)">
-                    <div class="form-group">
-                        <label>Nome Completo *</label>
-                        <input type="text" id="nomeCliente" placeholder="Ex: Carlos Silva" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Telefone / WhatsApp *</label>
-                        <input type="tel" id="telCliente" placeholder="(11) 99999-8888" maxlength="15" oninput="mascaraTelefone(this)" onkeydown="tratarBackspace(this, event)" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Pontos Iniciais</label>
-                        <input type="number" id="pontosCliente" placeholder="0" min="0" step="1" value="0">
-                    </div>
-                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer;">Guardar Cliente</button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL CUSTOMIZADO VORTEX FOOD -->
-    <div id="vortexModal" class="vortex-modal-overlay">
-        <div class="vortex-modal-card">
-            <p id="vortexModalText">Mensagem do Sistema</p>
-            <button class="btn-vortex-modal" onclick="fecharVortexModal()">OK</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link active"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>CRM & Gestão de Clientes</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- METRICAS DE CLIENTES -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Total de Clientes</span>
+        <span class="metric-value" style="color:var(--info);" id="totalCustomersCount">0</span>
+        <span class="metric-sub">Base ativa cadastrada</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Clientes VIP / Alto Valor</span>
+        <span class="metric-value" style="color:var(--primary);" id="vipCustomersCount">0</span>
+        <span class="metric-sub">Maior faturamento acumulado</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Clientes Recorrentes</span>
+        <span class="metric-value" style="color:var(--success);" id="recurringCustomersCount">0</span>
+        <span class="metric-sub">Compram frequentemente</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-title">Clientes Inativos</span>
+        <span class="metric-value" style="color:var(--danger);" id="inactiveCustomersCount">0</span>
+        <span class="metric-sub">Sem compras há +30 dias</span>
+      </div>
+    </div>
+
+    <!-- CONTROLES, PESQUISA E FILTROS -->
+    <div class="filter-card">
+      <div class="filter-group" style="flex:1;">
+        <input type="text" class="form-input" id="searchCustomerInput" placeholder="🔍 Buscar por nome, telefone ou e-mail..." oninput="filterCustomerTable()" style="max-width:320px;">
+        <button class="btn-quick-filter active" id="btnSegmentAll" onclick="setSegmentFilter('all')">Todos</button>
+        <button class="btn-quick-filter" id="btnSegmentVip" onclick="setSegmentFilter('vip')">💎 VIP</button>
+        <button class="btn-quick-filter" id="btnSegmentRecurring" onclick="setSegmentFilter('recorrente')">⭐ Recorrentes</button>
+        <button class="btn-quick-filter" id="btnSegmentInactive" onclick="setSegmentFilter('inativo')">💤 Inativos</button>
+      </div>
+
+      <div class="filter-group" style="gap:8px;">
+        <button class="btn-secondary" onclick="exportCustomersCSV()">📥 Exportar Dados (CSV)</button>
+        <button class="btn-action" onclick="openCustomerModal()">➕ Cadastrar Cliente</button>
+      </div>
+    </div>
+
+    <!-- TABELA DE CLIENTES -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>👤 Base de Clientes Cadastrados</span>
+        <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);" id="customersTableCount">0 registro(s)</span>
+      </div>
+      <div class="table-responsive scroll-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente / Contato</th>
+              <th>Segmento (RFV)</th>
+              <th>Pedidos</th>
+              <th>Ticket Médio</th>
+              <th>Total Gasto</th>
+              <th>Último Pedido</th>
+              <th style="text-align:center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tblCustomers">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum cliente cadastrado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL DE CADASTRO/EDIÇÃO DE CLIENTE -->
+  <div class="modal-overlay" id="customerModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="customerModalTitle">➕ Novo Cadastro de Cliente</span>
+        <button onclick="closeCustomerModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+
+      <input type="hidden" id="editCustomerId" value="">
+
+      <div class="form-group">
+        <label>Nome Completo:*</label>
+        <input type="text" class="form-input" id="custName" placeholder="Ex: Gabriel Gustavo">
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="form-group">
+          <label>Telefone / WhatsApp:*</label>
+          <input type="text" class="form-input" id="custPhone" placeholder="(00) 00000-0000" oninput="maskPhone(this)">
+        </div>
+        <div class="form-group">
+          <label>E-mail:</label>
+          <input type="email" class="form-input" id="custEmail" placeholder="cliente@email.com">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Endereço Principal de Entrega:</label>
+        <input type="text" class="form-input" id="custAddress" placeholder="Rua, Número, Bairro, Complemento">
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="form-group">
+          <label>Data de Aniversário:</label>
+          <input type="date" class="form-input" id="custBirthdate">
+        </div>
+        <div class="form-group">
+          <label>Canal Preferencial:</label>
+          <select class="form-input" id="custContactPref">
+            <option value="whatsapp">📱 WhatsApp</option>
+            <option value="email">✉️ E-mail</option>
+            <option value="ligacao">📞 Ligação</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Preferências Alimentares / Favoritos:</label>
+        <input type="text" class="form-input" id="custPreferences" placeholder="Ex: Burguer Bacon sem cebola, Coca Zero">
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <input type="checkbox" id="custOptIn" checked style="width:18px; height:18px; accent-color:var(--primary);">
+        <label for="custOptIn" style="margin:0; font-weight:normal; cursor:pointer;">Autoriza receber ofertas e comunicações (LGPD)</label>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeCustomerModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" onclick="saveCustomer()">Salvar Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE DETALHES E PERFIL DO CLIENTE (PERFIL 360°) -->
+  <div class="modal-overlay" id="customerDetailModal">
+    <div class="custom-modal-card" style="max-width:650px;">
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <span id="detailCustName">Perfil do Cliente</span>
+        <button onclick="closeCustomerDetailModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+        <div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">📱 Telefone / Whats</div>
+          <div style="font-weight:bold;" id="detailCustPhone">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">✉️ E-mail</div>
+          <div style="font-weight:bold;" id="detailCustEmail">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">🎂 Aniversário</div>
+          <div style="font-weight:bold;" id="detailCustBirth">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">🏷️ Segmentação RFV</div>
+          <div id="detailCustTag">--</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <div style="font-size:0.8rem; color:var(--text-muted);">📍 Endereço de Entrega</div>
+        <div style="font-weight:bold;" id="detailCustAddress">--</div>
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <div style="font-size:0.8rem; color:var(--text-muted);">⭐ Preferências & Favoritos</div>
+        <div style="font-style:italic;" id="detailCustPreferences">--</div>
+      </div>
+
+      <div style="border-top:1px solid var(--border); padding-top:10px; margin-bottom:15px;">
+        <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px;">📝 Atendimento & Reclamações</div>
+        <div id="detailCustNotes" style="font-size:0.85rem; color:var(--text-muted);">Nenhuma observação cadastrada.</div>
+        <button class="btn-secondary" style="margin-top:8px; padding:4px 8px; font-size:0.75rem;" onclick="addCustomerNotePrompt()">➕ Adicionar Nota de Atendimento</button>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="btn-action" onclick="closeCustomerDetailModal()">Fechar Perfil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE AVISO / NOTIFICAÇÃO PROFISSIONAL -->
+  <div class="modal-overlay" id="customAlertModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;" id="alertIcon">⚠️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos obrigatórios.</div>
+      <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+  <div class="modal-overlay" id="confirmDeleteModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;">🗑️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;">Confirmar Exclusão</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="deleteConfirmMessage">Deseja realmente remover este cliente?</div>
+      <input type="hidden" id="deleteTargetId" value="">
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeConfirmDelete()">Cancelar</button>
+        <button class="btn-action" style="flex:1; background:var(--danger); justify-content:center;" onclick="executeDeleteCustomer()">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSegmentFilter = 'all';
+    let selectedDetailCustomerId = null;
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function formatFloatToCurrency(num) {
+      return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function maskPhone(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.substring(0, 11);
+      if (v.length > 10) {
+        input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
+      } else if (v.length > 6) {
+        input.value = `(${v.substring(0,2)}) ${v.substring(2,6)}-${v.substring(6)}`;
+      } else if (v.length > 2) {
+        input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
+      } else if (v.length > 0) {
+        input.value = `(${v}`;
+      } else {
+        input.value = '';
+      }
+    }
+
+    function showCustomAlert(title, message, icon = '⚠️') {
+      document.getElementById('alertIcon').innerText = icon;
+      document.getElementById('alertTitle').innerText = title;
+      document.getElementById('alertMessage').innerText = message;
+      document.getElementById('customAlertModal').classList.add('active');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').classList.remove('active');
+    }
+
+    function askDeleteCustomer(id, name) {
+      document.getElementById('deleteTargetId').value = id;
+      document.getElementById('deleteConfirmMessage').innerText = `Deseja realmente remover o cadastro de ${name}? Todos os dados pessoais serão apagados.`;
+      document.getElementById('confirmDeleteModal').classList.add('active');
+    }
+
+    function closeConfirmDelete() {
+      document.getElementById('confirmDeleteModal').classList.remove('active');
+    }
+
+    function executeDeleteCustomer() {
+      const id = document.getElementById('deleteTargetId').value;
+      closeConfirmDelete();
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      customers = customers.filter(c => String(c.id) !== String(id));
+      localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+      loadCRMData();
+      showCustomAlert('Removido', 'Cadastro do cliente removido com sucesso.', '🗑️');
+    }
+
+    function openCustomerModal(id = null) {
+      document.getElementById('editCustomerId').value = '';
+      document.getElementById('custName').value = '';
+      document.getElementById('custPhone').value = '';
+      document.getElementById('custEmail').value = '';
+      document.getElementById('custAddress').value = '';
+      document.getElementById('custBirthdate').value = '';
+      document.getElementById('custContactPref').value = 'whatsapp';
+      document.getElementById('custPreferences').value = '';
+      document.getElementById('custOptIn').checked = true;
+      document.getElementById('customerModalTitle').innerText = '➕ Novo Cadastro de Cliente';
+
+      if (id) {
+        let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+        let cust = customers.find(c => String(c.id) === String(id));
+        if (cust) {
+          document.getElementById('editCustomerId').value = cust.id;
+          document.getElementById('custName').value = cust.name || '';
+          document.getElementById('custPhone').value = cust.phone || '';
+          document.getElementById('custEmail').value = cust.email || '';
+          document.getElementById('custAddress').value = cust.address || '';
+          document.getElementById('custBirthdate').value = cust.birthdate || '';
+          document.getElementById('custContactPref').value = cust.contactPref || 'whatsapp';
+          document.getElementById('custPreferences').value = cust.preferences || '';
+          document.getElementById('custOptIn').checked = cust.optIn !== false;
+          document.getElementById('customerModalTitle').innerText = '✏️ Editar Cliente';
         }
+      }
+      document.getElementById('customerModal').classList.add('active');
+    }
 
-        function mostrarAviso(mensagem) {
-            document.getElementById('vortexModalText').innerText = mensagem;
-            document.getElementById('vortexModal').classList.add('active');
+    function closeCustomerModal() {
+      document.getElementById('customerModal').classList.remove('active');
+    }
+
+    function saveCustomer() {
+      const editId = document.getElementById('editCustomerId').value;
+      const name = document.getElementById('custName').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      const email = document.getElementById('custEmail').value.trim();
+      const address = document.getElementById('custAddress').value.trim();
+      const birthdate = document.getElementById('custBirthdate').value;
+      const contactPref = document.getElementById('custContactPref').value;
+      const preferences = document.getElementById('custPreferences').value.trim();
+      const optIn = document.getElementById('custOptIn').checked;
+
+      if (!name || !phone) {
+        showCustomAlert('Campos Obrigatórios', 'Por favor, preencha pelo menos o Nome e o Telefone do cliente.', '⚠️');
+        return;
+      }
+
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+
+      if (editId) {
+        let cust = customers.find(c => String(c.id) === String(editId));
+        if (cust) {
+          cust.name = name;
+          cust.phone = phone;
+          cust.email = email;
+          cust.address = address;
+          cust.birthdate = birthdate;
+          cust.contactPref = contactPref;
+          cust.preferences = preferences;
+          cust.optIn = optIn;
         }
+      } else {
+        customers.unshift({
+          id: 'cust_' + Date.now(),
+          name, phone, email, address, birthdate, contactPref, preferences, optIn,
+          createdAt: new Date().toISOString(),
+          notes: []
+        });
+      }
 
-        function fecharVortexModal() {
-            document.getElementById('vortexModal').classList.remove('active');
-        }
+      localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+      closeCustomerModal();
+      loadCRMData();
+      showCustomAlert('Sucesso!', editId ? 'Cadastro do cliente atualizado!' : 'Cliente cadastrado com sucesso!', '👤');
+    }
 
-        function tratarBackspace(input, e) {
-            if (e.key === 'Backspace') {
-                let v = input.value;
-                if (/[\-\.\/\(\)\s]$/.test(v)) {
-                    input.value = v.slice(0, -1);
-                }
-            }
-        }
+    function setSegmentFilter(segment) {
+      currentSegmentFilter = segment;
+      document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+      if (segment === 'all') document.getElementById('btnSegmentAll').classList.add('active');
+      else if (segment === 'vip') document.getElementById('btnSegmentVip').classList.add('active');
+      else if (segment === 'recorrente') document.getElementById('btnSegmentRecurring').classList.add('active');
+      else if (segment === 'inativo') document.getElementById('btnSegmentInactive').classList.add('active');
 
-        function mascaraTelefone(input) {
-            let v = input.value.replace(/\D/g, "");
-            if (v.length > 11) v = v.slice(0, 11);
+      filterCustomerTable();
+    }
 
-            if (v.length === 0) {
-                input.value = "";
-            } else if (v.length > 10) {
-                input.value = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-            } else if (v.length > 6) {
-                input.value = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
-            } else if (v.length > 2) {
-                input.value = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
-            } else {
-                input.value = v.replace(/^(\d*)$/, "($1");
-            }
-        }
+    function filterCustomerTable() {
+      loadCRMData();
+    }
 
-        let clientes = JSON.parse(localStorage.getItem('vortex_crm')) || [
-            { nome: 'Ana Souza', tel: '(11) 98877-6655', pontos: 120 },
-            { nome: 'Lucas Mendes', tel: '(11) 97766-5544', pontos: 45 }
-        ];
+    function openCustomerDetail(id) {
+      selectedDetailCustomerId = id;
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      let cust = customers.find(c => String(c.id) === String(id));
+      if (!cust) return;
 
-        function carregarClientes() {
-            const tbody = document.getElementById('listaClientesTable');
-            tbody.innerHTML = '';
+      document.getElementById('detailCustName').innerText = cust.name;
+      document.getElementById('detailCustPhone').innerText = cust.phone || '--';
+      document.getElementById('detailCustEmail').innerText = cust.email || '--';
+      document.getElementById('detailCustBirth').innerText = cust.birthdate ? cust.birthdate.split('-').reverse().join('/') : '--';
+      document.getElementById('detailCustAddress').innerText = cust.address || 'Não cadastrado';
+      document.getElementById('detailCustPreferences').innerText = cust.preferences || 'Sem preferências informadas';
+      
+      const tagInfo = getCustomerSegment(cust);
+      document.getElementById('detailCustTag').innerHTML = `<span class="${tagInfo.class}">${tagInfo.label}</span>`;
 
-            clientes.forEach((c, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${c.nome}</strong></td>
-                        <td>${c.tel}</td>
-                        <td style="font-weight: 800; color: #2e86de;">⭐ ${c.pontos} pts</td>
-                        <td style="text-align: right;">
-                            <button style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="removerCliente(${index})">Excluir</button>
-                        </td>
-                    </tr>
-                `;
+      const notesEl = document.getElementById('detailCustNotes');
+      if (cust.notes && cust.notes.length > 0) {
+        notesEl.innerHTML = cust.notes.map(n => `<div style="margin-bottom:6px; border-bottom:1px dashed var(--border); padding-bottom:4px;"><strong>${n.date}:</strong> ${n.text}</div>`).join('');
+      } else {
+        notesEl.innerHTML = 'Nenhum histórico de atendimento registrado.';
+      }
+
+      document.getElementById('customerDetailModal').classList.add('active');
+    }
+
+    function closeCustomerDetailModal() {
+      document.getElementById('customerDetailModal').classList.remove('active');
+    }
+
+    function addCustomerNotePrompt() {
+      if (!selectedDetailCustomerId) return;
+      const text = prompt('Digite a nota ou reclamação para o histórico de atendimento:');
+      if (!text || !text.trim()) return;
+
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      let cust = customers.find(c => String(c.id) === String(selectedDetailCustomerId));
+      if (cust) {
+        if (!cust.notes) cust.notes = [];
+        cust.notes.unshift({
+          date: new Date().toLocaleDateString('pt-BR'),
+          text: text.trim()
+        });
+        localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+        openCustomerDetail(selectedDetailCustomerId);
+      }
+    }
+
+    function getCustomerSegment(cust) {
+      const sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const custSales = sales.filter(s => (s.customerPhone && cust.phone && s.customerPhone.replace(/\D/g, '') === cust.phone.replace(/\D/g, '')) || (s.customerName && s.customerName.toLowerCase() === cust.name.toLowerCase()));
+      
+      const totalSpent = custSales.reduce((acc, s) => acc + (parseFloat(s.total) || 0), 0);
+      const ordersCount = custSales.length;
+
+      if (totalSpent > 500 || ordersCount >= 10) return { label: '💎 VIP', class: 'badge-tag badge-vip', type: 'vip' };
+      if (ordersCount >= 3) return { label: '⭐ Recorrente', class: 'badge-tag badge-recorrente', type: 'recorrente' };
+      if (ordersCount === 0) return { label: '🆕 Novo', class: 'badge-tag badge-novo', type: 'novo' };
+
+      // Verificar inatividade
+      const lastOrder = custSales.sort((a,b) => new Date(b.date||b.timestamp) - new Date(a.date||a.timestamp))[0];
+      if (lastOrder) {
+        const daysDiff = (new Date() - new Date(lastOrder.date||lastOrder.timestamp)) / (1000 * 60 * 60 * 24);
+        if (daysDiff > 30) return { label: '💤 Inativo', class: 'badge-tag badge-inativo', type: 'inativo' };
+      }
+
+      return { label: '⭐ Recorrente', class: 'badge-tag badge-recorrente', type: 'recorrente' };
+    }
+
+    function exportCustomersCSV() {
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      if (customers.length === 0) {
+        showCustomAlert('Sem Dados', 'Não há clientes cadastrados para exportar.', '⚠️');
+        return;
+      }
+
+      let csv = 'Nome,Telefone,Email,Endereco,Aniversario,Aceita_Ofertas\n';
+      customers.forEach(c => {
+        csv += `"${c.name}","${c.phone||''}","${c.email||''}","${c.address||''}","${c.birthdate||''}","${c.optIn?'Sim':'Nao'}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `VortexFood_Clientes_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      showCustomAlert('Exportação Concluída', 'O arquivo CSV com a base de clientes foi gerado.', '📥');
+    }
+
+    async function loadCRMData() {
+      applyTheme();
+
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+
+      const savedLogo = localStorage.getItem('vortex_store_logo');
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (savedLogo) {
+        sidebarLogo.src = savedLogo;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
+      }
+
+      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+
+      // Sincronizar clientes vindos das vendas se ainda não cadastrados
+      sales.forEach(s => {
+        if (s.customerName && s.customerPhone) {
+          const exists = customers.some(c => c.phone && c.phone.replace(/\D/g, '') === s.customerPhone.replace(/\D/g, ''));
+          if (!exists) {
+            customers.push({
+              id: 'cust_' + Date.now() + Math.random(),
+              name: s.customerName,
+              phone: s.customerPhone,
+              address: s.address || '',
+              createdAt: s.date || new Date().toISOString()
             });
-
-            localStorage.setItem('vortex_crm', JSON.stringify(clientes));
+            localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+          }
         }
+      });
 
-        function salvarCliente(event) {
-            event.preventDefault();
-            const nome = document.getElementById('nomeCliente').value;
-            const tel = document.getElementById('telCliente').value;
-            const pontos = parseInt(document.getElementById('pontosCliente').value) || 0;
+      const searchKeyword = document.getElementById('searchCustomerInput').value.toLowerCase().trim();
 
-            clientes.push({ nome, tel, pontos });
-            carregarClientes();
-            document.getElementById('formCliente').reset();
-            mostrarAviso('Cliente cadastrado com sucesso no clube de fidelidade!');
-        }
+      let vipCount = 0, recCount = 0, inactCount = 0;
 
-        function removerCliente(index) {
-            clientes.splice(index, 1);
-            carregarClientes();
-            mostrarAviso('Cliente excluído com sucesso!');
-        }
+      const tbody = document.getElementById('tblCustomers');
+      tbody.innerHTML = '';
 
-        carregarClientes();
-    </script>
+      let filteredCustomers = customers.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(searchKeyword) || (c.phone && c.phone.includes(searchKeyword)) || (c.email && c.email.toLowerCase().includes(searchKeyword));
+        const seg = getCustomerSegment(c);
+
+        if (seg.type === 'vip') vipCount++;
+        if (seg.type === 'recorrente') recCount++;
+        if (seg.type === 'inativo') inactCount++;
+
+        if (currentSegmentFilter !== 'all' && seg.type !== currentSegmentFilter) return false;
+
+        return matchesSearch;
+      });
+
+      document.getElementById('totalCustomersCount').innerText = customers.length;
+      document.getElementById('vipCustomersCount').innerText = vipCount;
+      document.getElementById('recurringCustomersCount').innerText = recCount;
+      document.getElementById('inactiveCustomersCount').innerText = inactCount;
+
+      document.getElementById('customersTableCount').innerText = `${filteredCustomers.length} registro(s)`;
+
+      if (filteredCustomers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum cliente encontrado.</td></tr>`;
+        return;
+      }
+
+      filteredCustomers.forEach(c => {
+        const custSales = sales.filter(s => (s.customerPhone && c.phone && s.customerPhone.replace(/\D/g, '') === c.phone.replace(/\D/g, '')) || (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()));
+        
+        const totalSpent = custSales.reduce((acc, s) => acc + (parseFloat(s.total) || 0), 0);
+        const ordersCount = custSales.length;
+        const avgTicket = ordersCount > 0 ? (totalSpent / ordersCount) : 0;
+        
+        const lastOrder = custSales.sort((a,b) => new Date(b.date||b.timestamp) - new Date(a.date||a.timestamp))[0];
+        const lastOrderDate = lastOrder ? (lastOrder.date || lastOrder.timestamp).split('T')[0].split('-').reverse().join('/') : 'Nunca';
+
+        const seg = getCustomerSegment(c);
+
+        tbody.innerHTML += `
+          <tr>
+            <td>
+              <strong>${c.name}</strong>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${c.phone || 'Sem fone'}</div>
+            </td>
+            <td><span class="${seg.class}">${seg.label}</span></td>
+            <td><strong>${ordersCount}</strong> pedido(s)</td>
+            <td style="color:var(--info); font-weight:bold;">R$ ${formatFloatToCurrency(avgTicket)}</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(totalSpent)}</td>
+            <td>${lastOrderDate}</td>
+            <td style="text-align:center;">
+              <button class="action-icon-btn" onclick="openCustomerDetail('${c.id}')" title="Perfil 360°">👁️</button>
+              <button class="action-icon-btn" onclick="openCustomerModal('${c.id}')" title="Editar">✏️</button>
+              <button class="action-icon-btn" onclick="askDeleteCustomer('${c.id}', '${c.name}')" title="Excluir">🗑️</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      loadCRMData();
+    };
+  </script>
 </body>
 </html>

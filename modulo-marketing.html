@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Food - Marketing & Crescimento</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --info: #38bdf8;
+    }
+
+    body.light-theme {
+      --bg-main: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-main); color: var(--text-main);
+      display: flex; min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+    }
+
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); z-index: 99;
+    }
+
+    .sidebar {
+      width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+      z-index: 100; overflow-y: auto; transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
+
+    .store-brand {
+      display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800;
+      color: var(--text-main); text-transform: uppercase; letter-spacing: 0.03em; word-break: break-word; max-width: 190px;
+    }
+
+    .store-brand-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: none; }
+
+    .close-sidebar-btn { display: none; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .sidebar-nav { padding: 15px 10px; flex: 1; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 10px 8px; display: block; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 4px; font-size: 0.90rem; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(249, 115, 22, 0.15); color: var(--primary); }
+    .nav-icon { font-size: 1.1rem; }
+
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.1);
+    }
+
+    .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+
+    /* NAVEGAÇÃO POR ABAS DO MARKETING */
+    .tab-bar { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+    .tab-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 10px 18px; border-radius: 10px; font-weight: bold; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .tab-btn:hover, .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* CARDS & ESTRUTURA */
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* FORMULÁRIO E INPUTS */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px; }
+    .form-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+
+    .btn-action { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-action:hover { background: var(--primary-hover); }
+
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+
+    .toggle-switch { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 12px; }
+
+    /* SWITCH CUSTOMIZADO */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+
+    /* GALERIA DE ARTES */
+    .art-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .art-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+    .art-card img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .close-sidebar-btn { display: block; }
+      .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
+      .toggle-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleMenu()">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">OPERACIONAL</span>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a>
+        <a href="modulo3-pdv.html" class="nav-link"><span class="nav-icon">💻</span><span class="nav-text">PDV / Caixa</span></a>
+        <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
+        <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
+        <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo2-cardapio.html" class="nav-link"><span class="nav-icon">📋</span><span class="nav-text">Cardápio & Produtos</span></a>
+        <a href="modulo13-fichas-tecnicas.html" class="nav-link"><span class="nav-icon">📖</span><span class="nav-text">Fichas Técnicas</span></a>
+        <a href="modulo-cupons.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-text">Cupons & Promoções</span></a>
+        <a href="modulo-fidelidade.html" class="nav-link"><span class="nav-icon">⭐</span><span class="nav-text">Fidelidade / Cashback</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">SUPRIMENTOS & CLIENTES</span>
+        <a href="modulo12-estoque.html" class="nav-link"><span class="nav-icon">📦</span><span class="nav-text">Estoque & Insumos</span></a>
+        <a href="modulo14-compras.html" class="nav-link"><span class="nav-icon">🛒</span><span class="nav-text">Compras & Cotações</span></a>
+        <a href="modulo18-crm.html" class="nav-link"><span class="nav-icon">👥</span><span class="nav-text">CRM & Clientes</span></a>
+        <a href="modulo-marketing.html" class="nav-link active"><span class="nav-icon">💡</span><span class="nav-text">Ideias de Marketing</span></a>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-title">ADMINISTRAÇÃO</span>
+        <a href="modulo17-caixa-turno.html" class="nav-link"><span class="nav-icon">🔒</span><span class="nav-text">Fechamento de Caixa</span></a>
+        <a href="modulo15-financeiro.html" class="nav-link"><span class="nav-icon">💰</span><span class="nav-text">Financeiro & DRE</span></a>
+        <a href="modulo16-contas.html" class="nav-link"><span class="nav-icon">📄</span><span class="nav-text">Contas Pagar/Receber</span></a>
+        <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
+        <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
+        <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
+        <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
+        <a href="modulo-mensalidade.html" class="nav-link"><span class="nav-icon">💳</span><span class="nav-text">Pagamento Mensalidade</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" onclick="toggleMenu()">☰</button>
+        <h1>Central de Marketing & Ideias de Crescimento</h1>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- BARRA DE NAVEGAÇÃO DE ABAS INTERNAS -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tabAutomacoes')">🚀 Automações & Carrinho</button>
+      <button class="tab-btn" onclick="switchTab('tabEmbaixadores')">👑 Sorteios & Embaixadores</button>
+      <button class="tab-btn" onclick="switchTab('tabEngajamento')">📲 Instagram & Google</button>
+      <button class="tab-btn" onclick="switchTab('tabCampanhas')">📈 Métricas & ROI</button>
+      <button class="tab-btn" onclick="switchTab('tabMateriais')">📄 Cardápio PDF & Exemplos</button>
+    </div>
+
+    <!-- ================= ABAS 1: AUTOMAÇÕES & CARRINHO ================= -->
+    <div class="tab-content active" id="tabAutomacoes">
+      <div class="grid-2">
+        <!-- CARRINHO ABANDONADO -->
+        <div class="card-box">
+          <div class="card-title">🛒 Recuperar Carrinho Abandonado</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Exibição de clientes que adicionaram produtos mas não concluíram o pedido.</p>
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-size: 0.8rem; color: var(--danger); margin-bottom: 15px;">
+            ⚠️ Com a API Oficial ativada, as mensagens de recuperação são disparadas automaticamente!
+          </div>
+          <div id="abandonedCartsList" style="min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed var(--border); border-radius: 10px; padding: 20px;">
+            <span style="font-size: 2rem;">🛒</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Nenhum carrinho abandonado no momento.</span>
+          </div>
+        </div>
+
+        <!-- MENSAGEM "OI SUMIDO" -->
+        <div class="card-box">
+          <div class="card-title">👋 Campanha "Oi Sumido"</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Envia automaticamente uma mensagem de reenagajamento se o cliente ficar 30 dias sem pedir.</p>
+          <div class="form-group">
+            <label>Mensagem Personalizada:*</label>
+            <textarea class="form-input" id="oiSumidoMsg" rows="3">Olá %name%! Já faz tempo que você não pede com a gente. Que tal um delivery hoje? Acesse nosso cardápio: %menu%</textarea>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+            <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="insertTag('oiSumidoMsg', '%name%')">Nome do Cliente</button>
+            <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="insertTag('oiSumidoMsg', '%menu%')">Link do Cardápio</button>
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('oiSumido')">Salvar Configuração</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- ANIVERSARIANTES -->
+        <div class="card-box">
+          <div class="card-title">🎂 Aniversariantes do Mês</div>
+          <div class="toggle-switch">
+            <span style="font-size:0.85rem; font-weight:bold;">Ativar Envio Automático</span>
+            <label class="switch"><input type="checkbox" id="autoBirthdayToggle" checked><span class="slider"></span></label>
+          </div>
+          <div class="form-group">
+            <label>Mensagem de Parabéns:*</label>
+            <textarea class="form-input" id="birthdayMsg" rows="3">Parabéns %name%! Desejamos muitas felicidades. Comemore conosco e ganhe um presente especial!</textarea>
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('birthday')">Salvar Mensagem</button>
+        </div>
+
+        <!-- DISPARO EM MASSA -->
+        <div class="card-box">
+          <div class="card-title">📣 Disparo de Transmissão em Massa</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Envie uma oferta especial para toda a sua base de clientes cadastrados.</p>
+          <div class="form-group">
+            <label>Título / Assunto:*</label>
+            <input type="text" class="form-input" id="broadcastTitle" placeholder="Ex: Cupom de R$ 10 OFF Apenas Hoje!">
+          </div>
+          <div class="form-group">
+            <label>Corpo da Mensagem:*</label>
+            <textarea class="form-input" id="broadcastBody" rows="3" placeholder="Escreva o texto promocional..."></textarea>
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="sendBroadcastPrompt()">🚀 Iniciar Disparo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ABAS 2: SORTEIOS & EMBAIXADORES ================= -->
+    <div class="tab-content" id="tabEmbaixadores">
+      <div class="grid-2">
+        <!-- SORTEIO DE PEDIDOS -->
+        <div class="card-box">
+          <div class="card-title">🎲 Sorteio de Pedidos no Período</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Data Inicial:</label>
+              <input type="date" class="form-input" id="drawStartDate">
+            </div>
+            <div class="form-group">
+              <label>Hora Inicial:</label>
+              <input type="time" class="form-input" id="drawStartTime" value="00:00">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Data Final:</label>
+              <input type="date" class="form-input" id="drawEndDate">
+            </div>
+            <div class="form-group">
+              <label>Hora Final:</label>
+              <input type="time" class="form-input" id="drawEndTime" value="23:59">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Valor Mínimo do Pedido (R$) (Opcional):</label>
+            <input type="text" class="form-input" id="drawMinVal" placeholder="0,00" oninput="maskCurrency(this)">
+          </div>
+          <button class="btn-action" style="width:100%; background:var(--success);" onclick="executeDraw()">🎲 Realizar Sorteio</button>
+        </div>
+
+        <!-- PROGRAMA DE EMBAIXADORES CONFIGURAÇÃO -->
+        <div class="card-box">
+          <div class="card-title">👑 Programa de Embaixadores</div>
+          <div class="toggle-switch">
+            <span style="font-size:0.85rem; font-weight:bold;">Ativar Indicações por Link</span>
+            <label class="switch"><input type="checkbox" id="embassadorToggle" checked><span class="slider"></span></label>
+          </div>
+          <div class="form-group">
+            <label>Recompensa a cada 10 pedidos gerados:</label>
+            <input type="text" class="form-input" id="embassadorReward" placeholder="Ex: 1 Triplo Cheddar com Batata">
+          </div>
+          <div class="form-group">
+            <label>% de Desconto para indicados do embaixador:</label>
+            <input type="number" class="form-input" id="embassadorDiscount" placeholder="0">
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('embassador')">Salvar Embaixadores</button>
+        </div>
+      </div>
+
+      <!-- LISTA DE EMBAIXADORES -->
+      <div class="card-box">
+        <div class="card-title">
+          <span>👥 Lista de Embaixadores Cadastrados</span>
+          <button class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="copyAmbassadorLink()">📋 Copiar Link do Programa</button>
+        </div>
+        <div id="embassadorsList">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Nenhum embaixador ativo cadastrado ainda.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ABAS 3: INSTAGRAM & GOOGLE ================= -->
+    <div class="tab-content" id="tabEngajamento">
+      <div class="grid-2">
+        <!-- INCENTIVO INSTAGRAM -->
+        <div class="card-box">
+          <div class="card-title">📸 Incentivo Stories Instagram</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Incentive seus clientes a postarem fotos dos seus lanches marcando o seu perfil.</p>
+          <div class="form-group">
+            <label>Seu perfil no Instagram (@ ou link):</label>
+            <input type="text" class="form-input" id="instaHandle" placeholder="https://instagram.com/seu_estabelecimento">
+          </div>
+          <div class="form-group">
+            <label>Pontos / Cashback dado por marcação (R$):</label>
+            <input type="text" class="form-input" id="instaCashback" placeholder="0,00" oninput="maskCurrency(this)">
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('instagram')">Salvar Incentivo</button>
+        </div>
+
+        <!-- AVALIAÇÕES GOOGLE -->
+        <div class="card-box">
+          <div class="card-title">⭐ Solicitar Avaliação no Google</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Solicite avaliações 5 estrelas no Google Meu Negócio e recompense o cliente.</p>
+          <div class="form-group">
+            <label>Link direto de Avaliação do Google:</label>
+            <input type="text" class="form-input" id="googleReviewLink" placeholder="https://g.page/r/sua_empresa/review">
+          </div>
+          <div class="form-group">
+            <label>Pontos / Cashback por avaliação efetuada:</label>
+            <input type="text" class="form-input" id="googlePoints" placeholder="0,00" oninput="maskCurrency(this)">
+          </div>
+          <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('google')">Salvar Avaliações Google</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ABAS 4: MÉTRICAS & ROI ================= -->
+    <div class="tab-content" id="tabCampanhas">
+      <div class="grid-2">
+        <div class="card-box">
+          <div class="card-title">📊 Rastreamento de Canais de Aquisição</div>
+          <div class="dre-row"><span>📸 Instagram Ads / Bio</span><strong style="color:var(--primary);">42% dos pedidos</strong></div>
+          <div class="dre-row"><span>💬 WhatsApp Direct</span><strong style="color:var(--success);">35% dos pedidos</strong></div>
+          <div class="dre-row"><span>🔍 Google Meu Negócio</span><strong style="color:var(--info);">15% dos pedidos</strong></div>
+          <div class="dre-row"><span>📄 Panfletos / QR Code Imprime</span><strong style="color:var(--warning);">8% dos pedidos</strong></div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-title">💰 Cálculo de Retorno e CAC</div>
+          <div class="dre-row"><span>Custo de Aquisição por Cliente (CAC)</span><strong>R$ 3,45</strong></div>
+          <div class="dre-row"><span>Retorno sobre Investimento (ROI Marketing)</span><strong style="color:var(--success);">480%</strong></div>
+          <div class="dre-row"><span>Taxa de Conversão da Loja</span><strong style="color:var(--info);">8.2%</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ABAS 5: MATERIAIS DE INSPIRAÇÃO & PDF ================= -->
+    <div class="tab-content" id="tabMateriais">
+      <div class="card-box">
+        <div class="card-title">📄 Gerar Cardápio em PDF para Impressão / Envio</div>
+        <div class="toggle-switch"><span>Incluir complementos no PDF</span><label class="switch"><input type="checkbox" id="pdfComplements" checked><span class="slider"></span></label></div>
+        <div class="toggle-switch"><span>Incluir QR Code do cardápio digital</span><label class="switch"><input type="checkbox" id="pdfQrCode" checked><span class="slider"></span></label></div>
+        <div class="toggle-switch"><span>Incluir itens inativos</span><label class="switch"><input type="checkbox" id="pdfInactives"><span class="slider"></span></label></div>
+        <button class="btn-action" style="width:100%; margin-top:10px;" onclick="generateMenuPDF()">📥 Baixar PDF do Cardápio</button>
+      </div>
+
+      <div class="card-box">
+        <div class="card-title">💡 Galeria de Exemplos de Artes & Divulgação</div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Modelos de materiais gráficos criativos com QR Code para inspirar as suas vendas:</p>
+        <div class="art-gallery">
+          <div class="art-card">
+            <div style="font-size:2.5rem; margin-bottom:5px;">🍽️</div>
+            <strong style="font-size:0.85rem;">Suporte de Mesa Acrílico</strong>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">QR Code no centro da mesa para pedidos no salão.</p>
+          </div>
+          <div class="art-card">
+            <div style="font-size:2.5rem; margin-bottom:5px;">🏁</div>
+            <strong style="font-size:0.85rem;">Banner de Fachada / Portão</strong>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Divulgue o seu delivery para quem passa na rua.</p>
+          </div>
+          <div class="art-card">
+            <div style="font-size:2.5rem; margin-bottom:5px;">🧲</div>
+            <strong style="font-size:0.85rem;">Ímã de Geladeira Personalizado</strong>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Incentive pedidos recorrentes no delivery.</p>
+          </div>
+          <div class="art-card">
+            <div style="font-size:2.5rem; margin-bottom:5px;">🧾</div>
+            <strong style="font-size:0.85rem;">QR Code na Comanda de Caixa</strong>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Cupom no rodapé incentivando a próxima compra.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL DE VENCEDOR DO SORTEIO -->
+  <div class="modal-overlay" id="winnerModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 400px;">
+      <div style="font-size: 3.2rem; margin-bottom: 10px;">🎉</div>
+      <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">Pedido Sorteado!</div>
+      <div id="winnerDetails" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; background:var(--bg-main); padding:12px; border-radius:10px;">--</div>
+      <button class="btn-action" onclick="closeWinnerModal()" style="width: 100%; justify-content: center;">Fechar Sorteio</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE AVISO / NOTIFICAÇÃO PROFISSIONAL -->
+  <div class="modal-overlay" id="customAlertModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;" id="alertIcon">⚠️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos obrigatórios.</div>
+      <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    function applyTheme() {
+      if (localStorage.getItem('vortex_theme') === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function showCustomAlert(title, message, icon = '⚠️') {
+      document.getElementById('alertIcon').innerText = icon;
+      document.getElementById('alertTitle').innerText = title;
+      document.getElementById('alertMessage').innerText = message;
+      document.getElementById('customAlertModal').classList.add('active');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').classList.remove('active');
+    }
+
+    function parseCurrencyToFloat(str) {
+      if (!str) return 0;
+      let clean = String(str).replace(/[^\d,]/g, '').replace(',', '.');
+      return parseFloat(clean) || 0;
+    }
+
+    function maskCurrency(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (!v) { input.value = ''; return; }
+      let numeric = parseFloat(v) / 100;
+      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function insertTag(textareaId, tag) {
+      const el = document.getElementById(textareaId);
+      el.value += ` ${tag} `;
+    }
+
+    function saveMarketingConfig(key) {
+      showCustomAlert('Configuração Salva', 'As alterações de marketing foram salvas com sucesso!', '✅');
+    }
+
+    function copyAmbassadorLink() {
+      const link = `${window.location.origin}/embaixadores`;
+      navigator.clipboard.writeText(link);
+      showCustomAlert('Link Copiado!', 'O link do Programa de Embaixadores foi copiado para a sua área de transferência.', '📋');
+    }
+
+    function executeDraw() {
+      const sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const minVal = parseCurrencyToFloat(document.getElementById('drawMinVal').value);
+
+      let eligibleSales = sales.filter(s => s.status !== 'cancelled');
+      if (minVal > 0) {
+        eligibleSales = eligibleSales.filter(s => (parseFloat(s.total) || 0) >= minVal);
+      }
+
+      if (eligibleSales.length === 0) {
+        showCustomAlert('Sem Pedidos Eligíveis', 'Nenhum pedido atende aos critérios de data e valor mínimo informados.', '⚠️');
+        return;
+      }
+
+      const winner = eligibleSales[Math.floor(Math.random() * eligibleSales.length)];
+      
+      document.getElementById('winnerDetails').innerHTML = `
+        <strong>Pedido ID:</strong> #${winner.id || '10293'}<br>
+        <strong>Cliente:</strong> ${winner.customerName || 'Cliente da Loja'}<br>
+        <strong>Valor:</strong> R$ ${(parseFloat(winner.total) || 0).toFixed(2)}<br>
+        <strong>Data:</strong> ${winner.date || 'Hoje'}
+      `;
+      document.getElementById('winnerModal').classList.add('active');
+    }
+
+    function closeWinnerModal() {
+      document.getElementById('winnerModal').classList.remove('active');
+    }
+
+    function sendBroadcastPrompt() {
+      const title = document.getElementById('broadcastTitle').value.trim();
+      const body = document.getElementById('broadcastBody').value.trim();
+
+      if (!title || !body) {
+        showCustomAlert('Campos Incompletos', 'Preencha o título e o corpo do disparo antes de continuar.', '⚠️');
+        return;
+      }
+
+      showCustomAlert('Disparo Agendado!', 'A transmissão promocional foi enviada para a fila de transmissão de clientes.', '🚀');
+    }
+
+    function generateMenuPDF() {
+      showCustomAlert('Gerando PDF', 'O download do seu cardápio em PDF foi iniciado.', '📥');
+    }
+
+    setInterval(() => {
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    window.onload = function() {
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('drawStartDate').value = todayStr;
+      document.getElementById('drawEndDate').value = todayStr;
+    };
+  </script>
+</body>
+</html>

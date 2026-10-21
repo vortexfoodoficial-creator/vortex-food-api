@@ -105,7 +105,7 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
     /* DRE STYLES */
-    .dre-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+    .dre-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
     .dre-row.total { font-weight: bold; font-size: 1.05rem; border-bottom: 2px solid var(--border); padding: 12px 0; }
     .dre-row.sub { padding-left: 15px; color: var(--text-muted); font-size: 0.85rem; }
 
@@ -119,6 +119,9 @@
 
     .btn-delete-entry { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); padding: 4px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
     .btn-delete-entry:hover { background: var(--danger); color: white; }
+
+    .action-icon-btn { background: none; border: none; cursor: pointer; font-size: 0.95rem; padding: 3px; color: var(--text-muted); transition: color 0.2s; }
+    .action-icon-btn:hover { color: var(--primary); }
 
     /* FORMULÁRIO E INPUTS */
     .form-group { margin-bottom: 12px; }
@@ -259,7 +262,7 @@
       <div class="card-box">
         <div class="card-title">
           <span>🏦 Contas Bancárias & Saldos</span>
-          <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openBankModal()">Gerenciar</button>
+          <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openBankModal()">➕ Nova Conta</button>
         </div>
         <div id="bankAccountsListSummary" style="display:flex; flex-direction:column; gap:8px;">
           <div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma conta bancária cadastrada.</div>
@@ -392,7 +395,7 @@
 
       <div class="form-group">
         <label>Valor (R$):</label>
-        <input type="number" step="0.01" class="form-input" id="entryValue" placeholder="0,00">
+        <input type="text" class="form-input" id="entryValue" placeholder="0,00" oninput="maskCurrency(this)">
       </div>
 
       <div style="display:flex; gap:10px; margin-top:20px;">
@@ -406,16 +409,17 @@
   <div class="modal-overlay" id="bankModal">
     <div class="custom-modal-card">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <span>🏦 Cadastrar Conta Bancária</span>
+        <span id="bankModalTitle">🏦 Cadastrar Conta Bancária</span>
         <button onclick="closeBankModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
       </div>
+      <input type="hidden" id="editBankId" value="">
       <div class="form-group">
         <label>Nome do Banco / Instituição:</label>
         <input type="text" class="form-input" id="bankNameInput" placeholder="Ex: Nubank PJ, Itaú, Stone">
       </div>
       <div class="form-group">
         <label>Saldo Inicial (R$):</label>
-        <input type="number" step="0.01" class="form-input" id="bankBalanceInput" placeholder="0,00">
+        <input type="text" class="form-input" id="bankBalanceInput" placeholder="0,00" oninput="maskCurrency(this)">
       </div>
       <div style="display:flex; gap:10px; margin-top:20px;">
         <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeBankModal()">Cancelar</button>
@@ -428,9 +432,10 @@
   <div class="modal-overlay" id="socioModal">
     <div class="custom-modal-card">
       <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <span>👥 Pró-Labore / Aporte de Sócio</span>
+        <span id="socioModalTitle">👥 Pró-Labore / Aporte de Sócio</span>
         <button onclick="closeSocioModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✕</button>
       </div>
+      <input type="hidden" id="editSocioId" value="">
       <div class="form-group">
         <label>Tipo de Operação:</label>
         <select class="form-input" id="socioType">
@@ -444,7 +449,7 @@
       </div>
       <div class="form-group">
         <label>Valor (R$):</label>
-        <input type="number" step="0.01" class="form-input" id="socioValue" placeholder="0,00">
+        <input type="text" class="form-input" id="socioValue" placeholder="0,00" oninput="maskCurrency(this)">
       </div>
       <div style="display:flex; gap:10px; margin-top:20px;">
         <button class="btn-action" style="background:var(--border); color:var(--text-main); flex:1;" onclick="closeSocioModal()">Cancelar</button>
@@ -460,6 +465,21 @@
       <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
       <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos obrigatórios.</div>
       <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+  <div class="modal-overlay" id="confirmDeleteModal">
+    <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;">🗑️</div>
+      <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;">Confirmar Exclusão</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="deleteConfirmMessage">Deseja realmente remover este item?</div>
+      <input type="hidden" id="deleteTargetId" value="">
+      <input type="hidden" id="deleteTargetType" value="">
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeConfirmDelete()">Cancelar</button>
+        <button class="btn-action" style="flex:1; background:var(--danger); justify-content:center;" onclick="executeDelete()">Sim, Excluir</button>
+      </div>
     </div>
   </div>
 
@@ -481,6 +501,20 @@
 
     function formatFloatToCurrency(num) {
       return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function parseCurrencyToFloat(str) {
+      if (!str) return 0;
+      if (typeof str === 'number') return str;
+      let clean = String(str).replace(/[^\d,]/g, '').replace(',', '.');
+      return parseFloat(clean) || 0;
+    }
+
+    function maskCurrency(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (!v) { input.value = ''; return; }
+      let numeric = parseFloat(v) / 100;
+      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function getLocalDateStr(dateObj) {
@@ -557,11 +591,56 @@
     }
 
     // MODALS
-    function openEntryModal() { document.getElementById('entryModal').classList.add('active'); }
+    function openEntryModal() { 
+      document.getElementById('entryDesc').value = '';
+      document.getElementById('entryValue').value = '';
+      document.getElementById('entryModal').classList.add('active'); 
+    }
     function closeEntryModal() { document.getElementById('entryModal').classList.remove('active'); }
-    function openBankModal() { document.getElementById('bankModal').classList.add('active'); }
+
+    function openBankModal(id = null) {
+      document.getElementById('editBankId').value = '';
+      document.getElementById('bankNameInput').value = '';
+      document.getElementById('bankBalanceInput').value = '';
+      document.getElementById('bankModalTitle').innerText = '🏦 Cadastrar Conta Bancária';
+
+      if (id) {
+        let banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
+        let bank = banks.find(b => String(b.id) === String(id));
+        if (bank) {
+          document.getElementById('editBankId').value = bank.id;
+          document.getElementById('bankNameInput').value = bank.name;
+          document.getElementById('bankBalanceInput').value = formatFloatToCurrency(bank.balance);
+          document.getElementById('bankModalTitle').innerText = '🏦 Editar Conta Bancária';
+        }
+      }
+      document.getElementById('bankModal').classList.add('active');
+    }
     function closeBankModal() { document.getElementById('bankModal').classList.remove('active'); }
-    function openSocioModal() { document.getElementById('socioModal').classList.add('active'); }
+
+    function openSocioModal(id = null) {
+      document.getElementById('editSocioId').value = '';
+      document.getElementById('socioType').value = 'retirada';
+      document.getElementById('socioName').value = '';
+      document.getElementById('socioValue').value = '';
+      document.getElementById('socioModalTitle').innerText = '👥 Pró-Labore / Aporte de Sócio';
+
+      if (id) {
+        let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+        let entry = entries.find(e => String(e.id) === String(id));
+        if (entry) {
+          document.getElementById('editSocioId').value = entry.id;
+          let isRetirada = entry.description.includes('[Pró-Labore/Retirada]');
+          document.getElementById('socioType').value = isRetirada ? 'retirada' : 'aporte';
+          
+          let cleanName = entry.description.split('- Sócio: ')[1] || '';
+          document.getElementById('socioName').value = cleanName;
+          document.getElementById('socioValue').value = formatFloatToCurrency(entry.value);
+          document.getElementById('socioModalTitle').innerText = '👥 Editar Operação de Sócio';
+        }
+      }
+      document.getElementById('socioModal').classList.add('active');
+    }
     function closeSocioModal() { document.getElementById('socioModal').classList.remove('active'); }
 
     function showCustomAlert(title, message, icon = '⚠️') {
@@ -570,14 +649,39 @@
       document.getElementById('alertMessage').innerText = message;
       document.getElementById('customAlertModal').classList.add('active');
     }
+    function closeCustomAlert() { document.getElementById('customAlertModal').classList.remove('active'); }
 
-    function closeCustomAlert() {
-      document.getElementById('customAlertModal').classList.remove('active');
+    function askDelete(id, type, msg) {
+      document.getElementById('deleteTargetId').value = id;
+      document.getElementById('deleteTargetType').value = type;
+      document.getElementById('deleteConfirmMessage').innerText = msg;
+      document.getElementById('confirmDeleteModal').classList.add('active');
+    }
+    function closeConfirmDelete() { document.getElementById('confirmDeleteModal').classList.remove('active'); }
+
+    async function executeDelete() {
+      const id = document.getElementById('deleteTargetId').value;
+      const type = document.getElementById('deleteTargetType').value;
+      closeConfirmDelete();
+
+      if (type === 'bank') {
+        let banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
+        banks = banks.filter(b => String(b.id) !== String(id));
+        localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
+        showCustomAlert('Removido', 'Conta bancária excluída com sucesso.', '🗑️');
+      } else if (type === 'socio' || type === 'entry') {
+        let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+        entries = entries.filter(e => String(e.id) !== String(id));
+        localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+        showCustomAlert('Removido', 'Registro excluído com sucesso.', '🗑️');
+      }
+      loadFinancialData();
     }
 
     async function saveBankAccount() {
+      const editId = document.getElementById('editBankId').value;
       const name = document.getElementById('bankNameInput').value.trim();
-      const balance = parseFloat(document.getElementById('bankBalanceInput').value) || 0;
+      const balance = parseCurrencyToFloat(document.getElementById('bankBalanceInput').value);
       
       if (!name) {
         showCustomAlert('Campos Vazios', 'Por favor, informe o nome do banco ou instituição financeira.', '⚠️');
@@ -585,17 +689,24 @@
       }
 
       let banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
-      banks.push({ id: 'bk_' + Date.now(), name, balance });
+      if (editId) {
+        let bank = banks.find(b => String(b.id) === String(editId));
+        if (bank) { bank.name = name; bank.balance = balance; }
+      } else {
+        banks.push({ id: 'bk_' + Date.now(), name, balance });
+      }
+
       localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
       closeBankModal();
       loadFinancialData();
-      showCustomAlert('Sucesso!', 'Conta bancária cadastrada com sucesso.', '🏦');
+      showCustomAlert('Sucesso!', editId ? 'Conta bancária atualizada com sucesso.' : 'Conta bancária cadastrada com sucesso.', '🏦');
     }
 
     async function saveSocioOperation() {
+      const editId = document.getElementById('editSocioId').value;
       const type = document.getElementById('socioType').value;
       const name = document.getElementById('socioName').value.trim();
-      const val = parseFloat(document.getElementById('socioValue').value) || 0;
+      const val = parseCurrencyToFloat(document.getElementById('socioValue').value);
       
       if (!name || val <= 0) {
         showCustomAlert('Campos Vazios', 'Preencha o nome do sócio e informe um valor válido para prosseguir.', '⚠️');
@@ -603,24 +714,36 @@
       }
 
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      entries.unshift({
-        id: 'fe_' + Date.now(),
-        type: type === 'retirada' ? 'expense' : 'income',
-        description: `${type === 'retirada' ? '[Pró-Labore/Retirada]' : '[Aporte Capital]'} - Sócio: ${name}`,
-        value: val,
-        date: getLocalDateStr(new Date()),
-        timestamp: new Date().toISOString()
-      });
+      const description = `${type === 'retirada' ? '[Pró-Labore/Retirada]' : '[Aporte Capital]'} - Sócio: ${name}`;
+
+      if (editId) {
+        let entry = entries.find(e => String(e.id) === String(editId));
+        if (entry) {
+          entry.type = type === 'retirada' ? 'expense' : 'income';
+          entry.description = description;
+          entry.value = val;
+        }
+      } else {
+        entries.unshift({
+          id: 'fe_' + Date.now(),
+          type: type === 'retirada' ? 'expense' : 'income',
+          description: description,
+          value: val,
+          date: getLocalDateStr(new Date()),
+          timestamp: new Date().toISOString()
+        });
+      }
+
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
       closeSocioModal();
       loadFinancialData();
-      showCustomAlert('Sucesso!', 'Operação de sócios registrada com sucesso.', '✅');
+      showCustomAlert('Sucesso!', 'Operação de sócios salva com sucesso.', '✅');
     }
 
     async function saveFinancialEntry() {
       const type = document.getElementById('entryType').value;
       const desc = document.getElementById('entryDesc').value.trim();
-      const val = parseFloat(document.getElementById('entryValue').value) || 0;
+      const val = parseCurrencyToFloat(document.getElementById('entryValue').value);
 
       if (!desc || val <= 0) {
         showCustomAlert('Campos Vazios', 'Por favor, preencha a descrição e um valor válido.', '⚠️');
@@ -644,10 +767,7 @@
     }
 
     async function deleteFinancialEntry(id) {
-      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      entries = entries.filter(e => String(e.id) !== String(id));
-      localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
-      loadFinancialData();
+      askDelete(id, 'entry', 'Deseja realmente excluir este lançamento financeiro?');
     }
 
     // INTEGRAÇÃO AUTOMÁTICA DAS CONTAS QUITADAS DO MÓDULO 16
@@ -666,7 +786,7 @@
               refId: refId,
               type: c.type === 'payable' ? 'expense' : 'income',
               description: `[Conta Quitada] ${c.description} (${c.entity || 'Geral'})`,
-              value: parseFloat((c.amount || '0').replace(/\./g, '').replace(',', '.')) || 0,
+              value: parseCurrencyToFloat(c.amount),
               date: c.dueDate || getLocalDateStr(new Date()),
               timestamp: new Date().toISOString()
             });
@@ -696,15 +816,23 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Renderizar Bancos
+      // Renderizar Bancos com Editar e Excluir
       const banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
       const bankSummaryEl = document.getElementById('bankAccountsListSummary');
       bankSummaryEl.innerHTML = '';
       if (banks.length === 0) {
-        bankSummaryEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma conta bancária cadastrada. Clique em "Gerenciar".</div>`;
+        bankSummaryEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma conta bancária cadastrada. Clique em "Nova Conta".</div>`;
       } else {
         banks.forEach(b => {
-          bankSummaryEl.innerHTML += `<div class="dre-row"><span>🏦 ${b.name}</span><strong>R$ ${formatFloatToCurrency(b.balance)}</strong></div>`;
+          bankSummaryEl.innerHTML += `
+            <div class="dre-row">
+              <span>🏦 ${b.name}</span>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <strong>R$ ${formatFloatToCurrency(b.balance)}</strong>
+                <button class="action-icon-btn" onclick="openBankModal('${b.id}')" title="Editar">✏️</button>
+                <button class="action-icon-btn" onclick="askDelete('${b.id}', 'bank', 'Deseja realmente excluir a conta bancária ${b.name}?')" title="Excluir">🗑️</button>
+              </div>
+            </div>`;
         });
       }
 
@@ -751,7 +879,7 @@
       let rawEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       const entries = rawEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
-      // Resumo de Sócios
+      // Resumo de Sócios com Editar e Excluir
       const socioEntries = entries.filter(e => e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]'));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
       socioSummaryEl.innerHTML = '';
@@ -759,7 +887,15 @@
         socioSummaryEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Nenhum lançamento de sócios no período.</div>`;
       } else {
         socioEntries.slice(0, 3).forEach(se => {
-          socioSummaryEl.innerHTML += `<div class="dre-row"><span>👤 ${se.description}</span><strong style="${se.type==='expense'?'color:var(--danger)':'color:var(--success)'}">R$ ${formatFloatToCurrency(se.value)}</strong></div>`;
+          socioSummaryEl.innerHTML += `
+            <div class="dre-row">
+              <span>👤 ${se.description}</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="${se.type==='expense'?'color:var(--danger)':'color:var(--success)'}">R$ ${formatFloatToCurrency(se.value)}</strong>
+                <button class="action-icon-btn" onclick="openSocioModal('${se.id}')" title="Editar">✏️</button>
+                <button class="action-icon-btn" onclick="askDelete('${se.id}', 'socio', 'Deseja realmente excluir este registro de sócio?')" title="Excluir">🗑️</button>
+              </div>
+            </div>`;
         });
       }
 

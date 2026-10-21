@@ -308,6 +308,8 @@
         <!-- PROGRAMA DE EMBAIXADORES CONFIGURAÇÃO -->
         <div class="card-box">
           <div class="card-title">👑 Programa de Embaixadores</div>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Compartilhe o link do seu programa para captar embaixadores:</p>
+          <div style="background:var(--bg-main); padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.8rem; margin-bottom:10px; word-break:break-all; color:var(--info);" id="displayAmbassadorUrl">--</div>
           <div class="toggle-switch">
             <span style="font-size:0.85rem; font-weight:bold;">Ativar Indicações por Link</span>
             <label class="switch"><input type="checkbox" id="embassadorToggle" checked><span class="slider"></span></label>
@@ -483,6 +485,29 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
+    // Funções dinâmicas para links do ecossistema SaaS Vortex Food
+    function getStoreSlug() {
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+      if (settings.storeName) {
+        return settings.storeName.toLowerCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '-');
+      }
+      return 'meuestabelecimento';
+    }
+
+    function getBaseMenuUrl() {
+      const origin = window.location.origin;
+      const slug = getStoreSlug();
+      return `${origin}/cardapio.html?loja=${slug}`;
+    }
+
+    function getAmbassadorUrl() {
+      const origin = window.location.origin;
+      const slug = getStoreSlug();
+      return `${origin}/cardapio.html?loja=${slug}&embaixadores=true`;
+    }
+
     function parseCurrencyToFloat(str) {
       if (!str) return 0;
       let clean = String(str).replace(/[^\d,]/g, '').replace(',', '.');
@@ -506,9 +531,9 @@
     }
 
     function copyAmbassadorLink() {
-      const link = `${window.location.origin}/embaixadores`;
+      const link = getAmbassadorUrl();
       navigator.clipboard.writeText(link);
-      showCustomAlert('Link Copiado!', 'O link do Programa de Embaixadores foi copiado para a sua área de transferência.', '📋');
+      showCustomAlert('Link Copiado!', 'O link dinâmico do Programa de Embaixadores foi copiado para a sua área de transferência.', '📋');
     }
 
     function executeDraw() {
@@ -564,11 +589,10 @@
       showCustomAlert('Gerando PDF', 'O download do seu cardápio em PDF foi iniciado.', '📥');
     }
 
-    // Sincronização automática diária para aniversariantes
     function checkAutomaticBirthdays() {
       if (!document.getElementById('autoBirthdayToggle').checked) return;
       const customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
-      const todayStr = new Date().toISOString().split('T')[0].slice(5); // MM-DD
+      const todayStr = new Date().toISOString().split('T')[0].slice(5);
       
       customers.forEach(c => {
         if (c.birthdate && c.birthdate.slice(5) === todayStr) {
@@ -586,6 +610,11 @@
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       
+      // Atualiza o link dinâmico de embaixadores na interface
+      const ambUrl = getAmbassadorUrl();
+      const displayUrlEl = document.getElementById('displayAmbassadorUrl');
+      if (displayUrlEl) displayUrlEl.innerText = ambUrl;
+
       const todayStr = new Date().toISOString().split('T')[0];
       document.getElementById('drawStartDate').value = todayStr;
       document.getElementById('drawEndDate').value = todayStr;

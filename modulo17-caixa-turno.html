@@ -230,6 +230,7 @@
         <button class="btn-action" onclick="openMovementModal('suprimento')">➕ Registrar Suprimento (Reforço)</button>
         <button class="btn-action" style="background: var(--warning); color: #000;" onclick="openMovementModal('sangria')">➖ Registrar Sangria (Retirada)</button>
         <button class="btn-action" style="background: var(--info);" onclick="openMovementModal('despesa')">🏷️ Pagar Despesa do Caixa</button>
+        <button class="btn-secondary" style="background: #475569; color: #fff;" onclick="openMovementModal('ajuste')">⚖️ Registrar Ajuste / Correção</button>
         <button class="btn-danger" style="margin-left: auto;" onclick="openCloseCashModal()">🔒 Fechar Caixa / Turno</button>
       </div>
     </div>
@@ -279,17 +280,24 @@
     </div>
   </div>
 
-  <!-- MODAL DE MOVIMENTAÇÃO (SUPRIMENTO / SANGRIA / DESPESA) -->
+  <!-- MODAL DE MOVIMENTAÇÃO (SUPRIMENTO / SANGRIA / DESPESA / AJUSTE) -->
   <div class="modal-overlay" id="movementModal">
     <div class="custom-modal-card">
       <div class="card-title" id="movementModalTitle">Registrar Movimentação</div>
+      <div class="form-group" id="groupAdjustmentType" style="display:none;">
+        <label>Tipo de Ajuste:*</label>
+        <select class="form-input" id="adjustmentDirection">
+          <option value="positivo">Ajuste Positivo (Entrada / Sobra corrigida)</option>
+          <option value="negativo">Ajuste Negativo (Saída / Falta corrigida)</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Valor (R$):*</label>
         <input type="text" class="form-input" id="movValue" placeholder="0,00" oninput="maskCurrency(this)">
       </div>
       <div class="form-group">
-        <label>Motivo / Descrição:*</label>
-        <textarea class="form-input" id="movReason" rows="3" placeholder="Descreva o motivo da operação..."></textarea>
+        <label>Justificativa do Erro / Motivo:*</label>
+        <textarea class="form-input" id="movReason" rows="3" placeholder="Descreva detalhadamente o motivo da correção..."></textarea>
       </div>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button class="btn-secondary" style="flex: 1;" onclick="closeMovementModal()">Cancelar</button>
@@ -423,7 +431,7 @@
       showCustomAlert('Caixa Aberto', `Turno iniciado com sucesso para ${op}!`, '🔓');
     }
 
-    // MOVIMENTAÇÕES (SUPRIMENTO, SANGRIA, DESPESA)
+    // MOVIMENTAÇÕES (SUPRIMENTO, SANGRIA, DESPESA, AJUSTE)
     function openMovementModal(type) {
       if (!currentCashData.isOpen) {
         showCustomAlert('Caixa Fechado', 'Abra o caixa antes de registrar movimentações.', '⚠️');
@@ -433,9 +441,19 @@
       const titles = {
         'suprimento': '➕ Registrar Suprimento (Reforço)',
         'sangria': '➖ Registrar Sangria (Retirada)',
-        'despesa': '🏷️ Pagar Despesa do Caixa'
+        'despesa': '🏷️ Pagar Despesa do Caixa',
+        'ajuste': '⚖️ Registrar Ajuste / Correção'
       };
       document.getElementById('movementModalTitle').innerText = titles[type] || 'Movimentação';
+      
+      const groupAdj = document.getElementById('groupAdjustmentType');
+      if (type === 'ajuste') {
+        groupAdj.style.display = 'block';
+        document.getElementById('adjustmentDirection').value = 'positivo';
+      } else {
+        groupAdj.style.display = 'none';
+      }
+
       document.getElementById('movValue').value = '';
       document.getElementById('movReason').value = '';
       document.getElementById('movementModal').classList.add('active');
@@ -451,12 +469,21 @@
       const numVal = parseCurrencyToFloat(valStr);
 
       if (!valStr || numVal <= 0 || !reason) {
-        showCustomAlert('Campos Incompletos', 'Informe um valor válido e o motivo da movimentação.', '⚠️');
+        showCustomAlert('Campos Incompletos', 'Informe um valor válido e a justificativa da operação.', '⚠️');
         return;
       }
 
-      const typeLabel = currentMovementType.toUpperCase();
-      if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
+      let typeLabel = currentMovementType.toUpperCase();
+      if (typeLabel === 'AJUSTE') {
+        const direction = document.getElementById('adjustmentDirection').value;
+        if (direction === 'negativo') {
+          typeLabel = 'AJUSTE (-)';
+          currentCashData.withdrawals += numVal;
+        } else {
+          typeLabel = 'AJUSTE (+)';
+          currentCashData.initialBalance += numVal;
+        }
+      } else if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
         currentCashData.withdrawals += numVal;
       } else if (typeLabel === 'SUPRIMENTO') {
         currentCashData.initialBalance += numVal;
@@ -473,7 +500,7 @@
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação registrada com sucesso no turno.', '✅');
+      showCustomAlert('Sucesso', 'Movimentação e justificativa registradas com sucesso no turno.', '✅');
     }
 
     // FECHAMENTO DE CAIXA
@@ -566,12 +593,14 @@
         const colorMap = {
           'SALDO INICIAL': 'var(--success)',
           'SUPRIMENTO': 'var(--success)',
+          'AJUSTE (+)': 'var(--success)',
           'SANGRIA': 'var(--warning)',
-          'DESPESA': 'var(--danger)'
+          'DESPESA': 'var(--danger)',
+          'AJUSTE (-)': 'var(--danger)'
         };
 
         currentCashData.movements.forEach(m => {
-          const isNegative = m.type === 'SANGRIA' || m.type === 'DESPESA';
+          const isNegative = m.type === 'SANGRIA' || m.type === 'DESPESA' || m.type === 'AJUSTE (-)';
           const signal = isNegative ? '- ' : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `

@@ -121,11 +121,18 @@
       .toggle-btn { display: block; }
     }
 
-    /* ESTILO PARA IMPRESSÃO DE TESTE OCULTA */
+    /* ESTILO PARA IMPRESSÃO DE TESTE CENTRALIZADA (PADRÃO TÉRMICO) */
     @media print {
       body * { visibility: hidden; }
       #printableReceipt, #printableReceipt * { visibility: visible; }
-      #printableReceipt { position: absolute; left: 0; top: 0; width: 100%; font-family: monospace; font-size: 12px; color: black; }
+      #printableReceipt {
+        position: absolute; left: 0; top: 0; width: 100%;
+        text-align: center !important;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 13px;
+        color: black;
+        line-height: 1.4;
+      }
     }
   </style>
 </head>
@@ -278,19 +285,19 @@
     </div>
   </main>
 
-  <!-- AREA OCULTA PARA IMPRESSÃO DE TESTE DE BOBINA -->
-  <div id="printableReceipt" style="display: none;">
-    <div style="text-align: center; font-weight: bold; font-size: 14px;">VORTEX FOOD</div>
-    <div style="text-align: center; font-size: 11px;">TESTE DE IMPRESSÃO TÉRMICA</div>
-    <div>--------------------------------</div>
-    <div>Data/Hora: <span id="testReceiptDate">--/--/---- --:--</span></div>
-    <div>Papel: <span id="testReceiptPaper">58mm</span></div>
-    <div>Conexão: OK</div>
-    <div>--------------------------------</div>
-    <div style="text-align: center; margin-top: 10px;">PRODUTO DE TESTE ...... R$ 10,00</div>
-    <div style="text-align: center; font-weight: bold; margin-top: 10px;">TOTAL: R$ 10,00</div>
-    <div>--------------------------------</div>
-    <div style="text-align: center; font-size: 10px; margin-top: 10px;">Sistema Vortex Food - Impressão OK</div>
+  <!-- AREA OCULTA PARA IMPRESSÃO DE TESTE DE BOBINA (100% CENTRALIZADA) -->
+  <div id="printableReceipt" style="display: none; text-align: center; width: 100%;">
+    <div style="font-weight: bold; font-size: 15px;" id="receiptStoreName">VORTEX FOOD</div>
+    <div style="font-size: 11px; margin-top: 2px;">TESTE DE IMPRESSÃO TÉRMICA</div>
+    <div style="margin: 6px 0;">--------------------------------</div>
+    <div style="font-size: 11px;">Data/Hora: <span id="testReceiptDate">--/--/---- --:--</span></div>
+    <div style="font-size: 11px;">Papel: <span id="testReceiptPaper">58mm</span></div>
+    <div style="font-size: 11px;">Conexão: OK</div>
+    <div style="margin: 6px 0;">--------------------------------</div>
+    <div style="font-size: 12px; margin-top: 6px;">PRODUTO DE TESTE ...... R$ 10,00</div>
+    <div style="font-size: 13px; font-weight: bold; margin-top: 6px;">TOTAL: R$ 10,00</div>
+    <div style="margin: 6px 0;">--------------------------------</div>
+    <div style="font-size: 10px; margin-top: 4px;">Sistema Vortex Food - Impressão OK</div>
     <br><br>
   </div>
 
@@ -441,6 +448,8 @@
     }
 
     function printTestReceipt() {
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('receiptStoreName').innerText = settings.storeName || 'VORTEX FOOD';
       document.getElementById('testReceiptDate').innerText = new Date().toLocaleString('pt-BR');
       document.getElementById('testReceiptPaper').innerText = document.getElementById('paperWidthDisplay').innerText;
       

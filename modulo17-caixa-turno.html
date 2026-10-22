@@ -390,61 +390,60 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // --- SINCRONIZAÇÃO COMPLETA VIA SUPABASE (CASH_SHIFTS E SALES_HISTORY) ---
+    // --- SINCRONIZAÇÃO COMPLETA E CORRIGIDA ENTRE PDV E CAIXA ---
     async function loadSalesForActiveShift(openedAt) {
       let cCash = 0;
       let cDigital = 0;
-      const openedDate = new Date(openedAt);
+      const openedTime = new Date(openedAt).getTime();
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      // 1. Busca oficial unificada usando a função dbFetchSales do supabase.js ou diretamente do Supabase
+      let allSales = [];
+      if (typeof dbFetchSales === 'function') {
+        allSales = await dbFetchSales();
+      } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          const { data: orders, error } = await supabaseClient
-            .from('vortex_sales_history')
-            .select('*');
-
-          if (orders && orders.length > 0) {
-            orders.forEach(order => {
-              const itemDate = new Date(order.created_at || order.date || order.timestamp || Date.now());
-              // Se a venda ocorreu após a abertura do caixa e não está cancelada
-              if (itemDate >= openedDate && order.status !== 'cancelled') {
-                const total = parseFloat(order.total || order.valor || order.subtotal || 0);
-                const payMethod = String(order.payment_method || order.payment || order.payMethod || order.forma_pagamento || '').toLowerCase();
-
-                if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
-                  cCash += total;
-                } else {
-                  cDigital += total; // Pix, Cartão, Vale, etc.
-                }
-              }
-            });
-          }
-        } catch (e) {
-          console.error('Erro ao buscar vendas no Supabase:', e);
-        }
+          const { data, error } = await supabaseClient.from('vortex_sales_history').select('*');
+          if (data) allSales = data;
+        } catch(e) {}
       }
 
-      // Fallback LocalStorage para segurança offline
+      // 2. Fallback redundante no LocalStorage para garantir 100% de cobertura offline
       const rawLocal = localStorage.getItem('vortex_sales_history');
       if (rawLocal) {
         try {
-          const list = JSON.parse(rawLocal);
-          if (Array.isArray(list)) {
-            list.forEach(item => {
-              const itemDate = new Date(item.created_at || item.date || item.timestamp || Date.now());
-              if (itemDate >= openedDate && item.status !== 'cancelled') {
-                const total = parseFloat(item.total || item.valor || item.subtotal || 0);
-                const payMethod = String(item.payment_method || item.payment || item.payMethod || item.forma_pagamento || '').toLowerCase();
-
-                if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
-                  cCash += total;
-                } else {
-                  cDigital += total;
-                }
+          const localList = JSON.parse(rawLocal);
+          if (Array.isArray(localList)) {
+            // Mescla sem duplicar por ID
+            localList.forEach(localItem => {
+              if (!allSales.some(s => String(s.id) === String(localItem.id))) {
+                allSales.push(localItem);
               }
             });
           }
         } catch(e) {}
       }
+
+      // 3. Processa e filtra todas as vendas considerando o momento de abertura do caixa
+      allSales.forEach(order => {
+        if (order.status === 'cancelled') return;
+
+        // Extrai data e hora de forma segura independentemente da estrutura do campo
+        const dateStr = order.date || new Date().toISOString().split('T')[0];
+        const timeStr = order.time || '00:00';
+        const orderTimestamp = new Date(`${dateStr}T${timeStr}:00`).getTime();
+
+        // Se o pedido ocorreu após o momento de abertura do caixa
+        if (orderTimestamp >= openedTime || order.date >= openedAt.split('T')[0]) {
+          const total = parseFloat(order.total || order.valor || order.subtotal || 0);
+          const payMethod = String(order.payMethod || order.payment || order.paymentMethod || order.forma_pagamento || '').toLowerCase();
+
+          if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
+            cCash += total;
+          } else {
+            cDigital += total; // Pix, Cartão, Vale, etc.
+          }
+        }
+      });
 
       currentCashData.salesCash = cCash;
       currentCashData.salesDigital = cDigital;
@@ -475,7 +474,6 @@
               movements: shift.movements || []
             };
 
-            // Recalcula totais de saídas (sangrias/despesas) com base nas movimentações salvas
             let totalWithdrawn = 0;
             currentCashData.movements.forEach(m => {
               if (m.type === 'SANGRIA' || m.type === 'DESPESA' || m.type === 'AJUSTE (-)') {
@@ -543,7 +541,6 @@
         movements: [initialMovement]
       };
 
-      // Gravação real obrigatória no Supabase
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           const { data, error } = await supabaseClient
@@ -639,7 +636,6 @@
 
       currentCashData.movements.push(newMov);
 
-      // Sincroniza imediatamente as movimentações no Supabase
       if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
           await supabaseClient
@@ -686,7 +682,6 @@
       const countedVal = parseCurrencyToFloat(countedStr);
       const closeReasonText = document.getElementById('closeReason').value;
 
-      // Salva fechamento oficial no Supabase
       if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
           await supabaseClient

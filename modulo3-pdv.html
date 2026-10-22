@@ -476,20 +476,16 @@
       }
 
       const channelLabel = `Balcão (${selectedConsumptionType})`;
+      
+      // Estrutura exata esperada pelo dbSaveSale do supabase.js
       const newSaleRecord = {
         id: uniqueId,
         client: clientName,
         channel: channelLabel,
-        origin: channelLabel,
         total: total,
         subtotal: total,
         discount: 0,
         payMethod: payment,
-        payment: payment,
-        paymentMethod: payment,
-        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
-        changeValue: changeVal,
-        change: changeVal,
         status: 'finished',
         date: dateStr,
         time: timeStr,
@@ -501,49 +497,43 @@
         }))
       };
 
+      // Estrutura exata esperada pelo dbSaveKdsOrder do supabase.js
       const newKdsOrder = {
         id: uniqueId,
         origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
-        payMethod: payment,
-        paymentMethod: payment,
         cashGiven: payment === 'Dinheiro' ? rawCashGiven : total,
-        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
-        changeValue: changeVal,
         change: changeVal,
-        observation: observation,
+        time: timeStr,
+        date: dateStr,
+        dateFormatted: now.toLocaleDateString('pt-BR'),
         items: [...newSaleRecord.items],
         total: total,
+        observation: observation,
         status: 'new',
-        date: dateStr,
-        time: timeStr
+        code: Math.floor(100 + Math.random() * 900).toString()
       };
 
-      // SALVAMENTO REAL NO SUPABASE (BANCO DE DADOS OFICIAL)
+      // CHAMADA DAS FUNÇÕES OFICIAIS DO SUPABASE.JS
       let cloudSaved = false;
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      if (typeof dbSaveSale === 'function' && typeof dbSaveKdsOrder === 'function') {
         try {
-          const { error: errSale } = await supabaseClient
-            .from('vortex_sales_history')
-            .upsert([newSaleRecord]);
+          const resSale = await dbSaveSale(newSaleRecord);
+          const resKds = await dbSaveKdsOrder(newKdsOrder);
 
-          const { error: errKds } = await supabaseClient
-            .from('vortex_kds_orders')
-            .upsert([newKdsOrder]);
-
-          if (!errSale && !errKds) {
+          if (!resSale.error && !resKds.error) {
             cloudSaved = true;
           } else {
-            console.warn('Aviso do Supabase no salvamento:', errSale || errKds);
+            console.error('Erro retornado pelas funções do Supabase:', resSale.error || resKds.error);
           }
         } catch (err) {
-          console.error('Erro de conexão ao salvar no Supabase:', err);
+          console.error('Exceção ao tentar salvar via Supabase:', err);
         }
       }
 
-      // Contingência e sincronia local para manter o app responsivo em qualquer tela
+      // Sincronia e contingência local para manter redundância
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
@@ -564,7 +554,7 @@
       document.getElementById('cashGivenInput').value = '';
       renderPdvCart();
 
-      const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado no sistema';
+      const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado localmente';
       showNoticeModal('Venda Realizada!', `Pedido (${selectedConsumptionType}) ${cloudStatusMsg} e enviado para a Cozinha!`, '🚀');
     }
 
@@ -586,7 +576,7 @@
     window.onload = function() {
       loadStoreSettings();
       renderCatalog();
-      handlePaymentChange(document.getElementById('pdvPaymentSelect').value);
+      handlePaymentChange(document.getElementById('pdvPaymentSelect', document.getElementById('pdvPaymentSelect').value));
     };
   </script>
 </body>

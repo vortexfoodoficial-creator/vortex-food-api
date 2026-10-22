@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Suporte & Ajuda</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -80,26 +83,27 @@
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-    .btn-support { display: flex; align-items: center; justify-content: center; gap: 10px; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.9rem; width: 100%; text-decoration: none; margin-bottom: 10px; transition: opacity 0.2s; }
-    .btn-support:hover { opacity: 0.9; }
+    .btn-support { display: flex; align-items: center; justify-content: center; gap: 10px; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.92rem; width: 100%; text-decoration: none; margin-bottom: 12px; transition: all 0.2s; }
+    .btn-support:hover { opacity: 0.9; transform: translateY(-1px); }
 
-    .btn-wa-group { background: #1e3a8a; color: white; }
-    .btn-bug { background: var(--primary); color: white; }
     .btn-wa-green { background: var(--whatsapp); color: white; }
+    .btn-outline-action { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+    .btn-outline-action:hover { background: rgba(249, 115, 22, 0.1); }
+    .btn-email { background: #3b82f6; color: white; }
 
-    .faq-container { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+    .faq-container { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 10px; }
     .faq-item { border-bottom: 1px solid var(--border); }
     .faq-item:last-child { border-bottom: none; }
-    .faq-question { background: var(--bg-main); padding: 12px 15px; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .faq-answer { padding: 15px; font-size: 0.85rem; color: var(--text-muted); display: none; background: var(--bg-card); line-height: 1.5; }
+    .faq-question { background: var(--bg-main); padding: 14px 16px; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .faq-answer { padding: 16px; font-size: 0.88rem; color: var(--text-muted); display: none; background: var(--bg-card); line-height: 1.6; }
     .faq-item.active .faq-answer { display: block; }
 
-    .support-info-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; }
+    .support-info-text { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5; background: var(--bg-main); padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
+    .btn-action-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 12px; }
 
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -132,6 +136,7 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
@@ -172,87 +177,79 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Suporte ao Cliente</h1>
+        <h1>Suporte & Central de Ajuda</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
-    <!-- SUPORTE AO CLIENTE (GRUPOS E BUGS) -->
+    <!-- HORÁRIO E CANAIS OFICIAIS -->
     <div class="card-box">
-      <div class="card-title">🚀 Comunidade & Reportes</div>
-      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20entrar%20no%20grupo%20de%20novidades." target="_blank" class="btn-support btn-wa-group">
-        💬 Grupo de novidades WhatsApp[span_1](start_span)[span_1](end_span)
+      <div class="card-title">📞 Canais Oficiais de Atendimento</div>
+      
+      <div class="support-info-text">
+        <strong style="color:var(--text-main);">🕒 Horários de Atendimento Técnico:</strong><br>
+        • Segunda a Sábado: 08:00 às 23:00<br>
+        • Domingos e Feriados: 10:30 às 23:00<br><br>
+        <strong style="color:var(--text-main);">📱 WhatsApp de Suporte:</strong> +55 11 95336-5177<br>
+        <strong style="color:var(--text-main);">✉️ E-mail Oficial:</strong> vortexfood.oficial@gmail.com
+      </div>
+
+      <a href="https://wa.me/5511953365177?text=Olá!%20Preciso%20de%20suporte%20técnico%20no%20Vortex%20Food." target="_blank" class="btn-support btn-wa-green">
+        💬 Chamar no WhatsApp de Suporte
       </a>
-      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20entrar%20no%20grupo%20de%20lojistas." target="_blank" class="btn-support btn-wa-group" style="background:#0f766e;">
-        👥 Grupo de Lojistas no WhatsApp[span_2](start_span)[span_2](end_span)
-      </a>
-      <button class="btn-support btn-bug" onclick="openBugModal()">
-        💰 Achou um BUG? Ganhe R$[span_3](start_span)[span_3](end_span)
+
+      <button class="btn-support btn-email" onclick="copyOrSendEmail()">
+        ✉️ Enviar E-mail (vortexfood.oficial@gmail.com)
       </button>
+    </div>
+
+    <!-- REPORTAR BUG OU SUGERIR MELHORIA -->
+    <div class="card-box">
+      <div class="card-title">💡 Como Podemos Ajudar Você Hoje?</div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+        <a href="https://wa.me/5511953365177?text=Olá!%20Encontrei%20uma%20falha/bug%20no%20sistema:" target="_blank" class="btn-support btn-outline-action">
+          🐛 Reportar Bug / Erro
+        </a>
+        <a href="https://wa.me/5511953365177?text=Olá!%20Tenho%20uma%20sugestão%20de%20melhoria%20para%20o%20sistema:" target="_blank" class="btn-support btn-outline-action">
+          🚀 Sugerir Melhoria
+        </a>
+      </div>
     </div>
 
     <!-- PERGUNTAS FREQUENTES (FAQ) -->
     <div class="card-box">
-      <div class="card-title">❓ Perguntas Frequentes (FAQ)[span_4](start_span)[span_4](end_span)</div>
+      <div class="card-title">❓ Perguntas Frequentes (FAQ)</div>
       <div class="faq-container">
         <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">Como configurar o cardápio digital? <span>▼</span></div>
-          <div class="faq-answer">Basta acessar o módulo "Cardápio & Produtos" na aba lateral para cadastrar, editar preços ou pausar itens em tempo real.</div>
+          <div class="faq-question" onclick="toggleFaq(this)">Como cadastrar ou alterar preços no Cardápio Digital? <span>▼</span></div>
+          <div class="faq-answer">Acesse o módulo <strong>"Cardápio & Produtos"</strong> na barra lateral. Lá você pode adicionar novos itens, alterar preços, definir complementos ou pausar a disponibilidade de produtos em tempo real.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">Como funcionam as comandas na Cozinha (KDS)? <span>▼</span></div>
-          <div class="faq-answer">Todo pedido finalizado no PDV, Mesas ou Delivery é enviado automaticamente em tempo real para a tela do KDS, onde a cozinha pode gerenciar o preparo e imprimir a comanda térmica.</div>
+          <div class="faq-question" onclick="toggleFaq(this)">Como conectar a impressora Bluetooth de cupons? <span>▼</span></div>
+          <div class="faq-answer">Vá no módulo <strong>"Impressoras & Bluetooth"</strong>, garanta que o Bluetooth do seu dispositivo esteja ligado e clique em <strong>"Escanear Bluetooth"</strong> para parear sua impressora térmica.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-question" onclick="toggleFaq(this)">Onde visualizo o fechamento do caixa do dia? <span>▼</span></div>
-          <div class="faq-answer">Acesse o módulo "Fechamento de Caixa" ou o "Financeiro & DRE" para auditar entradas, formas de pagamento e retiradas do turno.</div>
+          <div class="faq-question" onclick="toggleFaq(this)">Como funciona a tela da Cozinha (KDS)? <span>▼</span></div>
+          <div class="faq-answer">Todos os pedidos confirmados no PDV, Mesas ou Delivery aparecem instantaneamente no <strong>KDS / Cozinha</strong>. A equipe de preparo pode alterar os status (Em Preparo, Pronto) ou mandar imprimir o comprovante.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">Onde faço o controle financeiro e fechamento de caixa? <span>▼</span></div>
+          <div class="faq-answer">No módulo <strong>"Fechamento de Caixa"</strong> você realiza a abertura e conferência de valores do turno. Já no módulo <strong>"Financeiro & DRE"</strong>, você acompanha o faturamento acumulado, despesas e margem de lucro.</div>
         </div>
       </div>
-    </div>
-
-    <!-- SUPORTE VIA WHATSAPP -->
-    <div class="card-box">
-      <div class="card-title">📞 Suporte via WhatsApp[span_5](start_span)[span_5](end_span)</div>
-      <div class="support-info-text">
-        <strong>Horário de Atendimento:</strong><br>
-        Segunda à Sábado das 08:00 às 23:00[span_6](start_span)[span_6](end_span)<br>
-        Domingo das 10:30 às 23:00[span_7](start_span)[span_7](end_span)<br>
-        Telefone: +55 19 99215-9211[span_8](start_span)[span_8](end_span)
-      </div>
-      <a href="https://wa.me/5519992159211?text=Olá!%20Preciso%20de%20suporte%20técnico%20no%20Vortex%20Food." target="_blank" class="btn-support btn-wa-green">
-        🟢 Abrir o WhatsApp de Suporte[span_9](start_span)[span_9](end_span)
-      </a>
-    </div>
-
-    <!-- FINANCEIRO / COMERCIAL -->
-    <div class="card-box">
-      <div class="card-title">💳 WhatsApp do Financeiro / Comercial</div>
-      <div class="support-info-text">
-        <strong>Financeiro:</strong> +55 19 99215-9211[span_10](start_span)[span_10](end_span)
-      </div>
-      <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20falar%20com%20o%20Financeiro." target="_blank" class="btn-support btn-wa-green" style="margin-bottom:15px;">
-        💬 Abrir o WhatsApp do Financeiro[span_11](start_span)[span_11](end_span)
-      </a>
-
-      <div class="support-info-text">
-        <strong>Comercial:</strong> +55 19 99248-2854[span_12](start_span)[span_12](end_span)
-      </div>
-      <a href="https://wa.me/5519992482854?text=Olá!%20Gostaria%20de%20falar%20com%20o%20Comercial." target="_blank" class="btn-support btn-wa-green">
-        💬 Abrir o WhatsApp do Comercial[span_13](start_span)[span_13](end_span)
-      </a>
     </div>
   </main>
 
-  <!-- MODAL DE BUG -->
-  <div class="modal-overlay" id="bugModal">
+  <!-- MODAL DE NOTIFICAÇÃO NATIVO -->
+  <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
-      <div style="font-size:3rem; margin-bottom:12px;">🐛</div>
-      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;">Encontrou uma falha?</div>
-      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;">Envie os detalhes do erro para o nosso WhatsApp de suporte técnico. Se o bug for validado, você ganha recompensa em dinheiro!</div>
-      <a href="https://wa.me/5519992159211?text=Olá!%20Encontrei%20um%20bug%20no%20sistema:" target="_blank" class="btn-support btn-wa-green" style="margin-bottom:8px;">Enviar Bug no WhatsApp</a>
-      <button class="btn-support" style="background:var(--border); color:var(--text-main); border:none;" onclick="closeBugModal()">Fechar</button>
+      <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">📋</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">E-mail Copiado</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">O e-mail vortexfood.oficial@gmail.com foi copiado para a área de transferência.</div>
+      <button class="btn-action-primary" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
@@ -272,8 +269,8 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -290,12 +287,25 @@
       parent.classList.toggle('active');
     }
 
-    function openBugModal() {
-      document.getElementById('bugModal').classList.add('active');
+    function copyOrSendEmail() {
+      const email = 'vortexfood.oficial@gmail.com';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(email);
+        showNoticeModal('E-mail Copiado!', `O e-mail <strong>${email}</strong> foi copiado para a sua área de transferência.`, '✉️');
+      } else {
+        window.location.href = `mailto:${email}`;
+      }
     }
 
-    function closeBugModal() {
-      document.getElementById('bugModal').classList.remove('active');
+    function showNoticeModal(title, desc, icon) {
+      document.getElementById('noticeIcon').innerText = icon || 'ℹ️';
+      document.getElementById('noticeTitle').innerText = title;
+      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeModal').classList.add('active');
+    }
+
+    function closeNoticeModal() {
+      document.getElementById('noticeModal').classList.remove('active');
     }
 
     setInterval(() => {

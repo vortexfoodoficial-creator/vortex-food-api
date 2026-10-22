@@ -96,9 +96,9 @@
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
-    /* TABELAS MODERNAS */
+    /* TABELAS COM ROLAGEM INDEPENDENTE */
     .table-responsive { width: 100%; overflow-x: auto; }
-    .scroll-table-container { max-height: 460px; overflow-y: auto; }
+    .scroll-table-container { max-height: 320px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
     th { background: var(--bg-main); padding: 10px 12px; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
     td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -222,7 +222,7 @@
       </div>
     </div>
 
-    <!-- LISTAGEM DETALHADA DE CADA VENDA REGISTRADA COM EXTRATO COMPLETO -->
+    <!-- LISTAGEM DETALHADA DE CADA VENDA REGISTRADA COM ROLAGEM INDEPENDENTE -->
     <div class="card-box">
       <div class="card-title">
         <span>🧾 Histórico Detalhado de Vendas Efetuadas</span>
@@ -286,12 +286,12 @@
       </div>
     </div>
 
-    <!-- VENDAS POR HORÁRIO E CATEGORIA -->
+    <!-- VENDAS POR HORÁRIO E CATEGORIA COM ROLAGEM INDEPENDENTE -->
     <div class="grid-2">
       <!-- VENDAS POR HORÁRIO -->
       <div class="card-box">
         <div class="card-title">⏰ Picos de Movimento (Horário)</div>
-        <div class="table-responsive">
+        <div class="table-responsive scroll-table-container">
           <table>
             <thead>
               <tr>
@@ -310,7 +310,7 @@
       <!-- VENDAS POR CATEGORIA -->
       <div class="card-box">
         <div class="card-title">🏷️ Vendas por Categoria</div>
-        <div class="table-responsive">
+        <div class="table-responsive scroll-table-container">
           <table>
             <thead>
               <tr>
@@ -327,13 +327,13 @@
       </div>
     </div>
 
-    <!-- ANÁLISE DE PRODUTOS: RENTABILIDADE E GIRO DE ESTOQUE -->
+    <!-- ANÁLISE DE PRODUTOS: RENTABILIDADE E GIRO DE ESTOQUE COM ROLAGEM INDEPENDENTE -->
     <div class="card-box">
       <div class="card-title">
         <span>📦 Análise de Desempenho e Rentabilidade de Produtos</span>
         <input type="text" class="filter-input" placeholder="🔍 Buscar produto..." id="searchProductInput" onkeyup="filterProductTable()">
       </div>
-      <div class="table-responsive">
+      <div class="table-responsive scroll-table-container">
         <table>
           <thead>
             <tr>
@@ -353,12 +353,12 @@
       </div>
     </div>
 
-    <!-- DESEMPENHO DA EQUIPE & PERDAS -->
+    <!-- DESEMPENHO DA EQUIPE & PERDAS COM ROLAGEM INDEPENDENTE -->
     <div class="grid-2">
       <!-- DESEMPENHO DA EQUIPE -->
       <div class="card-box">
         <div class="card-title">👔 Desempenho da Equipe</div>
-        <div class="table-responsive">
+        <div class="table-responsive scroll-table-container">
           <table>
             <thead>
               <tr>
@@ -378,7 +378,7 @@
       <!-- PERDAS, DESPERDÍCIOS E ESTOQUE -->
       <div class="card-box">
         <div class="card-title">⚠️ Perdas, Desperdícios e Divergências</div>
-        <div class="table-responsive">
+        <div class="table-responsive scroll-table-container">
           <table>
             <thead>
               <tr>
@@ -497,12 +497,10 @@
       loadReportsData();
     }
 
-    // Busca o custo unitário rigorosamente unificado com o Módulo de Fichas Técnicas e Cardápio
     function getProductCostFromCardapio(productName) {
       if (!productName) return 0;
       const cleanName = productName.trim().toLowerCase();
 
-      // 1. Procura nas Fichas Técnicas cadastradas (Nuvem ou Local)
       const recipes = cloudRecipes.length > 0 ? cloudRecipes : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
       const recMatch = recipes.find(r => r.productName && r.productName.trim().toLowerCase() === cleanName);
       if (recMatch) {
@@ -517,7 +515,6 @@
         if (val > 0) return val;
       }
 
-      // 2. Procura no Cardápio de Produtos (Nuvem ou Local)
       const cardapio = cloudCardapio.length > 0 ? cloudCardapio : (JSON.parse(localStorage.getItem('vortex_cardapio_produtos') || localStorage.getItem('vortex_products_catalog')) || []);
       const prodMatch = cardapio.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
       if (prodMatch) {
@@ -549,7 +546,7 @@
       
       return rawExpenses.filter(e => {
         const itemDateStr = parseToLocalDateStr(e.date || e.timestamp);
-        if (!itemDateStr) return true; // Se não tiver data explícita, inclui para alinhar com o financeiro
+        if (!itemDateStr) return true;
         return itemDateStr >= startStr && itemDateStr <= endStr;
       });
     }
@@ -587,7 +584,6 @@
       initAndLoadReports();
     }
 
-    // Carregador assíncrono unificado (Supabase + LocalStorage)
     async function initAndLoadReports() {
       applyTheme();
 
@@ -652,7 +648,7 @@
               totalCmvReal += (unitCost * qty);
             });
           } else {
-            totalCmvReal += (val * 0.50); // Fallback padrão alinhado com o financeiro
+            totalCmvReal += (val * 0.50);
           }
         }
       });
@@ -660,7 +656,6 @@
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
       const grossMargin = Math.max(0, netSales - totalCmvReal);
       
-      // Soma exata das despesas operacionais lançadas (igual ao financeiro)
       let totalOperatingExpenses = 0;
       expenses.forEach(e => {
         totalOperatingExpenses += parseFloat(e.value || e.amount || e.valor || 0);

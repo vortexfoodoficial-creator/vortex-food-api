@@ -238,7 +238,7 @@
           <tbody id="staffTableBody">
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                Carregando colaboradores...
+                Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.
               </td>
             </tr>
           </tbody>
@@ -277,7 +277,7 @@
       
       <div class="form-group">
         <label>Nome Completo:*</label>
-        <input type="text" class="form-input" id="staffName" placeholder="Ex: Carlos Oliveira">
+        <input type="text" class="form-input" id="staffName" placeholder="Ex: Nome do Colaborador">
       </div>
 
       <div class="form-group">
@@ -293,12 +293,12 @@
 
       <div class="form-group">
         <label>PIN Gerencial / Acesso Rápido (4 dígitos):*</label>
-        <input type="text" class="form-input" id="staffPin" maxlength="4" placeholder="Ex: 1234">
+        <input type="text" class="form-input" id="staffPin" maxlength="4" placeholder="Ex: 0000">
       </div>
 
       <div class="form-group">
         <label>Porcentagem de Comissão / Gorjeta (%):</label>
-        <input type="number" class="form-input" id="staffCommission" placeholder="Ex: 10" step="0.5">
+        <input type="number" class="form-input" id="staffCommission" placeholder="Ex: 0" step="0.5">
       </div>
 
       <div class="form-group">
@@ -374,13 +374,13 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
-    // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE
+    // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE (SEM DADOS FICTÍCIOS)
     async function loadStaffData() {
       let loaded = false;
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           const { data, error } = await supabaseClient.from('vortex_staff').select('*');
-          if (data && data.length > 0) {
+          if (data) {
             staffMembers = data;
             loaded = true;
           }
@@ -392,11 +392,7 @@
         if (local) {
           try { staffMembers = JSON.parse(local); } catch(e){}
         } else {
-          // Padrão inicial
-          staffMembers = [
-            { id: '1', name: 'Gerente Principal', role: 'Gerente', pin: '9999', commission: 0, status: 'ativo' },
-            { id: '2', name: 'Atendente Balcão', role: 'Caixa', pin: '1234', commission: 2, status: 'ativo' }
-          ];
+          staffMembers = []; // Iniciando completamente vazio
         }
       }
 
@@ -409,7 +405,7 @@
       tbody.innerHTML = '';
 
       if (staffMembers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
         return;
       }
 
@@ -449,7 +445,6 @@
 
       document.getElementById('statStaffSales').innerText = `R$ ${totalSales.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       
-      // Média global estimada de comissões (5%)
       const estimatedCommissions = totalSales * 0.05;
       document.getElementById('statStaffCommissions').innerText = `R$ ${estimatedCommissions.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
     }
@@ -500,7 +495,7 @@
     function openStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffName').value = '';
-      document.getElementById('staffRole').value = 'Garcom';
+      document.getElementById('staffRole').value = 'Gerente';
       document.getElementById('staffPin').value = '';
       document.getElementById('staffCommission').value = '';
       document.getElementById('staffStatus').value = 'ativo';
@@ -551,7 +546,6 @@
         staffMembers.push(newRecord);
       }
 
-      // Salva no Supabase se disponível
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           await supabaseClient.from('vortex_staff').upsert([newRecord]);

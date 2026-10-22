@@ -107,6 +107,30 @@ async function dbFetchKdsOrders() {
   }));
 }
 
+// Helper para Integrações de Delivery na Nuvem
+async function dbSaveIntegration(platform, credentials) {
+  if (!supabase) return { error: 'Supabase não inicializado' };
+  const record = {
+    platform: platform,
+    connected: true,
+    credentials: credentials,
+    updated_at: new Date().toISOString()
+  };
+  const { data, error } = await supabase.from('vortex_integrations').upsert([record], { onConflict: 'platform' });
+  if (error) console.error('Erro ao salvar integração no Supabase:', error);
+  return { data, error };
+}
+
+async function dbFetchIntegrations() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('vortex_integrations').select('*');
+  if (error) {
+    console.error('Erro ao buscar integrações no Supabase:', error);
+    return [];
+  }
+  return data;
+}
+
 // Helper para Lançamentos Financeiros
 async function dbSaveFinancialEntry(entryData) {
   if (!supabase) return { error: 'Supabase não inicializado' };

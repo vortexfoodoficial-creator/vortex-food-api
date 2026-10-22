@@ -342,6 +342,7 @@
   <script>
     let currentMovementType = '';
     let currentCashData = {
+      id: null,
       isOpen: false,
       operator: '',
       initialBalance: 0,
@@ -388,6 +389,64 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    // SUPABASE INTEGRATION FUNCTIONS
+    async function loadActiveShiftFromSupabase() {
+      if (typeof supabaseClient === 'undefined' || !supabaseClient) {
+        loadCurrentCashStateLocal();
+        return;
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('cash_shifts')
+          .select('*')
+          .eq('is_open', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const shift = data[0];
+          currentCashData = {
+            id: shift.id,
+            isOpen: true,
+            operator: shift.operator,
+            initialBalance: parseFloat(shift.initial_balance || 0),
+            salesCash: parseFloat(shift.sales_cash || 0),
+            salesDigital: parseFloat(shift.sales_digital || 0),
+            withdrawals: parseFloat(shift.withdrawals || 0),
+            movements: []
+          };
+          await loadMovementsFromSupabase(shift.id);
+        } else {
+          currentCashData.isOpen = false;
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar turno do Supabase, usando local:', err);
+        loadCurrentCashStateLocal();
+      }
+      renderCashState();
+    }
+
+    async function loadMovementsFromSupabase(shiftId) {
+      const { data, error } = await supabaseClient
+        .from('cash_movements')
+        .select('*')
+        .eq('shift_id', shiftId)
+        .order('created_at', { ascending: true });
+
+      if (!error && data) {
+        currentCashData.movements = data.map(m => ({
+          time: new Date(m.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+          type: m.type,
+          reason: m.reason,
+          val: parseFloat(m.val || 0),
+          operator: m.operator
+        }));
+      }
+    }
+
     // ABERTURA DE CAIXA
     function openOpenCashModal() {
       document.getElementById('openOperatorName').value = '';
@@ -399,7 +458,7 @@
       document.getElementById('openCashModal').classList.remove('active');
     }
 
-    function confirmOpenCash() {
+    async function confirmOpenCash() {
       const op = document.getElementById('openOperatorName').value.trim();
       const balStr = document.getElementById('openInitialBalance').value;
       const bal = parseCurrencyToFloat(balStr);
@@ -409,23 +468,57 @@
         return;
       }
 
-      currentCashData = {
-        isOpen: true,
+      const newShift = {
         operator: op,
-        initialBalance: bal,
-        salesCash: 0,
-        salesDigital: 0,
+        initial_balance: bal,
+        sales_cash: 0,
+        sales_digital: 0,
         withdrawals: 0,
-        movements: [{
-          time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
-          type: 'SALDO INICIAL',
-          reason: 'Abertura de caixa com troco inicial',
-          val: bal,
-          operator: op
-        }]
+        is_open: true,
+        created_at: new Date().toISOString()
       };
 
-      saveCurrentCashState();
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('cash_shifts')
+            .insert([newShift])
+            .select();
+
+          if (error) throw error;
+          if (data && data.length > 0) {
+            currentCashData.id = data[0].id;
+          }
+
+          // Salva o saldo inicial como primeira movimentação
+          await supabaseClient.from('cash_movements').insert([{
+            shift_id: currentCashData.id,
+            type: 'SALDO INICIAL',
+            reason: 'Abertura de caixa com troco inicial',
+            val: bal,
+            operator: op,
+            created_at: new Date().toISOString()
+          }]);
+        } catch (err) {
+          console.warn('Erro ao salvar no Supabase, gravando localmente:', err);
+        }
+      }
+
+      currentCashData.isOpen = true;
+      currentCashData.operator = op;
+      currentCashData.initialBalance = bal;
+      currentCashData.salesCash = 0;
+      currentCashData.salesDigital = 0;
+      currentCashData.withdrawals = 0;
+      currentCashData.movements = [{
+        time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+        type: 'SALDO INICIAL',
+        reason: 'Abertura de caixa com troco inicial',
+        val: bal,
+        operator: op
+      }];
+
+      saveCurrentCashStateLocal();
       renderCashState();
       closeOpenCashModal();
       showCustomAlert('Caixa Aberto', `Turno iniciado com sucesso para ${op}!`, '🔓');
@@ -463,7 +556,7 @@
       document.getElementById('movementModal').classList.remove('active');
     }
 
-    function confirmMovement() {
+    async function confirmMovement() {
       const valStr = document.getElementById('movValue').value;
       const reason = document.getElementById('movReason').value.trim();
       const numVal = parseCurrencyToFloat(valStr);
@@ -489,15 +582,37 @@
         currentCashData.initialBalance += numVal;
       }
 
-      currentCashData.movements.push({
+      const movementObj = {
         time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
         type: typeLabel,
         reason: reason,
         val: numVal,
         operator: currentCashData.operator
-      });
+      };
 
-      saveCurrentCashState();
+      currentCashData.movements.push(movementObj);
+
+      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.id) {
+        try {
+          await supabaseClient.from('cash_movements').insert([{
+            shift_id: currentCashData.id,
+            type: typeLabel,
+            reason: reason,
+            val: numVal,
+            operator: currentCashData.operator,
+            created_at: new Date().toISOString()
+          }]);
+
+          await supabaseClient.from('cash_shifts').update({
+            initial_balance: currentCashData.initialBalance,
+            withdrawals: currentCashData.withdrawals
+          }).eq('id', currentCashData.id);
+        } catch (err) {
+          console.warn('Erro ao salvar movimentação no Supabase:', err);
+        }
+      }
+
+      saveCurrentCashStateLocal();
       renderCashState();
       closeMovementModal();
       showCustomAlert('Sucesso', 'Movimentação e justificativa registradas com sucesso no turno.', '✅');
@@ -521,26 +636,37 @@
       document.getElementById('closeCashModal').classList.remove('active');
     }
 
-    function finalizeCashClose() {
+    async function finalizeCashClose() {
       const countedStr = document.getElementById('countedCash').value;
       if (!countedStr) {
         showCustomAlert('Contagem Obrigatória', 'Informe o valor contado fisicamente no caixa.', '⚠️');
         return;
       }
 
+      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.id) {
+        try {
+          await supabaseClient.from('cash_shifts').update({
+            is_open: false,
+            closed_at: new Date().toISOString()
+          }).eq('id', currentCashData.id);
+        } catch (err) {
+          console.warn('Erro ao fechar caixa no Supabase:', err);
+        }
+      }
+
       currentCashData.isOpen = false;
-      saveCurrentCashState();
+      saveCurrentCashStateLocal();
       renderCashState();
       closeCloseCashModal();
       showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso!', '🔒');
     }
 
-    // PERSISTÊNCIA E RENDERIZAÇÃO
-    function saveCurrentCashState() {
+    // PERSISTÊNCIA LOCAL (FALLBACK)
+    function saveCurrentCashStateLocal() {
       localStorage.setItem('vortex_current_cash', JSON.stringify(currentCashData));
     }
 
-    function loadCurrentCashState() {
+    function loadCurrentCashStateLocal() {
       const saved = localStorage.getItem('vortex_current_cash');
       if (saved) {
         try {
@@ -619,13 +745,12 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
+    window.onload = async function() {
       applyTheme();
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       
-      loadCurrentCashState();
-      renderCashState();
+      await loadActiveShiftFromSupabase();
     };
   </script>
 </body>

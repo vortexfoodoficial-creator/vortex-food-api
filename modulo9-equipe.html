@@ -109,10 +109,6 @@
     .badge-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .badge-inactive { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
-    /* CHECKBOX PERMISSOES GRID */
-    .permissions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-    .permission-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
-
     /* MODAL */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
@@ -190,7 +186,7 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Gestão de Equipe & Permissões</h1>
+        <h1>Gestão de Equipe</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
@@ -204,7 +200,7 @@
         <span class="metric-value" id="statTotalStaff">0</span>
       </div>
       <div class="metric-card">
-        <span class="metric-label">Membros em Turno (Ativos)</span>
+        <span class="metric-label">Membros Ativos</span>
         <span class="metric-value" style="color: var(--success);" id="statActiveStaff">0</span>
       </div>
       <div class="metric-card">
@@ -229,7 +225,6 @@
             <tr>
               <th>Nome</th>
               <th>Função / Cargo</th>
-              <th>PIN de Acesso</th>
               <th>Comissão (%)</th>
               <th>Status</th>
               <th>Ações</th>
@@ -237,34 +232,12 @@
           </thead>
           <tbody id="staffTableBody">
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
                 Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- NÍVEIS E PERFIS DE ACESSO -->
-    <div class="card-box">
-      <div class="card-title">🔒 Configuração de Permissões por Função</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-        Selecione o cargo para personalizar os módulos que os colaboradores deste perfil têm acesso para visualizar e operar.
-      </div>
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-        <button class="btn-secondary" onclick="selectRolePermissions('Gerente')">Gerente / Admin</button>
-        <button class="btn-secondary" onclick="selectRolePermissions('Caixa')">Operador de Caixa</button>
-        <button class="btn-secondary" onclick="selectRolePermissions('Garcom')">Garçom / Atendente</button>
-        <button class="btn-secondary" onclick="selectRolePermissions('Cozinha')">Cozinheiro / KDS</button>
-        <button class="btn-secondary" onclick="selectRolePermissions('Entregador')">Entregador</button>
-      </div>
-
-      <div class="permissions-grid" id="permissionsGrid">
-        <!-- Gerado dinamicamente -->
-      </div>
-      <div style="margin-top: 15px; text-align: right;">
-        <button class="btn-action" onclick="saveRolePermissions()">Salvar Permissões da Função</button>
       </div>
     </div>
   </main>
@@ -284,16 +257,11 @@
         <label>Função / Cargo:*</label>
         <select class="form-input" id="staffRole">
           <option value="Gerente">Gerente</option>
-          <option value="Caixa">Operador de Caixa</option>
-          <option value="Garcom">Garçom / Atendente</option>
-          <option value="Cozinha">Cozinha / KDS</option>
+          <option value="Operador de Caixa">Operador de Caixa</option>
+          <option value="Garçom / Atendente">Garçom / Atendente</option>
+          <option value="Cozinha / KDS">Cozinha / KDS</option>
           <option value="Entregador">Entregador</option>
         </select>
-      </div>
-
-      <div class="form-group">
-        <label>PIN Gerencial / Acesso Rápido (4 dígitos):*</label>
-        <input type="text" class="form-input" id="staffPin" maxlength="4" placeholder="Ex: 0000">
       </div>
 
       <div class="form-group">
@@ -328,27 +296,6 @@
 
   <script>
     let staffMembers = [];
-    let currentSelectedRole = 'Garcom';
-    
-    const availableModules = [
-      { id: 'pdv', label: 'PDV / Balcão' },
-      { id: 'mesas', label: 'Mesas & Comandas' },
-      { id: 'kds', label: 'KDS / Cozinha' },
-      { id: 'delivery', label: 'Delivery & Entregas' },
-      { id: 'caixa', label: 'Fechamento de Caixa' },
-      { id: 'cardapio', label: 'Cardápio & Estoque' },
-      { id: 'financeiro', label: 'Financeiro & DRE' },
-      { id: 'relatorios', label: 'Relatórios Operacionais' },
-      { id: 'equipe', label: 'Gestão de Equipe' }
-    ];
-
-    let rolePermissions = {
-      'Gerente': ['pdv', 'mesas', 'kds', 'delivery', 'caixa', 'cardapio', 'financeiro', 'relatorios', 'equipe'],
-      'Caixa': ['pdv', 'caixa', 'mesas', 'delivery'],
-      'Garcom': ['mesas', 'pdv'],
-      'Cozinha': ['kds'],
-      'Entregador': ['delivery']
-    };
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -374,7 +321,7 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
-    // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE (SEM DADOS FICTÍCIOS)
+    // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE
     async function loadStaffData() {
       let loaded = false;
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
@@ -392,7 +339,7 @@
         if (local) {
           try { staffMembers = JSON.parse(local); } catch(e){}
         } else {
-          staffMembers = []; // Iniciando completamente vazio
+          staffMembers = [];
         }
       }
 
@@ -405,7 +352,7 @@
       tbody.innerHTML = '';
 
       if (staffMembers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
         return;
       }
 
@@ -414,7 +361,6 @@
         tr.innerHTML = `
           <td><strong>${m.name}</strong></td>
           <td><span class="badge-role">${m.role}</span></td>
-          <td><code>${m.pin || '----'}</code></td>
           <td>${m.commission ? m.commission + '%' : '0%'}</td>
           <td><span class="badge-status ${m.status === 'ativo' ? 'badge-active' : 'badge-inactive'}">${(m.status || 'ativo').toUpperCase()}</span></td>
           <td>
@@ -426,7 +372,7 @@
       });
     }
 
-    // METRICAS AUTOMÁTICAS (CORRIGIDO: ZERADO QUANDO NÃO HÁ DADOS DE COMISSÃO CONFIGURADOS)
+    // METRICAS AUTOMÁTICAS
     async function calculateStaffMetrics() {
       document.getElementById('statTotalStaff').innerText = staffMembers.length;
       const activeCount = staffMembers.filter(m => m.status === 'ativo').length;
@@ -445,7 +391,6 @@
 
       document.getElementById('statStaffSales').innerText = `R$ ${totalSales.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       
-      // Cálculo real baseado estritamente na comissão cadastrada por colaborador ativo
       let totalCommissions = 0;
       if (staffMembers.length > 0 && totalSales > 0) {
         staffMembers.forEach(m => {
@@ -458,54 +403,11 @@
       document.getElementById('statStaffCommissions').innerText = `R$ ${totalCommissions.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
     }
 
-    // PERMISSOES POR FUNCAO
-    function renderPermissionsGrid() {
-      const grid = document.getElementById('permissionsGrid');
-      grid.innerHTML = '';
-
-      const activePerms = rolePermissions[currentSelectedRole] || [];
-
-      availableModules.forEach(mod => {
-        const isChecked = activePerms.includes(mod.id) ? 'checked' : '';
-        grid.innerHTML += `
-          <label class="permission-item">
-            <input type="checkbox" value="${mod.id}" ${isChecked} onchange="togglePermission('${mod.id}', this.checked)">
-            <span>${mod.label}</span>
-          </label>
-        `;
-      });
-    }
-
-    function selectRolePermissions(role) {
-      currentSelectedRole = role;
-      renderPermissionsGrid();
-    }
-
-    function togglePermission(modId, isChecked) {
-      if (!rolePermissions[currentSelectedRole]) {
-        rolePermissions[currentSelectedRole] = [];
-      }
-
-      if (isChecked) {
-        if (!rolePermissions[currentSelectedRole].includes(modId)) {
-          rolePermissions[currentSelectedRole].push(modId);
-        }
-      } else {
-        rolePermissions[currentSelectedRole] = rolePermissions[currentSelectedRole].filter(id => id !== modId);
-      }
-    }
-
-    function saveRolePermissions() {
-      localStorage.setItem('vortex_role_permissions', JSON.stringify(rolePermissions));
-      showCustomAlert('Permissões Salvas', `As permissões da função ${currentSelectedRole} foram atualizadas com sucesso!`, '🔒');
-    }
-
     // MODAL DE ADIÇÃO/EDIÇÃO
     function openStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffName').value = '';
       document.getElementById('staffRole').value = 'Gerente';
-      document.getElementById('staffPin').value = '';
       document.getElementById('staffCommission').value = '';
       document.getElementById('staffStatus').value = 'ativo';
       document.getElementById('staffModalTitle').innerText = 'Cadastrar Colaborador';
@@ -523,7 +425,6 @@
       document.getElementById('staffEditId').value = member.id;
       document.getElementById('staffName').value = member.name;
       document.getElementById('staffRole').value = member.role;
-      document.getElementById('staffPin').value = member.pin || '';
       document.getElementById('staffCommission').value = member.commission || '';
       document.getElementById('staffStatus').value = member.status || 'ativo';
       document.getElementById('staffModalTitle').innerText = 'Editar Colaborador';
@@ -534,18 +435,17 @@
       const editId = document.getElementById('staffEditId').value;
       const name = document.getElementById('staffName').value.trim();
       const role = document.getElementById('staffRole').value;
-      const pin = document.getElementById('staffPin').value.trim();
       const commission = parseFloat(document.getElementById('staffCommission').value) || 0;
       const status = document.getElementById('staffStatus').value;
 
-      if (!name || !pin) {
-        showCustomAlert('Campos Obrigatórios', 'Informe o Nome e o PIN do colaborador.', '⚠️');
+      if (!name) {
+        showCustomAlert('Campo Obrigatório', 'Informe o nome completo do colaborador.', '⚠️');
         return;
       }
 
       const newRecord = {
         id: editId || 'staff_' + Date.now(),
-        name, role, pin, commission, status
+        name, role, commission, status
       };
 
       if (editId) {
@@ -593,13 +493,7 @@
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       
-      const savedPerms = localStorage.getItem('vortex_role_permissions');
-      if (savedPerms) {
-        try { rolePermissions = JSON.parse(savedPerms); } catch(e){}
-      }
-
       await loadStaffData();
-      renderPermissionsGrid();
     };
   </script>
 </body>

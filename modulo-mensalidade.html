@@ -201,18 +201,18 @@
     </div>
 
     <div class="card-box">
-      <div class="card-title">💳 Atendimento Financeiro & Envio de Comprovante</div>
-      <a href="https://wa.me/5511953365177?text=Olá!%20Gostaria%20de%20enviar%20o%20comprovante%20da%20mensalidade%20do%20Vortex%20Food." target="_blank" class="btn-wa">
-        💬 Chamar no WhatsApp do Financeiro (+55 11 95336-5177)
+      <div class="card-title">💳 Atendimento Financeiro & Renovação</div>
+      <a href="https://wa.me/5511953365177?text=Olá,%20eu%20gostaria%20de%20realizar%20o%20pagamento%20da%20minha%20mensalidade%20e%20continuar%20usando%20o%20sistema%20Vortex%20Food." target="_blank" class="btn-wa">
+        💬 Falar com o Financeiro no WhatsApp (+55 11 95336-5177)
       </a>
 
       <div class="rules-box">
         <strong>📌 Regras do Plano Vortex Food:</strong><br>
-        • <strong>30 Dias Grátis:</strong> Aproveite para testar todos os recursos do sistema sem custos.<br>
+        • <strong>30 Dias Grátis:</strong> Período de avaliação livre de custos para testar todas as funcionalidades.<br>
         • <strong>Período Promocional (3 Meses):</strong> Do 2º ao 4º mês, valor especial de <strong>R$ 100,00/mês</strong>.<br>
         • <strong>Valor Padrão (A partir do 5º mês):</strong> R$ 199,00/mês.<br>
-        • <strong>Vencimento Personalizado:</strong> O vencimento ocorre mensalmente no mesmo dia em que o estabelecimento realizou o cadastro.<br>
-        • <strong>Política de Tolerância:</strong> O sistema dispõe de tolerância de até 3 dias após o vencimento. Caso não haja confirmação do pagamento, o acesso é suspenso temporariamente até a regularização.
+        • <strong>Vencimento Personalizado:</strong> O vencimento ocorre mensalmente na mesma data em que o estabelecimento foi cadastrado.<br>
+        • <strong>Política de Tolerância:</strong> O sistema concede tolerância de até 3 dias após o vencimento. Caso o pagamento não seja confirmado, o acesso é suspenso temporariamente até a regularização.
       </div>
 
       <div class="card-title" style="margin-top:20px;">📄 Faturas & Histórico de Assinatura</div>
@@ -308,11 +308,9 @@
 
       tbody.innerHTML = '';
       let hasActivePending = false;
-      let isTrialPeriod = false;
 
       if (invoices.length === 0) {
-        // Estado inicial real sem faturas geradas (ex: Loja recém criada no período de teste grátis de 30 dias)
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding: 20px;">Nenhuma fatura gerada no momento. Seu estabelecimento está no período de avaliação gratuita.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding: 20px;">Nenhuma fatura gerada no momento. Seu estabelecimento está no período de avaliação gratuita de 30 dias.</td></tr>`;
         
         document.getElementById('subscriptionStatusText').innerText = 'Período de Teste Grátis (30 Dias ativos)';
         const badge = document.getElementById('subscriptionBadge');
@@ -357,7 +355,6 @@
         `;
       });
 
-      // Atualizar Banner Superior conforme status real
       const statusText = document.getElementById('subscriptionStatusText');
       const statusBadge = document.getElementById('subscriptionBadge');
       if (hasActivePending) {

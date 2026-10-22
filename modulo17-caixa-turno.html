@@ -98,6 +98,7 @@
 
     .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-danger { background: var(--danger); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    .btn-success { background: var(--success); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
     /* TABELA DE MOVIMENTAÇÕES */
     .table-container { width: 100%; overflow-x: auto; }
@@ -193,15 +194,15 @@
     <div class="grid-3">
       <div class="metric-card">
         <span class="metric-label">Status do Caixa</span>
-        <span class="metric-value" id="cashStatusBadge" style="color: var(--success);">🟢 ABERTO</span>
+        <span class="metric-value" id="cashStatusBadge" style="color: var(--danger);">🔴 FECHADO</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">Operador Responsável</span>
-        <span class="metric-value" id="cashOperator">Gabriel Andrade</span>
+        <span class="metric-value" id="cashOperator">--</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">Saldo Inicial (Troco)</span>
-        <span class="metric-value" id="cashInitialBalance">R$ 150,00</span>
+        <span class="metric-value" id="cashInitialBalance">R$ 0,00</span>
       </div>
     </div>
 
@@ -209,24 +210,28 @@
     <div class="grid-3">
       <div class="metric-card">
         <span class="metric-label">Vendas em Dinheiro</span>
-        <span class="metric-value" style="color: var(--success);" id="salesCash">R$ 420,00</span>
+        <span class="metric-value" style="color: var(--success);" id="salesCash">R$ 0,00</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">Vendas em Pix / Cartão</span>
-        <span class="metric-value" style="color: var(--info);" id="salesDigital">R$ 1.280,00</span>
+        <span class="metric-value" style="color: var(--info);" id="salesDigital">R$ 0,00</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">Sangrias & Despesas</span>
-        <span class="metric-value" style="color: var(--danger);" id="cashWithdrawals">R$ 50,00</span>
+        <span class="metric-value" style="color: var(--danger);" id="cashWithdrawals">R$ 0,00</span>
       </div>
     </div>
 
     <!-- BOTÕES DE AÇÃO RÁPIDA -->
-    <div class="card-box" style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <button class="btn-action" onclick="openMovementModal('suprimento')">➕ Registrar Suprimento (Reforço)</button>
-      <button class="btn-action" style="background: var(--warning); color: #000;" onclick="openMovementModal('sangria')">➖ Registrar Sangria (Retirada)</button>
-      <button class="btn-action" style="background: var(--info);" onclick="openMovementModal('despesa')">🏷️ Pagar Despesa do Caixa</button>
-      <button class="btn-danger" style="margin-left: auto;" onclick="openCloseCashModal()">🔒 Fechar Caixa / Turno</button>
+    <div class="card-box" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;" id="cashActionsContainer">
+      <button class="btn-success" id="btnOpenCash" onclick="openOpenCashModal()">🔓 Abrir Caixa / Iniciar Turno</button>
+      
+      <div id="activeCashButtons" style="display: none; gap: 10px; flex-wrap: wrap; width: 100%;">
+        <button class="btn-action" onclick="openMovementModal('suprimento')">➕ Registrar Suprimento (Reforço)</button>
+        <button class="btn-action" style="background: var(--warning); color: #000;" onclick="openMovementModal('sangria')">➖ Registrar Sangria (Retirada)</button>
+        <button class="btn-action" style="background: var(--info);" onclick="openMovementModal('despesa')">🏷️ Pagar Despesa do Caixa</button>
+        <button class="btn-danger" style="margin-left: auto;" onclick="openCloseCashModal()">🔒 Fechar Caixa / Turno</button>
+      </div>
     </div>
 
     <!-- HISTÓRICO DE MOVIMENTAÇÕES DO TURNO -->
@@ -244,25 +249,35 @@
             </tr>
           </thead>
           <tbody id="movementsTableBody">
-            <tr>
-              <td>10:00</td>
-              <td><span style="color:var(--success);">SALDO INICIAL</span></td>
-              <td>Abertura de caixa com troco padrão</td>
-              <td>R$ 150,00</td>
-              <td>Gabriel Andrade</td>
-            </tr>
-            <tr>
-              <td>14:30</td>
-              <td><span style="color:var(--warning);">SANGRIA</span></td>
-              <td>Retirada para cofre principal</td>
-              <td>- R$ 50,00</td>
-              <td>Gabriel Andrade</td>
+            <tr id="emptyMovementsRow">
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                Nenhum caixa aberto ou movimentação registrada no turno atual.
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
+
+  <!-- MODAL DE ABERTURA DE CAIXA -->
+  <div class="modal-overlay" id="openCashModal">
+    <div class="custom-modal-card">
+      <div class="card-title">🔓 Abertura de Caixa</div>
+      <div class="form-group">
+        <label>Nome do Operador:*</label>
+        <input type="text" class="form-input" id="openOperatorName" placeholder="Ex: João Silva">
+      </div>
+      <div class="form-group">
+        <label>Valor do Troco Inicial (R$):*</label>
+        <input type="text" class="form-input" id="openInitialBalance" placeholder="0,00" oninput="maskCurrency(this)">
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn-secondary" style="flex: 1;" onclick="closeOpenCashModal()">Cancelar</button>
+        <button class="btn-action" style="flex: 1; background: var(--success);" onclick="confirmOpenCash()">Abrir Caixa</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL DE MOVIMENTAÇÃO (SUPRIMENTO / SANGRIA / DESPESA) -->
   <div class="modal-overlay" id="movementModal">
@@ -289,7 +304,7 @@
       <div class="card-title">🔒 Fechamento de Caixa & Conferência</div>
       <div class="form-group">
         <label>Dinheiro Esperado em Caixa:</label>
-        <input type="text" class="form-input" id="expectedCash" value="R$ 520,00" disabled>
+        <input type="text" class="form-input" id="expectedCash" value="R$ 0,00" disabled>
       </div>
       <div class="form-group">
         <label>Dinheiro Informado (Contagem Física):*</label>
@@ -311,13 +326,22 @@
     <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
       <div style="font-size: 2.8rem; margin-bottom: 10px;" id="alertIcon">⚠️</div>
       <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
-      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;" id="alertMessage">Preencha os campos.</div>
+      <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos.</div>
       <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
     </div>
   </div>
 
   <script>
     let currentMovementType = '';
+    let currentCashData = {
+      isOpen: false,
+      operator: '',
+      initialBalance: 0,
+      salesCash: 0,
+      salesDigital: 0,
+      withdrawals: 0,
+      movements: []
+    };
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -343,6 +367,12 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
+    function parseCurrencyToFloat(str) {
+      if (!str) return 0;
+      let clean = String(str).replace(/[^\d,]/g, '').replace(',', '.');
+      return parseFloat(clean) || 0;
+    }
+
     function maskCurrency(input) {
       let v = input.value.replace(/\D/g, '');
       if (!v) { input.value = ''; return; }
@@ -350,7 +380,55 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    // ABERTURA DE CAIXA
+    function openOpenCashModal() {
+      document.getElementById('openOperatorName').value = '';
+      document.getElementById('openInitialBalance').value = '';
+      document.getElementById('openCashModal').classList.add('active');
+    }
+
+    function closeOpenCashModal() {
+      document.getElementById('openCashModal').classList.remove('active');
+    }
+
+    function confirmOpenCash() {
+      const op = document.getElementById('openOperatorName').value.trim();
+      const balStr = document.getElementById('openInitialBalance').value;
+      const bal = parseCurrencyToFloat(balStr);
+
+      if (!op) {
+        showCustomAlert('Nome Obrigatório', 'Informe o nome do operador responsável pelo turno.', '⚠️');
+        return;
+      }
+
+      currentCashData = {
+        isOpen: true,
+        operator: op,
+        initialBalance: bal,
+        salesCash: 0,
+        salesDigital: 0,
+        withdrawals: 0,
+        movements: [{
+          time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+          type: 'SALDO INICIAL',
+          reason: 'Abertura de caixa com troco inicial',
+          val: bal,
+          operator: op
+        }]
+      };
+
+      saveCurrentCashState();
+      renderCashState();
+      closeOpenCashModal();
+      showCustomAlert('Caixa Aberto', `Turno iniciado com sucesso para ${op}!`, '🔓');
+    }
+
+    // MOVIMENTAÇÕES (SUPRIMENTO, SANGRIA, DESPESA)
     function openMovementModal(type) {
+      if (!currentCashData.isOpen) {
+        showCustomAlert('Caixa Fechado', 'Abra o caixa antes de registrar movimentações.', '⚠️');
+        return;
+      }
       currentMovementType = type;
       const titles = {
         'suprimento': '➕ Registrar Suprimento (Reforço)',
@@ -368,34 +446,45 @@
     }
 
     function confirmMovement() {
-      const val = document.getElementById('movValue').value;
+      const valStr = document.getElementById('movValue').value;
       const reason = document.getElementById('movReason').value.trim();
+      const numVal = parseCurrencyToFloat(valStr);
 
-      if (!val || !reason) {
-        showCustomAlert('Campos Incompletos', 'Informe o valor e o motivo da movimentação.', '⚠️');
+      if (!valStr || numVal <= 0 || !reason) {
+        showCustomAlert('Campos Incompletos', 'Informe um valor válido e o motivo da movimentação.', '⚠️');
         return;
       }
 
-      const tbody = document.getElementById('movementsTableBody');
-      const timeStr = new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
       const typeLabel = currentMovementType.toUpperCase();
-      const colorMap = {'SUPRIMENTO': 'var(--success)', 'SANGRIA': 'var(--warning)', 'DESPESA': 'var(--danger)'};
+      if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
+        currentCashData.withdrawals += numVal;
+      } else if (typeLabel === 'SUPRIMENTO') {
+        currentCashData.initialBalance += numVal;
+      }
 
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${timeStr}</td>
-        <td><span style="color:${colorMap[typeLabel] || 'var(--primary)'};">${typeLabel}</span></td>
-        <td>${reason}</td>
-        <td>R$ ${val}</td>
-        <td>Gabriel Andrade</td>
-      `;
-      tbody.appendChild(tr);
+      currentCashData.movements.push({
+        time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+        type: typeLabel,
+        reason: reason,
+        val: numVal,
+        operator: currentCashData.operator
+      });
 
+      saveCurrentCashState();
+      renderCashState();
       closeMovementModal();
       showCustomAlert('Sucesso', 'Movimentação registrada com sucesso no turno.', '✅');
     }
 
+    // FECHAMENTO DE CAIXA
     function openCloseCashModal() {
+      if (!currentCashData.isOpen) {
+        showCustomAlert('Caixa Fechado', 'O caixa já está encerrado.', '⚠️');
+        return;
+      }
+
+      const expectedInCash = (currentCashData.initialBalance + currentCashData.salesCash) - currentCashData.withdrawals;
+      document.getElementById('expectedCash').value = `R$ ${expectedInCash.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       document.getElementById('countedCash').value = '';
       document.getElementById('closeReason').value = '';
       document.getElementById('closeCashModal').classList.add('active');
@@ -406,16 +495,95 @@
     }
 
     function finalizeCashClose() {
-      const counted = document.getElementById('countedCash').value;
-      if (!counted) {
+      const countedStr = document.getElementById('countedCash').value;
+      if (!countedStr) {
         showCustomAlert('Contagem Obrigatória', 'Informe o valor contado fisicamente no caixa.', '⚠️');
         return;
       }
 
+      currentCashData.isOpen = false;
+      saveCurrentCashState();
+      renderCashState();
       closeCloseCashModal();
-      document.getElementById('cashStatusBadge').innerText = '🔴 FECHADO';
-      document.getElementById('cashStatusBadge').style.color = 'var(--danger)';
       showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso!', '🔒');
+    }
+
+    // PERSISTÊNCIA E RENDERIZAÇÃO
+    function saveCurrentCashState() {
+      localStorage.setItem('vortex_current_cash', JSON.stringify(currentCashData));
+    }
+
+    function loadCurrentCashState() {
+      const saved = localStorage.getItem('vortex_current_cash');
+      if (saved) {
+        try {
+          currentCashData = JSON.parse(saved);
+        } catch(e) {}
+      }
+    }
+
+    function renderCashState() {
+      const badge = document.getElementById('cashStatusBadge');
+      const btnOpen = document.getElementById('btnOpenCash');
+      const activeBtns = document.getElementById('activeCashButtons');
+
+      if (currentCashData.isOpen) {
+        badge.innerText = '🟢 ABERTO';
+        badge.style.color = 'var(--success)';
+        btnOpen.style.display = 'none';
+        activeBtns.style.display = 'flex';
+
+        document.getElementById('cashOperator').innerText = currentCashData.operator || '--';
+        document.getElementById('cashInitialBalance').innerText = `R$ ${currentCashData.initialBalance.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('salesCash').innerText = `R$ ${currentCashData.salesCash.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('salesDigital').innerText = `R$ ${currentCashData.salesDigital.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('cashWithdrawals').innerText = `R$ ${currentCashData.withdrawals.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+      } else {
+        badge.innerText = '🔴 FECHADO';
+        badge.style.color = 'var(--danger)';
+        btnOpen.style.display = 'inline-flex';
+        activeBtns.style.display = 'none';
+
+        document.getElementById('cashOperator').innerText = '--';
+        document.getElementById('cashInitialBalance').innerText = 'R$ 0,00';
+        document.getElementById('salesCash').innerText = 'R$ 0,00';
+        document.getElementById('salesDigital').innerText = 'R$ 0,00';
+        document.getElementById('cashWithdrawals').innerText = 'R$ 0,00';
+      }
+
+      // Tabela de Movimentações
+      const tbody = document.getElementById('movementsTableBody');
+      tbody.innerHTML = '';
+
+      if (!currentCashData.movements || currentCashData.movements.length === 0) {
+        tbody.innerHTML = `
+          <tr id="emptyMovementsRow">
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              Nenhum caixa aberto ou movimentação registrada no turno atual.
+            </td>
+          </tr>`;
+      } else {
+        const colorMap = {
+          'SALDO INICIAL': 'var(--success)',
+          'SUPRIMENTO': 'var(--success)',
+          'SANGRIA': 'var(--warning)',
+          'DESPESA': 'var(--danger)'
+        };
+
+        currentCashData.movements.forEach(m => {
+          const isNegative = m.type === 'SANGRIA' || m.type === 'DESPESA';
+          const signal = isNegative ? '- ' : '';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${m.time}</td>
+            <td><span style="color:${colorMap[m.type] || 'var(--primary)'}; font-weight:bold;">${m.type}</span></td>
+            <td>${m.reason}</td>
+            <td>${signal}R$ ${parseFloat(m.val || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td>${m.operator}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
     }
 
     setInterval(() => {
@@ -426,6 +594,9 @@
       applyTheme();
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      
+      loadCurrentCashState();
+      renderCashState();
     };
   </script>
 </body>

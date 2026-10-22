@@ -91,7 +91,6 @@
     input, select { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
     input:focus, select:focus { border-color: var(--primary); }
 
-    /* BOTÕES MODERNOS DE TIPO DE ATENDIMENTO */
     .type-buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .type-btn {
       background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; text-align: center; transition: all 0.2s;
@@ -208,7 +207,6 @@
           <input type="text" id="pdvClientInput" placeholder="Ex: Cliente Balcão">
         </div>
 
-        <!-- BOTÕES MODERNOS DE TIPO DE ATENDIMENTO -->
         <div class="form-group">
           <label>Tipo de Atendimento *:</label>
           <div class="type-buttons-grid">
@@ -306,7 +304,6 @@
       }
     }
 
-    // CATÁLOGO DINÂMICO SINCRONIZADO COM O CARDÁPIO
     function getCatalogProducts() {
       const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
       if (saved) {
@@ -471,29 +468,16 @@
       const now = new Date();
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
-      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
-      const cleanOrderId = String(nextSeqNumber);
+      const uniqueId = 'pdv_' + Date.now();
 
       let changeVal = 0;
       if (payment === 'Dinheiro' && rawCashGiven > total) {
         changeVal = rawCashGiven - total;
       }
 
-      // Atualiza acumulador diário local
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-      let currentSales = parseFloat(cleanedSalesStr) || 0;
-      currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-
-      // Objeto unificado compatível com Relatórios, Financeiro, Dashboard e DRE
       const channelLabel = `Balcão (${selectedConsumptionType})`;
       const newSaleRecord = {
-        id: cleanOrderId,
+        id: uniqueId,
         client: clientName,
         channel: channelLabel,
         origin: channelLabel,
@@ -517,24 +501,8 @@
         }))
       };
 
-      // Histórico local de contingência
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      salesHistory.unshift(newSaleRecord);
-      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-
-      // Salva no Supabase (Nuvem)
-      try {
-        if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
-        } else if (typeof dbSaveSale === 'function') {
-          await dbSaveSale(newSaleRecord);
-        }
-      } catch (err) {
-        console.error('Erro ao salvar venda no Supabase:', err);
-      }
-
       const newKdsOrder = {
-        id: cleanOrderId,
+        id: uniqueId,
         origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
@@ -553,19 +521,41 @@
         time: timeStr
       };
 
+      // SALVAMENTO REAL NO SUPABASE (BANCO DE DADOS OFICIAL)
+      let cloudSaved = false;
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { error: errSale } = await supabaseClient
+            .from('vortex_sales_history')
+            .upsert([newSaleRecord]);
+
+          const { error: errKds } = await supabaseClient
+            .from('vortex_kds_orders')
+            .upsert([newKdsOrder]);
+
+          if (!errSale && !errKds) {
+            cloudSaved = true;
+          } else {
+            console.warn('Aviso do Supabase no salvamento:', errSale || errKds);
+          }
+        } catch (err) {
+          console.error('Erro de conexão ao salvar no Supabase:', err);
+        }
+      }
+
+      // Contingência e sincronia local para manter o app responsivo em qualquer tela
+      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      salesHistory.unshift(newSaleRecord);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
+
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.unshift(newKdsOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Salva pedido KDS no Supabase (Nuvem)
-      try {
-        if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_kds_orders').upsert([newKdsOrder]);
-        } else if (typeof dbSaveKdsOrder === 'function') {
-          await dbSaveKdsOrder(newKdsOrder);
-        }
-      } catch (err) {
-        console.error('Erro ao salvar KDS no Supabase:', err);
-      }
+      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      let currentSales = parseFloat(currentSalesRaw.replace(/\./g, '').replace(',', '.')) || 0;
+      currentSales += total;
+      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
       pdvCart = [];
       rawCashGiven = 0;
@@ -574,7 +564,8 @@
       document.getElementById('cashGivenInput').value = '';
       renderPdvCart();
 
-      showNoticeModal('Venda Realizada!', `Pedido #${cleanOrderId} (${selectedConsumptionType}) enviado com sucesso para a Cozinha e nuvem!`, '🚀');
+      const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado no sistema';
+      showNoticeModal('Venda Realizada!', `Pedido (${selectedConsumptionType}) ${cloudStatusMsg} e enviado para a Cozinha!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {

@@ -284,13 +284,15 @@
     </div>
   </div>
 
-  <!-- MODAL ALERTA -->
+  <!-- MODAL ALERTA / CONFIRMAÇÃO -->
   <div class="modal-overlay" id="customAlertModal">
     <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
       <div style="font-size: 2.8rem; margin-bottom: 10px;" id="alertIcon">⚠️</div>
       <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;" id="alertTitle">Atenção</div>
       <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;" id="alertMessage">Preencha os campos.</div>
-      <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
+      <div id="alertButtons" style="display: flex; gap: 10px;">
+        <button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>
+      </div>
     </div>
   </div>
 
@@ -310,10 +312,18 @@
       }
     }
 
-    function showCustomAlert(title, message, icon = '⚠️') {
+    function showCustomAlert(title, message, icon = '⚠️', customButtonsHtml = null) {
       document.getElementById('alertIcon').innerText = icon;
       document.getElementById('alertTitle').innerText = title;
       document.getElementById('alertMessage').innerText = message;
+      
+      const btnContainer = document.getElementById('alertButtons');
+      if (customButtonsHtml) {
+        btnContainer.innerHTML = customButtonsHtml;
+      } else {
+        btnContainer.innerHTML = `<button class="btn-action" onclick="closeCustomAlert()" style="width: 100%; justify-content: center;">Entendido</button>`;
+      }
+
       document.getElementById('customAlertModal').classList.add('active');
     }
 
@@ -365,7 +375,7 @@
           <td><span class="badge-status ${m.status === 'ativo' ? 'badge-active' : 'badge-inactive'}">${(m.status || 'ativo').toUpperCase()}</span></td>
           <td>
             <button class="btn-secondary" onclick="editStaff('${m.id}')">✏️ Editar</button>
-            <button class="btn-danger" onclick="deleteStaff('${m.id}')">🗑️ Excluir</button>
+            <button class="btn-danger" onclick="confirmDeleteStaff('${m.id}')">🗑️ Excluir</button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -468,9 +478,20 @@
       showCustomAlert('Sucesso', 'Dados do colaborador salvos com sucesso!', '✅');
     }
 
-    async function deleteStaff(id) {
-      if (!confirm('Deseja realmente remover este colaborador da equipe?')) return;
+    function confirmDeleteStaff(id) {
+      const member = staffMembers.find(m => String(m.id) === String(id));
+      const memberName = member ? member.name : 'este colaborador';
 
+      const buttonsHtml = `
+        <button class="btn-secondary" style="flex: 1;" onclick="closeCustomAlert()">Cancelar</button>
+        <button class="btn-danger" style="flex: 1;" onclick="executeDeleteStaff('${id}')">Excluir</button>
+      `;
+
+      showCustomAlert('Excluir Colaborador', `Deseja realmente remover "${memberName}" da equipe?`, '🗑️', buttonsHtml);
+    }
+
+    async function executeDeleteStaff(id) {
+      closeCustomAlert();
       staffMembers = staffMembers.filter(m => String(m.id) === String(id));
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
@@ -482,6 +503,7 @@
       localStorage.setItem('vortex_staff_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
+      showCustomAlert('Removido', 'O colaborador foi removido com sucesso.', '✅');
     }
 
     setInterval(() => {

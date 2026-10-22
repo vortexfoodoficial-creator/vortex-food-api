@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Pagamento de Mensalidade</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -78,27 +81,33 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-    .btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--whatsapp); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.9rem; width: 100%; text-decoration: none; margin-bottom: 15px; }
+    .btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--whatsapp); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.92rem; width: 100%; text-decoration: none; margin-bottom: 15px; transition: opacity 0.2s; }
+    .btn-wa:hover { opacity: 0.9; }
 
-    .rules-box { font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+    .rules-box { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 20px; }
 
     .table-container { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
-    th { background: var(--bg-main); color: var(--text-muted); padding: 10px; border-bottom: 1px solid var(--border); }
-    td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg-main); color: var(--text-muted); padding: 12px 10px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    td { padding: 14px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 
-    .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; }
+    .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; display: inline-block; }
     .badge-pending { background: rgba(234, 179, 8, 0.15); color: var(--warning); border: 1px solid var(--warning); }
     .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .badge-overdue { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-    .btn-pix { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+    .btn-action-sm { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .btn-action-sm:hover { background: var(--primary-hover); }
+
+    .status-banner { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
+    .btn-modal-primary:hover { background: var(--primary-hover); }
 
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -131,6 +140,7 @@
         <a href="modulo5-mesas.html" class="nav-link"><span class="nav-icon">🍽️</span><span class="nav-text">Mesas & Comandas</span></a>
         <a href="modulo21-delivery.html" class="nav-link"><span class="nav-icon">🛵</span><span class="nav-text">Delivery & Entregas</span></a>
         <a href="modulo7-8-kds-pedidos.html" class="nav-link"><span class="nav-icon">👨‍🍳</span><span class="nav-text">KDS / Cozinha</span></a>
+        <a href="modulo-integracoes.html" class="nav-link"><span class="nav-icon">🔗</span><span class="nav-text">Integrações Delivery</span></a>
       </div>
       <div class="nav-section">
         <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
@@ -171,24 +181,37 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Pagamento de Mensalidade</h1>
+        <h1>Pagamento de Mensalidade & Assinatura</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
 
+    <!-- STATUS DA ASSINATURA -->
+    <div class="status-banner">
+      <div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Status da Assinatura do Sistema</div>
+        <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;" id="subscriptionStatusText">Carregando status...</div>
+      </div>
+      <div>
+        <span class="badge-status badge-paid" id="subscriptionBadge">Ativo</span>
+      </div>
+    </div>
+
     <div class="card-box">
-      <div class="card-title">💳 Atendimento Financeiro</div>
+      <div class="card-title">💳 Atendimento Financeiro & Comprovantes</div>
       <a href="https://wa.me/5519992159211?text=Olá!%20Gostaria%20de%20enviar%20o%20comprovante%20da%20mensalidade%20do%20Vortex%20Food." target="_blank" class="btn-wa">
         💬 Chamar no WhatsApp do Financeiro (+55 19 99215-9211)[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)
       </a>
 
       <div class="rules-box">
-        Caso você tenha uma mensalidade aberta, a data de vencimento é sempre o <strong>dia 10</strong>. A plataforma está sujeita a bloqueio a partir do <strong>dia 13</strong> caso a mensalidade não seja paga[span_4](start_span)[span_4](end_span).
+        <strong>📌 Regras de Vencimento e Acesso:</strong><br>
+        • A data de vencimento padrão das mensalidades é sempre o <strong>dia 10</strong> de cada mês[span_4](start_span)[span_4](end_span).<br>
+        • O acesso à plataforma fica sujeito a bloqueio preventivo a partir do <strong>dia 13</strong> caso a fatura em aberto não seja liquidada[span_5](start_span)[span_5](end_span). Após o pagamento, o sistema é liberado automaticamente mediante envio do comprovante.
       </div>
 
-      <div class="card-title" style="margin-top:20px;">📄 Faturas & Histórico</div>
+      <div class="card-title" style="margin-top:20px;">📄 Faturas & Histórico de Pagamentos</div>
       <div class="table-container">
         <table>
           <thead>
@@ -196,44 +219,31 @@
               <th>Vencimento</th>
               <th>Valor</th>
               <th>Status</th>
-              <th>QR Code</th>
-              <th>Pix Copia e Cola</th>
+              <th>Ações / Pix</th>
             </tr>
           </thead>
           <tbody id="invoicesTableBody">
-            <tr>
-              <td>10/11/2026</td>
-              <td>R$ 99,90</td>
-              <td><span class="badge-status badge-pending">Pendente</span></td>
-              <td><button class="btn-pix" onclick="openQrModal('10/11/2026', '99,90')">Ver QR</button></td>
-              <td><button class="btn-pix" onclick="copyPixCode('00020126580014br.gov.bcb.pix...')">Copiar Pix</button></td>
-            </tr>
-            <tr>
-              <td>10/10/2026</td>
-              <td>R$ 99,90</td>
-              <td><span class="badge-status badge-paid">Pago</span></td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
+            <!-- Renderizado dinamicamente via JS do Supabase ou padrão -->
           </tbody>
         </table>
       </div>
     </div>
   </main>
 
-  <!-- MODAL QR CODE -->
+  <!-- MODAL QR CODE PIX -->
   <div class="modal-overlay" id="qrModal">
     <div class="custom-modal-card">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;">PIX Copia e Cola</div>
       <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Escaneie o QR Code abaixo ou copie o código Pix para pagar sua mensalidade instantaneamente.</div>
       <div style="background:white; padding:15px; border-radius:10px; display:inline-block; margin-bottom:15px;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VortexFoodMensalidade" alt="QR Code Pix" style="display:block;">
+        <img id="qrCodeImage" src="" alt="QR Code Pix" style="display:block; width: 150px; height: 150px;">
       </div>
-      <button class="btn-modal-primary" onclick="copyPixCode('00020126580014br.gov.bcb.pix.vortexfood9990')">Copiar Código Pix</button>
+      <button class="btn-modal-primary" onclick="copyActivePix()">Copiar Código Pix</button>
       <button class="btn-modal-primary" style="background:var(--border); color:var(--text-main); margin-top:8px;" onclick="closeQrModal()">Fechar</button>
     </div>
   </div>
 
+  <!-- MODAL DE NOTIFICAÇÃO NATIVO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
@@ -244,6 +254,8 @@
   </div>
 
   <script>
+    let activePixPayload = '00020126580014br.gov.bcb.pix.vortexfood9990';
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -259,8 +271,8 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -272,12 +284,98 @@
       }
     }
 
-    function openQrModal() {
+    // CARREGAR FATURAS REAIS DO SUPABASE OU FALLBACK LOCAL
+    async function loadInvoices() {
+      const tbody = document.getElementById('invoicesTableBody');
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Carregando faturas...</td></tr>`;
+
+      let invoices = [];
+
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.from('vortex_invoices').select('*').order('due_date', { ascending: false });
+          if (!error && data && data.length > 0) {
+            invoices = data;
+          }
+        } catch (e) {
+          console.log('Erro ao buscar do Supabase:', e);
+        }
+      }
+
+      // Fallback se não houver tabela remota criada ainda
+      if (invoices.length === 0) {
+        invoices = [
+          { due_date: '10/11/2026', amount: '99,90', status: 'pending', pix_code: '00020126580014br.gov.bcb.pix.vortexfood9990' },
+          { due_date: '10/10/2026', amount: '99,90', status: 'paid', pix_code: '' }
+        ];
+      }
+
+      tbody.innerHTML = '';
+      let hasActivePending = false;
+
+      invoices.forEach(inv => {
+        let badgeHTML = '';
+        let actionHTML = '-';
+
+        if (inv.status === 'paid' || inv.status === 'pago') {
+          badgeHTML = `<span class="badge-status badge-paid">Pago</span>`;
+        } else if (inv.status === 'overdue' || inv.status === 'vencido') {
+          badgeHTML = `<span class="badge-status badge-overdue">Vencido</span>`;
+          hasActivePending = true;
+          actionHTML = `
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn-action-sm" onclick="openQrModal('${inv.pix_code || activePixPayload}')">Ver QR</button>
+              <button class="btn-action-sm" style="background:transparent; border:1px solid var(--primary); color:var(--primary);" onclick="copyPixCode('${inv.pix_code || activePixPayload}')">Copiar Pix</button>
+            </div>
+          `;
+        } else {
+          badgeHTML = `<span class="badge-status badge-pending">Pendente</span>`;
+          hasActivePending = true;
+          actionHTML = `
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn-action-sm" onclick="openQrModal('${inv.pix_code || activePixPayload}')">Ver QR</button>
+              <button class="btn-action-sm" style="background:transparent; border:1px solid var(--primary); color:var(--primary);" onclick="copyPixCode('${inv.pix_code || activePixPayload}')">Copiar Pix</button>
+            </div>
+          `;
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${inv.due_date}</td>
+            <td>R$ ${inv.amount}</td>
+            <td>${badgeHTML}</td>
+            <td>${actionHTML}</td>
+          </tr>
+        `;
+      });
+
+      // Atualizar Banner de Status Superior
+      const statusText = document.getElementById('subscriptionStatusText');
+      const statusBadge = document.getElementById('subscriptionBadge');
+      if (hasActivePending) {
+        statusText.innerText = 'Fatura pendente em aberto. Regularize para evitar bloqueio.';
+        statusBadge.className = 'badge-status badge-pending';
+        statusBadge.innerText = 'Pendente';
+      } else {
+        statusText.innerText = 'Assinatura em dia. Acesso liberado a todos os módulos.';
+        statusBadge.className = 'badge-status badge-paid';
+        statusBadge.innerText = 'Ativo';
+      }
+    }
+
+    function openQrModal(code) {
+      if (code) activePixPayload = code;
+      document.getElementById('qrCodeImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(activePixPayload)}`;
       document.getElementById('qrModal').classList.add('active');
     }
 
     function closeQrModal() {
       document.getElementById('qrModal').classList.remove('active');
+    }
+
+    function copyActivePix() {
+      copyPixCode(activePixPayload);
+      closeQrModal();
     }
 
     function copyPixCode(code) {
@@ -303,6 +401,7 @@
 
     window.onload = function() {
       loadStoreSettings();
+      loadInvoices();
     };
   </script>
 </body>

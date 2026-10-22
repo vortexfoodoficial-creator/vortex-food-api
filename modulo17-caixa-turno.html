@@ -390,13 +390,12 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // --- SINCRONIZAÇÃO OFICIAL VIA SUPABASE (vortex_sales_history) ---
+    // --- SINCRONIZAÇÃO COMPLETA VIA SUPABASE (CASH_SHIFTS E SALES_HISTORY) ---
     async function loadSalesForActiveShift(openedAt) {
       let cCash = 0;
       let cDigital = 0;
       const openedDate = new Date(openedAt);
 
-      // 1. Consulta oficial na tabela vortex_sales_history do Supabase
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           const { data: orders, error } = await supabaseClient
@@ -406,7 +405,7 @@
           if (orders && orders.length > 0) {
             orders.forEach(order => {
               const itemDate = new Date(order.created_at || order.date || order.timestamp || Date.now());
-              // Filtra apenas vendas ocorridas após a abertura do caixa
+              // Se a venda ocorreu após a abertura do caixa e não está cancelada
               if (itemDate >= openedDate && order.status !== 'cancelled') {
                 const total = parseFloat(order.total || order.valor || order.subtotal || 0);
                 const payMethod = String(order.payment_method || order.payment || order.payMethod || order.forma_pagamento || '').toLowerCase();
@@ -420,11 +419,11 @@
             });
           }
         } catch (e) {
-          console.error('Erro ao consultar Supabase de vendas:', e);
+          console.error('Erro ao buscar vendas no Supabase:', e);
         }
       }
 
-      // 2. Fallback redundante no LocalStorage (vortex_sales_history)
+      // Fallback LocalStorage para segurança offline
       const rawLocal = localStorage.getItem('vortex_sales_history');
       if (rawLocal) {
         try {
@@ -436,7 +435,6 @@
                 const total = parseFloat(item.total || item.valor || item.subtotal || 0);
                 const payMethod = String(item.payment_method || item.payment || item.payMethod || item.forma_pagamento || '').toLowerCase();
 
-                // Evita duplicar se já foi contado pelo Supabase (compara ID se houver)
                 if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
                   cCash += total;
                 } else {
@@ -474,14 +472,17 @@
               salesCash: 0,
               salesDigital: 0,
               withdrawals: 0,
-              movements: shift.movements || [{
-                time: new Date(shift.opened_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
-                type: 'SALDO INICIAL',
-                reason: 'Abertura de caixa com troco inicial',
-                val: parseFloat(shift.initial_balance || 0),
-                operator: shift.operator
-              }]
+              movements: shift.movements || []
             };
+
+            // Recalcula totais de saídas (sangrias/despesas) com base nas movimentações salvas
+            let totalWithdrawn = 0;
+            currentCashData.movements.forEach(m => {
+              if (m.type === 'SANGRIA' || m.type === 'DESPESA' || m.type === 'AJUSTE (-)') {
+                totalWithdrawn += parseFloat(m.val || 0);
+              }
+            });
+            currentCashData.withdrawals = totalWithdrawn;
             loadedFromSupabase = true;
           }
         } catch (err) {
@@ -531,7 +532,7 @@
       };
 
       currentCashData = {
-        shiftId: 'local_' + Date.now(),
+        shiftId: null,
         isOpen: true,
         operator: op,
         openedAt: openedTimeIso,
@@ -542,6 +543,7 @@
         movements: [initialMovement]
       };
 
+      // Gravação real obrigatória no Supabase
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           const { data, error } = await supabaseClient
@@ -637,7 +639,8 @@
 
       currentCashData.movements.push(newMov);
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId && !String(currentCashData.shiftId).startsWith('local_')) {
+      // Sincroniza imediatamente as movimentações no Supabase
+      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
           await supabaseClient
             .from('cash_shifts')
@@ -651,7 +654,7 @@
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação e justificativa registradas com sucesso no turno.', '✅');
+      showCustomAlert('Sucesso', 'Movimentação registrada e salva no banco de dados!', '✅');
     }
 
     // FECHAMENTO DE CAIXA
@@ -680,15 +683,20 @@
       }
 
       const closedTimeIso = new Date().toISOString();
-      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId && !String(currentCashData.shiftId).startsWith('local_')) {
+      const countedVal = parseCurrencyToFloat(countedStr);
+      const closeReasonText = document.getElementById('closeReason').value;
+
+      // Salva fechamento oficial no Supabase
+      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
           await supabaseClient
             .from('cash_shifts')
             .update({
               status: 'closed',
               closed_at: closedTimeIso,
-              counted_cash: parseCurrencyToFloat(countedStr),
-              close_reason: document.getElementById('closeReason').value
+              counted_cash: countedVal,
+              close_reason: closeReasonText,
+              movements: currentCashData.movements
             })
             .eq('id', currentCashData.shiftId);
         } catch (e) {
@@ -700,7 +708,7 @@
       saveCurrentCashState();
       renderCashState();
       closeCloseCashModal();
-      showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso!', '🔒');
+      showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso no sistema!', '🔒');
     }
 
     // PERSISTÊNCIA LOCAL
@@ -746,7 +754,6 @@
         document.getElementById('cashWithdrawals').innerText = 'R$ 0,00';
       }
 
-      // Tabela de Movimentações
       const tbody = document.getElementById('movementsTableBody');
       tbody.innerHTML = '';
 

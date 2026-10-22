@@ -426,7 +426,7 @@
       });
     }
 
-    // METRICAS AUTOMÁTICAS BASEADAS NO HISTÓRICO DE VENDAS
+    // METRICAS AUTOMÁTICAS (CORRIGIDO: ZERADO QUANDO NÃO HÁ DADOS DE COMISSÃO CONFIGURADOS)
     async function calculateStaffMetrics() {
       document.getElementById('statTotalStaff').innerText = staffMembers.length;
       const activeCount = staffMembers.filter(m => m.status === 'ativo').length;
@@ -445,8 +445,17 @@
 
       document.getElementById('statStaffSales').innerText = `R$ ${totalSales.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       
-      const estimatedCommissions = totalSales * 0.05;
-      document.getElementById('statStaffCommissions').innerText = `R$ ${estimatedCommissions.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+      // Cálculo real baseado estritamente na comissão cadastrada por colaborador ativo
+      let totalCommissions = 0;
+      if (staffMembers.length > 0 && totalSales > 0) {
+        staffMembers.forEach(m => {
+          if (m.status === 'ativo' && m.commission && parseFloat(m.commission) > 0) {
+            totalCommissions += totalSales * (parseFloat(m.commission) / 100);
+          }
+        });
+      }
+
+      document.getElementById('statStaffCommissions').innerText = `R$ ${totalCommissions.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
     }
 
     // PERMISSOES POR FUNCAO

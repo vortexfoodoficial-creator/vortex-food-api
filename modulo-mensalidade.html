@@ -97,6 +97,7 @@
     .badge-pending { background: rgba(234, 179, 8, 0.15); color: var(--warning); border: 1px solid var(--warning); }
     .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
     .badge-overdue { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-trial { background: rgba(56, 189, 248, 0.15); color: var(--info); border: 1px solid var(--info); }
 
     .btn-action-sm { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
     .btn-action-sm:hover { background: var(--primary-hover); }
@@ -191,27 +192,30 @@
     <!-- STATUS DA ASSINATURA -->
     <div class="status-banner">
       <div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Status da Assinatura do Sistema</div>
-        <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;" id="subscriptionStatusText">Carregando status...</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Plano & Status da Assinatura</div>
+        <div style="font-size: 1.1rem; font-weight: bold; margin-top: 2px;" id="subscriptionStatusText">Sincronizando com o sistema...</div>
       </div>
       <div>
-        <span class="badge-status badge-paid" id="subscriptionBadge">Ativo</span>
+        <span class="badge-status badge-paid" id="subscriptionBadge">Carregando</span>
       </div>
     </div>
 
     <div class="card-box">
-      <div class="card-title">💳 Atendimento Financeiro & Comprovantes</div>
+      <div class="card-title">💳 Atendimento Financeiro & Envio de Comprovante</div>
       <a href="https://wa.me/5511953365177?text=Olá!%20Gostaria%20de%20enviar%20o%20comprovante%20da%20mensalidade%20do%20Vortex%20Food." target="_blank" class="btn-wa">
         💬 Chamar no WhatsApp do Financeiro (+55 11 95336-5177)
       </a>
 
       <div class="rules-box">
-        <strong>📌 Regras de Vencimento e Acesso:</strong><br>
-        • A data de vencimento padrão das mensalidades é sempre o <strong>dia 10</strong> de cada mês.<br>
-        • O acesso à plataforma fica sujeito a bloqueio preventivo a partir do <strong>dia 13</strong> caso a fatura em aberto não seja liquidada. Após o pagamento, o sistema é liberado automaticamente mediante envio do comprovante.
+        <strong>📌 Regras do Plano Vortex Food:</strong><br>
+        • <strong>30 Dias Grátis:</strong> Aproveite para testar todos os recursos do sistema sem custos.<br>
+        • <strong>Período Promocional (3 Meses):</strong> Do 2º ao 4º mês, valor especial de <strong>R$ 100,00/mês</strong>.<br>
+        • <strong>Valor Padrão (A partir do 5º mês):</strong> R$ 199,00/mês.<br>
+        • <strong>Vencimento Personalizado:</strong> O vencimento ocorre mensalmente no mesmo dia em que o estabelecimento realizou o cadastro.<br>
+        • <strong>Política de Tolerância:</strong> O sistema dispõe de tolerância de até 3 dias após o vencimento. Caso não haja confirmação do pagamento, o acesso é suspenso temporariamente até a regularização.
       </div>
 
-      <div class="card-title" style="margin-top:20px;">📄 Faturas & Histórico de Pagamentos</div>
+      <div class="card-title" style="margin-top:20px;">📄 Faturas & Histórico de Assinatura</div>
       <div class="table-container">
         <table>
           <thead>
@@ -223,7 +227,7 @@
             </tr>
           </thead>
           <tbody id="invoicesTableBody">
-            <!-- Renderizado dinamicamente via JS do Supabase ou padrão -->
+            <!-- Dinâmico via Supabase ou vazio se não houver registros -->
           </tbody>
         </table>
       </div>
@@ -284,34 +288,38 @@
       }
     }
 
-    // CARREGAR FATURAS REAIS DO SUPABASE OU FALLBACK LOCAL
+    // CARREGAR FATURAS REAIS DO SUPABASE (SEM DADOS FICTÍCIOS)
     async function loadInvoices() {
       const tbody = document.getElementById('invoicesTableBody');
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Carregando faturas...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Verificando faturas da assinatura...</td></tr>`;
 
       let invoices = [];
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           const { data, error } = await supabaseClient.from('vortex_invoices').select('*').order('due_date', { ascending: false });
-          if (!error && data && data.length > 0) {
+          if (!error && data) {
             invoices = data;
           }
         } catch (e) {
-          console.log('Erro ao buscar do Supabase:', e);
+          console.log('Erro ao buscar faturas no Supabase:', e);
         }
-      }
-
-      // Fallback se não houver tabela remota criada ainda
-      if (invoices.length === 0) {
-        invoices = [
-          { due_date: '10/11/2026', amount: '99,90', status: 'pending', pix_code: '00020126580014br.gov.bcb.pix.vortexfood9990' },
-          { due_date: '10/10/2026', amount: '99,90', status: 'paid', pix_code: '' }
-        ];
       }
 
       tbody.innerHTML = '';
       let hasActivePending = false;
+      let isTrialPeriod = false;
+
+      if (invoices.length === 0) {
+        // Estado inicial real sem faturas geradas (ex: Loja recém criada no período de teste grátis de 30 dias)
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding: 20px;">Nenhuma fatura gerada no momento. Seu estabelecimento está no período de avaliação gratuita.</td></tr>`;
+        
+        document.getElementById('subscriptionStatusText').innerText = 'Período de Teste Grátis (30 Dias ativos)';
+        const badge = document.getElementById('subscriptionBadge');
+        badge.className = 'badge-status badge-trial';
+        badge.innerText = 'Teste Grátis';
+        return;
+      }
 
       invoices.forEach(inv => {
         let badgeHTML = '';
@@ -349,15 +357,15 @@
         `;
       });
 
-      // Atualizar Banner de Status Superior
+      // Atualizar Banner Superior conforme status real
       const statusText = document.getElementById('subscriptionStatusText');
       const statusBadge = document.getElementById('subscriptionBadge');
       if (hasActivePending) {
-        statusText.innerText = 'Fatura pendente em aberto. Regularize para evitar bloqueio.';
+        statusText.innerText = 'Fatura em aberto. Regularize até 3 dias após o vencimento para evitar suspensão.';
         statusBadge.className = 'badge-status badge-pending';
         statusBadge.innerText = 'Pendente';
       } else {
-        statusText.innerText = 'Assinatura em dia. Acesso liberado a todos os módulos.';
+        statusText.innerText = 'Assinatura em dia. Acesso total liberado.';
         statusBadge.className = 'badge-status badge-paid';
         statusBadge.innerText = 'Ativo';
       }

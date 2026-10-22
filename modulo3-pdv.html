@@ -468,7 +468,12 @@
       const now = new Date();
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const uniqueId = 'pdv_' + Date.now();
+
+      // Restaura a numeração sequencial limpa (#1, #2, #3...) do dia
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
+      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
+      const cleanOrderId = String(nextSeqNumber);
 
       let changeVal = 0;
       if (payment === 'Dinheiro' && rawCashGiven > total) {
@@ -477,9 +482,8 @@
 
       const channelLabel = `Balcão (${selectedConsumptionType})`;
       
-      // Estrutura exata esperada pelo dbSaveSale do supabase.js
       const newSaleRecord = {
-        id: uniqueId,
+        id: cleanOrderId,
         client: clientName,
         channel: channelLabel,
         total: total,
@@ -497,9 +501,8 @@
         }))
       };
 
-      // Estrutura exata esperada pelo dbSaveKdsOrder do supabase.js
       const newKdsOrder = {
-        id: uniqueId,
+        id: cleanOrderId,
         origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
@@ -513,7 +516,7 @@
         total: total,
         observation: observation,
         status: 'new',
-        code: Math.floor(100 + Math.random() * 900).toString()
+        code: cleanOrderId
       };
 
       // CHAMADA DAS FUNÇÕES OFICIAIS DO SUPABASE.JS
@@ -533,12 +536,11 @@
         }
       }
 
-      // Sincronia e contingência local para manter redundância
+      // Sincronia e contingência local
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.unshift(newKdsOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
@@ -555,14 +557,14 @@
       renderPdvCart();
 
       const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado localmente';
-      showNoticeModal('Venda Realizada!', `Pedido (${selectedConsumptionType}) ${cloudStatusMsg} e enviado para a Cozinha!`, '🚀');
+      showNoticeModal('Venda Realizada!', `Pedido #${cleanOrderId} (${selectedConsumptionType}) ${cloudStatusMsg} e enviado para a Cozinha!`, '🚀');
     }
 
     function showNoticeModal(title, desc, icon) {
       document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
       document.getElementById('noticeDesc').innerHTML = desc;
-      document.getElementById('noticeModal').classList.add('active');
+      document.getElementById('noticeModal'].classList.add('active');
     }
 
     function closeNoticeModal() {
@@ -576,7 +578,7 @@
     window.onload = function() {
       loadStoreSettings();
       renderCatalog();
-      handlePaymentChange(document.getElementById('pdvPaymentSelect', document.getElementById('pdvPaymentSelect').value));
+      handlePaymentChange(document.getElementById('pdvPaymentSelect').value);
     };
   </script>
 </body>

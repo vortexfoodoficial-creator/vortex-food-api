@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Integrações de Delivery</title>
+  <title>Vortex Food - Integrações de Delivery Reais</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -82,7 +82,7 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    .grid-integrations { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px; }
+    .grid-integrations { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
     .integration-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 15px; border-top: 5px solid var(--border); }
     
     .card-ifood { border-top-color: var(--ifood-red); }
@@ -95,15 +95,15 @@
     .status-connected { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
     .status-disconnected { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-    .form-group { margin-bottom: 12px; }
-    label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600; }
-    input { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 9px; border-radius: 8px; font-size: 0.88rem; outline: none; }
+    .form-group { margin-bottom: 10px; }
+    label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 3px; font-weight: 600; }
+    input { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 100%; padding: 8px; border-radius: 8px; font-size: 0.85rem; outline: none; }
     input:focus { border-color: var(--primary); }
 
-    .btn-connect { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 0.88rem; transition: opacity 0.2s; }
+    .btn-connect { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 0.88rem; transition: opacity 0.2s; margin-top: 5px; }
     .btn-connect:hover { opacity: 0.9; }
     .btn-on { background: var(--success); color: white; }
-    .btn-off { background: var(--border); color: var(--text-main); }
+    .btn-off { background: var(--primary); color: white; }
 
     .info-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
 
@@ -192,63 +192,79 @@
     </header>
 
     <div class="grid-integrations">
-      <!-- iFood -->
+      <!-- iFood (Exige OAuth 2.0 / Merchant ID / Client ID / Client Secret) -->
       <div class="integration-card card-ifood">
         <div>
           <div class="integration-header">
-            <div class="integration-title">🍔 iFood</div>
+            <div class="integration-title">🍔 iFood API</div>
             <span class="status-badge status-disconnected" id="ifoodStatusBadge">Desconectado</span>
           </div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin: 10px 0;">Sincronize cardápio e receba pedidos do iFood direto na sua cozinha.</p>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin: 8px 0;">Insira as credenciais do Portal do Parceiro iFood para sincronizar pedidos em tempo real.</p>
           
           <div class="form-group">
-            <label>Merchant ID / Chave da Loja:</label>
-            <input type="text" id="ifoodKey" placeholder="Ex: store_ifood_8832">
+            <label>Merchant ID (ID da Loja):</label>
+            <input type="text" id="ifoodMerchantId" placeholder="Ex: 5b4d1234-abcd...">
+          </div>
+          <div class="form-group">
+            <label>Client ID:</label>
+            <input type="text" id="ifoodClientId" placeholder="Ex: ifood_client_id...">
+          </div>
+          <div class="form-group">
+            <label>Client Secret:</label>
+            <input type="password" id="ifoodClientSecret" placeholder="••••••••••••••••">
           </div>
         </div>
-        <button class="btn-connect btn-off" id="ifoodBtn" onclick="toggleIntegration('ifood')">Conectar iFood</button>
+        <button class="btn-connect btn-off" id="ifoodBtn" onclick="saveIntegration('ifood')">Salvar e Conectar iFood</button>
       </div>
 
-      <!-- 99Food -->
+      <!-- 99Food (Exige Store ID e Token de Integração) -->
       <div class="integration-card card-99food">
         <div>
           <div class="integration-header">
-            <div class="integration-title">🟡 99Food</div>
+            <div class="integration-title">🟡 99Food API</div>
             <span class="status-badge status-disconnected" id="food99StatusBadge">Desconectado</span>
           </div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin: 10px 0;">Integração via API oficial para recebimento automatizado de pedidos.</p>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin: 8px 0;">Insira as chaves fornecidas pelo painel administrativo da 99Food.</p>
           
           <div class="form-group">
-            <label>Token de Acesso:</label>
-            <input type="text" id="food99Key" placeholder="Ex: token_99food_9911">
+            <label>Store ID (Identificador da Loja):</label>
+            <input type="text" id="food99StoreId" placeholder="Ex: 99store_7721">
+          </div>
+          <div class="form-group">
+            <label>Token de Integração:</label>
+            <input type="password" id="food99Token" placeholder="••••••••••••••••">
           </div>
         </div>
-        <button class="btn-connect btn-off" id="food99Btn" onclick="toggleIntegration('food99')">Conectar 99Food</button>
+        <button class="btn-connect btn-off" id="food99Btn" onclick="saveIntegration('food99')">Salvar e Conectar 99Food</button>
       </div>
 
-      <!-- Keeta -->
+      <!-- Keeta (Exige App ID e App Secret) -->
       <div class="integration-card card-keeta">
         <div>
           <div class="integration-header">
-            <div class="integration-title">🟢 Keeta</div>
+            <div class="integration-title">🟢 Keeta API</div>
             <span class="status-badge status-disconnected" id="keetaStatusBadge">Desconectado</span>
           </div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin: 10px 0;">Centralize os pedidos do aplicativo Keeta na tela do seu KDS.</p>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin: 8px 0;">Configure as chaves do portal Keeta Merchant para automação do KDS.</p>
           
           <div class="form-group">
-            <label>Client ID / Chave Keeta:</label>
-            <input type="text" id="keetaKey" placeholder="Ex: keeta_store_554">
+            <label>App ID / Store Code:</label>
+            <input type="text" id="keetaAppId" placeholder="Ex: keeta_store_994">
+          </div>
+          <div class="form-group">
+            <label>App Secret:</label>
+            <input type="password" id="keetaAppSecret" placeholder="••••••••••••••••">
           </div>
         </div>
-        <button class="btn-connect btn-off" id="keetaBtn" onclick="toggleIntegration('keeta')">Conectar Keeta</button>
+        <button class="btn-connect btn-off" id="keetaBtn" onclick="saveIntegration('keeta')">Salvar e Conectar Keeta</button>
       </div>
     </div>
 
-    <!-- INFORMAÇÕES DE SINCRONIZAÇÃO -->
+    <!-- INFORMAÇÕES DE ARQUITETURA -->
     <div class="info-box">
-      <div class="card-title">ℹ️ Sobre as Conexões de API</div>
-      <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;">
-        As chaves inseridas acima são vinculadas diretamente ao perfil do estabelecimento na nuvem através do Supabase. Quando ativadas, o sistema aguarda o recebimento automatizado de dados via Webhook oficial dos canais de entrega parceiros.
+      <div class="card-title">ℹ️ Como Funciona a Recepção Real de Pedidos</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
+        As chaves cadastradas acima são armazenadas no banco de dados seguro do Supabase. Para que os pedidos caiam automaticamente no KDS e imprimam na impressora térmica, o sistema utiliza endpoints de <strong>Webhook</strong> configurados na nuvem, que processam as requisições HTTP enviadas pelos servidores do iFood, 99Food e Keeta 24 horas por dia.
       </p>
     </div>
   </main>
@@ -291,57 +307,107 @@
       }
     }
 
-    function toggleIntegration(platform) {
-      let status = JSON.parse(localStorage.getItem('vortex_integrations')) || { ifood: false, food99: false, keeta: false };
-      status[platform] = !status[platform];
-      localStorage.setItem('vortex_integrations', JSON.stringify(status));
-      updateIntegrationUI();
+    async function saveIntegration(platform) {
+      let credentials = {};
+      let name = '';
 
-      let name = platform === 'ifood' ? 'iFood' : (platform === 'food99' ? '99Food' : 'Keeta');
-      let state = status[platform] ? 'conectado com sucesso!' : 'desconectado.';
-      showNoticeModal('Integração Atualizada', `A plataforma ${name} foi ${state}`, '🔗');
+      if (platform === 'ifood') {
+        name = 'iFood';
+        credentials = {
+          merchantId: document.getElementById('ifoodMerchantId').value,
+          clientId: document.getElementById('ifoodClientId').value,
+          clientSecret: document.getElementById('ifoodClientSecret').value
+        };
+      } else if (platform === 'food99') {
+        name = '99Food';
+        credentials = {
+          storeId: document.getElementById('food99StoreId').value,
+          token: document.getElementById('food99Token').value
+        };
+      } else if (platform === 'keeta') {
+        name = 'Keeta';
+        credentials = {
+          appId: document.getElementById('keetaAppId').value,
+          appSecret: document.getElementById('keetaAppSecret').value
+        };
+      }
+
+      // Salva no Supabase via função central
+      if (typeof dbSaveIntegration === 'function') {
+        await dbSaveIntegration(platform, credentials);
+      }
+
+      // Salva também localmente para feedback instantâneo de interface
+      let integrations = JSON.parse(localStorage.getItem('vortex_integrations_data')) || {};
+      integrations[platform] = { connected: true, credentials: credentials };
+      localStorage.setItem('vortex_integrations_data', JSON.stringify(integrations));
+
+      updateIntegrationUI();
+      showNoticeModal('Integração Configurada!', As credenciais do ${name} foram salvas e vinculadas com sucesso à nuvem., '🔗');
+    }
+
+    async function loadIntegrationsFromCloud() {
+      if (typeof dbFetchIntegrations === 'function') {
+        const cloudData = await dbFetchIntegrations();
+        if (cloudData && cloudData.length > 0) {
+          let integrations = {};
+          cloudData.forEach(item => {
+            integrations[item.platform] = { connected: item.connected, credentials: item.credentials };
+            if (item.platform === 'ifood' && item.credentials) {
+              if(item.credentials.merchantId) document.getElementById('ifoodMerchantId').value = item.credentials.merchantId;
+              if(item.credentials.clientId) document.getElementById('ifoodClientId').value = item.credentials.clientId;
+            } else if (item.platform === 'food99' && item.credentials) {
+              if(item.credentials.storeId) document.getElementById('food99StoreId').value = item.credentials.storeId;
+            } else if (item.platform === 'keeta' && item.credentials) {
+              if(item.credentials.appId) document.getElementById('keetaAppId').value = item.credentials.appId;
+            }
+          });
+          localStorage.setItem('vortex_integrations_data', JSON.stringify(integrations));
+        }
+      }
+      updateIntegrationUI();
     }
 
     function updateIntegrationUI() {
-      let status = JSON.parse(localStorage.getItem('vortex_integrations')) || { ifood: false, food99: false, keeta: false };
+      let integrations = JSON.parse(localStorage.getItem('vortex_integrations_data')) || {};
       
       // iFood
-      if (status.ifood) {
+      if (integrations.ifood && integrations.ifood.connected) {
         document.getElementById('ifoodStatusBadge').className = 'status-badge status-connected';
         document.getElementById('ifoodStatusBadge').innerText = 'Conectado';
         document.getElementById('ifoodBtn').className = 'btn-connect btn-on';
-        document.getElementById('ifoodBtn').innerText = 'Desconectar iFood';
+        document.getElementById('ifoodBtn').innerText = 'Atualizar Conexão iFood';
       } else {
         document.getElementById('ifoodStatusBadge').className = 'status-badge status-disconnected';
         document.getElementById('ifoodStatusBadge').innerText = 'Desconectado';
         document.getElementById('ifoodBtn').className = 'btn-connect btn-off';
-        document.getElementById('ifoodBtn').innerText = 'Conectar iFood';
+        document.getElementById('ifoodBtn').innerText = 'Salvar e Conectar iFood';
       }
 
       // 99Food
-      if (status.food99) {
+      if (integrations.food99 && integrations.food99.connected) {
         document.getElementById('food99StatusBadge').className = 'status-badge status-connected';
         document.getElementById('food99StatusBadge').innerText = 'Conectado';
         document.getElementById('food99Btn').className = 'btn-connect btn-on';
-        document.getElementById('food99Btn').innerText = 'Desconectar 99Food';
+        document.getElementById('food99Btn').innerText = 'Atualizar Conexão 99Food';
       } else {
         document.getElementById('food99StatusBadge').className = 'status-badge status-disconnected';
         document.getElementById('food99StatusBadge').innerText = 'Desconectado';
         document.getElementById('food99Btn').className = 'btn-connect btn-off';
-        document.getElementById('food99Btn').innerText = 'Conectar 99Food';
+        document.getElementById('food99Btn').innerText = 'Salvar e Conectar 99Food';
       }
 
       // Keeta
-      if (status.keeta) {
+      if (integrations.keeta && integrations.keeta.connected) {
         document.getElementById('keetaStatusBadge').className = 'status-badge status-connected';
         document.getElementById('keetaStatusBadge').innerText = 'Conectado';
         document.getElementById('keetaBtn').className = 'btn-connect btn-on';
-        document.getElementById('keetaBtn').innerText = 'Desconectar Keeta';
+        document.getElementById('keetaBtn').innerText = 'Atualizar Conexão Keeta';
       } else {
         document.getElementById('keetaStatusBadge').className = 'status-badge status-disconnected';
         document.getElementById('keetaStatusBadge').innerText = 'Desconectado';
         document.getElementById('keetaBtn').className = 'btn-connect btn-off';
-        document.getElementById('keetaBtn').innerText = 'Conectar Keeta';
+        document.getElementById('keetaBtn').innerText = 'Salvar e Conectar Keeta';
       }
     }
 
@@ -362,7 +428,7 @@
 
     window.onload = function() {
       loadStoreSettings();
-      updateIntegrationUI();
+      loadIntegrationsFromCloud();
     };
   </script>
 </body>

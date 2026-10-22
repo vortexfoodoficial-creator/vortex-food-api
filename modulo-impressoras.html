@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Configurações de Impressoras</title>
+  <!-- SDK do Supabase e Conexão Central -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -77,11 +80,11 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-    .config-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .config-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .config-row:last-child { border-bottom: none; }
-    .config-label { font-size: 0.9rem; font-weight: 600; }
+    .config-label { font-size: 0.92rem; font-weight: 600; }
     .config-sublabel { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
 
     /* SWITCH CUSTOMIZADO */
@@ -93,16 +96,21 @@
     input:checked + .slider:before { transform: translateX(24px); }
 
     .btn-select-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-    .btn-action-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+    
+    .btn-action { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-action:hover { background: var(--primary-hover); }
+
+    .btn-action-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
     .btn-action-outline:hover { background: rgba(249, 115, 22, 0.1); }
 
-    .bluetooth-alert { background: var(--bg-main); border: 1px solid var(--border); border-radius: 16px; padding: 25px; text-align: center; margin-top: 20px; }
-    .bluetooth-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .printer-device-card {
+      background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 15px;
+      display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
+    }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
 
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -111,6 +119,13 @@
       .close-sidebar-btn { display: block; }
       .main-content { margin-left: 0; width: 100%; padding: 15px 15px 80px 15px; }
       .toggle-btn { display: block; }
+    }
+
+    /* ESTILO PARA IMPRESSÃO DE TESTE OCULTA */
+    @media print {
+      body * { visibility: hidden; }
+      #printableReceipt, #printableReceipt * { visibility: visible; }
+      #printableReceipt { position: absolute; left: 0; top: 0; width: 100%; font-family: monospace; font-size: 12px; color: black; }
     }
   </style>
 </head>
@@ -180,24 +195,38 @@
       </div>
     </header>
 
+    <!-- CONEXÃO BLUETOOTH E DISPOSITIVOS -->
     <div class="card-box">
-      <div class="card-title">⚙️ Parâmetros de Impressão</div>
-
-      <div class="config-row">
-        <div>
-          <div class="config-label">Modo Avançado</div>
-          <div class="config-sublabel">Ativar opções avançadas de hardware e drivers</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="advancedModeToggle" onchange="savePrinterSettings()">
-          <span class="slider"></span>
-        </label>
+      <div class="card-title">
+        <span>📶 Conectar Impressora Bluetooth</span>
+        <button class="btn-action" onclick="connectBluetoothDevice()">🔍 Escanear Bluetooth</button>
       </div>
 
+      <div id="activePrinterCard" class="printer-device-card" style="display: none;">
+        <div>
+          <div style="font-weight: bold; font-size: 1rem;" id="activePrinterName">Impressora Térmica</div>
+          <div style="font-size: 0.8rem; color: var(--success);" id="activePrinterStatus">● Conectado via Bluetooth Web API</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-action-outline" onclick="printTestReceipt()">🖨️ Testar</button>
+          <button class="btn-action-outline" style="border-color: var(--danger); color: var(--danger);" onclick="disconnectBluetooth()">Desconectar</button>
+        </div>
+      </div>
+
+      <div id="noPrinterAlert" style="text-align: center; padding: 20px; color: var(--text-muted); background: var(--bg-main); border-radius: 12px; margin-top: 10px;">
+        <div style="font-size: 2rem; margin-bottom: 8px;">🖨️</div>
+        <div>Nenhuma impressora Bluetooth pareada. Ligue sua impressora térmica e clique em <strong>"Escanear Bluetooth"</strong>.</div>
+      </div>
+    </div>
+
+    <!-- PARÂMETROS DE IMPRESSÃO -->
+    <div class="card-box">
+      <div class="card-title">⚙️ Parâmetros de Impressão de Comprovantes</div>
+
       <div class="config-row">
         <div>
-          <div class="config-label">Impressão Automática</div>
-          <div class="config-sublabel">Imprimir automaticamente ao receber novos pedidos[span_1](start_span)[span_1](end_span)</div>
+          <div class="config-label">Impressão Automática de Pedidos</div>
+          <div class="config-sublabel">Disparar impressão do cupom assim que um novo pedido for confirmado</div>
         </div>
         <label class="switch">
           <input type="checkbox" id="autoPrintToggle" onchange="savePrinterSettings()">
@@ -205,34 +234,62 @@
         </label>
       </div>
 
+      <div class="config-row">
+        <div>
+          <div class="config-label">Imprimir Segunda Via para Cozinha (KDS)</div>
+          <div class="config-sublabel">Gerar vias individuais dos itens para o setor de preparação</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="kitchenPrintToggle" onchange="savePrinterSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
       <div style="margin-top: 15px;">
-        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Modo de impressão</label>
+        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Modelo do Layout do Cupom</label>
         <div class="btn-select-box">
-          <span id="printModeDisplay" style="font-weight:bold; font-size:0.9rem;">Impressão completa[span_2](start_span)[span_2](end_span)</span>
-          <button class="btn-action-outline" onclick="openSelectModal('printMode')">Alterar[span_3](start_span)[span_3](end_span)</button>
+          <span id="printModeDisplay" style="font-weight:bold; font-size:0.9rem;">Impressão Completa (Via Cliente)</span>
+          <button class="btn-action-outline" onclick="openSelectModal('printMode')">Alterar</button>
         </div>
       </div>
 
       <div style="margin-top: 15px;">
-        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Tamanho da Fonte</label>
+        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Largura da Bobina de Papel</label>
         <div class="btn-select-box">
-          <span id="fontSizeDisplay" style="font-weight:bold; font-size:0.9rem;">Normal[span_4](start_span)[span_4](end_span)</span>
-          <button class="btn-action-outline" onclick="openSelectModal('fontSize')">Alterar[span_5](start_span)[span_5](end_span)</button>
+          <span id="paperWidthDisplay" style="font-weight:bold; font-size:0.9rem;">58mm (Cupom Pequeno)</span>
+          <button class="btn-action-outline" onclick="openSelectModal('paperWidth')">Alterar</button>
         </div>
       </div>
 
-      <div style="margin-top: 20px; display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:0.9rem; font-weight:bold;">Escanear dispositivos</span>
-        <button class="btn-action-outline" onclick="scanBluetoothDevices()">🔄 Escanear</button>
+      <div style="margin-top: 15px;">
+        <label style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Tamanho do Texto</label>
+        <div class="btn-select-box">
+          <span id="fontSizeDisplay" style="font-weight:bold; font-size:0.9rem;">Normal</span>
+          <button class="btn-action-outline" onclick="openSelectModal('fontSize')">Alterar</button>
+        </div>
       </div>
-    </div>
 
-    <div class="bluetooth-alert">
-      <div class="bluetooth-icon">📶</div>
-      <div style="font-size:1rem; font-weight:bold; margin-bottom:6px;">Seu Bluetooth está desativado, ative-o e volte aqui para emparelhar sua impressora[span_6](start_span)[span_6](end_span)!</div>
-      <div style="font-size:0.85rem; color:var(--text-muted);" id="bluetoothStatusText">Nenhum dispositivo encontrado[span_7](start_span)[span_7](end_span)!</div>
+      <div style="margin-top: 20px; text-align: right;">
+        <button class="btn-action" onclick="printTestReceipt()">🖨️ Imprimir Comprovante de Teste</button>
+      </div>
     </div>
   </main>
+
+  <!-- AREA OCULTA PARA IMPRESSÃO DE TESTE DE BOBINA -->
+  <div id="printableReceipt" style="display: none;">
+    <div style="text-align: center; font-weight: bold; font-size: 14px;">VORTEX FOOD</div>
+    <div style="text-align: center; font-size: 11px;">TESTE DE IMPRESSÃO TÉRMICA</div>
+    <div>--------------------------------</div>
+    <div>Data/Hora: <span id="testReceiptDate">--/--/---- --:--</span></div>
+    <div>Papel: <span id="testReceiptPaper">58mm</span></div>
+    <div>Conexão: OK</div>
+    <div>--------------------------------</div>
+    <div style="text-align: center; margin-top: 10px;">PRODUTO DE TESTE ...... R$ 10,00</div>
+    <div style="text-align: center; font-weight: bold; margin-top: 10px;">TOTAL: R$ 10,00</div>
+    <div>--------------------------------</div>
+    <div style="text-align: center; font-size: 10px; margin-top: 10px;">Sistema Vortex Food - Impressão OK</div>
+    <br><br>
+  </div>
 
   <!-- MODAL DE SELEÇÃO -->
   <div class="modal-overlay" id="selectModal">
@@ -243,17 +300,20 @@
     </div>
   </div>
 
+  <!-- MODAL DE AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
       <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
       <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;" id="noticeDesc">Configuração salva.</div>
-      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+      <button class="btn-action" style="width: 100%; justify-content: center;" onclick="closeNoticeModal()">Entendido</button>
     </div>
   </div>
 
   <script>
     let currentEditingType = '';
+    let bluetoothDevice = null;
+    let bluetoothGattServer = null;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -268,26 +328,66 @@
       }
     }
 
-    function loadStoreSettings() {
-      applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+    // CONEXÃO BLUETOOTH REAL VIA WEB BLUETOOTH API
+    async function connectBluetoothDevice() {
+      if (!navigator.bluetooth) {
+        showNoticeModal('Navegador Incompatível', 'O seu navegador não possui suporte para Web Bluetooth API. Utilize o Google Chrome ou Brave no Android/PC.', '⚠️');
+        return;
+      }
 
-      const savedLogo = localStorage.getItem('vortex_store_logo');
-      const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (savedLogo) {
-        sidebarLogo.src = savedLogo;
-        sidebarLogo.style.display = 'block';
+      try {
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '00001101-0000-1000-8000-00805f9b34fb']
+        });
+
+        if (bluetoothDevice) {
+          const printerInfo = {
+            id: bluetoothDevice.id,
+            name: bluetoothDevice.name || 'Impressora Térmica Bluetooth',
+            connected: true
+          };
+
+          localStorage.setItem('vortex_active_printer', JSON.stringify(printerInfo));
+          
+          if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+              await supabaseClient.from('vortex_printers').upsert([printerInfo]);
+            } catch(e){}
+          }
+
+          updatePrinterUI(printerInfo);
+          showNoticeModal('Impressora Conectada!', `Conectado com sucesso a: <strong>${printerInfo.name}</strong>`, '📶');
+        }
+      } catch (error) {
+        console.log('Busca Bluetooth cancelada ou erro:', error);
+      }
+    }
+
+    function disconnectBluetooth() {
+      localStorage.removeItem('vortex_active_printer');
+      document.getElementById('activePrinterCard').style.display = 'none';
+      document.getElementById('noPrinterAlert').style.display = 'block';
+      showNoticeModal('Desconectado', 'A impressora Bluetooth foi removida.', 'ℹ️');
+    }
+
+    function updatePrinterUI(printer) {
+      if (printer && printer.name) {
+        document.getElementById('activePrinterName').innerText = printer.name;
+        document.getElementById('activePrinterCard').style.display = 'flex';
+        document.getElementById('noPrinterAlert').style.display = 'none';
       } else {
-        sidebarLogo.style.display = 'none';
+        document.getElementById('activePrinterCard').style.display = 'none';
+        document.getElementById('noPrinterAlert').style.display = 'block';
       }
     }
 
     function savePrinterSettings() {
       const settings = {
-        advancedMode: document.getElementById('advancedModeToggle').checked,
         autoPrint: document.getElementById('autoPrintToggle').checked,
+        kitchenPrint: document.getElementById('kitchenPrintToggle').checked,
         printMode: document.getElementById('printModeDisplay').innerText,
+        paperWidth: document.getElementById('paperWidthDisplay').innerText,
         fontSize: document.getElementById('fontSizeDisplay').innerText
       };
       localStorage.setItem('vortex_printer_settings', JSON.stringify(settings));
@@ -301,14 +401,19 @@
       list.innerHTML = '';
 
       if (type === 'printMode') {
-        title.innerText = 'Modo de Impressão';
-        ['Impressão completa', 'Impressão resumida (apenas itens)', 'Apenas valor e pagamento'].forEach(opt => {
-          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:10px;" onclick="selectOption('${opt}')">${opt}</button>`;
+        title.innerText = 'Modelo do Layout';
+        ['Impressão Completa (Via Cliente)', 'Impressão Resumida (Apenas Itens)', 'Cupom de Entrega'].forEach(opt => {
+          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:12px;" onclick="selectOption('${opt}')">${opt}</button>`;
+        });
+      } else if (type === 'paperWidth') {
+        title.innerText = 'Largura da Bobina';
+        ['58mm (Cupom Pequeno)', '80mm (Cupom Largo / Padronizado)'].forEach(opt => {
+          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:12px;" onclick="selectOption('${opt}')">${opt}</button>`;
         });
       } else if (type === 'fontSize') {
-        title.innerText = 'Tamanho da Fonte';
-        ['Pequena', 'Normal', 'Grande', 'Extra Grande'].forEach(opt => {
-          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:10px;" onclick="selectOption('${opt}')">${opt}</button>`;
+        title.innerText = 'Tamanho do Texto';
+        ['Pequena', 'Normal', 'Grande'].forEach(opt => {
+          list.innerHTML += `<button class="btn-action-outline" style="width:100%; text-align:left; padding:12px;" onclick="selectOption('${opt}')">${opt}</button>`;
         });
       }
 
@@ -318,24 +423,28 @@
     function selectOption(val) {
       if (currentEditingType === 'printMode') {
         document.getElementById('printModeDisplay').innerText = val;
+      } else if (currentEditingType === 'paperWidth') {
+        document.getElementById('paperWidthDisplay').innerText = val;
       } else if (currentEditingType === 'fontSize') {
         document.getElementById('fontSizeDisplay').innerText = val;
       }
       closeSelectModal();
       savePrinterSettings();
-      showNoticeModal('Atualizado', 'Configuração de impressora alterada com sucesso!', '🖨️');
+      showNoticeModal('Atualizado', 'Parâmetros de impressão salvos!', '🖨️');
     }
 
     function closeSelectModal() {
       document.getElementById('selectModal').classList.remove('active');
     }
 
-    function scanBluetoothDevices() {
-      document.getElementById('bluetoothStatusText').innerText = 'Buscando dispositivos próximos...';
-      setTimeout(() => {
-        document.getElementById('bluetoothStatusText').innerText = 'Nenhum dispositivo encontrado! Verifique se a impressora está ligada.';
-        showNoticeModal('Bluetooth', 'Escaneamento concluído. Certifique-se de que o Bluetooth do dispositivo está habilitado.', '📶');
-      }, 1500);
+    function printTestReceipt() {
+      document.getElementById('testReceiptDate').innerText = new Date().toLocaleString('pt-BR');
+      document.getElementById('testReceiptPaper').innerText = document.getElementById('paperWidthDisplay').innerText;
+      
+      const printable = document.getElementById('printableReceipt');
+      printable.style.display = 'block';
+      window.print();
+      printable.style.display = 'none';
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -354,12 +463,21 @@
     }, 1000);
 
     window.onload = function() {
-      loadStoreSettings();
+      applyTheme();
+      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+
+      const savedPrinter = JSON.parse(localStorage.getItem('vortex_active_printer'));
+      if (savedPrinter) {
+        updatePrinterUI(savedPrinter);
+      }
+
       const saved = JSON.parse(localStorage.getItem('vortex_printer_settings'));
       if (saved) {
-        document.getElementById('advancedModeToggle').checked = saved.advancedMode || false;
         document.getElementById('autoPrintToggle').checked = saved.autoPrint || false;
+        document.getElementById('kitchenPrintToggle').checked = saved.kitchenPrint || false;
         if (saved.printMode) document.getElementById('printModeDisplay').innerText = saved.printMode;
+        if (saved.paperWidth) document.getElementById('paperWidthDisplay').innerText = saved.paperWidth;
         if (saved.fontSize) document.getElementById('fontSizeDisplay').innerText = saved.fontSize;
       }
     };

@@ -469,7 +469,7 @@
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Restaura a numeração sequencial limpa (#1, #2, #3...) do dia
+      // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
@@ -482,6 +482,7 @@
 
       const channelLabel = `Balcão (${selectedConsumptionType})`;
       
+      // Estrutura exata esperada pelo dbSaveSale do supabase.js
       const newSaleRecord = {
         id: cleanOrderId,
         client: clientName,
@@ -490,6 +491,8 @@
         subtotal: total,
         discount: 0,
         payMethod: payment,
+        payment: payment,
+        paymentMethod: payment,
         status: 'finished',
         date: dateStr,
         time: timeStr,
@@ -501,14 +504,18 @@
         }))
       };
 
+      // Estrutura exata esperada pelo dbSaveKdsOrder do supabase.js
       const newKdsOrder = {
         id: cleanOrderId,
         origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
         payment: payment,
+        payMethod: payment,
+        paymentMethod: payment,
         cashGiven: payment === 'Dinheiro' ? rawCashGiven : total,
         change: changeVal,
+        changeValue: changeVal,
         time: timeStr,
         date: dateStr,
         dateFormatted: now.toLocaleDateString('pt-BR'),
@@ -536,7 +543,7 @@
         }
       }
 
-      // Sincronia e contingência local
+      // Sincronia e contingência local para manter redundância e compatibilidade com o Caixa
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
@@ -556,7 +563,7 @@
       document.getElementById('cashGivenInput').value = '';
       renderPdvCart();
 
-      const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado localmente';
+      const cloudStatusMsg = cloudSaved ? 'sincronizado na nuvem (Supabase)' : 'registrado no sistema';
       showNoticeModal('Venda Realizada!', `Pedido #${cleanOrderId} (${selectedConsumptionType}) ${cloudStatusMsg} e enviado para a Cozinha!`, '🚀');
     }
 
@@ -564,7 +571,7 @@
       document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
       document.getElementById('noticeDesc').innerHTML = desc;
-      document.getElementById('noticeModal'].classList.add('active');
+      document.getElementById('noticeModal').classList.add('active');
     }
 
     function closeNoticeModal() {

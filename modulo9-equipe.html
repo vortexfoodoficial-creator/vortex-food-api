@@ -492,7 +492,7 @@
 
     async function executeDeleteStaff(id) {
       closeCustomAlert();
-      staffMembers = staffMembers.filter(m => String(m.id) === String(id));
+      staffMembers = staffMembers.filter(m => String(m.id) !== String(id));
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {

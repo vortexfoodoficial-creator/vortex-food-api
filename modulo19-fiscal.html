@@ -221,11 +221,11 @@
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
         <div class="form-group">
           <label>CNPJ da Empresa:*</label>
-          <input type="text" class="form-input" id="cfgCnpj" placeholder="00.000.000/0001-00">
+          <input type="text" class="form-input" id="cfgCnpj" placeholder="00.000.000/0001-00" maxlength="18" oninput="maskCnpj(this)">
         </div>
         <div class="form-group">
           <label>Inscrição Estadual (IE):*</label>
-          <input type="text" class="form-input" id="cfgIe" placeholder="Número da IE">
+          <input type="text" class="form-input" id="cfgIe" placeholder="Número da IE" maxlength="20">
         </div>
         <div class="form-group">
           <label>Regime Tributário:*</label>
@@ -291,7 +291,7 @@
 
       <div class="form-group">
         <label>CPF / CNPJ do Destinatário (Opcional):</label>
-        <input type="text" class="form-input" id="invCustomerDoc" placeholder="000.000.000-00">
+        <input type="text" class="form-input" id="invCustomerDoc" placeholder="000.000.000-00 ou 00.000.000/0001-00" maxlength="18" oninput="maskCpfCnpj(this)">
       </div>
 
       <div class="form-group">
@@ -301,7 +301,7 @@
 
       <div class="form-group">
         <label>Valor Total da Nota (R$):*</label>
-        <input type="number" class="form-input" id="invAmount" placeholder="0,00" step="0.01">
+        <input type="text" class="form-input" id="invAmount" placeholder="0,00" oninput="maskCurrency(this)">
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -330,6 +330,59 @@
       ambiente: 'homologacao'
     };
 
+    // MÁSCARAS AUTOMÁTICAS SEM FALHAS AO DIGITAR/APAGAR
+    function maskCnpj(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 14) v = v.slice(0, 14);
+      if (v.length > 12) {
+        v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      } else if (v.length > 8) {
+        v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})$/, '$1.$2.$3/$4');
+      } else if (v.length > 5) {
+        v = v.replace(/^(\d{2})(\d{3})(\d{0,3})$/, '$1.$2.$3');
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,3})$/, '$1.$2');
+      }
+      input.value = v;
+    }
+
+    function maskCpfCnpj(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (v.length > 14) v = v.slice(0, 14);
+      if (v.length > 11) {
+        // CNPJ
+        v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      } else {
+        // CPF
+        if (v.length > 9) {
+          v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})$/, '$1.$2.$3-$4');
+        } else if (v.length > 6) {
+          v = v.replace(/^(\d{3})(\d{3})(\d{0,3})$/, '$1.$2.$3');
+        } else if (v.length > 3) {
+          v = v.replace(/^(\d{3})(\d{0,3})$/, '$1.$2');
+        }
+      }
+      input.value = v;
+    }
+
+    function maskCurrency(input) {
+      let v = input.value.replace(/\D/g, '');
+      if (!v) {
+        input.value = '';
+        return;
+      }
+      v = (parseFloat(v) / 100).toFixed(2) + '';
+      v = v.replace('.', ',');
+      v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      input.value = v;
+    }
+
+    function parseCurrency(str) {
+      if (!str) return 0;
+      let clean = String(str).replace(/\./g, '').replace(',', '.');
+      return parseFloat(clean) || 0;
+    }
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -355,7 +408,6 @@
     }
 
     async function loadFiscalData() {
-      // Carregar configurações salvas
       const savedCfg = localStorage.getItem('vortex_fiscal_config');
       if (savedCfg) {
         try {
@@ -368,7 +420,6 @@
       }
       updateEnvDisplay();
 
-      // Carregar histórico de notas do Supabase ou LocalStorage
       let loaded = false;
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
@@ -471,7 +522,7 @@
       const model = document.getElementById('invModel').value;
       const customerDoc = document.getElementById('invCustomerDoc').value.trim();
       const customerName = document.getElementById('invCustomerName').value.trim() || 'Consumidor Final';
-      const amount = parseFloat(document.getElementById('invAmount').value);
+      const amount = parseCurrency(document.getElementById('invAmount').value);
 
       if (!amount || amount <= 0) {
         showCustomAlert('Valor Inválido', 'Informe um valor total válido para a nota fiscal.', '⚠️');
@@ -502,17 +553,17 @@
       renderInvoicesTable();
       calculateMetrics();
       closeIssueModal();
-      showCustomAlert('Nota Autorizada!', `Documento ${model} emitido e autorizado com sucesso pela SEFAZ!`, '🎉');
+      showCustomAlert('Nota Autorizada!', `Documento ${model} emitido e registrado com sucesso!`, '🎉');
     }
 
     function viewInvoice(id) {
       const inv = invoicesList.find(i => String(i.id) === String(id));
       if (!inv) return;
-      showCustomAlert('Detalhes da Nota', `Nota: ${inv.model} Nº ${inv.number}\nCliente: ${inv.customerName}\nValor: R$ ${inv.amount.toFixed(2)}\nStatus: ${inv.status}\nAmbiente SEFAZ: Autorizado com Sucesso.`, '📄');
+      showCustomAlert('Detalhes da Nota', `Nota: ${inv.model} Nº ${inv.number}\nCliente: ${inv.customerName}\nDocumento: ${inv.customerDoc || 'Não informado'}\nValor: R$ ${inv.amount.toFixed(2)}\nStatus: ${inv.status}`, '📄');
     }
 
     async function cancelInvoice(id) {
-      if (!confirm('Deseja realmente solicitar o cancelamento desta Nota Fiscal junto à SEFAZ?')) return;
+      if (!confirm('Deseja realmente solicitar o cancelamento desta Nota Fiscal?')) return;
       
       const inv = invoicesList.find(i => String(i.id) === String(id));
       if (inv) {
@@ -528,7 +579,7 @@
       localStorage.setItem('vortex_invoices_list', JSON.stringify(invoicesList));
       renderInvoicesTable();
       calculateMetrics();
-      showCustomAlert('Nota Cancelada', 'O cancelamento do documento fiscal foi homologado.', '⚠️');
+      showCustomAlert('Nota Cancelada', 'O documento fiscal foi cancelado com sucesso.', '⚠️');
     }
 
     setInterval(() => {

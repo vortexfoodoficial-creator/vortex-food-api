@@ -343,7 +343,7 @@
       localStorage.setItem('vortex_integrations_data', JSON.stringify(integrations));
 
       updateIntegrationUI();
-      showNoticeModal('Integração Configurada!', As credenciais do ${name} foram salvas e vinculadas com sucesso à nuvem., '🔗');
+      showNoticeModal('Integração Configurada!', `As credenciais do ${name} foram salvas e vinculadas com sucesso à nuvem.`, '🔗');
     }
 
     async function loadIntegrationsFromCloud() {

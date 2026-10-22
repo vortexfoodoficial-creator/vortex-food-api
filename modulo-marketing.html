@@ -118,11 +118,6 @@
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
 
-    /* GALERIA DE ARTES */
-    .art-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-    .art-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-    .art-card img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
-
     @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
@@ -208,8 +203,7 @@
       <button class="tab-btn active" onclick="switchTab('tabAutomacoes')">🚀 Automações & Carrinho</button>
       <button class="tab-btn" onclick="switchTab('tabEmbaixadores')">👑 Sorteios & Embaixadores</button>
       <button class="tab-btn" onclick="switchTab('tabEngajamento')">📲 Instagram & Google</button>
-      <button class="tab-btn" onclick="switchTab('tabCampanhas')">📈 Métricas & ROI</button>
-      <button class="tab-btn" onclick="switchTab('tabMateriais')">📄 Cardápio PDF & Exemplos</button>
+      <button class="tab-btn" onclick="switchTab('tabMateriais')">📄 Cardápio PDF</button>
     </div>
 
     <!-- ================= ABAS 1: AUTOMAÇÕES & CARRINHO ================= -->
@@ -372,9 +366,19 @@
             <label>Seu perfil no Instagram (@ ou link):</label>
             <input type="text" class="form-input" id="instaHandle" placeholder="https://instagram.com/seu_estabelecimento">
           </div>
+          
+          <!-- SELETOR TIPO DE RECOMPENSA INSTAGRAM -->
           <div class="form-group">
-            <label>Pontos / Cashback dado por marcação (R$):</label>
-            <input type="text" class="form-input" id="instaCashback" placeholder="0,00" oninput="maskCurrency(this)">
+            <label>Tipo de Recompensa:</label>
+            <select class="form-input" id="instaRewardType" onchange="toggleRewardType('insta')">
+              <option value="cashback">Cashback (R$)</option>
+              <option value="points">Pontos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label id="instaLabelReward">Valor de Cashback por marcação (R$):</label>
+            <input type="text" class="form-input" id="instaRewardVal" placeholder="0,00" oninput="handleRewardInput(this, 'insta')">
           </div>
           <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('instagram')">Salvar Incentivo</button>
         </div>
@@ -387,70 +391,34 @@
             <label>Link direto de Avaliação do Google:</label>
             <input type="text" class="form-input" id="googleReviewLink" placeholder="https://g.page/r/sua_empresa/review">
           </div>
+
+          <!-- SELETOR TIPO DE RECOMPENSA GOOGLE -->
           <div class="form-group">
-            <label>Pontos / Cashback por avaliação efetuada:</label>
-            <input type="text" class="form-input" id="googlePoints" placeholder="0,00" oninput="maskCurrency(this)">
+            <label>Tipo de Recompensa:</label>
+            <select class="form-input" id="googleRewardType" onchange="toggleRewardType('google')">
+              <option value="cashback">Cashback (R$)</option>
+              <option value="points">Pontos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label id="googleLabelReward">Valor de Cashback por avaliação efetuada (R$):</label>
+            <input type="text" class="form-input" id="googleRewardVal" placeholder="0,00" oninput="handleRewardInput(this, 'google')">
           </div>
           <button class="btn-action" style="width:100%;" onclick="saveMarketingConfig('google')">Salvar Avaliações Google</button>
         </div>
       </div>
     </div>
 
-    <!-- ================= ABAS 4: MÉTRICAS & ROI ================= -->
-    <div class="tab-content" id="tabCampanhas">
-      <div class="grid-2">
-        <div class="card-box">
-          <div class="card-title">📊 Rastreamento de Canais de Aquisição</div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>📸 Instagram Ads / Bio</span><strong style="color:var(--primary);">42% dos pedidos</strong></div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>💬 WhatsApp Direct</span><strong style="color:var(--success);">35% dos pedidos</strong></div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>🔍 Google Meu Negócio</span><strong style="color:var(--info);">15% dos pedidos</strong></div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0;"><span>📄 Panfletos / QR Code Imprime</span><strong style="color:var(--warning);">8% dos pedidos</strong></div>
-        </div>
-
-        <div class="card-box">
-          <div class="card-title">💰 Cálculo de Retorno e CAC</div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>Custo de Aquisição por Cliente (CAC)</span><strong>R$ 3,45</strong></div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>Retorno sobre Investimento (ROI Marketing)</span><strong style="color:var(--success);">480%</strong></div>
-          <div class="dre-row" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Taxa de Conversão da Loja</span><strong style="color:var(--info);">8.2%</strong></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= ABAS 5: MATERIAIS DE INSPIRAÇÃO & PDF ================= -->
+    <!-- ================= ABAS 4: CARDÁPIO PDF ================= -->
     <div class="tab-content" id="tabMateriais">
-      <div class="card-box">
+      <div class="card-box" style="max-width: 600px; margin: 0 auto;">
         <div class="card-title">📄 Gerar Cardápio em PDF para Impressão / Envio</div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Gere um PDF contendo os produtos e preços cadastrados no cardápio digital do seu estabelecimento.</p>
         <div class="toggle-switch"><span>Incluir complementos no PDF</span><label class="switch"><input type="checkbox" id="pdfComplements" checked><span class="slider"></span></label></div>
         <div class="toggle-switch"><span>Incluir QR Code do cardápio digital</span><label class="switch"><input type="checkbox" id="pdfQrCode" checked><span class="slider"></span></label></div>
         <div class="toggle-switch"><span>Incluir itens inativos</span><label class="switch"><input type="checkbox" id="pdfInactives"><span class="slider"></span></label></div>
         <button class="btn-action" style="width:100%; margin-top:10px;" onclick="generateMenuPDF()">📥 Baixar PDF do Cardápio</button>
-      </div>
-
-      <div class="card-box">
-        <div class="card-title">💡 Galeria de Exemplos de Artes & Divulgação</div>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Modelos de materiais gráficos criativos com QR Code para inspirar as suas vendas:</p>
-        <div class="art-gallery">
-          <div class="art-card">
-            <div style="font-size:2.5rem; margin-bottom:5px;">🍽️</div>
-            <strong style="font-size:0.85rem;">Suporte de Mesa Acrílico</strong>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">QR Code no centro da mesa para pedidos no salão.</p>
-          </div>
-          <div class="art-card">
-            <div style="font-size:2.5rem; margin-bottom:5px;">🏁</div>
-            <strong style="font-size:0.85rem;">Banner de Fachada / Portão</strong>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Divulgue o seu delivery para quem passa na rua.</p>
-          </div>
-          <div class="art-card">
-            <div style="font-size:2.5rem; margin-bottom:5px;">🧲</div>
-            <strong style="font-size:0.85rem;">Ímã de Geladeira Personalizado</strong>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Incentive pedidos recorrentes no delivery.</p>
-          </div>
-          <div class="art-card">
-            <div style="font-size:2.5rem; margin-bottom:5px;">🧾</div>
-            <strong style="font-size:0.85rem;">QR Code na Comanda de Caixa</strong>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Cupom no rodapé incentivando a próxima compra.</p>
-          </div>
-        </div>
       </div>
     </div>
   </main>
@@ -544,6 +512,34 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function maskInteger(input) {
+      input.value = input.value.replace(/\D/g, '');
+    }
+
+    function toggleRewardType(context) {
+      const typeSelect = document.getElementById(context + 'RewardType');
+      const labelEl = document.getElementById(context + 'LabelReward');
+      const inputEl = document.getElementById(context + 'RewardVal');
+
+      inputEl.value = '';
+      if (typeSelect.value === 'cashback') {
+        labelEl.innerText = context === 'insta' ? 'Valor de Cashback por marcação (R$):' : 'Valor de Cashback por avaliação efetuada (R$):';
+        inputEl.placeholder = '0,00';
+      } else {
+        labelEl.innerText = context === 'insta' ? 'Quantidade de Pontos por marcação (pontos):' : 'Quantidade de Pontos por avaliação efetuada (pontos):';
+        inputEl.placeholder = '0';
+      }
+    }
+
+    function handleRewardInput(input, context) {
+      const typeSelect = document.getElementById(context + 'RewardType').value;
+      if (typeSelect === 'cashback') {
+        maskCurrency(input);
+      } else {
+        maskInteger(input);
+      }
+    }
+
     function insertTag(textareaId, tag) {
       const el = document.getElementById(textareaId);
       el.value += ` ${tag} `;
@@ -588,28 +584,8 @@
       document.getElementById('winnerModal').classList.remove('active');
     }
 
-    function sendBroadcastPrompt() {
-      const title = document.getElementById('broadcastTitle').value.trim();
-      const body = document.getElementById('broadcastBody').value.trim();
-
-      if (!title || !body) {
-        showCustomAlert('Campos Incompletos', 'Preencha o título e o corpo do disparo antes de continuar.', '⚠️');
-        return;
-      }
-
-      let broadcasts = JSON.parse(localStorage.getItem('vortex_broadcast_queue')) || [];
-      broadcasts.unshift({
-        title,
-        body,
-        date: new Date().toISOString()
-      });
-      localStorage.setItem('vortex_broadcast_queue', JSON.stringify(broadcasts));
-
-      showCustomAlert('Disparo Agendado!', 'A transmissão promocional foi enviada para a fila de transmissão de clientes.', '🚀');
-    }
-
     function generateMenuPDF() {
-      showCustomAlert('Gerando PDF', 'O download do seu cardápio em PDF foi iniciado.', '📥');
+      showCustomAlert('Gerando PDF', 'O download do seu cardápio em PDF foi iniciado utilizando os produtos cadastrados do seu estabelecimento.', '📥');
     }
 
     function checkAutomaticBirthdays() {

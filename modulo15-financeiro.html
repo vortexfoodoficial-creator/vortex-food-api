@@ -797,7 +797,6 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Renderizar Bancos
       const banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
       const bankSummaryEl = document.getElementById('bankAccountsListSummary');
       bankSummaryEl.innerHTML = '';
@@ -817,7 +816,6 @@
         });
       }
 
-      // Vendas do período
       let rawSales = [];
       if (typeof dbFetchSales === 'function') {
         rawSales = await dbFetchSales();
@@ -863,7 +861,6 @@
         }
       });
 
-      // --- BUSCA UNIFICADA DIRETO DO SUPABASE E LOCALSTORAGE ---
       let cloudEntries = [];
       if (typeof dbFetchFinancialEntries === 'function') {
         cloudEntries = await dbFetchFinancialEntries();
@@ -879,7 +876,6 @@
       let allEntries = Array.from(uniqueMap.values());
       const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
-      // Resumo de Sócios
       const socioEntries = entries.filter(e => e.description && (e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]')));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
       socioSummaryEl.innerHTML = '';

@@ -155,12 +155,19 @@ async function dbFetchFinancialEntries() {
   return data;
 }
 
-// Helper para Catálogo e Receitas (Usado pelo DRE e Relatórios)
+// Helpers Adicionados para Compatibilidade com Catálogo e Fichas Técnicas (Módulo 16 / Relatórios)
+async function dbFetchCatalog() {
+  if (!supabase) return { products: [] };
+  const { data, error } = await supabase.from('vortex_products_catalog').select('*');
+  if (error) return { products: [] };
+  return { products: data || [] };
+}
+
 async function dbFetchRecipes() {
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
   if (error) return [];
-  return data;
+  return data || [];
 }
 
 // Exclusão genérica

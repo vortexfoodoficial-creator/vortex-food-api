@@ -221,6 +221,7 @@
         <button class="btn-quick-filter" id="btnFilterYesterday" onclick="setQuickFilter('yesterday')">Ontem</button>
         <button class="btn-quick-filter" id="btnFilterWeek" onclick="setQuickFilter('week')">Esta Semana</button>
         <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
+        <button class="btn-quick-filter" id="btnFilterAll" onclick="setQuickFilter('all')">Tudo</button>
       </div>
 
       <div class="filter-group" style="gap:8px;">
@@ -548,11 +549,13 @@
       else if (type === 'yesterday') document.getElementById('btnFilterYesterday').classList.add('active');
       else if (type === 'week') document.getElementById('btnFilterWeek').classList.add('active');
       else if (type === 'month') document.getElementById('btnFilterMonth').classList.add('active');
+      else if (type === 'all') document.getElementById('btnFilterAll').classList.add('active');
 
       loadFinancialData();
     }
 
     function isDateInFilter(rawDate) {
+      if (currentQuickFilter === 'all') return true;
       const today = new Date();
       const todayStr = getLocalDateStr(today);
       const itemDateStr = parseToLocalDateStr(rawDate);
@@ -979,7 +982,7 @@
 
     window.onload = async function() {
       applyTheme();
-      setQuickFilter('today');
+      setQuickFilter('all'); // Alterado para 'all' por padrão para exibir todos os lançamentos imediatamente sem restrição estrita de data
       await loadFinancialData();
     };
   </script>

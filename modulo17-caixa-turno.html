@@ -100,8 +100,8 @@
     .btn-danger { background: var(--danger); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-success { background: var(--success); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
-    /* TABELA DE MOVIMENTAÇÕES */
-    .table-container { width: 100%; overflow-x: auto; max-height: 380px; overflow-y: auto; }
+    /* TABELA DE MOVIMENTAÇÕES E HISTÓRICO COM ROLAGEM INDEPENDENTE */
+    .table-container { width: 100%; overflow-x: auto; max-height: 340px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     th { color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; background: var(--bg-main); position: sticky; top: 0; z-index: 10; }
@@ -253,6 +253,33 @@
             <tr id="emptyMovementsRow">
               <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
                 Nenhum caixa aberto ou movimentação registrada no turno atual.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO DE TURNOS ANTERIORES COM ROLAGEM INDEPENDENTE -->
+    <div class="card-box">
+      <div class="card-title">📜 Histórico de Turnos e Caixas Anteriores</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Turno</th>
+              <th>Operador</th>
+              <th>Abertura</th>
+              <th>Fechamento</th>
+              <th>Troco Inicial</th>
+              <th>Valor Contado</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="closedShiftsTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">
+                Nenhum turno anterior registrado.
               </td>
             </tr>
           </tbody>
@@ -491,6 +518,7 @@
       }
 
       renderCashState();
+      loadClosedShiftsHistory();
     }
 
     // ABERTURA DE CAIXA
@@ -524,7 +552,7 @@
       };
 
       currentCashData = {
-        shiftId: null,
+        shiftId: 'shift_' + Date.now(),
         isOpen: true,
         operator: op,
         openedAt: openedTimeIso,
@@ -540,6 +568,7 @@
           const { data, error } = await supabaseClient
             .from('cash_shifts')
             .insert([{
+              id: currentCashData.shiftId,
               operator: op,
               initial_balance: bal,
               opened_at: openedTimeIso,
@@ -615,8 +644,6 @@
         }
       } else if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
         currentCashData.withdrawals += numVal;
-      } else if (typeLabel === 'SUPRIMENTO') {
-        // Suprimento é reforço de troco / entrada de caixa
       }
 
       const newMov = {
@@ -629,7 +656,7 @@
 
       currentCashData.movements.push(newMov);
 
-      // SINCRONIZAÇÃO AUTOMÁTICA COM O MÓDULO FINANCEIRO / DRE
+      // SINCRONIZAÇÃO AUTOMÁTICA COM O MÓDULO FINANCEIRO & DRE
       const entryId = 'cash_' + Date.now();
       const entryDate = new Date().toISOString().split('T')[0];
       
@@ -679,7 +706,6 @@
         return;
       }
 
-      // Cálculo rigoroso do dinheiro esperado em gaveta
       let cashInFlow = currentCashData.initialBalance + currentCashData.salesCash;
       currentCashData.movements.forEach(m => {
         if (m.type === 'SUPRIMENTO' || m.type === 'AJUSTE (+)') {
@@ -726,14 +752,28 @@
         }
       }
 
+      // Salva também no histórico local de turnos encerrados
+      let closedShifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
+      closedShifts.unshift({
+        shiftId: currentCashData.shiftId,
+        operator: currentCashData.operator,
+        openedAt: currentCashData.openedAt,
+        closedAt: closedTimeIso,
+        initialBalance: currentCashData.initialBalance,
+        countedCash: countedVal,
+        movements: currentCashData.movements
+      });
+      localStorage.setItem('vortex_closed_shifts', JSON.stringify(closedShifts));
+
       currentCashData.isOpen = false;
       saveCurrentCashState();
       renderCashState();
+      loadClosedShiftsHistory();
       closeCloseCashModal();
       showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso no sistema!', '🔒');
     }
 
-    // PERSISTÊNCIA LOCAL
+    // PERSISTÊNCIA E HISTÓRICO
     function saveCurrentCashState() {
       localStorage.setItem('vortex_current_cash', JSON.stringify(currentCashData));
     }
@@ -745,6 +785,47 @@
           currentCashData = JSON.parse(saved);
         } catch(e) {}
       }
+    }
+
+    async function loadClosedShiftsHistory() {
+      let shifts = [];
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data } = await supabaseClient.from('cash_shifts').select('*').eq('status', 'closed').order('closed_at', { ascending: false });
+          if (data && data.length > 0) shifts = data;
+        } catch(e) {}
+      }
+
+      if (shifts.length === 0) {
+        shifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
+      }
+
+      const tbody = document.getElementById('closedShiftsTableBody');
+      tbody.innerHTML = '';
+
+      if (shifts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">Nenhum turno anterior registrado.</td></tr>`;
+        return;
+      }
+
+      shifts.forEach(s => {
+        const opened = s.opened_at ? new Date(s.opened_at).toLocaleString('pt-BR') : (s.openedAt ? new Date(s.openedAt).toLocaleString('pt-BR') : '--');
+        const closed = s.closed_at ? new Date(s.closed_at).toLocaleString('pt-BR') : (s.closedAt ? new Date(s.closedAt).toLocaleString('pt-BR') : '--');
+        const initial = parseFloat(s.initial_balance ?? s.initialBalance ?? 0);
+        const counted = parseFloat(s.counted_cash ?? s.countedCash ?? 0);
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>#${String(s.id || s.shiftId || '101').slice(-6)}</strong></td>
+            <td>${s.operator || 'Operador'}</td>
+            <td>${opened}</td>
+            <td>${closed}</td>
+            <td>R$ ${initial.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td style="color:var(--success); font-weight:bold;">R$ ${counted.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td><span style="color:var(--danger); font-weight:bold;">FECHADO</span></td>
+          </tr>
+        `;
+      });
     }
 
     function renderCashState() {

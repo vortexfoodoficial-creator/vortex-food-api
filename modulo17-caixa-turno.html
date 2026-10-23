@@ -417,7 +417,6 @@
       input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // --- SINCRONIZAÇÃO COMPLETA E CORRIGIDA ENTRE PDV E CAIXA ---
     async function loadSalesForActiveShift(openedAt) {
       let cCash = 0;
       let cDigital = 0;
@@ -428,7 +427,7 @@
         allSales = await dbFetchSales();
       } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          const { data, error } = await supabaseClient.from('vortex_sales_history').select('*');
+          const { data } = await supabaseClient.from('vortex_sales_history').select('*');
           if (data) allSales = data;
         } catch(e) {}
       }
@@ -474,7 +473,7 @@
       let loadedFromSupabase = false;
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          const { data, error } = await supabaseClient
+          const { data } = await supabaseClient
             .from('cash_shifts')
             .select('*')
             .eq('status', 'open')
@@ -521,7 +520,6 @@
       loadClosedShiftsHistory();
     }
 
-    // ABERTURA DE CAIXA
     function openOpenCashModal() {
       document.getElementById('openOperatorName').value = '';
       document.getElementById('openInitialBalance').value = '';
@@ -565,7 +563,7 @@
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          const { data, error } = await supabaseClient
+          const { data } = await supabaseClient
             .from('cash_shifts')
             .insert([{
               id: currentCashData.shiftId,
@@ -591,7 +589,6 @@
       showCustomAlert('Caixa Aberto', `Turno iniciado com sucesso para ${op}!`, '🔓');
     }
 
-    // MOVIMENTAÇÕES (SUPRIMENTO, SANGRIA, DESPESA, AJUSTE)
     function openMovementModal(type) {
       if (!currentCashData.isOpen) {
         showCustomAlert('Caixa Fechado', 'Abra o caixa antes de registrar movimentações.', '⚠️');
@@ -656,7 +653,7 @@
 
       currentCashData.movements.push(newMov);
 
-      // --- SINCRONIZAÇÃO UNIVERSAL COM O FINANCEIRO, DRE E RELATÓRIOS ---
+      // --- SINCRONIZAÇÃO OFICIAL COM O SUPABASE E FINANCEIRO ---
       const entryId = 'cash_mov_' + Date.now();
       const entryDate = new Date().toISOString().split('T')[0];
       let financialType = 'expense';
@@ -671,36 +668,35 @@
       const financialPayload = {
         id: entryId,
         type: financialType,
-        category: 'Caixa / Turno',
         description: descriptiveText,
         value: numVal,
-        amount: numVal,
-        date: entryDate,
-        timestamp: new Date().toISOString()
+        date: entryDate
       };
 
-      // Injeta em TODAS as chaves de armazenamento possíveis usadas pelos outros módulos (Dashboard, Relatórios, Financeiro)
-      ['vortex_financial', 'vortex_expenses_history', 'vortex_despesas', 'vortex_financeiro_entries'].forEach(key => {
-        try {
-          let list = JSON.parse(localStorage.getItem(key) || '[]');
-          if (Array.isArray(list)) {
-            list.push(financialPayload);
-            localStorage.setItem(key, JSON.stringify(list));
-          }
-        } catch(e) {}
-      });
-
-      // Se existir função global no supabase.js
+      // Grava no Supabase utilizando a função oficial de `supabase.js`
       if (typeof dbSaveFinancialEntry === 'function') {
         await dbSaveFinancialEntry(financialPayload);
       } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          await supabaseClient.from('vortex_expenses_history').insert([financialPayload]);
-          await supabaseClient.from('vortex_financial').insert([financialPayload]);
+          await supabaseClient.from('vortex_financial').upsert([financialPayload]);
         } catch (e) {
-          console.warn('Aviso: Erro ao sincronizar com a nuvem Supabase:', e);
+          console.warn('Erro ao salvar no Supabase:', e);
         }
       }
+
+      // Salva também localmente para suporte imediato e offline
+      try {
+        let localList = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
+        localList.unshift({
+          id: entryId,
+          type: financialType,
+          description: descriptiveText,
+          value: numVal,
+          date: entryDate,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('vortex_financial_entries', JSON.stringify(localList));
+      } catch(e) {}
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
@@ -716,10 +712,9 @@
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro e DRE!', '✅');
+      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro via Supabase!', '✅');
     }
 
-    // FECHAMENTO DE CAIXA
     function openCloseCashModal() {
       if (!currentCashData.isOpen) {
         showCustomAlert('Caixa Fechado', 'O caixa já está encerrado.', '⚠️');
@@ -792,7 +787,6 @@
       showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso no sistema!', '🔒');
     }
 
-    // PERSISTÊNCIA E HISTÓRICO
     function saveCurrentCashState() {
       localStorage.setItem('vortex_current_cash', JSON.stringify(currentCashData));
     }

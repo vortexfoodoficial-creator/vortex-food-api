@@ -100,7 +100,7 @@
     .btn-danger { background: var(--danger); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-success { background: var(--success); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
-    /* TABELAS COM ROLAGEM INDEPENDENTE (APROX. 5 LINHAS / MÁX 280PX) */
+    /* TABELAS COM ROLAGEM INDEPENDENTE (MÁX 280PX) */
     .table-container { width: 100%; overflow-x: auto; max-height: 280px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -656,7 +656,7 @@
 
       currentCashData.movements.push(newMov);
 
-      // --- SINCRONIZAÇÃO AUTOMÁTICA ROBUSTA COM O FINANCEIRO, DRE E RELATÓRIOS ---
+      // --- SINCRONIZAÇÃO UNIVERSAL COM O FINANCEIRO, DRE E RELATÓRIOS ---
       const entryId = 'cash_mov_' + Date.now();
       const entryDate = new Date().toISOString().split('T')[0];
       let financialType = 'expense';
@@ -668,40 +668,37 @@
         financialType = 'income';
       }
 
-      // Salva no LocalStorage unificado de despesas/financeiro para alimentar o DRE instantaneamente
-      let localExpenses = JSON.parse(localStorage.getItem('vortex_expenses_history') || localStorage.getItem('vortex_despesas') || '[]');
-      localExpenses.push({
+      const financialPayload = {
         id: entryId,
         type: financialType,
+        category: 'Caixa / Turno',
         description: descriptiveText,
         value: numVal,
         amount: numVal,
         date: entryDate,
         timestamp: new Date().toISOString()
-      });
-      localStorage.setItem('vortex_expenses_history', JSON.stringify(localExpenses));
-      localStorage.setItem('vortex_despesas', JSON.stringify(localExpenses));
+      };
 
-      // Sincroniza também com a nuvem Supabase se a função centralizada existir ou via chamada direta
+      // Injeta em TODAS as chaves de armazenamento possíveis usadas pelos outros módulos (Dashboard, Relatórios, Financeiro)
+      ['vortex_financial', 'vortex_expenses_history', 'vortex_despesas', 'vortex_financeiro_entries'].forEach(key => {
+        try {
+          let list = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(list)) {
+            list.push(financialPayload);
+            localStorage.setItem(key, JSON.stringify(list));
+          }
+        } catch(e) {}
+      });
+
+      // Se existir função global no supabase.js
       if (typeof dbSaveFinancialEntry === 'function') {
-        await dbSaveFinancialEntry({
-          id: entryId,
-          type: financialType,
-          description: descriptiveText,
-          value: numVal,
-          date: entryDate
-        });
+        await dbSaveFinancialEntry(financialPayload);
       } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
-          await supabaseClient.from('vortex_expenses_history').insert([{
-            id: entryId,
-            type: financialType,
-            description: descriptiveText,
-            value: numVal,
-            date: entryDate
-          }]);
+          await supabaseClient.from('vortex_expenses_history').insert([financialPayload]);
+          await supabaseClient.from('vortex_financial').insert([financialPayload]);
         } catch (e) {
-          console.warn('Aviso: Erro ao sincronizar despesa do caixa com a nuvem:', e);
+          console.warn('Aviso: Erro ao sincronizar com a nuvem Supabase:', e);
         }
       }
 

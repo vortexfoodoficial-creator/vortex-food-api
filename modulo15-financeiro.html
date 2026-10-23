@@ -557,7 +557,6 @@
       const todayStr = getLocalDateStr(today);
       const itemDateStr = parseToLocalDateStr(rawDate);
 
-      // Se por acaso a data vier vazia ou mal formatada nos testes, assume como hoje para não ocultar os lançamentos do caixa
       if (!itemDateStr) return true;
 
       if (currentQuickFilter === 'today') {
@@ -591,7 +590,6 @@
       return 0;
     }
 
-    // MODALS
     function openEntryModal() { 
       document.getElementById('entryDesc').value = '';
       document.getElementById('entryValue').value = '';
@@ -671,6 +669,9 @@
         localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
         showCustomAlert('Removido', 'Conta bancária excluída com sucesso.', '🗑️');
       } else if (type === 'socio' || type === 'entry') {
+        if (typeof dbDeleteRecord === 'function') {
+          await dbDeleteRecord('vortex_financial', id);
+        }
         let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
         entries = entries.filter(e => String(e.id) !== String(id));
         localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
@@ -714,25 +715,30 @@
         return;
       }
 
-      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       const description = `${type === 'retirada' ? '[Pró-Labore/Retirada]' : '[Aporte Capital]'} - Sócio: ${name}`;
+      const entryId = editId || ('fe_' + Date.now());
+      const payload = {
+        id: entryId,
+        type: type === 'retirada' ? 'expense' : 'income',
+        description: description,
+        value: val,
+        date: getLocalDateStr(new Date())
+      };
 
+      if (typeof dbSaveFinancialEntry === 'function') {
+        await dbSaveFinancialEntry(payload);
+      }
+
+      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       if (editId) {
         let entry = entries.find(e => String(e.id) === String(editId));
         if (entry) {
-          entry.type = type === 'retirada' ? 'expense' : 'income';
+          entry.type = payload.type;
           entry.description = description;
           entry.value = val;
         }
       } else {
-        entries.unshift({
-          id: 'fe_' + Date.now(),
-          type: type === 'retirada' ? 'expense' : 'income',
-          description: description,
-          value: val,
-          date: getLocalDateStr(new Date()),
-          timestamp: new Date().toISOString()
-        });
+        entries.unshift({ ...payload, timestamp: new Date().toISOString() });
       }
 
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
@@ -751,17 +757,22 @@
         return;
       }
 
-      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      entries.unshift({
+      const payload = {
         id: 'fe_' + Date.now(),
         type: type,
         description: desc,
         value: val,
-        date: getLocalDateStr(new Date()),
-        timestamp: new Date().toISOString()
-      });
+        date: getLocalDateStr(new Date())
+      };
 
+      if (typeof dbSaveFinancialEntry === 'function') {
+        await dbSaveFinancialEntry(payload);
+      }
+
+      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      entries.unshift({ ...payload, timestamp: new Date().toISOString() });
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
+
       closeEntryModal();
       loadFinancialData();
       showCustomAlert('Sucesso!', 'Lançamento financeiro salvo com sucesso.', '🎉');
@@ -771,39 +782,8 @@
       askDelete(id, 'entry', 'Deseja realmente excluir este lançamento financeiro?');
     }
 
-    // INTEGRAÇÃO AUTOMÁTICA DAS CONTAS QUITADAS DO MÓDULO 16
-    function syncPaidContasToFinancial() {
-      const contas = JSON.parse(localStorage.getItem('vortex_contas_data')) || [];
-      let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      let updated = false;
-
-      contas.forEach(c => {
-        if (c.status === 'paid') {
-          const refId = `conta_paid_${c.description}_${c.dueDate}_${c.amount}`.replace(/\s+/g, '_');
-          const exists = entries.some(e => e.refId === refId);
-          if (!exists) {
-            entries.unshift({
-              id: 'fe_' + Date.now() + Math.random(),
-              refId: refId,
-              type: c.type === 'payable' ? 'expense' : 'income',
-              description: `[Conta Quitada] ${c.description} (${c.entity || 'Geral'})`,
-              value: parseCurrencyToFloat(c.amount),
-              date: c.dueDate || getLocalDateStr(new Date()),
-              timestamp: new Date().toISOString()
-            });
-            updated = true;
-          }
-        }
-      });
-
-      if (updated) {
-        localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
-      }
-    }
-
     async function loadFinancialData() {
       applyTheme();
-      syncPaidContasToFinancial();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
@@ -817,7 +797,7 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Renderizar Bancos com Editar e Excluir
+      // Renderizar Bancos
       const banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
       const bankSummaryEl = document.getElementById('bankAccountsListSummary');
       bankSummaryEl.innerHTML = '';
@@ -837,14 +817,20 @@
         });
       }
 
-      let rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      // Vendas do período
+      let rawSales = [];
+      if (typeof dbFetchSales === 'function') {
+        rawSales = await dbFetchSales();
+      }
+      if (rawSales.length === 0) {
+        rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      }
       const sales = rawSales.filter(s => isDateInFilter(s.date || s.timestamp));
 
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancels = 0;
       let totalCmv = 0;
-
       let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0;
 
       sales.forEach(s => {
@@ -877,25 +863,23 @@
         }
       });
 
-      // Captura robusta unificando todas as chaves onde o caixa ou o financeiro salvam dados
-      let rawEntries1 = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      let rawEntries2 = JSON.parse(localStorage.getItem('vortex_expenses_history')) || [];
-      let rawEntries3 = JSON.parse(localStorage.getItem('vortex_despesas')) || [];
-      let rawEntries4 = JSON.parse(localStorage.getItem('vortex_financial')) || [];
+      // --- BUSCA UNIFICADA DIRETO DO SUPABASE E LOCALSTORAGE ---
+      let cloudEntries = [];
+      if (typeof dbFetchFinancialEntries === 'function') {
+        cloudEntries = await dbFetchFinancialEntries();
+      }
+      let localEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
       
-      let combinedEntries = [...rawEntries1, ...rawEntries2, ...rawEntries3, ...rawEntries4];
-      let uniqueEntriesMap = new Map();
-      combinedEntries.forEach(item => {
-        // Normaliza as propriedades de valor para garantir compatibilidade ('val' do caixa vs 'value' do financeiro)
-        if (item.val !== undefined && item.value === undefined) item.value = item.val;
+      let combined = [...cloudEntries, ...localEntries];
+      let uniqueMap = new Map();
+      combined.forEach(item => {
         let key = item.id || (item.description + item.value + (item.date || ''));
-        uniqueEntriesMap.set(key, item);
+        uniqueMap.set(key, item);
       });
-      let allEntries = Array.from(uniqueEntriesMap.values());
-      
+      let allEntries = Array.from(uniqueMap.values());
       const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
-      // Resumo de Sócios com Editar e Excluir
+      // Resumo de Sócios
       const socioEntries = entries.filter(e => e.description && (e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]')));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
       socioSummaryEl.innerHTML = '';
@@ -920,7 +904,7 @@
 
       entries.forEach(e => {
         let eType = String(e.type || '').toLowerCase();
-        let val = parseFloat(e.value || e.amount || e.valor || e.val || 0);
+        let val = parseFloat(e.value || e.amount || e.valor || 0);
 
         if (eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)')) {
           manualExpenses += val;
@@ -977,13 +961,13 @@
         const isExpense = eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)');
         const typeBadge = isExpense ? `<span style="color:var(--danger); font-weight:bold;">🔴 Saída</span>` : `<span style="color:var(--success); font-weight:bold;">🟢 Entrada</span>`;
         const valColor = isExpense ? 'color:var(--danger);' : 'color:var(--success);';
-        const valNum = parseFloat(e.value || e.amount || e.valor || e.val || 0);
+        const valNum = parseFloat(e.value || e.amount || e.valor || 0);
 
         tbody.innerHTML += `
           <tr>
             <td>${e.date || 'Hoje'}</td>
             <td>${typeBadge}</td>
-            <td><strong>${e.description || e.reason || 'Lançamento'}</strong></td>
+            <td><strong>${e.description || 'Lançamento'}</strong></td>
             <td style="${valColor} font-weight:bold;">R$ ${formatFloatToCurrency(valNum)}</td>
             <td style="text-align:center;">
               <button class="btn-delete-entry" onclick="deleteFinancialEntry('${e.id}')">🗑️ Apagar</button>
@@ -997,9 +981,10 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
+    window.onload = async function() {
+      applyTheme();
       setQuickFilter('today');
-      loadFinancialData();
+      await loadFinancialData();
     };
   </script>
 </body>

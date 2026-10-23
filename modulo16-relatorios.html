@@ -347,7 +347,6 @@
             let products = [];
             let recipes = [];
 
-            // Tenta buscar dados atualizados do Supabase
             try {
                 if (typeof dbFetchSales === 'function') {
                     const cloudSales = await dbFetchSales();
@@ -365,7 +364,6 @@
                 console.error('Erro ao buscar dados do Supabase:', e);
             }
 
-            // Fallback para localStorage caso Supabase retorne vazio
             if (sales.length === 0) {
                 sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || 
                         JSON.parse(localStorage.getItem('vortex_orders_history')) || [];
@@ -377,7 +375,6 @@
                 recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
             }
 
-            // 1. Cálculo da Receita Bruta
             let grossRevenue = 0;
             let productSalesMap = {};
 
@@ -385,7 +382,6 @@
                 let orderTotal = parseFloat(order.total || order.subtotal || 0);
                 grossRevenue += orderTotal;
 
-                // Agrega itens vendidos para a Curva ABC
                 let items = order.items || order.cart || [];
                 items.forEach(item => {
                     let itemName = item.name || item.title || 'Produto Diversos';
@@ -395,7 +391,6 @@
                 });
             });
 
-            // Se não houver vendas reais registradas, usa dados simulados do catálogo para demonstrar a Curva ABC
             if (Object.keys(productSalesMap).length === 0 && products.length > 0) {
                 products.forEach((p, idx) => {
                     let simulatedRev = (products.length - idx) * 1500 + 500;
@@ -404,7 +399,6 @@
                 });
             }
 
-            // 2. Cálculo do CMV (Custo da Mercadoria Vendida)
             let totalCmv = 0;
             sales.forEach(order => {
                 let items = order.items || order.cart || [];
@@ -412,7 +406,6 @@
                     let prodMatch = products.find(p => p.name === (item.name || item.title));
                     let unitCost = prodMatch ? parseFloat(prodMatch.cost || 0) : 0;
                     if (unitCost === 0) {
-                        // Tenta buscar da ficha técnica
                         let recMatch = recipes.find(r => r.productName === (item.name || item.title));
                         if (recMatch && recMatch.ingredients) {
                             recMatch.ingredients.forEach(ing => {
@@ -420,24 +413,22 @@
                             });
                         }
                     }
-                    if (unitCost === 0) unitCost = (parseFloat(item.price || 0) * 0.35); // Estimativa padrão de 35% se não houver custo
+                    if (unitCost === 0) unitCost = (parseFloat(item.price || 0) * 0.35);
                     totalCmv += (unitCost * parseInt(item.qty || item.quantity || 1));
                 });
             });
 
             if (totalCmv === 0 && grossRevenue > 0) {
-                totalCmv = grossRevenue * 0.32; // CMV padrão de mercado (32%)
+                totalCmv = grossRevenue * 0.32;
             }
 
-            // 3. Demais Cálculos do DRE
-            let taxes = grossRevenue * 0.07; // Taxas estimadas em 7%
+            let taxes = grossRevenue * 0.07;
             let netRevenue = grossRevenue - taxes;
             let grossProfit = netRevenue - totalCmv;
-            let operationalExpenses = 2500.00; // Despesas fixas padrão
+            let operationalExpenses = 2500.00;
             let netProfit = grossProfit - operationalExpenses;
             let netProfitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0;
 
-            // Renderiza DRE na tabela
             document.getElementById('dreGrossRevenue').innerText = `R$ ${grossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('dreTaxes').innerText = `R$ -${taxes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('dreNetRevenue').innerText = `R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -446,7 +437,6 @@
             document.getElementById('dreExpenses').innerText = `R$ -${operationalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('dreNetProfit').innerText = `R$ ${netProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${netProfitMargin.toFixed(1)}%)`;
 
-            // 4. Curva ABC Ordenada
             let sortedProducts = Object.keys(productSalesMap).map(name => {
                 return { name, total: productSalesMap[name] };
             }).sort((a, b) => b.total - a.total);
@@ -490,7 +480,6 @@
         }
 
         window.onload = async function() {
-            // Logo da Loja
             const savedLogo = localStorage.getItem('vortex_store_logo');
             if (savedLogo) {
                 document.getElementById('sidebarLogoImg').src = savedLogo;

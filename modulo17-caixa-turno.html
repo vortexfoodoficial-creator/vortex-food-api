@@ -101,10 +101,10 @@
     .btn-success { background: var(--success); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
     /* TABELA DE MOVIMENTAÇÕES */
-    .table-container { width: 100%; overflow-x: auto; }
+    .table-container { width: 100%; overflow-x: auto; max-height: 380px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    th { color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; background: rgba(0,0,0,0.1); }
+    th { color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; background: var(--bg-main); position: sticky; top: 0; z-index: 10; }
 
     /* MODAL */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
@@ -396,7 +396,6 @@
       let cDigital = 0;
       const openedTime = new Date(openedAt).getTime();
 
-      // 1. Busca oficial unificada usando a função dbFetchSales do supabase.js ou diretamente do Supabase
       let allSales = [];
       if (typeof dbFetchSales === 'function') {
         allSales = await dbFetchSales();
@@ -407,13 +406,11 @@
         } catch(e) {}
       }
 
-      // 2. Fallback redundante no LocalStorage para garantir 100% de cobertura offline
       const rawLocal = localStorage.getItem('vortex_sales_history');
       if (rawLocal) {
         try {
           const localList = JSON.parse(rawLocal);
           if (Array.isArray(localList)) {
-            // Mescla sem duplicar por ID
             localList.forEach(localItem => {
               if (!allSales.some(s => String(s.id) === String(localItem.id))) {
                 allSales.push(localItem);
@@ -423,16 +420,13 @@
         } catch(e) {}
       }
 
-      // 3. Processa e filtra todas as vendas considerando o momento de abertura do caixa
       allSales.forEach(order => {
         if (order.status === 'cancelled') return;
 
-        // Extrai data e hora de forma segura independentemente da estrutura do campo
         const dateStr = order.date || new Date().toISOString().split('T')[0];
         const timeStr = order.time || '00:00';
         const orderTimestamp = new Date(`${dateStr}T${timeStr}:00`).getTime();
 
-        // Se o pedido ocorreu após o momento de abertura do caixa
         if (orderTimestamp >= openedTime || order.date >= openedAt.split('T')[0]) {
           const total = parseFloat(order.total || order.valor || order.subtotal || 0);
           const payMethod = String(order.payMethod || order.payment || order.paymentMethod || order.forma_pagamento || '').toLowerCase();
@@ -440,7 +434,7 @@
           if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
             cCash += total;
           } else {
-            cDigital += total; // Pix, Cartão, Vale, etc.
+            cDigital += total;
           }
         }
       });
@@ -618,12 +612,11 @@
           currentCashData.withdrawals += numVal;
         } else {
           typeLabel = 'AJUSTE (+)';
-          currentCashData.initialBalance += numVal;
         }
       } else if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
         currentCashData.withdrawals += numVal;
       } else if (typeLabel === 'SUPRIMENTO') {
-        currentCashData.initialBalance += numVal;
+        // Suprimento é reforço de troco / entrada de caixa
       }
 
       const newMov = {
@@ -635,6 +628,32 @@
       };
 
       currentCashData.movements.push(newMov);
+
+      // SINCRONIZAÇÃO AUTOMÁTICA COM O MÓDULO FINANCEIRO / DRE
+      const entryId = 'cash_' + Date.now();
+      const entryDate = new Date().toISOString().split('T')[0];
+      
+      if (typeLabel === 'DESPESA' || typeLabel === 'SANGRIA' || typeLabel === 'AJUSTE (-)') {
+        if (typeof dbSaveFinancialEntry === 'function') {
+          await dbSaveFinancialEntry({
+            id: entryId,
+            type: 'expense',
+            description: `Caixa (${typeLabel}): ${reason}`,
+            value: numVal,
+            date: entryDate
+          });
+        }
+      } else if (typeLabel === 'SUPRIMENTO' || typeLabel === 'AJUSTE (+)') {
+        if (typeof dbSaveFinancialEntry === 'function') {
+          await dbSaveFinancialEntry({
+            id: entryId,
+            type: 'income',
+            description: `Caixa (${typeLabel}): ${reason}`,
+            value: numVal,
+            date: entryDate
+          });
+        }
+      }
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
         try {
@@ -650,7 +669,7 @@
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação registrada e salva no banco de dados!', '✅');
+      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro!', '✅');
     }
 
     // FECHAMENTO DE CAIXA
@@ -660,7 +679,15 @@
         return;
       }
 
-      const expectedInCash = (currentCashData.initialBalance + currentCashData.salesCash) - currentCashData.withdrawals;
+      // Cálculo rigoroso do dinheiro esperado em gaveta
+      let cashInFlow = currentCashData.initialBalance + currentCashData.salesCash;
+      currentCashData.movements.forEach(m => {
+        if (m.type === 'SUPRIMENTO' || m.type === 'AJUSTE (+)') {
+          cashInFlow += parseFloat(m.val || 0);
+        }
+      });
+      const expectedInCash = cashInFlow - currentCashData.withdrawals;
+
       document.getElementById('expectedCash').value = `R$ ${expectedInCash.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       document.getElementById('countedCash').value = '';
       document.getElementById('closeReason').value = '';

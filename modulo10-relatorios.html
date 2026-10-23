@@ -277,7 +277,7 @@
         <strong id="dreGrossMargin">R$ 0,00</strong>
       </div>
       <div class="dre-row sub">
-        <span>(-) Despesas Operacionais / Custos Fixos</span>
+        <span>(-) Despesas Operacionais / Custos Fixos / Sangrias</span>
         <span id="dreOperatingExpenses">R$ 0,00</span>
       </div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
@@ -542,9 +542,23 @@
       const startStr = document.getElementById('startDate').value;
       const endStr = document.getElementById('endDate').value;
 
-      let rawExpenses = cloudExpenses.length > 0 ? cloudExpenses : (JSON.parse(localStorage.getItem('vortex_expenses_history') || localStorage.getItem('vortex_despesas')) || []);
+      // Puxa unificado de todas as chaves possíveis para garantir que as saídas do Caixa e Financeiro entrem no DRE
+      let localExp1 = JSON.parse(localStorage.getItem('vortex_expenses_history') || '[]');
+      let localExp2 = JSON.parse(localStorage.getItem('vortex_despesas') || '[]');
+      let localExp3 = JSON.parse(localStorage.getItem('vortex_financial') || '[]');
+      let localExp4 = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
       
-      return rawExpenses.filter(e => {
+      let combined = [...cloudExpenses, ...localExp1, ...localExp2, ...localExp3, ...localExp4];
+      
+      // Remove duplicados por ID
+      let uniqueMap = new Map();
+      combined.forEach(item => {
+        let key = item.id || (item.description + item.value + item.date);
+        uniqueMap.set(key, item);
+      });
+      let allExp = Array.from(uniqueMap.values());
+
+      return allExp.filter(e => {
         const itemDateStr = parseToLocalDateStr(e.date || e.timestamp);
         if (!itemDateStr) return true;
         return itemDateStr >= startStr && itemDateStr <= endStr;
@@ -657,16 +671,30 @@
       const grossMargin = Math.max(0, netSales - totalCmvReal);
       
       let totalOperatingExpenses = 0;
+      let manualIncome = 0;
+
       expenses.forEach(e => {
-        totalOperatingExpenses += parseFloat(e.value || e.amount || e.valor || 0);
+        let eType = String(e.type || '').toLowerCase();
+        let val = parseFloat(e.value || e.amount || e.valor || 0);
+        
+        // Se for despesa, sangria ou ajuste negativo conta como custo/saída
+        if (eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)')) {
+          totalOperatingExpenses += val;
+        } else if (eType === 'income' || eType === 'suprimento' || eType.includes('ajuste (+)')) {
+          manualIncome += val;
+        } else {
+          // Fallback padrão se não tiver tipo definido
+          totalOperatingExpenses += val;
+        }
       });
 
+      const adjustedNetSales = netSales + manualIncome;
       const netProfit = grossMargin - totalOperatingExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
       document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dreCancels').innerText = `R$ ${formatFloatToCurrency(totalCancels)}`;
-      document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
+      document.getElementById('dreNetSales').innerText = `R$ ${formatFloatToCurrency(adjustedNetSales)}`;
       document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmvReal)}`;
       document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
       document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(totalOperatingExpenses)}`;

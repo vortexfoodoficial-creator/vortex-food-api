@@ -425,9 +425,9 @@
       let allSales = [];
       if (typeof dbFetchSales === 'function') {
         allSales = await dbFetchSales();
-      } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      } else if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient) {
         try {
-          const { data } = await supabaseClient.from('vortex_sales_history').select('*');
+          const { data } = await window.supabaseClient.from('vortex_sales_history').select('*');
           if (data) allSales = data;
         } catch(e) {}
       }
@@ -471,9 +471,11 @@
 
     async function checkActiveShiftFromSupabase() {
       let loadedFromSupabase = false;
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+
+      if (client) {
         try {
-          const { data } = await supabaseClient
+          const { data } = await client
             .from('cash_shifts')
             .select('*')
             .eq('status', 'open')
@@ -561,9 +563,10 @@
         movements: [initialMovement]
       };
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      if (client) {
         try {
-          const { data } = await supabaseClient
+          const { data } = await client
             .from('cash_shifts')
             .insert([{
               id: currentCashData.shiftId,
@@ -673,14 +676,17 @@
         date: entryDate
       };
 
-      // Grava no Supabase utilizando a função oficial de `supabase.js`
+      // Grava no Supabase utilizando a função oficial de `supabase.js` com suporte a getSupabase()
       if (typeof dbSaveFinancialEntry === 'function') {
         await dbSaveFinancialEntry(financialPayload);
-      } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        try {
-          await supabaseClient.from('vortex_financial').upsert([financialPayload]);
-        } catch (e) {
-          console.warn('Erro ao salvar no Supabase:', e);
+      } else {
+        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+        if (client) {
+          try {
+            await client.from('vortex_financial').upsert([financialPayload]);
+          } catch (e) {
+            console.warn('Erro ao salvar no Supabase:', e);
+          }
         }
       }
 
@@ -698,9 +704,10 @@
         localStorage.setItem('vortex_financial_entries', JSON.stringify(localList));
       } catch(e) {}
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      if (client && currentCashData.shiftId) {
         try {
-          await supabaseClient
+          await client
             .from('cash_shifts')
             .update({ movements: currentCashData.movements })
             .eq('id', currentCashData.shiftId);
@@ -750,9 +757,10 @@
       const countedVal = parseCurrencyToFloat(countedStr);
       const closeReasonText = document.getElementById('closeReason').value;
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient && currentCashData.shiftId) {
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      if (client && currentCashData.shiftId) {
         try {
-          await supabaseClient
+          await client
             .from('cash_shifts')
             .update({
               status: 'closed',
@@ -802,9 +810,10 @@
 
     async function loadClosedShiftsHistory() {
       let shifts = [];
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      if (client) {
         try {
-          const { data } = await supabaseClient.from('cash_shifts').select('*').eq('status', 'closed').order('closed_at', { ascending: false });
+          const { data } = await client.from('cash_shifts').select('*').eq('status', 'closed').order('closed_at', { ascending: false });
           if (data && data.length > 0) shifts = data;
         } catch(e) {}
       }

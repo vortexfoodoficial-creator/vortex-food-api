@@ -2,15 +2,22 @@
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDU0OTAsImV4cCI6MjEwNzkyMTQ5MH0.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
 
-// Inicialização do cliente Supabase a partir do SDK oficial
-if (window.supabase) {
-  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Função helper para garantir conexão sempre ativa e evitar 'undefined'
+function getSupabase() {
+  if (window.supabaseClient) {
+    return window.supabaseClient;
+  }
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return window.supabaseClient;
+  }
+  console.warn('SDK do Supabase ainda não foi carregado pelo navegador.');
+  return null;
 }
-
-const supabase = window.supabaseClient;
 
 // Helper para sincronizar vendas (History / Dashboard / Financeiro)
 async function dbSaveSale(saleData) {
+  const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
   
   const record = {
@@ -33,6 +40,7 @@ async function dbSaveSale(saleData) {
 }
 
 async function dbFetchSales() {
+  const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_sales_history').select('*').order('created_at', { ascending: false });
   if (error) {
@@ -56,6 +64,7 @@ async function dbFetchSales() {
 
 // Helper para KDS (Cozinha & Delivery)
 async function dbSaveKdsOrder(orderData) {
+  const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
 
   const record = {
@@ -82,6 +91,7 @@ async function dbSaveKdsOrder(orderData) {
 }
 
 async function dbFetchKdsOrders() {
+  const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_kds_orders').select('*').order('created_at', { ascending: false });
   if (error) {
@@ -109,6 +119,7 @@ async function dbFetchKdsOrders() {
 
 // Helper para Integrações de Delivery na Nuvem
 async function dbSaveIntegration(platform, credentials) {
+  const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
   const record = {
     platform: platform,
@@ -122,6 +133,7 @@ async function dbSaveIntegration(platform, credentials) {
 }
 
 async function dbFetchIntegrations() {
+  const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_integrations').select('*');
   if (error) {
@@ -133,6 +145,7 @@ async function dbFetchIntegrations() {
 
 // Helper para Lançamentos Financeiros
 async function dbSaveFinancialEntry(entryData) {
+  const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
   const { data, error } = await supabase.from('vortex_financial').upsert([{
     id: String(entryData.id),
@@ -146,6 +159,7 @@ async function dbSaveFinancialEntry(entryData) {
 }
 
 async function dbFetchFinancialEntries() {
+  const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_financial').select('*').order('created_at', { ascending: false });
   if (error) {
@@ -155,8 +169,9 @@ async function dbFetchFinancialEntries() {
   return data;
 }
 
-// Helpers Adicionados para Compatibilidade com Catálogo e Fichas Técnicas (Módulo 16 / Relatórios)
+// Helpers para Catálogo e Fichas Técnicas
 async function dbFetchCatalog() {
+  const supabase = getSupabase();
   if (!supabase) return { products: [] };
   const { data, error } = await supabase.from('vortex_products_catalog').select('*');
   if (error) return { products: [] };
@@ -164,6 +179,7 @@ async function dbFetchCatalog() {
 }
 
 async function dbFetchRecipes() {
+  const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
   if (error) return [];
@@ -172,6 +188,7 @@ async function dbFetchRecipes() {
 
 // Exclusão genérica
 async function dbDeleteRecord(tableName, id) {
+  const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
   const { data, error } = await supabase.from(tableName).delete().eq('id', String(id));
   if (error) console.error(`Erro ao deletar id ${id} da tabela ${tableName}:`, error);

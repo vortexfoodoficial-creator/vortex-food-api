@@ -87,7 +87,7 @@
     .btn-quick-filter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
     .btn-quick-filter.active, .btn-quick-filter:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-    .date-input-custom { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; outline: none; }
+    .custom-date-input { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 8px; font-size: 0.82rem; outline: none; }
 
     .btn-action { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-action:hover { background: var(--primary-hover); }
@@ -215,12 +215,21 @@
       </div>
     </header>
 
-    <!-- BARRA DE FILTROS E CONTROLES (SELETOR DE DATA ESPECÍFICA) -->
+    <!-- BARRA DE FILTROS E BOTÕES DE AÇÃO -->
     <div class="filter-card">
       <div class="filter-group">
-        <label>🗓️ Filtrar por Data:</label>
-        <input type="date" id="specificDateFilter" class="date-input-custom" onchange="onDateFilterChanged()">
-        <button class="btn-quick-filter active" id="btnFilterToday" onclick="setFilterToToday()">Hoje</button>
+        <label>🗓️ Período:</label>
+        <button class="btn-quick-filter active" id="btnFilterToday" onclick="setQuickFilter('today')">Hoje</button>
+        <button class="btn-quick-filter" id="btnFilterYesterday" onclick="setQuickFilter('yesterday')">Ontem</button>
+        <button class="btn-quick-filter" id="btnFilterWeek" onclick="setQuickFilter('week')">Esta Semana</button>
+        <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
+        
+        <!-- FILTRO DE DATAS ESPECÍFICAS (SUBSTITUIU O "TUDO") -->
+        <div style="display:inline-flex; align-items:center; gap:6px; margin-left:5px;">
+          <input type="date" id="filterDateStart" class="custom-date-input" onchange="onCustomDateChange()">
+          <span style="font-size:0.8rem; color:var(--text-muted);">até</span>
+          <input type="date" id="filterDateEnd" class="custom-date-input" onchange="onCustomDateChange()">
+        </div>
       </div>
 
       <div class="filter-group" style="gap:8px;">
@@ -484,7 +493,7 @@
   </div>
 
   <script>
-    let selectedDateFilter = '';
+    let currentQuickFilter = 'today';
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -540,31 +549,67 @@
       return '';
     }
 
-    function setFilterToToday() {
-      const todayStr = getLocalDateStr(new Date());
-      selectedDateFilter = todayStr;
-      document.getElementById('specificDateFilter').value = todayStr;
-      document.getElementById('btnFilterToday').classList.add('active');
+    function setQuickFilter(type) {
+      currentQuickFilter = type;
+      document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+      
+      if (type === 'today') document.getElementById('btnFilterToday').classList.add('active');
+      else if (type === 'yesterday') document.getElementById('btnFilterYesterday').classList.add('active');
+      else if (type === 'week') document.getElementById('btnFilterWeek').classList.add('active');
+      else if (type === 'month') document.getElementById('btnFilterMonth').classList.add('active');
+
+      // Limpa os inputs de datas personalizadas ao usar botões rápidos
+      document.getElementById('filterDateStart').value = '';
+      document.getElementById('filterDateEnd').value = '';
+
       loadFinancialData();
     }
 
-    function onDateFilterChanged() {
-      const val = document.getElementById('specificDateFilter').value;
-      selectedDateFilter = val;
-      const todayStr = getLocalDateStr(new Date());
-      if (val === todayStr) {
-        document.getElementById('btnFilterToday').classList.add('active');
-      } else {
-        document.getElementById('btnFilterToday').classList.remove('active');
+    function onCustomDateChange() {
+      const start = document.getElementById('filterDateStart').value;
+      const end = document.getElementById('filterDateEnd').value;
+
+      if (start || end) {
+        // Desativa os botões rápidos se houver filtro customizado ativo
+        document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
+        currentQuickFilter = 'custom';
+        loadFinancialData();
       }
-      loadFinancialData();
     }
 
     function isDateInFilter(rawDate) {
-      if (!selectedDateFilter) return true;
       const itemDateStr = parseToLocalDateStr(rawDate);
       if (!itemDateStr) return true;
-      return itemDateStr === selectedDateFilter;
+
+      const today = new Date();
+      const todayStr = getLocalDateStr(today);
+
+      if (currentQuickFilter === 'custom') {
+        const start = document.getElementById('filterDateStart').value;
+        const end = document.getElementById('filterDateEnd').value;
+        if (start && end) {
+          return itemDateStr >= start && itemDateStr <= end;
+        } else if (start) {
+          return itemDateStr >= start;
+        } else if (end) {
+          return itemDateStr <= end;
+        }
+        return true;
+      }
+
+      if (currentQuickFilter === 'today') {
+        return itemDateStr === todayStr;
+      } else if (currentQuickFilter === 'yesterday') {
+        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        return itemDateStr === getLocalDateStr(yesterday);
+      } else if (currentQuickFilter === 'week') {
+        const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+        return itemDateStr >= getLocalDateStr(sevenDaysAgo) && itemDateStr <= todayStr;
+      } else if (currentQuickFilter === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        return itemDateStr >= getLocalDateStr(firstDay) && itemDateStr <= todayStr;
+      }
+      return true;
     }
 
     function getProductCostFromCardapio(productName) {
@@ -941,7 +986,7 @@
       tbody.innerHTML = '';
 
       if (entries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Nenhuma despesa ou saída cadastrada na data selecionada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Nenhuma despesa ou saída cadastrada no período.</td></tr>`;
         return;
       }
 
@@ -972,7 +1017,9 @@
 
     window.onload = async function() {
       applyTheme();
-      setFilterToToday(); // Inicia automaticamente filtrado para a data de hoje
+      // Inicializa automaticamente filtrando para a data de hoje por padrão
+      setQuickFilter('today');
+      await loadFinancialData();
     };
   </script>
 </body>

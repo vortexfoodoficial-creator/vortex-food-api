@@ -100,8 +100,8 @@
     .btn-danger { background: var(--danger); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
     .btn-success { background: var(--success); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
-    /* TABELA DE MOVIMENTAÇÕES E HISTÓRICO COM ROLAGEM INDEPENDENTE */
-    .table-container { width: 100%; overflow-x: auto; max-height: 340px; overflow-y: auto; }
+    /* TABELAS COM ROLAGEM INDEPENDENTE (APROX. 5 LINHAS / MÁX 280PX) */
+    .table-container { width: 100%; overflow-x: auto; max-height: 280px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     th { color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; background: var(--bg-main); position: sticky; top: 0; z-index: 10; }
@@ -235,7 +235,7 @@
       </div>
     </div>
 
-    <!-- HISTÓRICO DE MOVIMENTAÇÕES DO TURNO -->
+    <!-- HISTÓRICO DE MOVIMENTAÇÕES DO TURNO (COM ROLAGEM INDEPENDENTE) -->
     <div class="card-box">
       <div class="card-title">📋 Movimentações do Turno Atual</div>
       <div class="table-container">
@@ -260,7 +260,7 @@
       </div>
     </div>
 
-    <!-- HISTÓRICO DE TURNOS ANTERIORES COM ROLAGEM INDEPENDENTE -->
+    <!-- HISTÓRICO DE TURNOS ANTERIORES (COM ROLAGEM INDEPENDENTE) -->
     <div class="card-box">
       <div class="card-title">📜 Histórico de Turnos e Caixas Anteriores</div>
       <div class="table-container">
@@ -656,29 +656,52 @@
 
       currentCashData.movements.push(newMov);
 
-      // SINCRONIZAÇÃO AUTOMÁTICA COM O MÓDULO FINANCEIRO & DRE
-      const entryId = 'cash_' + Date.now();
+      // --- SINCRONIZAÇÃO AUTOMÁTICA ROBUSTA COM O FINANCEIRO, DRE E RELATÓRIOS ---
+      const entryId = 'cash_mov_' + Date.now();
       const entryDate = new Date().toISOString().split('T')[0];
-      
+      let financialType = 'expense';
+      let descriptiveText = `Caixa (${typeLabel}): ${reason}`;
+
       if (typeLabel === 'DESPESA' || typeLabel === 'SANGRIA' || typeLabel === 'AJUSTE (-)') {
-        if (typeof dbSaveFinancialEntry === 'function') {
-          await dbSaveFinancialEntry({
-            id: entryId,
-            type: 'expense',
-            description: `Caixa (${typeLabel}): ${reason}`,
-            value: numVal,
-            date: entryDate
-          });
-        }
+        financialType = 'expense';
       } else if (typeLabel === 'SUPRIMENTO' || typeLabel === 'AJUSTE (+)') {
-        if (typeof dbSaveFinancialEntry === 'function') {
-          await dbSaveFinancialEntry({
+        financialType = 'income';
+      }
+
+      // Salva no LocalStorage unificado de despesas/financeiro para alimentar o DRE instantaneamente
+      let localExpenses = JSON.parse(localStorage.getItem('vortex_expenses_history') || localStorage.getItem('vortex_despesas') || '[]');
+      localExpenses.push({
+        id: entryId,
+        type: financialType,
+        description: descriptiveText,
+        value: numVal,
+        amount: numVal,
+        date: entryDate,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('vortex_expenses_history', JSON.stringify(localExpenses));
+      localStorage.setItem('vortex_despesas', JSON.stringify(localExpenses));
+
+      // Sincroniza também com a nuvem Supabase se a função centralizada existir ou via chamada direta
+      if (typeof dbSaveFinancialEntry === 'function') {
+        await dbSaveFinancialEntry({
+          id: entryId,
+          type: financialType,
+          description: descriptiveText,
+          value: numVal,
+          date: entryDate
+        });
+      } else if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          await supabaseClient.from('vortex_expenses_history').insert([{
             id: entryId,
-            type: 'income',
-            description: `Caixa (${typeLabel}): ${reason}`,
+            type: financialType,
+            description: descriptiveText,
             value: numVal,
             date: entryDate
-          });
+          }]);
+        } catch (e) {
+          console.warn('Aviso: Erro ao sincronizar despesa do caixa com a nuvem:', e);
         }
       }
 
@@ -696,7 +719,7 @@
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro!', '✅');
+      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro e DRE!', '✅');
     }
 
     // FECHAMENTO DE CAIXA
@@ -752,7 +775,6 @@
         }
       }
 
-      // Salva também no histórico local de turnos encerrados
       let closedShifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
       closedShifts.unshift({
         shiftId: currentCashData.shiftId,

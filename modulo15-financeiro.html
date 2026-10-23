@@ -311,7 +311,7 @@
           <strong id="dreGrossMargin">R$ 0,00</strong>
         </div>
         <div class="dre-row sub">
-          <span>(-) Despesas Operacionais e Lançamentos</span>
+          <span>(-) Despesas Operacionais, Sangrias e Caixa</span>
           <span id="dreOperatingExpenses">R$ 0,00</span>
         </div>
         <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 12px 10px; border-radius: 8px; margin-top: 10px;">
@@ -876,11 +876,24 @@
         }
       });
 
-      let rawEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      const entries = rawEntries.filter(e => isDateInFilter(e.date || e.timestamp));
+      // Unifica fontes de despesas (Caixa + Financeiro)
+      let rawEntries1 = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      let rawEntries2 = JSON.parse(localStorage.getItem('vortex_expenses_history')) || [];
+      let rawEntries3 = JSON.parse(localStorage.getItem('vortex_despesas')) || [];
+      let rawEntries4 = JSON.parse(localStorage.getItem('vortex_financial')) || [];
+      
+      let combinedEntries = [...rawEntries1, ...rawEntries2, ...rawEntries3, ...rawEntries4];
+      let uniqueEntriesMap = new Map();
+      combinedEntries.forEach(item => {
+        let key = item.id || (item.description + item.value + item.date);
+        uniqueEntriesMap.set(key, item);
+      });
+      let allEntries = Array.from(uniqueEntriesMap.values());
+      
+      const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
       // Resumo de Sócios com Editar e Excluir
-      const socioEntries = entries.filter(e => e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]'));
+      const socioEntries = entries.filter(e => e.description && (e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]')));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
       socioSummaryEl.innerHTML = '';
       if (socioEntries.length === 0) {
@@ -903,8 +916,16 @@
       let manualIncome = 0;
 
       entries.forEach(e => {
-        if (e.type === 'expense') manualExpenses += parseFloat(e.value) || 0;
-        else if (e.type === 'income') manualIncome += parseFloat(e.value) || 0;
+        let eType = String(e.type || '').toLowerCase();
+        let val = parseFloat(e.value || e.amount || e.valor || 0);
+
+        if (eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)')) {
+          manualExpenses += val;
+        } else if (eType === 'income' || eType === 'suprimento' || eType.includes('ajuste (+)')) {
+          manualIncome += val;
+        } else {
+          manualExpenses += val;
+        }
       });
 
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels + manualIncome);
@@ -949,16 +970,18 @@
       }
 
       entries.forEach(e => {
-        const isExpense = e.type === 'expense';
+        let eType = String(e.type || '').toLowerCase();
+        const isExpense = eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)');
         const typeBadge = isExpense ? `<span style="color:var(--danger); font-weight:bold;">🔴 Saída</span>` : `<span style="color:var(--success); font-weight:bold;">🟢 Entrada</span>`;
         const valColor = isExpense ? 'color:var(--danger);' : 'color:var(--success);';
+        const valNum = parseFloat(e.value || e.amount || e.valor || 0);
 
         tbody.innerHTML += `
           <tr>
             <td>${e.date || 'Hoje'}</td>
             <td>${typeBadge}</td>
-            <td><strong>${e.description}</strong></td>
-            <td style="${valColor} font-weight:bold;">R$ ${formatFloatToCurrency(e.value)}</td>
+            <td><strong>${e.description || 'Lançamento'}</strong></td>
+            <td style="${valColor} font-weight:bold;">R$ ${formatFloatToCurrency(valNum)}</td>
             <td style="text-align:center;">
               <button class="btn-delete-entry" onclick="deleteFinancialEntry('${e.id}')">🗑️ Apagar</button>
             </td>
@@ -973,6 +996,7 @@
 
     window.onload = function() {
       setQuickFilter('today');
+      loadFinancialData();
     };
   </script>
 </body>

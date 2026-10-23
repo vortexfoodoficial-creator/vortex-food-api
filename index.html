@@ -513,7 +513,6 @@
         sidebarLogo.style.display = 'none';
       }
 
-      // Busca dados diretamente do Supabase com fallback para localStorage
       let rawHistory = [];
       let kdsOrders = [];
       let recipesCatalog = [];
@@ -561,12 +560,10 @@
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
 
-          // Calcula o CMV real dos itens vendidos com base nas fichas técnicas cadastradas ou custo gravado
           let orderCmv = 0;
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(item => {
               const qtySold = parseFloat(item.qty || 1);
-              // Procura ficha técnica para este produto
               const rec = recipesCatalog.find(r => String(r.productId) === String(item.id) || r.productName === item.name);
               if (rec && rec.ingredients) {
                 let itemUnitCost = 0;
@@ -579,7 +576,6 @@
               } else if (item.cost) {
                 orderCmv += parseFloat(item.cost) * qtySold;
               } else {
-                // Fallback padrão se não houver ficha técnica (35% do valor do item)
                 orderCmv += (parseFloat(item.price || item.total || 0) * 0.35);
               }
             });
@@ -599,8 +595,6 @@
 
       const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
       const netSales = Math.max(0, grossSales - totalDiscounts);
-      
-      // Lucro Bruto = Vendas Líquidas - Custo Total dos Insumos (CMV)
       const grossProfit = Math.max(0, netSales - totalCmvCost);
       const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
 
@@ -646,7 +640,6 @@
       const cancelRate = (totalOrdersCount + totalCancelled) > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
       document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      // Canais
       let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
 
       salesHistory.forEach(s => {
@@ -686,7 +679,6 @@
       document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
       document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      // Formas de Pagamento
       let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
       salesHistory.forEach(s => {
         if (s.status !== 'cancelled') {

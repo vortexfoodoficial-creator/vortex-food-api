@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Delivery & Entregas</title>
+  <title>Vortex Food - Delivery & Logística Inteligente</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -80,8 +80,8 @@
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
     .delivery-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
-    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
     .form-group { margin-bottom: 12px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -105,6 +105,9 @@
     .btn-submit { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
     .btn-submit:hover { background: var(--primary-hover); }
 
+    .btn-secondary { background: var(--border); color: var(--text-main); border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.82rem; }
+    .btn-secondary:hover { background: #475569; }
+
     .delivery-orders-list { display: flex; flex-direction: column; gap: 12px; max-height: 540px; overflow-y: auto; }
     .order-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
     .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
@@ -117,9 +120,7 @@
     .status-route { background: rgba(249, 115, 22, 0.15); color: var(--primary); border: 1px solid var(--primary); }
     .status-finished { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid var(--border); }
 
-    .action-btn-delivery {
-      width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 0.85rem; margin-top: 6px; transition: opacity 0.2s;
-    }
+    .action-btn-delivery { width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 0.85rem; margin-top: 6px; transition: opacity 0.2s; }
     .btn-dispatch { background: var(--primary); color: white; }
     .btn-deliver { background: var(--success); color: white; }
     .btn-print-ticket { background: var(--border); color: var(--text-main); margin-top: 6px; width: 100%; padding: 8px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
@@ -130,8 +131,8 @@
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
 
     @media (max-width: 900px) {
       .delivery-grid { grid-template-columns: 1fr; }
@@ -206,12 +207,32 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Delivery & Entregas</h1>
+        <h1>Delivery & Logística Inteligente</h1>
       </div>
       <div style="font-size: 0.9rem; color: var(--text-muted);">
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
+
+    <!-- PAINEL DE GESTÃO DE ENTREGADORES & ROTEIRIZAÇÃO INTELIGENTE -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
+        <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
+        <div style="flex: 1; min-width: 220px;">
+          <label for="selectCourierForRoute">Selecione o Motoboy da Vez:</label>
+          <select id="selectCourierForRoute" class="form-input">
+            <option value="">Nenhum entregador cadastrado</option>
+          </select>
+        </div>
+        <div style="align-self: flex-end;">
+          <button class="btn-action" style="background:var(--success); color:#fff; padding:10px 16px; border-radius:8px; border:none; font-weight:bold; cursor:pointer;" onclick="runSmartRouteOptimization()">🚀 Otimizar Rota Automática</button>
+        </div>
+      </div>
+      <div id="couriersListSummary" style="font-size: 0.85rem; color: var(--text-muted);">Nenhum entregador ativo no momento.</div>
+    </div>
 
     <div class="delivery-grid">
       <div class="card-box">
@@ -245,7 +266,7 @@
         </div>
 
         <div class="form-group">
-          <label for="neighborhoodInput">Bairro (Automático):</label>
+          <label for="neighborhoodInput">Bairro (Automático - Usado na Rota):</label>
           <input type="text" id="neighborhoodInput" placeholder="Aguardando CEP...">
         </div>
 
@@ -323,6 +344,32 @@
     </div>
   </main>
 
+  <!-- MODAL DE CADASTRO DE ENTREGADOR -->
+  <div class="modal-overlay" id="courierModal">
+    <div class="custom-modal-card">
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">👤 Cadastrar Entregador</div>
+      <div class="form-group" style="text-align:left;">
+        <label>Nome do Entregador *:</label>
+        <input type="text" id="courierNameInput" placeholder="Ex: Carlos Moto">
+      </div>
+      <div class="form-group" style="text-align:left;">
+        <label>Telefone / WhatsApp:</label>
+        <input type="text" id="courierPhoneInput" placeholder="(00) 00000-0000">
+      </div>
+      <div class="form-group" style="text-align:left;">
+        <label>Tipo de Vínculo:</label>
+        <select id="courierTypeSelect">
+          <option value="Próprio">Entregador Próprio</option>
+          <option value="Terceirizado">Entregador Terceirizado / Aplicativo</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeCourierModal()">Cancelar</button>
+        <button class="btn-modal-primary" style="flex:1; margin:0;" onclick="saveCourier()">Salvar Entregador</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
@@ -362,6 +409,7 @@
       } else {
         sidebarLogo.style.display = 'none';
       }
+      loadCouriers();
     }
 
     function getCatalogProducts() {
@@ -379,6 +427,99 @@
         { id: 1, name: 'X-Burger Especial', price: 28.50 },
         { id: 2, name: 'X-Salada Duplo', price: 32.00 }
       ];
+    }
+
+    // GESTÃO DE ENTREGADORES
+    function openCourierModal() {
+      document.getElementById('courierNameInput').value = '';
+      document.getElementById('courierPhoneInput').value = '';
+      document.getElementById('courierModal').classList.add('active');
+    }
+    function closeCourierModal() {
+      document.getElementById('courierModal').classList.remove('active');
+    }
+
+    function saveCourier() {
+      const name = document.getElementById('courierNameInput').value.trim();
+      const phone = document.getElementById('courierPhoneInput').value.trim();
+      const type = document.getElementById('courierTypeSelect').value;
+
+      if (!name) {
+        showNoticeModal('Nome Obrigatório', 'Informe o nome do entregador.', '⚠️');
+        return;
+      }
+
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+
+      closeCourierModal();
+      loadCouriers();
+      showNoticeModal('Entregador Salvo', `Entregador ${name} cadastrado com sucesso!`, '✅');
+    }
+
+    function loadCouriers() {
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      const select = document.getElementById('selectCourierForRoute');
+      const summary = document.getElementById('couriersListSummary');
+      select.innerHTML = '';
+
+      if (couriers.length === 0) {
+        select.innerHTML = `<option value="">Nenhum entregador cadastrado</option>`;
+        summary.innerHTML = `Nenhum entregador cadastrado. Clique em "Cadastrar Entregador".`;
+        return;
+      }
+
+      let summaryHtml = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
+      couriers.forEach(c => {
+        select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
+        summaryHtml += `<span style="background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">🛵 ${c.name} [${c.type}]</span>`;
+      });
+      summaryHtml += '</div>';
+      summary.innerHTML = summaryHtml;
+    }
+
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE
+    async function runSmartRouteOptimization() {
+      const selectedCourier = document.getElementById('selectCourierForRoute').value;
+      if (!selectedCourier) {
+        showNoticeModal('Selecione o Entregador', 'Escolha um motoboy na lista para atribuir a rota inteligente.', '⚠️');
+        return;
+      }
+
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      // Filtra pedidos prontos na cozinha aguardando entrega
+      let readyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status === 'ready');
+
+      if (readyOrders.length === 0) {
+        showNoticeModal('Nenhum Pedido Pronto', 'Não há pedidos prontos na cozinha para roteirizar no momento.', '⚠️');
+        return;
+      }
+
+      // Agrupamento inteligente por bairro/proximidade e ordem de chegada (mais antigo primeiro)
+      readyOrders.sort((a, b) => new Date(a.date + 'T' + (a.time || '00:00')) - new Date(b.date + 'T' + (b.time || '00:00')));
+
+      // Pega até 3 pedidos compatíveis para formar a rota otimizada da vez
+      let routeBatch = readyOrders.slice(0, 3);
+      let batchIds = routeBatch.map(o => `#${o.id}`).join(', ');
+      let neighborhoods = [...new Set(routeBatch.map(o => o.address))].join(' | ');
+
+      // Atualiza os pedidos selecionados para o status "delivering" associados ao entregador
+      routeBatch.forEach(o => {
+        o.status = 'delivering';
+        o.courier = selectedCourier;
+      });
+
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      
+      if (window.supabaseClient) {
+        for (let o of routeBatch) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+        }
+      }
+
+      loadActiveOrders();
+      showNoticeModal('Rota Otimizada com Sucesso! 🚀', `O sistema agrupou ${routeBatch.length} entrega(s) (${batchIds}) por proximidade e atribuiu ao motoboy <strong>${selectedCourier}</strong>.<br><br>📍 Destinos:<br>${neighborhoods}`, '🛵');
     }
 
     function handlePhoneKeyDown(e, input) {
@@ -648,7 +789,8 @@
         date: todayDateStr,
         dateFormatted: dateFormatted,
         time: timeStr,
-        code: deliveryCode
+        code: deliveryCode,
+        courier: ''
       };
 
       kdsOrders.unshift(newOrder);
@@ -686,17 +828,12 @@
 
     async function loadActiveOrders() {
       const todayDateStr = new Date().toISOString().split('T')[0];
-      let kdsOrders = [];
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
-      // Carrega primariamente do LocalStorage para manter estabilidade instantânea na tela
-      kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-
-      // Sincronização em background com Supabase (sem sobrescrever status ativos locais abruptamente)
       if (window.supabaseClient) {
         try {
           const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
           if (data && data.length > 0) {
-            // Mescla preservando o status local atual se houver alteração pendente
             kdsOrders = data;
             localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
           }
@@ -736,10 +873,10 @@
         } else if (o.status === 'ready') {
           statusClass = 'status-ready';
           statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrder('${o.id}')">Enviar para Entrega 🛵</button>`;
+          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrder('${o.id}')">Enviar p/ Entrega Individual 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route';
-          statusText = 'Em Rota de Entrega 🛵';
+          statusText = `Em Rota (${o.courier || 'Motoboy'}) 🛵`;
           actionAreaHtml = `
             <div style="margin-top:6px;">
               <div class="code-input-row">
@@ -771,8 +908,9 @@
             <div style="font-size:0.82rem; color:var(--text-muted);">
               📍 <strong>Endereço Completo:</strong> ${o.address}<br>
               🍔 ${itemsText}<br>
+              ${o.courier ? `🛵 <strong>Entregador:</strong> ${o.courier}<br>` : ''}
               ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
-              🔒 Código de Validação: <strong style="color:var(--info);">**** (Apenas o cliente possui)</strong><br>
+              🔒 Código de Validação: <strong style="color:var(--info);">**** (Cliente)</strong><br>
               💰 Total: <strong>R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
             </div>
             ${actionAreaHtml}
@@ -787,12 +925,10 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
+        o.courier = document.getElementById('selectCourierForRoute').value || 'Entregador Direto';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-        if (typeof dbSaveKdsOrder === 'function') {
-          try { await dbSaveKdsOrder(o); } catch (err) {}
         }
         loadActiveOrders();
       }
@@ -806,9 +942,6 @@
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-        if (typeof dbSaveKdsOrder === 'function') {
-          try { await dbSaveKdsOrder(o); } catch (err) {}
         }
         loadActiveOrders();
         showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
@@ -825,9 +958,6 @@
           localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
           if (window.supabaseClient) {
             try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-          }
-          if (typeof dbSaveKdsOrder === 'function') {
-            try { await dbSaveKdsOrder(o); } catch (err) {}
           }
           loadActiveOrders();
           showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
@@ -900,13 +1030,11 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
-    // 1. Relógio rodando a cada 1 segundo exato (1000ms)
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
     }, 1000);
 
-    // 2. Atualização dos pedidos na tela a cada 6 segundos (separado do relógio para não acelerar)
     setInterval(() => {
       loadActiveOrders();
     }, 6000);

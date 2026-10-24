@@ -81,7 +81,7 @@
 
     .delivery-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 
     .form-group { margin-bottom: 12px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -129,10 +129,13 @@
     .code-input-row { display: flex; gap: 6px; margin-top: 6px; }
     .code-input { flex: 1; text-align: center; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 8px; }
 
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+    /* MODAL DE ROTEIRIZAÇÃO INTELIGENTE COM LISTAGEM */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 420px; text-align: center; }
-    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 540px; text-align: left; max-height: 90vh; overflow-y: auto; }
+    .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; text-align: center; }
+
+    .suggestion-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
     @media (max-width: 900px) {
       .delivery-grid { grid-template-columns: 1fr; }
@@ -218,7 +221,10 @@
     <div class="card-box">
       <div class="card-title">
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
-        <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-secondary" onclick="openCourierHistoryModal()">📋 Histórico Entregas</button>
+          <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
+        </div>
       </div>
       <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
         <div style="flex: 1; min-width: 220px;">
@@ -228,7 +234,7 @@
           </select>
         </div>
         <div style="align-self: flex-end;">
-          <button class="btn-action" style="background:var(--success); color:#fff; padding:10px 16px; border-radius:8px; border:none; font-weight:bold; cursor:pointer;" onclick="runSmartRouteOptimization()">🚀 Otimizar Rota Automática</button>
+          <button class="btn-action" style="background:var(--success); color:#fff; padding:10px 16px; border-radius:8px; border:none; font-weight:bold; cursor:pointer;" onclick="runSmartRouteOptimization()">🚀 Sugerir Rotas Otimizadas</button>
         </div>
       </div>
       <div id="couriersListSummary" style="font-size: 0.85rem; color: var(--text-muted);">Nenhum entregador ativo no momento.</div>
@@ -344,6 +350,31 @@
     </div>
   </main>
 
+  <!-- MODAL DE SUGESTÃO DE ROTAS OTIMIZADAS (COM AGRUPAMENTO INDIVIDUAL) -->
+  <div class="modal-overlay" id="smartRouteModal">
+    <div class="custom-modal-card" style="max-width: 600px;">
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px; color:var(--primary);" id="smartRouteModalTitle">🚀 Sugestão de Rotas</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Pedidos prontos ordenados da menor distância (mais perto) até a mais longe, com base na fila atual.</div>
+      
+      <div id="smartRouteListContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 15px;">
+        <!-- Itens injetados via JS -->
+      </div>
+
+      <button class="btn-secondary" style="width:100%; text-align:center;" onclick="closeSmartRouteModal()">Fechar Janela</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE HISTÓRICO DE ENTREGAS DOS MOTOBOYS -->
+  <div class="modal-overlay" id="courierHistoryModal">
+    <div class="custom-modal-card" style="max-width: 600px;">
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">📋 Histórico de Entregas por Motoboy</div>
+      <div id="courierHistoryContent" style="max-height: 380px; overflow-y: auto; font-size: 0.85rem; margin-bottom: 15px;">
+        <div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico registrado ainda.</div>
+      </div>
+      <button class="btn-secondary" style="width:100%; text-align:center;" onclick="closeCourierHistoryModal()">Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL DE CADASTRO DE ENTREGADOR -->
   <div class="modal-overlay" id="courierModal">
     <div class="custom-modal-card">
@@ -353,8 +384,8 @@
         <input type="text" id="courierNameInput" placeholder="Ex: Carlos Moto">
       </div>
       <div class="form-group" style="text-align:left;">
-        <label>Telefone / WhatsApp:</label>
-        <input type="text" id="courierPhoneInput" placeholder="(00) 00000-0000">
+        <label>Telefone / WhatsApp *:</label>
+        <input type="text" id="courierPhoneInput" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
       </div>
       <div class="form-group" style="text-align:left;">
         <label>Tipo de Vínculo:</label>
@@ -370,12 +401,13 @@
     </div>
   </div>
 
+  <!-- MODAL DE AVISO / NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
-    <div class="custom-modal-card">
+    <div class="custom-modal-card" style="max-width: 380px; text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
       <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
       <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Pedido enviado.</div>
-      <button class="btn-modal-primary" onclick="closeNoticeModal()">Entendido</button>
+      <button class="btn-modal-primary" onclick="closeNoticeModal()" style="margin:0;">Entendido</button>
     </div>
   </div>
 
@@ -429,7 +461,7 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES
+    // GESTÃO DE ENTREGADORES E MÁSCARA DE TELEFONE CORRIGIDA
     function openCourierModal() {
       document.getElementById('courierNameInput').value = '';
       document.getElementById('courierPhoneInput').value = '';
@@ -444,8 +476,8 @@
       const phone = document.getElementById('courierPhoneInput').value.trim();
       const type = document.getElementById('courierTypeSelect').value;
 
-      if (!name) {
-        showNoticeModal('Nome Obrigatório', 'Informe o nome do entregador.', '⚠️');
+      if (!name || !phone) {
+        showNoticeModal('Campos Obrigatórios', 'Informe o nome e o telefone do entregador.', '⚠️');
         return;
       }
 
@@ -473,55 +505,13 @@
       let summaryHtml = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
       couriers.forEach(c => {
         select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
-        summaryHtml += `<span style="background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">🛵 ${c.name} [${c.type}]</span>`;
+        summaryHtml += `<span style="background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">🛵 ${c.name} [${c.phone}] - [${c.type}]</span>`;
       });
       summaryHtml += '</div>';
       summary.innerHTML = summaryHtml;
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE
-    async function runSmartRouteOptimization() {
-      const selectedCourier = document.getElementById('selectCourierForRoute').value;
-      if (!selectedCourier) {
-        showNoticeModal('Selecione o Entregador', 'Escolha um motoboy na lista para atribuir a rota inteligente.', '⚠️');
-        return;
-      }
-
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      // Filtra pedidos prontos na cozinha aguardando entrega
-      let readyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status === 'ready');
-
-      if (readyOrders.length === 0) {
-        showNoticeModal('Nenhum Pedido Pronto', 'Não há pedidos prontos na cozinha para roteirizar no momento.', '⚠️');
-        return;
-      }
-
-      // Agrupamento inteligente por bairro/proximidade e ordem de chegada (mais antigo primeiro)
-      readyOrders.sort((a, b) => new Date(a.date + 'T' + (a.time || '00:00')) - new Date(b.date + 'T' + (b.time || '00:00')));
-
-      // Pega até 3 pedidos compatíveis para formar a rota otimizada da vez
-      let routeBatch = readyOrders.slice(0, 3);
-      let batchIds = routeBatch.map(o => `#${o.id}`).join(', ');
-      let neighborhoods = [...new Set(routeBatch.map(o => o.address))].join(' | ');
-
-      // Atualiza os pedidos selecionados para o status "delivering" associados ao entregador
-      routeBatch.forEach(o => {
-        o.status = 'delivering';
-        o.courier = selectedCourier;
-      });
-
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-      
-      if (window.supabaseClient) {
-        for (let o of routeBatch) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-      }
-
-      loadActiveOrders();
-      showNoticeModal('Rota Otimizada com Sucesso! 🚀', `O sistema agrupou ${routeBatch.length} entrega(s) (${batchIds}) por proximidade e atribuiu ao motoboy <strong>${selectedCourier}</strong>.<br><br>📍 Destinos:<br>${neighborhoods}`, '🛵');
-    }
-
+    // FORMATAÇÃO AUTOMÁTICA DE TELEFONE (CORRIGIDA COM PONTUAÇÕES)
     function handlePhoneKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -545,6 +535,115 @@
       else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
       else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE COM SUGESTÃO E AGRUPAMENTO POR PEDIDO
+    function runSmartRouteOptimization() {
+      const selectedCourier = document.getElementById('selectCourierForRoute').value;
+      if (!selectedCourier) {
+        showNoticeModal('Selecione o Entregador', 'Escolha um motoboy na lista para ver as sugestões de rotas.', '⚠️');
+        return;
+      }
+
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      // Filtra pedidos prontos na cozinha aguardando entrega
+      let readyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status === 'ready');
+
+      if (readyOrders.length === 0) {
+        showNoticeModal('Nenhum Pedido Pronto', 'Não há pedidos prontos na cozinha para roteirizar no momento.', '⚠️');
+        return;
+      }
+
+      // Ordena da mais perto até a mais longe (Simulado por ordem alfabética de bairro/endereço e horário mais antigo)
+      readyOrders.sort((a, b) => {
+        let timeA = new Date(a.date + 'T' + (a.time || '00:00'));
+        let timeB = new Date(b.date + 'T' + (b.time || '00:00'));
+        if (timeA - timeB !== 0) return timeA - timeB; // Mais antigo primeiro
+        return (a.address || '').localeCompare(b.address || '');
+      });
+
+      document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
+      const container = document.getElementById('smartRouteListContainer');
+      container.innerHTML = '';
+
+      readyOrders.forEach((o, index) => {
+        container.innerHTML += `
+          <div class="suggestion-item-row">
+            <div style="font-size:0.85rem; flex:1;">
+              <strong style="color:var(--primary);">#${o.id}</strong> - ${o.client} <br>
+              <span style="color:var(--text-muted);">🕒 Horário do Pedido: ${o.time || '--:--'}</span><br>
+              📍 <strong>Endereço:</strong> ${o.address}
+            </div>
+            <div>
+              <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Agrupar Rota ✅</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('smartRouteModal').classList.add('active');
+    }
+
+    function closeSmartRouteModal() {
+      document.getElementById('smartRouteModal').classList.remove('active');
+    }
+
+    async function assignOrderToCourier(orderId, courierName) {
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (o) {
+        o.status = 'delivering';
+        o.courier = courierName;
+
+        // Salva no histórico de entregas do motoboy
+        let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
+        history.unshift({
+          id: 'hist_' + Date.now(),
+          orderId: o.id,
+          client: o.client,
+          courier: courierName,
+          address: o.address,
+          timeAssigned: new Date().toLocaleTimeString('pt-BR'),
+          date: new Date().toISOString().split('T')[0]
+        });
+        localStorage.setItem('vortex_courier_history', JSON.stringify(history));
+
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+        }
+
+        loadActiveOrders();
+        runSmartRouteOptimization(); // Atualiza o modal removendo o pedido agrupado
+        showNoticeModal('Rota Agrupada!', `Pedido #${orderId} atribuído com sucesso para ${courierName}!`, '🛵');
+      }
+    }
+
+    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (PÁGINA DENTRO DE PÁGINA)
+    function openCourierHistoryModal() {
+      let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
+      const content = document.getElementById('courierHistoryContent');
+      content.innerHTML = '';
+
+      if (history.length === 0) {
+        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de rotas atribuídas registrado.</div>`;
+      } else {
+        history.forEach(h => {
+          content.innerHTML += `
+            <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">
+              🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.orderId}<br>
+              👤 <strong>Cliente:</strong> ${h.client}<br>
+              📍 <strong>Destino:</strong> ${h.address}<br>
+              🕒 <strong>Atribuído às:</strong> ${h.timeAssigned} (${h.date})
+            </div>
+          `;
+        });
+      }
+      document.getElementById('courierHistoryModal').classList.add('active');
+    }
+
+    function closeCourierHistoryModal() {
+      document.getElementById('courierHistoryModal').classList.remove('active');
     }
 
     function maskAndSearchCep(input) {
@@ -733,14 +832,14 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const saleId = 'DELV-' + Date.now();
 
-      // 1. Acumulador diário local blindado
+      // 1. Acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // 2. Histórico de Vendas (Relatórios e Financeiro)
+      // 2. Histórico de Vendas
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: saleId,
@@ -759,10 +858,7 @@
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
       if (window.supabaseClient) {
-        try {
-          const { error } = await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
-          if (error) console.warn('Supabase Vendas Warning:', error.message);
-        } catch (err) {}
+        try { await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]); } catch (err) {}
       }
       if (typeof dbSaveSale === 'function') {
         try { await dbSaveSale(newSaleRecord); } catch(e){}
@@ -797,10 +893,7 @@
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
       if (window.supabaseClient) {
-        try {
-          const { error } = await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
-          if (error) console.warn('Supabase KDS Warning:', error.message);
-        } catch (err) {}
+        try { await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]); } catch (err) {}
       }
       if (typeof dbSaveKdsOrder === 'function') {
         try { await dbSaveKdsOrder(newOrder); } catch(e){}
@@ -873,7 +966,7 @@
         } else if (o.status === 'ready') {
           statusClass = 'status-ready';
           statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrder('${o.id}')">Enviar p/ Entrega Individual 🛵</button>`;
+          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Direto 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route';
           statusText = `Em Rota (${o.courier || 'Motoboy'}) 🛵`;
@@ -920,12 +1013,12 @@
       });
     }
 
-    async function dispatchOrder(orderId) {
+    async function dispatchOrderDirect(orderId) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
-        o.courier = document.getElementById('selectCourierForRoute').value || 'Entregador Direto';
+        o.courier = document.getElementById('selectCourierForRoute').value || 'Entregador Geral';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}

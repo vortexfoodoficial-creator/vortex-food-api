@@ -258,7 +258,7 @@
         <div class="form-row">
           <div class="form-group">
             <label for="cepInput">CEP (Busca Automática):</label>
-            <input type="text" id="cepInput" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)">
+            <input type="text" id="cepInput" placeholder="00000-000" maxlength="9" oninput="maskAndSearchCep(this)" onkeydown="handleCepKeyDown(event, this)">
           </div>
           <div class="form-group">
             <label for="streetNumberInput">Número da Residência *:</label>
@@ -393,10 +393,11 @@
     </div>
   </div>
 
-  <!-- MODAL DE CADASTRO DE ENTREGADOR -->
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE ENTREGADOR -->
   <div class="modal-overlay" id="courierModal">
     <div class="custom-modal-card">
-      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">👤 Cadastrar Entregador</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;" id="courierModalTitle">👤 Cadastrar Entregador</div>
+      <input type="hidden" id="courierEditId" value="">
       <div class="form-group" style="text-align:left;">
         <label>Nome do Entregador *:</label>
         <input type="text" id="courierNameInput" placeholder="Ex: Carlos Moto">
@@ -479,17 +480,36 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES E MÁSCARA DE TELEFONE
-    function openCourierModal() {
+    // GESTÃO DE ENTREGADORES (CADASTRO, EDIÇÃO, EXCLUSÃO)
+    function openCourierModal(courierId = null) {
+      document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
       document.getElementById('courierPhoneInput').value = '';
+      document.getElementById('courierTypeSelect').value = 'Próprio';
+
+      if (courierId) {
+        let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+        const found = couriers.find(c => String(c.id) === String(courierId));
+        if (found) {
+          document.getElementById('courierEditId').value = found.id;
+          document.getElementById('courierNameInput').value = found.name || '';
+          document.getElementById('courierPhoneInput').value = found.phone || '';
+          document.getElementById('courierTypeSelect').value = found.type || 'Próprio';
+          document.getElementById('courierModalTitle').innerText = '✏️ Editar Entregador';
+        }
+      } else {
+        document.getElementById('courierModalTitle').innerText = '👤 Cadastrar Entregador';
+      }
+
       document.getElementById('courierModal').classList.add('active');
     }
+
     function closeCourierModal() {
       document.getElementById('courierModal').classList.remove('active');
     }
 
     function saveCourier() {
+      const editId = document.getElementById('courierEditId').value;
       const name = document.getElementById('courierNameInput').value.trim();
       const phone = document.getElementById('courierPhoneInput').value.trim();
       const type = document.getElementById('courierTypeSelect').value;
@@ -500,12 +520,32 @@
       }
 
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
-      couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
+
+      if (editId) {
+        let index = couriers.findIndex(c => String(c.id) === String(editId));
+        if (index !== -1) {
+          couriers[index].name = name;
+          couriers[index].phone = phone;
+          couriers[index].type = type;
+        }
+      } else {
+        couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
+      }
+
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
 
       closeCourierModal();
       loadCouriers();
-      showNoticeModal('Entregador Salvo', `Entregador ${name} cadastrado com sucesso!`, '✅');
+      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado com sucesso!` : `Entregador ${name} cadastrado com sucesso!`, '✅');
+    }
+
+    function deleteCourier(courierId) {
+      if (!confirm('Deseja realmente excluir este entregador?')) return;
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      couriers = couriers.filter(c => String(c.id) !== String(courierId));
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+      loadCouriers();
+      showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso.', '🗑️');
     }
 
     function loadCouriers() {
@@ -523,11 +563,19 @@
         return;
       }
 
-      let summaryHtml = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
+      let summaryHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
       couriers.forEach(c => {
         select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
         editSelect.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
-        summaryHtml += `<span style="background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">🛵 ${c.name} [${c.phone}] - [${c.type}]</span>`;
+        summaryHtml += `
+          <div style="background:var(--bg-main); padding:8px 12px; border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span>🛵 <strong>${c.name}</strong> [${c.phone}] - <span style="color:var(--primary);">${c.type}</span></span>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openCourierModal('${c.id}')">✏️ Editar</button>
+              <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem; background:var(--danger); color:#fff;" onclick="deleteCourier('${c.id}')">🗑️ Excluir</button>
+            </div>
+          </div>
+        `;
       });
       summaryHtml += '</div>';
       summary.innerHTML = summaryHtml;
@@ -557,6 +605,48 @@
       else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
       else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
+    // FORMATAÇÃO E BUSCA AUTOMÁTICA DE CEP RESTAURADAS
+    function handleCepKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        let v = input.value;
+        if (v.endsWith('-')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '').slice(0, -1);
+          formatAndSetCep(input, digits);
+        }
+      }
+    }
+
+    function maskAndSearchCep(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetCep(input, digits);
+    }
+
+    function formatAndSetCep(input, digits) {
+      if (digits.length > 8) digits = digits.slice(0, 8);
+
+      let formatted = digits;
+      if (digits.length > 5) {
+        formatted = `${digits.slice(0, 5)}-${digits.slice(5)}`;
+      }
+      input.value = formatted;
+
+      if (digits.length === 8) {
+        fetch(`https://viacep.com.br/ws/${digits}/json/`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data.erro) {
+              document.getElementById('streetInput').value = data.logradouro || '';
+              document.getElementById('neighborhoodInput').value = data.bairro || '';
+              document.getElementById('cityInput').value = data.localidade || '';
+              document.getElementById('stateInput').value = data.uf || '';
+              document.getElementById('streetNumberInput').focus();
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (COM BUSCA ASSÍNCRONA BLINDADA NO SUPABASE)
@@ -735,32 +825,6 @@
 
     function closeCourierHistoryModal() {
       document.getElementById('courierHistoryModal').classList.remove('active');
-    }
-
-    function maskAndSearchCep(input) {
-      let value = input.value.replace(/\D/g, '');
-      if (value.length > 8) value = value.slice(0, 8);
-
-      if (value.length > 5) {
-        input.value = value.slice(0, 5) + '-' + value.slice(5);
-      } else {
-        input.value = value;
-      }
-
-      if (value.length === 8) {
-        fetch(`https://viacep.com.br/ws/${value}/json/`)
-          .then(res => res.json())
-          .then(data => {
-            if (!data.erro) {
-              document.getElementById('streetInput').value = data.logradouro || '';
-              document.getElementById('neighborhoodInput').value = data.bairro || '';
-              document.getElementById('cityInput').value = data.localidade || '';
-              document.getElementById('stateInput').value = data.uf || '';
-              document.getElementById('streetNumberInput').focus();
-            }
-          })
-          .catch(() => {});
-      }
     }
 
     function renderCatalog() {

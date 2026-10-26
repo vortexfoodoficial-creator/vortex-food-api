@@ -1138,7 +1138,6 @@
       const todayDateStr = now.toISOString().split('T')[0];
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const saleId = 'DELV-' + Date.now();
 
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
@@ -1146,9 +1145,14 @@
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
+      // Determina o número sequencial curto unificado (mesmo ID da Cozinha/KDS)
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
+      const unifiedOrderId = String(nextKdsId);
+
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
-        id: saleId,
+        id: unifiedOrderId,
         client: `${clientName} (${clientPhone})`,
         channel: 'Delivery 🛵',
         total: total,
@@ -1170,13 +1174,10 @@
         try { await dbSaveSale(newSaleRecord); } catch(e){}
       }
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
-
       const deliveryCode = generateDeliveryCode();
 
       const newOrder = {
-        id: String(nextKdsId),
+        id: unifiedOrderId,
         origin: 'Delivery 🛵',
         client: `${clientName} (${clientPhone})`,
         address: fullAddress,

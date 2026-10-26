@@ -129,10 +129,10 @@
     .code-input-row { display: flex; gap: 6px; margin-top: 6px; }
     .code-input { flex: 1; text-align: center; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 8px; }
 
-    /* MODAL DE ROTEIRIZAÇÃO INTELIGENTE COM LISTAGEM */
+    /* MODAL PADRÃO */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 540px; text-align: left; max-height: 90vh; overflow-y: auto; }
+    .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 480px; text-align: left; max-height: 90vh; overflow-y: auto; }
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; text-align: center; }
 
     .suggestion-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -350,17 +350,35 @@
     </div>
   </main>
 
-  <!-- MODAL DE SUGESTÃO DE ROTAS OTIMIZADAS (COM AGRUPAMENTO INDIVIDUAL) -->
+  <!-- MODAL DE SUGESTÃO DE ROTAS OTIMIZADAS -->
   <div class="modal-overlay" id="smartRouteModal">
     <div class="custom-modal-card" style="max-width: 600px;">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px; color:var(--primary);" id="smartRouteModalTitle">🚀 Sugestão de Rotas</div>
       <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Pedidos prontos ordenados da menor distância (mais perto) até a mais longe, com base na fila atual.</div>
       
-      <div id="smartRouteListContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 15px;">
-        <!-- Itens injetados via JS -->
-      </div>
+      <div id="smartRouteListContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 15px;"></div>
 
       <button class="btn-secondary" style="width:100%; text-align:center;" onclick="closeSmartRouteModal()">Fechar Janela</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDITAR / REATRIBUIR MOTOBOY DO PEDIDO -->
+  <div class="modal-overlay" id="editCourierModal">
+    <div class="custom-modal-card" style="max-width: 400px; text-align:left;">
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">✏️ Alterar Motoboy da Rota</div>
+      <input type="hidden" id="editCourierOrderId" value="">
+      
+      <div class="form-group">
+        <label>Selecionar Novo Motoboy:</label>
+        <select id="modalEditCourierSelect" class="form-input">
+          <option value="">Nenhum (Deixar sem motoboy)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeEditCourierModal()">Cancelar</button>
+        <button class="btn-modal-primary" style="flex:1; margin:0; background:var(--success);" onclick="saveOrderCourierChange()">Salvar Alteração</button>
+      </div>
     </div>
   </div>
 
@@ -461,7 +479,7 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES E MÁSCARA DE TELEFONE CORRIGIDA
+    // GESTÃO DE ENTREGADORES E MÁSCARA DE TELEFONE
     function openCourierModal() {
       document.getElementById('courierNameInput').value = '';
       document.getElementById('courierPhoneInput').value = '';
@@ -493,8 +511,11 @@
     function loadCouriers() {
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       const select = document.getElementById('selectCourierForRoute');
+      const editSelect = document.getElementById('modalEditCourierSelect');
       const summary = document.getElementById('couriersListSummary');
-      select.innerHTML = '';
+      
+      select.innerHTML = '<option value="">Selecione o motoboy...</option>';
+      editSelect.innerHTML = '<option value="">Nenhum (Deixar sem motoboy)</option>';
 
       if (couriers.length === 0) {
         select.innerHTML = `<option value="">Nenhum entregador cadastrado</option>`;
@@ -505,13 +526,14 @@
       let summaryHtml = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
       couriers.forEach(c => {
         select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
+        editSelect.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
         summaryHtml += `<span style="background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">🛵 ${c.name} [${c.phone}] - [${c.type}]</span>`;
       });
       summaryHtml += '</div>';
       summary.innerHTML = summaryHtml;
     }
 
-    // FORMATAÇÃO AUTOMÁTICA DE TELEFONE (CORRIGIDA COM PONTUAÇÕES)
+    // FORMATAÇÃO AUTOMÁTICA DE TELEFONE
     function handlePhoneKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -546,7 +568,6 @@
       }
 
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      // Filtra pedidos prontos na cozinha aguardando entrega
       let readyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && o.status === 'ready');
 
       if (readyOrders.length === 0) {
@@ -554,11 +575,10 @@
         return;
       }
 
-      // Ordena da mais perto até a mais longe (Simulado por ordem alfabética de bairro/endereço e horário mais antigo)
       readyOrders.sort((a, b) => {
         let timeA = new Date(a.date + 'T' + (a.time || '00:00'));
         let timeB = new Date(b.date + 'T' + (b.time || '00:00'));
-        if (timeA - timeB !== 0) return timeA - timeB; // Mais antigo primeiro
+        if (timeA - timeB !== 0) return timeA - timeB;
         return (a.address || '').localeCompare(b.address || '');
       });
 
@@ -566,7 +586,7 @@
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';
 
-      readyOrders.forEach((o, index) => {
+      readyOrders.forEach((o) => {
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
@@ -595,7 +615,6 @@
         o.status = 'delivering';
         o.courier = courierName;
 
-        // Salva no histórico de entregas do motoboy
         let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
         history.unshift({
           id: 'hist_' + Date.now(),
@@ -614,12 +633,51 @@
         }
 
         loadActiveOrders();
-        runSmartRouteOptimization(); // Atualiza o modal removendo o pedido agrupado
+        runSmartRouteOptimization();
         showNoticeModal('Rota Agrupada!', `Pedido #${orderId} atribuído com sucesso para ${courierName}!`, '🛵');
       }
     }
 
-    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (PÁGINA DENTRO DE PÁGINA)
+    // FUNÇÕES DE EDIÇÃO / ALTERAÇÃO DE MOTOBOY DO PEDIDO
+    function openEditCourierModal(orderId) {
+      document.getElementById('editCourierOrderId').value = orderId;
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (o) {
+        document.getElementById('modalEditCourierSelect').value = o.courier || '';
+      }
+      document.getElementById('editCourierModal').classList.add('active');
+    }
+
+    function closeEditCourierModal() {
+      document.getElementById('editCourierModal').classList.remove('active');
+    }
+
+    async function saveOrderCourierChange() {
+      const orderId = document.getElementById('editCourierOrderId').value;
+      const newCourier = document.getElementById('modalEditCourierSelect').value;
+
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const o = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (o) {
+        o.courier = newCourier;
+        // Se escolheu um motoboy, garante que esteja em rota
+        if (newCourier) {
+          o.status = 'delivering';
+        }
+
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+        if (window.supabaseClient) {
+          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
+        }
+
+        closeEditCourierModal();
+        loadActiveOrders();
+        showNoticeModal('Motoboy Atualizado', newCourier ? `O pedido #${orderId} foi reatribuído para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido (ficou sem atribuição).`, '✅');
+      }
+    }
+
+    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS
     function openCourierHistoryModal() {
       let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
       const content = document.getElementById('courierHistoryContent');
@@ -832,14 +890,12 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const saleId = 'DELV-' + Date.now();
 
-      // 1. Acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // 2. Histórico de Vendas
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: saleId,
@@ -864,7 +920,6 @@
         try { await dbSaveSale(newSaleRecord); } catch(e){}
       }
 
-      // 3. Pedidos KDS / Cozinha
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
 
@@ -969,7 +1024,7 @@
           actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Direto 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route';
-          statusText = `Em Rota (${o.courier || 'Motoboy'}) 🛵`;
+          statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
           actionAreaHtml = `
             <div style="margin-top:6px;">
               <div class="code-input-row">
@@ -1001,7 +1056,8 @@
             <div style="font-size:0.82rem; color:var(--text-muted);">
               📍 <strong>Endereço Completo:</strong> ${o.address}<br>
               🍔 ${itemsText}<br>
-              ${o.courier ? `🛵 <strong>Entregador:</strong> ${o.courier}<br>` : ''}
+              🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> 
+              <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>
               ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
               🔒 Código de Validação: <strong style="color:var(--info);">**** (Cliente)</strong><br>
               💰 Total: <strong>R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
@@ -1018,7 +1074,7 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
-        o.courier = document.getElementById('selectCourierForRoute').value || 'Entregador Geral';
+        o.courier = document.getElementById('selectCourierForRoute').value || '';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}

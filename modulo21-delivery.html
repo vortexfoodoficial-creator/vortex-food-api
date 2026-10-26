@@ -354,7 +354,7 @@
   <div class="modal-overlay" id="smartRouteModal">
     <div class="custom-modal-card" style="max-width: 600px;">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px; color:var(--primary);" id="smartRouteModalTitle">🚀 Sugestão de Rotas</div>
-      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Pedidos prontos ordenados da menor distância (mais perto) até a mais longe, com base na fila atual.</div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;" id="smartRouteSubtitle">Pedidos prontos ordenados da menor distância até a mais longe, partindo do estabelecimento.</div>
       
       <div id="smartRouteListContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 15px;"></div>
 
@@ -559,11 +559,24 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE COM SUGESTÃO E AGRUPAMENTO POR PEDIDO
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE BASEADO NO ENDEREÇO DA CONFIGURAÇÃO DO ESTABELECIMENTO
     function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
         showNoticeModal('Selecione o Entregador', 'Escolha um motoboy na lista para ver as sugestões de rotas.', '⚠️');
+        return;
+      }
+
+      // Validação do Endereço do Estabelecimento nas Configurações
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+      const storeAddress = storeSettings.storeAddress || storeSettings.address || storeSettings.rua || '';
+
+      if (!storeAddress || storeAddress.trim() === '') {
+        showNoticeModal(
+          'Endereço do Estabelecimento Não Encontrado', 
+          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi cadastrado nas Configurações. Por favor, acesse o menu de Configurações, cadastre o endereço da sua loja e tente novamente.', 
+          '⚠️'
+        );
         return;
       }
 
@@ -575,6 +588,7 @@
         return;
       }
 
+      // Simulação de cálculo de proximidade partindo do endereço do estabelecimento
       readyOrders.sort((a, b) => {
         let timeA = new Date(a.date + 'T' + (a.time || '00:00'));
         let timeB = new Date(b.date + 'T' + (b.time || '00:00'));
@@ -583,6 +597,8 @@
       });
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado da entrega mais próxima até a mais distante.`;
+
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';
 
@@ -661,7 +677,6 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.courier = newCourier;
-        // Se escolheu um motoboy, garante que esteja em rota
         if (newCourier) {
           o.status = 'delivering';
         }

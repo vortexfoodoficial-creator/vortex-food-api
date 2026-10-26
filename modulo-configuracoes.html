@@ -138,13 +138,11 @@
       padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
     }
 
-    /* Container de Rolagem Independente para Seções Complexas */
     .scroll-subpanel {
       max-height: 280px; overflow-y: auto; background: var(--bg-main);
       border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 8px;
     }
 
-    /* Modais Customizados */
     .modal-overlay {
       display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px;
@@ -385,7 +383,7 @@
         </div>
       </div>
 
-      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO (SELETOR NATIVO COM RELOGINHO) -->
+      <!-- CARD 4: HORÁRIOS DE FUNCIONAMENTO -->
       <div class="config-card">
         <div class="config-title">🕒 Horários & Atendimento</div>
 
@@ -401,19 +399,13 @@
 
         <div class="scroll-subpanel">
           <div style="font-weight:bold; font-size:0.85rem; margin-bottom:8px; color:var(--primary);">Turno 1 (Principal)</div>
-          <div id="turno1Container" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Gerado via Script -->
-          </div>
+          <div id="turno1Container" style="display:flex; flex-direction:column; gap:8px;"></div>
 
-          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--info);">Turno 2 (Opcional - Ex: Almoço / Jantar extra)</div>
-          <div id="turno2Container" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Gerado via Script -->
-          </div>
+          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--info);">Turno 2 (Opcional)</div>
+          <div id="turno2Container" style="display:flex; flex-direction:column; gap:8px;"></div>
 
-          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--warning);">Turno 3 (Opcional - Exclusivo para Retirada Balcão)</div>
-          <div id="turno3Container" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Gerado via Script -->
-          </div>
+          <div style="font-weight:bold; font-size:0.85rem; margin: 12px 0 8px 0; color:var(--warning);">Turno 3 (Opcional)</div>
+          <div id="turno3Container" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
 
         <div class="form-group" style="margin-top:12px;">
@@ -422,7 +414,7 @@
         </div>
       </div>
 
-      <!-- CARD 5: CONFIGURAÇÕES DE TAXA DE ENTREGA (COM ROLAGEM INDEPENDENTE) -->
+      <!-- CARD 5: CONFIGURAÇÕES DE TAXA DE ENTREGA -->
       <div class="config-card">
         <div class="config-title">🛵 Configurações Taxa de Entrega</div>
 
@@ -436,7 +428,6 @@
           </select>
         </div>
 
-        <!-- Bloco Entrega Gratuita -->
         <div style="background:var(--bg-main); border:1px solid var(--border); padding:12px; border-radius:10px; margin-bottom:10px;">
           <div class="switch-row" style="margin-bottom:8px; background:none; border:none; padding:0;">
             <span>Oferecer taxa de entrega gratuita</span>
@@ -451,10 +442,7 @@
           </div>
         </div>
 
-        <!-- PAINEL COM ROLAGEM INDEPENDENTE PARA AS OPÇÕES ESPECÍFICAS -->
         <div class="scroll-subpanel">
-          
-          <!-- Sub-painel: Taxa Fixa -->
           <div id="panelTaxaFixa" style="display:none;">
             <div class="form-group">
               <label for="fixedDeliveryPriceInput">Preço da Entrega Fixa (R$):</label>
@@ -462,38 +450,22 @@
             </div>
           </div>
 
-          <!-- Sub-painel: Taxa variável por Bairro -->
           <div id="panelTaxaBairro">
             <div class="form-group">
-              <input type="text" id="filterBairroInput" placeholder="🔍 Filtrar Bairros por nome..." oninput="filterBairrosList()">
+              <input type="text" id="filterBairroInput" placeholder="🔍 Filtrar Bairros por nome...">
             </div>
-            <div class="switch-row">
-              <span style="font-size:0.78rem;">O repasse que ofereço aos motoboys é diferente da taxa cobrada do cliente</span>
-              <label style="display:flex; align-items:center; cursor:pointer;">
-                <input type="checkbox" id="diffMotoboyToggle" class="vortex-switch-input" onchange="toggleMotoboyRepasse(this.checked)">
-                <span class="vortex-switch-slider"></span>
-              </label>
-            </div>
-            <div id="bairrosListContainer" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
-              <!-- Bairros gerados via script -->
-            </div>
+            <div id="bairrosListContainer" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
             <button type="button" class="btn-modal-secondary" onclick="addNewBairroRow()">➕ Adicionar Novo Bairro</button>
           </div>
 
-          <!-- Sub-painel: Taxa por KM -->
           <div id="panelTaxaKm" style="display:none;">
-            <div style="font-size:0.82rem; font-weight:bold; margin-bottom:8px; color:var(--primary);">Definição de Valores por KM</div>
-            <div id="kmRangesContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
-              <!-- Faixas de KM geradas via script -->
-            </div>
+            <div id="kmRangesContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
             <button type="button" class="btn-modal-secondary" onclick="addNewKmRow()">➕ Adicionar Faixa de KM</button>
           </div>
 
-          <!-- Sub-painel: Taxa à Combinar -->
-          <div id="panelTaxaCombinar" style="display:none; font-size:0.82rem; color:var(--text-muted); line-height:1.4; padding:10px;">
-            Nesta modalidade, o cliente será informado ao finalizar o pedido que a taxa de entrega será calculada e informada posteriormente pelo estabelecimento (via WhatsApp).
+          <div id="panelTaxaCombinar" style="display:none; font-size:0.82rem; color:var(--text-muted); padding:10px;">
+            Taxa a combinar com o cliente via WhatsApp.
           </div>
-
         </div>
 
         <div class="form-grid-2" style="margin-top:14px;">
@@ -508,97 +480,85 @@
         </div>
       </div>
 
-      <!-- CARD 6: AGENDAMENTO E ESTIMATIVAS (COM ROLAGEM INDEPENDENTE) -->
+      <!-- CARD 6: AGENDAMENTO E ESTIMATIVAS -->
       <div class="config-card">
         <div class="config-title">📅 Agendamento e Estimativas</div>
-
         <div class="scroll-subpanel" style="max-height: 320px;">
           <div class="switch-row">
             <span>O agendamento deve ser obrigatório</span>
             <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="requireScheduleToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
           </div>
           <div class="switch-row">
-            <span>Permitir que cliente agende pedido retirada balcão</span>
+            <span>Permitir agendamento retirada balcão</span>
             <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="schedulePickupToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
           </div>
           <div class="switch-row">
-            <span>Permitir que cliente agende pedido Delivery</span>
+            <span>Permitir agendamento Delivery</span>
             <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="scheduleDeliveryToggle" class="vortex-switch-input"><span class="vortex-switch-slider"></span></label>
           </div>
-
           <div class="form-group" style="margin-top:10px;">
             <label for="closedBusinessScheduleSelect">Agendamento com Negócio Fechado:</label>
             <select id="closedBusinessScheduleSelect">
-              <option value="no">Não permitir agendamento de pedido com o negócio fechado</option>
-              <option value="yes">Permitir agendamento mesmo com o negócio fechado</option>
+              <option value="no">Não permitir</option>
+              <option value="yes">Permitir</option>
             </select>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
-              <label for="scheduleIntervalInput">Intervalo entre Agendamentos (minutos):</label>
+              <label for="scheduleIntervalInput">Intervalo Agendamento (min):</label>
               <input type="text" id="scheduleIntervalInput" placeholder="20" oninput="maskNumber(this)">
             </div>
             <div class="form-group">
-              <label for="futureMinMinutesInput">Mínimo minutos no futuro para agendar:</label>
+              <label for="futureMinMinutesInput">Mínimo minutos no futuro:</label>
               <input type="text" id="futureMinMinutesInput" placeholder="0" oninput="maskNumber(this)">
             </div>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
-              <label for="estPrepTimeInput">Tempo Estimado de Preparo (min):</label>
+              <label for="estPrepTimeInput">Tempo Preparo (min):</label>
               <input type="text" id="estPrepTimeInput" placeholder="40" oninput="maskNumber(this)">
             </div>
             <div class="form-group">
-              <label for="estDeliveryTimeInput">Tempo Estimado de Entrega (min):</label>
+              <label for="estDeliveryTimeInput">Tempo Entrega (min):</label>
               <input type="text" id="estDeliveryTimeInput" placeholder="40" oninput="maskNumber(this)">
             </div>
           </div>
-
           <div class="form-group">
-            <label for="maxScheduleDaysInput">Limite máximo de dias para frente no agendamento:</label>
+            <label for="maxScheduleDaysInput">Limite máximo de dias:</label>
             <input type="text" id="maxScheduleDaysInput" placeholder="30" oninput="maskNumber(this)">
           </div>
         </div>
       </div>
 
-      <!-- CARD 7: PAGAMENTOS E TAXA DE SERVIÇO -->
+      <!-- CARD 7: PAGAMENTOS -->
       <div class="config-card">
         <div class="config-title">💳 Pagamentos & Taxa de Serviço</div>
-
         <div class="form-group">
-          <label for="paymentMethodsConfigInput">Formas de Pagamento Aceitas:</label>
-          <input type="text" id="paymentMethodsConfigInput" placeholder="Ex: Pix, Cartão de Crédito/Débito, Dinheiro, VR">
+          <label for="paymentMethodsConfigInput">Formas de Pagamento:</label>
+          <input type="text" id="paymentMethodsConfigInput" placeholder="Ex: Pix, Cartão, Dinheiro">
         </div>
-
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="serviceTaxInput">Taxa de Serviço do Garçom / Mesas (%):</label>
+            <label for="serviceTaxInput">Taxa de Serviço (%):</label>
             <input type="text" id="serviceTaxInput" placeholder="10" oninput="maskNumber(this)">
           </div>
           <div class="form-group">
-            <label for="defaultDiscountInput">Desconto Padrão / Limite (%):</label>
+            <label for="defaultDiscountInput">Desconto Padrão (%):</label>
             <input type="text" id="defaultDiscountInput" placeholder="5" oninput="maskNumber(this)">
           </div>
         </div>
       </div>
 
-      <!-- CARD 8: NOTIFICAÇÕES & RECIBOS -->
+      <!-- CARD 8: SISTEMA & RECIBOS -->
       <div class="config-card">
         <div class="config-title">⚙️ Sistema & Recibos</div>
-
         <div class="form-group">
-          <label for="receiptFooterInput">Texto de Rodapé para Recibos e Comprovantes:</label>
-          <input type="text" id="receiptFooterInput" placeholder="Ex: Obrigado pela preferência! Volte sempre.">
+          <label for="receiptFooterInput">Rodapé para Recibos:</label>
+          <input type="text" id="receiptFooterInput" placeholder="Obrigado pela preferência!">
         </div>
-
         <div class="switch-row">
-          <span>Emitir Alerta Sonoro Automático para Novos Pedidos</span>
-          <label style="display:flex; align-items:center; cursor:pointer;">
-            <input type="checkbox" id="soundNotificationToggle" class="vortex-switch-input" checked>
-            <span class="vortex-switch-slider"></span>
-          </label>
+          <span>Alerta Sonoro para Novos Pedidos</span>
+          <label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="soundNotificationToggle" class="vortex-switch-input" checked><span class="vortex-switch-slider"></span></label>
         </div>
       </div>
 
@@ -607,7 +567,7 @@
     </div>
   </main>
 
-  <!-- MODAL DE SUCESSO OU AVISO -->
+  <!-- MODAL DE AVISO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="noticeIcon">🎉</div>
@@ -617,13 +577,12 @@
     </div>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE REMOÇÃO DE LOGO -->
   <div class="modal-overlay" id="confirmLogoModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon">🖼️</div>
       <div class="custom-modal-title">Remover Logotipo?</div>
-      <div class="custom-modal-desc">Deseja realmente remover o logotipo personalizado do estabelecimento? O menu lateral voltará ao padrão limpo.</div>
-      <button class="btn-modal-danger" onclick="confirmRemoveLogo()">Sim, Remover Logotipo</button>
+      <div class="custom-modal-desc">Deseja realmente remover o logotipo?</div>
+      <button class="btn-modal-danger" onclick="confirmRemoveLogo()">Sim, Remover</button>
       <button class="btn-modal-secondary" onclick="closeConfirmLogoModal()">Cancelar</button>
     </div>
   </div>
@@ -654,24 +613,20 @@
     }
 
     function changeTheme(isLight) {
-      const theme = isLight ? 'light' : 'dark';
-      localStorage.setItem('vortex_theme', theme);
+      localStorage.setItem('vortex_theme', isLight ? 'light' : 'dark');
       applyTheme();
     }
 
-    /* MÁSCARAS AUTOMÁTICAS PARA VALORES, NÚMEROS E DOCUMENTOS */
     function maskCurrency(input) {
       let v = input.value.replace(/\D/g, '');
       if (!v) { input.value = ''; return; }
-      let numeric = parseFloat(v) / 100;
-      input.value = numeric.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      input.value = (parseFloat(v) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function maskNumber(input) {
       input.value = input.value.replace(/\D/g, '');
     }
 
-    /* GERADOR DOS TURNOS DE HORÁRIOS COM SELETOR NATIVO (RELÓGIO / TIME PICKER) */
     function buildWorkingHoursUI() {
       ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
         const container = document.getElementById(turnoId + 'Container');
@@ -697,7 +652,6 @@
       });
     }
 
-    /* ALTERAR TIPO DE TAXA DE ENTREGA */
     function toggleDeliveryType(type) {
       document.getElementById('panelTaxaBairro').style.display = type === 'bairro' ? 'block' : 'none';
       document.getElementById('panelTaxaFixa').style.display = type === 'fixa' ? 'block' : 'none';
@@ -709,11 +663,7 @@
       document.getElementById('freeDeliveryFields').style.display = isChecked ? 'block' : 'none';
     }
 
-    function toggleMotoboyRepasse(isChecked) {
-      // Reativo se necessário
-    }
-
-    let bairrosData = [{ name: 'Centro', fee: '5,00', repasse: '6,00' }];
+    let bairrosData = [{ name: 'Centro', fee: '5,00' }];
     function renderBairrosList() {
       const container = document.getElementById('bairrosListContainer');
       container.innerHTML = '';
@@ -727,13 +677,7 @@
         `;
       });
     }
-    function addNewBairroRow() {
-      bairrosData.push({ name: '', fee: '0,00', repasse: '0,00' });
-      renderBairrosList();
-    }
-    function filterBairrosList() {
-      // Filtro em tempo real
-    }
+    function addNewBairroRow() { bairrosData.push({ name: '', fee: '0,00' }); renderBairrosList(); }
 
     let kmRangesData = [{ kmStart: '0', kmEnd: '5', price: '7,00' }];
     function renderKmRangesList() {
@@ -750,19 +694,29 @@
         `;
       });
     }
-    function addNewKmRow() {
-      kmRangesData.push({ kmStart: '', kmEnd: '', price: '0,00' });
-      renderKmRangesList();
-    }
+    function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '0,00' }); renderKmRangesList(); }
 
-    /* CARREGA TODAS AS CONFIGURAÇÕES SALVAS */
-    function loadStoreSettings() {
+    async function loadStoreSettings() {
       applyTheme();
       buildWorkingHoursUI();
       renderBairrosList();
       renderKmRangesList();
 
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+      let settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+
+      // Sincroniza do Supabase se houver conexão
+      if (window.supabaseClient) {
+        try {
+          const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1);
+          if (data && data.length > 0) {
+            const row = data[0];
+            settings.storeName = row.store_name || row.nome || settings.storeName || '';
+            settings.street = row.store_address || row.endereco || settings.street || '';
+            settings.phone = row.phone || row.tel || settings.phone || '';
+            settings.email = row.email || settings.email || '';
+          }
+        } catch (e) {}
+      }
 
       document.getElementById('storeNameInput').value = settings.storeName || '';
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
@@ -783,7 +737,6 @@
       document.getElementById('timezoneSelect').value = settings.timezone || 'Brasilia (-3)';
       document.getElementById('specialHoursInput').value = settings.specialHours || '';
 
-      // Carregando horários dos turnos nos campos tipo "time"
       ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
         daysOfWeek.forEach((_, idx) => {
           const openEl = document.getElementById(`${turnoId}_open_${idx}`);
@@ -842,7 +795,6 @@
       }
     }
 
-    /* LOGOTIPO */
     function handleLogoUpload(input) {
       const file = input.files[0];
       if (file) {
@@ -856,13 +808,8 @@
       }
     }
 
-    function promptRemoveLogo() {
-      document.getElementById('confirmLogoModal').classList.add('active');
-    }
-
-    function closeConfirmLogoModal() {
-      document.getElementById('confirmLogoModal').classList.remove('active');
-    }
+    function promptRemoveLogo() { document.getElementById('confirmLogoModal').classList.add('active'); }
+    function closeConfirmLogoModal() { document.getElementById('confirmLogoModal').classList.remove('active'); }
 
     function confirmRemoveLogo() {
       tempLogoBase64 = null;
@@ -874,15 +821,10 @@
       showNoticeModal('Logotipo Removido', 'O logotipo foi removido com sucesso.', '🖼️');
     }
 
-    /* MÁSCARAS E BUSCA DE CEP AUTOMÁTICA */
     function maskAndSearchCep(input) {
       let value = input.value.replace(/\D/g, '');
       if (value.length > 8) value = value.slice(0, 8);
-      if (value.length > 5) {
-        input.value = value.slice(0, 5) + '-' + value.slice(5);
-      } else {
-        input.value = value;
-      }
+      input.value = value.length > 5 ? value.slice(0, 5) + '-' + value.slice(5) : value;
       if (value.length === 8) {
         fetch(`https://viacep.com.br/ws/${value}/json/`)
           .then(res => res.json())
@@ -903,14 +845,9 @@
       let v = input.value.replace(/\D/g, '');
       if (v.length > 14) v = v.slice(0, 14);
       if (v.length <= 11) {
-        v = v.replace(/(\d{3})(\d)/, '$1.$2');
-        v = v.replace(/(\d{3})(\d)/, '$1.$2');
-        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
       } else {
-        v = v.replace(/^(\d{2})(\d)/, '$1.$2');
-        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-        v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
-        v = v.replace(/(\d{4})(\d)/, '$1-$2');
+        v = v.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
       }
       input.value = v;
     }
@@ -920,16 +857,12 @@
         let v = input.value;
         if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
           e.preventDefault();
-          let digits = v.replace(/\D/g, '').slice(0, -1);
-          formatAndSetPhone(input, digits);
+          formatAndSetPhone(input, v.replace(/\D/g, '').slice(0, -1));
         }
       }
     }
 
-    function handlePhoneInput(input) {
-      let digits = input.value.replace(/\D/g, '');
-      formatAndSetPhone(input, digits);
-    }
+    function handlePhoneInput(input) { formatAndSetPhone(input, input.value.replace(/\D/g, '')); }
 
     function formatAndSetPhone(input, digits) {
       if (digits.length > 11) digits = digits.slice(0, 11);
@@ -940,7 +873,7 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    /* SALVAR TODAS AS CONFIGURAÇÕES E SINCRONIZAR COM SUPABASE */
+    /* SALVAR TODAS AS CONFIGURAÇÕES E UNIFICAR COM O SUPABASE E DELIVERY */
     async function saveAllSettings() {
       const storeName = document.getElementById('storeNameInput').value.trim();
       const legalName = document.getElementById('legalNameInput').value.trim();
@@ -957,10 +890,17 @@
       const city = document.getElementById('cityInput').value.trim();
       const uf = document.getElementById('ufInput').value.trim().toUpperCase();
 
+      // Monta a string de endereço completo formatada
+      let fullAddress = street;
+      if (streetNumber) fullAddress += `, Nº ${streetNumber}`;
+      if (neighborhood) fullAddress += ` - ${neighborhood}`;
+      if (city && uf) fullAddress += `, ${city} - ${uf}`;
+      else if (city) fullAddress += `, ${city}`;
+      if (cep) fullAddress += ` | CEP: ${cep}`;
+
       const timezone = document.getElementById('timezoneSelect').value;
       const specialHours = document.getElementById('specialHoursInput').value.trim();
 
-      // Mapeando horários de todos os turnos
       const workingHours = {};
       ['turno1', 'turno2', 'turno3'].forEach(turnoId => {
         workingHours[turnoId] = [];
@@ -997,7 +937,8 @@
       const soundNotification = document.getElementById('soundNotificationToggle').checked;
 
       const payload = {
-        storeName, legalName, storeType, ownerName, docNumber, phone, email, cep,
+        storeName, storeAddress: fullAddress, endereco: fullAddress, address: fullAddress,
+        legalName, storeType, ownerName, docNumber, phone, email, cep,
         streetNumber, complement, street, neighborhood, city, uf,
         timezone, specialHours, workingHours, deliveryType, freeDelivery, freeDeliveryMin,
         fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
@@ -1006,22 +947,37 @@
         paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification
       };
 
+      // 1. Grava no localStorage unificado para acesso imediato do Módulo 21
       localStorage.setItem('vortex_store_settings', JSON.stringify(payload));
+      localStorage.setItem('vortex_store_address', fullAddress);
+      localStorage.setItem('vortex_endereco', fullAddress);
 
       if (tempLogoBase64) {
         localStorage.setItem('vortex_store_logo', tempLogoBase64);
       }
 
+      // 2. Envia para o Supabase (tabela vortex_store_settings id = 1)
       if (window.supabaseClient) {
         try {
-          await window.supabaseClient.from('vortex_store_settings').upsert([{ id: 1, ...payload }]);
+          const dbPayload = {
+            id: 1,
+            store_name: storeName,
+            store_address: fullAddress,
+            endereco: fullAddress,
+            address: fullAddress,
+            phone: phone,
+            email: email,
+            taxa: serviceTax || '10,00',
+            rodape: receiptFooter
+          };
+          await window.supabaseClient.from('vortex_store_settings').upsert([dbPayload]);
         } catch (err) {
           console.warn('Aviso Supabase Configurações:', err);
         }
       }
 
       loadStoreSettings();
-      showNoticeModal('Configurações Salvas!', 'As informações e a identidade do seu estabelecimento foram atualizadas com sucesso.', '🎉');
+      showNoticeModal('Configurações Salvas!', 'As informações e o endereço do estabelecimento foram sincronizados com sucesso!', '🎉');
     }
 
     function showNoticeModal(title, desc, icon) {
@@ -1031,18 +987,14 @@
       document.getElementById('noticeModal').classList.add('active');
     }
 
-    function closeNoticeModal() {
-      document.getElementById('noticeModal').classList.remove('active');
-    }
+    function closeNoticeModal() { document.getElementById('noticeModal').classList.remove('active'); }
 
     setInterval(() => {
       const now = new Date();
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
-      loadStoreSettings();
-    };
+    window.onload = function() { loadStoreSettings(); };
   </script>
 </body>
 </html>

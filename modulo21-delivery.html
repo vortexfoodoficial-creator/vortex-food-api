@@ -728,41 +728,33 @@
       // Função auxiliar para extrair métricas numéricas robustas (CEP + Número da residência)
       function extractMetrics(addrStr) {
         if (!addrStr) return { cepNum: 0, houseNum: 0 };
-        // Extrai o CEP numérico (ex: 07262-010 vira 7262010)
         let cepMatch = addrStr.match(/CEP:\s*(\d{5})-?(\d{3})/i) || addrStr.match(/(\d{5}-\d{3})/);
         let cepVal = 0;
         if (cepMatch) {
           cepVal = parseInt(cepMatch[0].replace(/\D/g, '')) || 0;
         }
 
-        // Extrai o número do endereço
         let numMatch = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
         let houseVal = numMatch ? parseInt(numMatch[1]) : 0;
 
         return { cepNum: cepVal, houseNum: houseVal };
       }
 
-      // Extrai métrica de proximidade da Loja
       let storeMetrics = extractMetrics(storeAddress);
 
-      // Distância estimada simples baseada na diferença numérica do CEP + proximidade da numeração
       function calculateDistanceScore(metrics, refCep, refHouse) {
         let cepDiff = Math.abs(metrics.cepNum - refCep);
         let houseDiff = Math.abs(metrics.houseNum - refHouse);
-        // O CEP tem peso maior (mesma região/bairro), o número refina a proximidade na rua
         return (cepDiff * 1000) + houseDiff;
       }
 
-      // Algoritmo Voraz (Nearest Neighbor): Encadeia do mais perto até o mais longe de forma contínua
       let unassigned = [...readyOrders];
       let optimizedRoute = [];
 
-      // Ponto de referência inicial: Estabelecimento
       let currentRefCep = storeMetrics.cepNum || 7000000;
       let currentRefHouse = storeMetrics.houseNum || 1;
 
       while (unassigned.length > 0) {
-        // Encontra o pedido mais próximo da referência atual
         let nearestIndex = 0;
         let minScore = Infinity;
 
@@ -775,11 +767,9 @@
           }
         });
 
-        // Retira o mais próximo da lista pendente e adiciona à rota otimizada
         let nextOrder = unassigned.splice(nearestIndex, 1)[0];
         optimizedRoute.push(nextOrder);
 
-        // Atualiza a referência para o endereço que acabou de ser inserido (formando a cadeia contínua)
         let nextMetrics = extractMetrics(nextOrder.address);
         currentRefCep = nextMetrics.cepNum || currentRefCep;
         currentRefHouse = nextMetrics.houseNum || currentRefHouse;
@@ -792,6 +782,23 @@
       container.innerHTML = '';
 
       optimizedRoute.forEach((o, index) => {
+        // Verifica se já está atribuído a este ou outro motoboy
+        let isAssigned = o.courier && o.courier.trim() !== '';
+        let actionBtnHtml = '';
+
+        if (isAssigned) {
+          actionBtnHtml = `
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+              <span style="font-size:0.75rem; background:rgba(34,197,94,0.15); color:var(--success); border:1px solid var(--success); padding:4px 8px; border-radius:6px; font-weight:bold;">Atribuído a ${o.courier} ✅</span>
+              <button class="btn-secondary" style="font-size:0.7rem; padding:3px 8px; background:var(--danger); color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="assignOrderToCourier('${o.id}', '')">Desvincular ❌</button>
+            </div>
+          `;
+        } else {
+          actionBtnHtml = `
+            <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>
+          `;
+        }
+
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
@@ -800,7 +807,7 @@
               📍 <strong>Endereço:</strong> ${o.address}
             </div>
             <div>
-              <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>
+              ${actionBtnHtml}
             </div>
           </div>
         `;
@@ -813,24 +820,26 @@
       document.getElementById('smartRouteModal').classList.remove('active');
     }
 
-    // ATRIBUI MOTOBOY SEM AUTOMATICAMENTE DESPACHAR (PERMITE EDITAR, REMOVER E AGUARDAR O MOMENTO CERTO)
+    // ATRIBUI OU DESVINCULA MOTOBOY SEM AUTOMATICAMENTE DESPACHAR
     async function assignOrderToCourier(orderId, courierName) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
-        o.courier = courierName; // Atribui o motoboy sem alterar o status para 'delivering'
+        o.courier = courierName; // Se courierName for '', desvincula com sucesso
 
-        let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
-        history.unshift({
-          id: 'hist_' + Date.now(),
-          orderId: o.id,
-          client: o.client,
-          courier: courierName,
-          address: o.address,
-          timeAssigned: new Date().toLocaleTimeString('pt-BR'),
-          date: new Date().toISOString().split('T')[0]
-        });
-        localStorage.setItem('vortex_courier_history', JSON.stringify(history));
+        if (courierName) {
+          let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
+          history.unshift({
+            id: 'hist_' + Date.now(),
+            orderId: o.id,
+            client: o.client,
+            courier: courierName,
+            address: o.address,
+            timeAssigned: new Date().toLocaleTimeString('pt-BR'),
+            date: new Date().toISOString().split('T')[0]
+          });
+          localStorage.setItem('vortex_courier_history', JSON.stringify(history));
+        }
 
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
@@ -839,7 +848,12 @@
 
         loadActiveOrders();
         runSmartRouteOptimization();
-        showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}. O botão de despacho permanece disponível para quando decidir liberar a rota.`, '🛵');
+
+        if (courierName) {
+          showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}.`, '🛵');
+        } else {
+          showNoticeModal('Entrega Desvinculada', `O pedido #${orderId} foi desvinculado do motoboy.`, 'ℹ️');
+        }
       }
     }
 
@@ -866,7 +880,6 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.courier = newCourier;
-        // Não altera o status automaticamente para permitir controle total pelo lojista
 
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
@@ -1250,7 +1263,6 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
-        // Se ainda não tiver motoboy atribuído, define o selecionado no select topo caso exista
         if (!o.courier) {
           o.courier = document.getElementById('selectCourierForRoute').value || 'Não atribuído';
         }

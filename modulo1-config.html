@@ -426,7 +426,6 @@
 
         // CARREGAR DADOS DO SUPABASE AO ABRIR A PÁGINA
         async function carregarConfiguracoes() {
-            // Fallback inicial do localStorage caso demore ou esteja offline
             const configSalva = JSON.parse(localStorage.getItem('vortex_config')) || {
                 nome: 'Vortex Food',
                 cnpj: '12.345.678/0001-90',
@@ -439,22 +438,16 @@
 
             preencherFormulario(configSalva);
 
-            if (window.supabaseClient) {
+            if (typeof dbFetchStoreSettings === 'function') {
                 try {
-                    // Buscamos o registro único de configurações (usamos id 1 ou o primeiro registro)
-                    const { data, error } = await window.supabaseClient
-                        .from('vortex_store_settings')
-                        .select('*')
-                        .limit(1)
-                        .maybeSingle();
-
+                    const data = await dbFetchStoreSettings();
                     if (data) {
                         const configRemota = {
-                            nome: data.store_name || data.nome || configSalva.nome,
+                            nome: data.store_name || configSalva.nome,
                             cnpj: data.cnpj || configSalva.cnpj,
-                            tel: data.phone || data.tel || configSalva.tel,
+                            tel: data.phone || configSalva.tel,
                             email: data.email || configSalva.email,
-                            endereco: data.store_address || data.address || data.endereco || configSalva.endereco,
+                            endereco: data.store_address || configSalva.endereco,
                             taxa: data.taxa || configSalva.taxa,
                             rodape: data.rodape || configSalva.rodape
                         };
@@ -463,17 +456,17 @@
                         localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: configRemota.nome, storeAddress: configRemota.endereco }));
                     }
                 } catch (err) {
-                    console.warn('Erro ao carregar do Supabase:', err);
+                    console.warn('Erro ao carregar configurações do Supabase:', err);
                 }
             }
         }
 
         function preencherFormulario(cfg) {
-            document.getElementById('nomeEmpresa').value = cfg.nome || '';
+            document.getElementById('nomeEmpresa').value = cfg.nome || cfg.store_name || '';
             document.getElementById('cnpjEmpresa').value = cfg.cnpj || '';
-            document.getElementById('telEmpresa').value = cfg.tel || '';
+            document.getElementById('telEmpresa').value = cfg.tel || cfg.phone || '';
             document.getElementById('emailEmpresa').value = cfg.email || '';
-            document.getElementById('enderecoEmpresa').value = cfg.endereco || '';
+            document.getElementById('enderecoEmpresa').value = cfg.endereco || cfg.store_address || '';
             document.getElementById('taxaServico').value = cfg.taxa || '10,00';
             document.getElementById('rodapeCupom').value = cfg.rodape || '';
         }
@@ -486,7 +479,6 @@
             btn.disabled = true;
 
             const config = {
-                id: 1, // Chave única para as configurações da loja
                 store_name: document.getElementById('nomeEmpresa').value,
                 store_address: document.getElementById('enderecoEmpresa').value,
                 cnpj: document.getElementById('cnpjEmpresa').value,
@@ -507,20 +499,10 @@
             }));
 
             let salvoNoSupabase = false;
-            if (window.supabaseClient) {
-                try {
-                    // Usamos upsert para inserir ou atualizar o registro de ID 1
-                    const { error } = await window.supabaseClient
-                        .from('vortex_store_settings')
-                        .upsert([config]);
-
-                    if (!error) {
-                        salvoNoSupabase = true;
-                    } else {
-                        console.warn('Supabase store_settings warning:', error.message);
-                    }
-                } catch (err) {
-                    console.warn('Erro na conexão com Supabase:', err);
+            if (typeof dbSaveStoreSettings === 'function') {
+                const { error } = await dbSaveStoreSettings(config);
+                if (!error) {
+                    salvoNoSupabase = true;
                 }
             }
 

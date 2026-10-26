@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vortex Food - Módulo 1: Configurações</title>
+    <!-- SDK do Supabase e Conexão Central -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
     <style>
         :root {
             --bg-dark: #141c24;
@@ -285,7 +288,7 @@
         <header class="top-header">
             <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
             <div style="font-weight: 800; font-size: 13px;">Módulo 1 — Dados do Estabelecimento</div>
-            <div style="font-size: 11px; color: var(--success);">● Sincronizado</div>
+            <div style="font-size: 11px; color: var(--success);" id="syncStatus">● Sincronizado Supabase</div>
         </header>
 
         <div class="content-body">
@@ -329,7 +332,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" style="background: var(--primary-gradient); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer; margin-top: 10px;">Guardar Alterações</button>
+                    <button type="submit" id="btnSalvar" style="background: var(--primary-gradient); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 800; width: 100%; cursor: pointer; margin-top: 10px;">Guardar Alterações</button>
                 </form>
             </div>
         </div>
@@ -364,18 +367,15 @@
             document.getElementById('vortexModal').classList.remove('active');
         }
 
-        // TRATAMENTO PARA APAGAR SEM PRENDER NO TRAÇO/PONTUAÇÃO
         function tratarBackspace(input, e) {
             if (e.key === 'Backspace') {
                 let v = input.value;
-                // Se o último caractere for pontuação (traço, barra, ponto, parêntese ou espaço), remove o caractere e o número anterior
                 if (/[\-\.\/\(\)\s]$/.test(v)) {
                     input.value = v.slice(0, -1);
                 }
             }
         }
 
-        // MÁSCARA TELEFONE INTELIGENTE
         function mascaraTelefone(input, e) {
             let v = input.value.replace(/\D/g, "");
             if (v.length > 11) v = v.slice(0, 11);
@@ -393,7 +393,6 @@
             }
         }
 
-        // MÁSCARA CNPJ/CPF INTELIGENTE
         function mascaraCnpjCpf(input, e) {
             let v = input.value.replace(/\D/g, "");
             if (v.length > 14) v = v.slice(0, 14);
@@ -413,7 +412,6 @@
             }
         }
 
-        // MÁSCARA MOEDA AUTOMÁTICA
         function mascaraMoeda(input) {
             let valor = input.value.replace(/\D/g, "");
             if (valor === "") {
@@ -426,39 +424,119 @@
             input.value = partes.join(",");
         }
 
-        // Carregar dados salvos
-        const configSalva = JSON.parse(localStorage.getItem('vortex_config')) || {
-            nome: 'Vortex Food',
-            cnpj: '12.345.678/0001-90',
-            tel: '(11) 98888-7777',
-            email: 'contato@vortexfood.com',
-            endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-            taxa: '10,00',
-            rodape: 'Obrigado pela preferência, volte sempre!'
-        };
-
-        document.getElementById('nomeEmpresa').value = configSalva.nome || '';
-        document.getElementById('cnpjEmpresa').value = configSalva.cnpj || '';
-        document.getElementById('telEmpresa').value = configSalva.tel || '';
-        document.getElementById('emailEmpresa').value = configSalva.email || '';
-        document.getElementById('enderecoEmpresa').value = configSalva.endereco || '';
-        document.getElementById('taxaServico').value = configSalva.taxa || '10,00';
-        document.getElementById('rodapeCupom').value = configSalva.rodape || '';
-
-        function salvarConfig(e) {
-            e.preventDefault();
-            const config = {
-                nome: document.getElementById('nomeEmpresa').value,
-                cnpj: document.getElementById('cnpjEmpresa').value,
-                tel: document.getElementById('telEmpresa').value,
-                email: document.getElementById('emailEmpresa').value,
-                endereco: document.getElementById('enderecoEmpresa').value,
-                taxa: document.getElementById('taxaServico').value,
-                rodape: document.getElementById('rodapeCupom').value
+        // CARREGAR DADOS DO SUPABASE AO ABRIR A PÁGINA
+        async function carregarConfiguracoes() {
+            // Fallback inicial do localStorage caso demore ou esteja offline
+            const configSalva = JSON.parse(localStorage.getItem('vortex_config')) || {
+                nome: 'Vortex Food',
+                cnpj: '12.345.678/0001-90',
+                tel: '(11) 98888-7777',
+                email: 'contato@vortexfood.com',
+                endereco: '',
+                taxa: '10,00',
+                rodape: 'Obrigado pela preferência, volte sempre!'
             };
-            localStorage.setItem('vortex_config', JSON.stringify(config));
-            mostrarAviso('Configurações do estabelecimento guardadas com sucesso!');
+
+            preencherFormulario(configSalva);
+
+            if (window.supabaseClient) {
+                try {
+                    // Buscamos o registro único de configurações (usamos id 1 ou o primeiro registro)
+                    const { data, error } = await window.supabaseClient
+                        .from('vortex_store_settings')
+                        .select('*')
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (data) {
+                        const configRemota = {
+                            nome: data.store_name || data.nome || configSalva.nome,
+                            cnpj: data.cnpj || configSalva.cnpj,
+                            tel: data.phone || data.tel || configSalva.tel,
+                            email: data.email || configSalva.email,
+                            endereco: data.store_address || data.address || data.endereco || configSalva.endereco,
+                            taxa: data.taxa || configSalva.taxa,
+                            rodape: data.rodape || configSalva.rodape
+                        };
+                        preencherFormulario(configRemota);
+                        localStorage.setItem('vortex_config', JSON.stringify(configRemota));
+                        localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: configRemota.nome, storeAddress: configRemota.endereco }));
+                    }
+                } catch (err) {
+                    console.warn('Erro ao carregar do Supabase:', err);
+                }
+            }
         }
+
+        function preencherFormulario(cfg) {
+            document.getElementById('nomeEmpresa').value = cfg.nome || '';
+            document.getElementById('cnpjEmpresa').value = cfg.cnpj || '';
+            document.getElementById('telEmpresa').value = cfg.tel || '';
+            document.getElementById('emailEmpresa').value = cfg.email || '';
+            document.getElementById('enderecoEmpresa').value = cfg.endereco || '';
+            document.getElementById('taxaServico').value = cfg.taxa || '10,00';
+            document.getElementById('rodapeCupom').value = cfg.rodape || '';
+        }
+
+        // SALVAR DADOS NO SUPABASE E LOCALSTORAGE
+        async function salvarConfig(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSalvar');
+            btn.innerText = 'Salvando na nuvem...';
+            btn.disabled = true;
+
+            const config = {
+                id: 1, // Chave única para as configurações da loja
+                store_name: document.getElementById('nomeEmpresa').value,
+                store_address: document.getElementById('enderecoEmpresa').value,
+                cnpj: document.getElementById('cnpjEmpresa').value,
+                phone: document.getElementById('telEmpresa').value,
+                email: document.getElementById('emailEmpresa').value,
+                taxa: document.getElementById('taxaServico').value,
+                rodape: document.getElementById('rodapeCupom').value,
+                nome: document.getElementById('nomeEmpresa').value,
+                endereco: document.getElementById('enderecoEmpresa').value,
+                tel: document.getElementById('telEmpresa').value
+            };
+
+            // Salva no localStorage em múltiplas chaves para compatibilidade absoluta com o Delivery
+            localStorage.setItem('vortex_config', JSON.stringify(config));
+            localStorage.setItem('vortex_store_settings', JSON.stringify({ 
+                storeName: config.store_name, 
+                storeAddress: config.store_address 
+            }));
+
+            let salvoNoSupabase = false;
+            if (window.supabaseClient) {
+                try {
+                    // Usamos upsert para inserir ou atualizar o registro de ID 1
+                    const { error } = await window.supabaseClient
+                        .from('vortex_store_settings')
+                        .upsert([config]);
+
+                    if (!error) {
+                        salvoNoSupabase = true;
+                    } else {
+                        console.warn('Supabase store_settings warning:', error.message);
+                    }
+                } catch (err) {
+                    console.warn('Erro na conexão com Supabase:', err);
+                }
+            }
+
+            btn.innerText = 'Guardar Alterações';
+            btn.disabled = false;
+
+            if (salvoNoSupabase) {
+                mostrarAviso('Configurações salvas e sincronizadas com sucesso no Supabase! ☁️');
+            } else {
+                mostrarAviso('Configurações salvas no navegador local (Atenção: Verifique sua conexão com o Supabase). ⚠️');
+            }
+        }
+
+        window.onload = function() {
+            carregarConfiguracoes();
+        };
     </script>
 </body>
 </html>

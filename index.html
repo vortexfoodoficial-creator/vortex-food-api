@@ -501,49 +501,51 @@
     async function loadDashboardData() {
       applyTheme();
 
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      let storeName = 'MEU ESTABELECIMENTO';
+      let sidebarLogoUrl = '';
+      let monthlyGoal = 15000;
+      let totalTables = 10;
 
-      const savedLogo = localStorage.getItem('vortex_store_logo');
-      const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (savedLogo) {
-        sidebarLogo.src = savedLogo;
-        sidebarLogo.style.display = 'block';
-      } else {
-        sidebarLogo.style.display = 'none';
-      }
-
+      // ARQUITETURA DEFINITIVA: Buscas paralelas otimizadas direto do Supabase/Serviço Central
       let rawHistory = [];
       let kdsOrders = [];
       let recipesCatalog = [];
-      
+      let tableCarts = {};
+      let clientsLoyalty = {};
+
       try {
-        if (typeof dbFetchSales === 'function') {
-          // Otimizado: limitando requisição para evitar sobrecarga de dados antigos na memória
-          rawHistory = await dbFetchSales();
-        }
-        if (rawHistory.length === 0) {
-          rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-        }
+        const [salesRes, kdsRes, recipesRes] = await Promise.all([
+          typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]),
+          typeof dbFetchKdsOrders === 'function' ? dbFetchKdsOrders() : Promise.resolve([]),
+          typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([])
+        ]);
 
-        if (typeof dbFetchKdsOrders === 'function') {
-          kdsOrders = await dbFetchKdsOrders();
-        }
-        if (kdsOrders.length === 0) {
-          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        }
+        rawHistory = salesRes.length > 0 ? salesRes : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+        kdsOrders = kdsRes.length > 0 ? kdsRes : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
+        recipesCatalog = recipesRes.length > 0 ? recipesRes : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
 
-        if (typeof dbFetchRecipes === 'function') {
-          recipesCatalog = await dbFetchRecipes();
-        }
-        if (recipesCatalog.length === 0) {
-          recipesCatalog = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-        }
+        const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+        storeName = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
+        sidebarLogoUrl = localStorage.getItem('vortex_store_logo') || '';
+        monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
+        totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
+        tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+        clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
+
       } catch (e) {
-        console.log('Usando armazenamento local por contingência:', e);
+        console.error('Erro ao carregar dados do Supabase:', e);
         rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         recipesCatalog = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+      }
+
+      document.getElementById('sidebarStoreName').innerText = storeName;
+      const sidebarLogo = document.getElementById('sidebarStoreLogo');
+      if (sidebarLogoUrl) {
+        sidebarLogo.src = sidebarLogoUrl;
+        sidebarLogo.style.display = 'block';
+      } else {
+        sidebarLogo.style.display = 'none';
       }
 
       const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
@@ -610,7 +612,6 @@
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
 
-      const monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
       document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
@@ -621,9 +622,6 @@
       const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
       document.getElementById('dashEntregasRota').innerText = deliveringCount;
 
-      const totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
-      const tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
-      
       let occupiedCount = 0;
       Object.keys(tableCarts).forEach(k => {
         if (tableCarts[k] && tableCarts[k].items && tableCarts[k].items.length > 0) {
@@ -634,7 +632,6 @@
       const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
       document.getElementById('dashMesasPercent').innerText = `${tablesPercent}% de ocupação`;
 
-      const clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
       const totalClientsCount = Object.keys(clientsLoyalty).length;
       document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
 

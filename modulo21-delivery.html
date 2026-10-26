@@ -494,7 +494,7 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES (CADASTRO, EDIÇÃO, EXCLUSÃO PROFISSIONAL)
+    // GESTÃO DE ENTREGADORES COM SINCRONIZAÇÃO PERFEITA ENTRE MÓDULO 21 E MÓDULO DE EQUIPE
     function openCourierModal(courierId = null) {
       document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
@@ -533,7 +533,9 @@
         return;
       }
 
+      // Sincroniza em vortex_couriers
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
 
       if (editId) {
         let index = couriers.findIndex(c => String(c.id) === String(editId));
@@ -542,15 +544,35 @@
           couriers[index].phone = phone;
           couriers[index].type = type;
         }
+        // Sincroniza também na Equipe
+        let tIndex = teamMembers.findIndex(t => String(t.id) === String(editId) || (t.name === couriers[index]?.name));
+        if (tIndex !== -1) {
+          teamMembers[tIndex].name = name;
+          teamMembers[tIndex].phone = phone;
+          teamMembers[tIndex].role = `Entregador (${type})`;
+        }
       } else {
-        couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
+        const newId = 'cour_' + Date.now();
+        const newCourierObj = { id: newId, name, phone, type, status: 'disponivel' };
+        couriers.push(newCourierObj);
+
+        // Adiciona de forma sincronizada no módulo de equipe se não existir
+        teamMembers.push({
+          id: newId,
+          name: name,
+          phone: phone,
+          role: `Entregador (${type})`,
+          email: `${name.toLowerCase().replace(/\s+/g, '')}@vortex.com`,
+          status: 'Ativo'
+        });
       }
 
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+      localStorage.setItem('vortex_team_members', JSON.stringify(teamMembers));
 
       closeCourierModal();
       loadCouriers();
-      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado com sucesso!` : `Entregador ${name} cadastrado com sucesso!`, '✅');
+      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado e sincronizado com sucesso!` : `Entregador ${name} cadastrado e sincronizado com sucesso!`, '✅');
     }
 
     function deleteCourier(courierId) {
@@ -564,16 +586,39 @@
 
     function executeDeleteCourier() {
       const courierId = document.getElementById('deleteCourierTargetId').value;
+      
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+
+      let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+      teamMembers = teamMembers.filter(t => String(t.id) !== String(courierId));
+      localStorage.setItem('vortex_team_members', JSON.stringify(teamMembers));
+
       closeConfirmDeleteCourierModal();
       loadCouriers();
-      showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso.', '🗑️');
+      showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');
     }
 
     function loadCouriers() {
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      
+      // Fallback: se vortex_couriers estiver vazio mas houver na equipe, sincroniza automaticamente
+      if (couriers.length === 0) {
+        let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+        let potentialCouriers = teamMembers.filter(t => t.role && t.role.toLowerCase().includes('entregador'));
+        if (potentialCouriers.length > 0) {
+          couriers = potentialCouriers.map(p => ({
+            id: p.id || 'cour_' + Date.now(),
+            name: p.name,
+            phone: p.phone || '',
+            type: p.role.includes('Terceirizado') ? 'Terceirizado' : 'Próprio',
+            status: 'disponivel'
+          }));
+          localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+        }
+      }
+
       const select = document.getElementById('selectCourierForRoute');
       const editSelect = document.getElementById('modalEditCourierSelect');
       const summary = document.getElementById('couriersListSummary');
@@ -725,7 +770,6 @@
         return;
       }
 
-      // Função auxiliar para extrair métricas numéricas robustas (CEP + Número da residência)
       function extractMetrics(addrStr) {
         if (!addrStr) return { cepNum: 0, houseNum: 0 };
         let cepMatch = addrStr.match(/CEP:\s*(\d{5})-?(\d{3})/i) || addrStr.match(/(\d{5}-\d{3})/);
@@ -782,7 +826,6 @@
       container.innerHTML = '';
 
       optimizedRoute.forEach((o, index) => {
-        // Verifica se já está atribuído a este ou outro motoboy
         let isAssigned = o.courier && o.courier.trim() !== '';
         let actionBtnHtml = '';
 
@@ -820,26 +863,12 @@
       document.getElementById('smartRouteModal').classList.remove('active');
     }
 
-    // ATRIBUI OU DESVINCULA MOTOBOY SEM AUTOMATICAMENTE DESPACHAR
+    // ATRIBUI OU DESVINCULA MOTOBOY (NÃO GRAVA NO HISTÓRICO AINDA - AGUARDA DESPACHO)
     async function assignOrderToCourier(orderId, courierName) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
-        o.courier = courierName; // Se courierName for '', desvincula com sucesso
-
-        if (courierName) {
-          let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
-          history.unshift({
-            id: 'hist_' + Date.now(),
-            orderId: o.id,
-            client: o.client,
-            courier: courierName,
-            address: o.address,
-            timeAssigned: new Date().toLocaleTimeString('pt-BR'),
-            date: new Date().toISOString().split('T')[0]
-          });
-          localStorage.setItem('vortex_courier_history', JSON.stringify(history));
-        }
+        o.courier = courierName;
 
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
@@ -892,22 +921,31 @@
       }
     }
 
-    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS
+    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (REGISTRA APÓS DESPACHO / CONCLUSÃO)
     function openCourierHistoryModal() {
-      let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
+      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      // Filtra pedidos que foram despachados (delivering) ou concluídos (finished) e possuem motoboy
+      let historyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && (o.status === 'delivering' || o.status === 'finished') && o.courier && o.courier.trim() !== '');
+
       const content = document.getElementById('courierHistoryContent');
       content.innerHTML = '';
 
-      if (history.length === 0) {
-        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de rotas atribuídas registrado.</div>`;
+      if (historyOrders.length === 0) {
+        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de entregas despachadas registrado ainda.</div>`;
       } else {
-        history.forEach(h => {
+        historyOrders.forEach(h => {
+          let isFinished = h.status === 'finished';
+          let statusBadge = isFinished 
+            ? `<span style="color:var(--success); font-weight:bold;">Concluído ✅</span>` 
+            : `<span style="color:var(--primary); font-weight:bold;">Em Rota 🛵</span>`;
+
           content.innerHTML += `
             <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">
-              🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.orderId}<br>
+              🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.id}<br>
               👤 <strong>Cliente:</strong> ${h.client}<br>
               📍 <strong>Destino:</strong> ${h.address}<br>
-              🕒 <strong>Atribuído às:</strong> ${h.timeAssigned} (${h.date})
+              📊 <strong>Status:</strong> ${statusBadge}<br>
+              🕒 <strong>Data/Hora:</strong> ${h.time || '--:--'} (${h.dateFormatted || h.date})
             </div>
           `;
         });
@@ -1271,7 +1309,7 @@
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
         loadActiveOrders();
-        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota com sucesso!`, '🚀');
+        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota com sucesso e adicionado ao histórico!`, '🚀');
       }
     }
 

@@ -289,32 +289,51 @@
       }
     }
 
-    function loadStoreSettings() {
+    async function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      let storeName = 'MEU ESTABELECIMENTO';
+      let sidebarLogoUrl = '';
 
-      const savedLogo = localStorage.getItem('vortex_store_logo');
+      try {
+        const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
+        storeName = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
+        sidebarLogoUrl = localStorage.getItem('vortex_store_logo') || '';
+      } catch (e) {}
+
+      document.getElementById('sidebarStoreName').innerText = storeName;
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (savedLogo) {
-        sidebarLogo.src = savedLogo;
+      if (sidebarLogoUrl) {
+        sidebarLogo.src = sidebarLogoUrl;
         sidebarLogo.style.display = 'block';
       } else {
         sidebarLogo.style.display = 'none';
       }
     }
 
-    function getCatalogProducts() {
-      const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
-      if (saved) {
-        let products = JSON.parse(saved);
-        return products.filter(p => p.active !== false).map(p => ({
+    async function getCatalogProducts() {
+      let rawProducts = [];
+      try {
+        if (typeof dbFetchProducts === 'function') {
+          rawProducts = await dbFetchProducts();
+        }
+        if (!rawProducts || rawProducts.length === 0) {
+          const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
+          if (saved) rawProducts = JSON.parse(saved);
+        }
+      } catch (e) {
+        const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
+        if (saved) rawProducts = JSON.parse(saved);
+      }
+
+      if (rawProducts && rawProducts.length > 0) {
+        return rawProducts.filter(p => p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
           price: parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0),
           category: p.category || p.categoria || 'Geral'
         }));
       }
+
       return [
         { id: 1, name: 'X-Burger Especial', price: 28.50, category: 'Lanches' },
         { id: 2, name: 'X-Salada Duplo', price: 32.00, category: 'Lanches' }
@@ -332,10 +351,12 @@
       }
     }
 
-    function renderCatalog() {
+    async function renderCatalog() {
       const grid = document.getElementById('catalogGrid');
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">Carregando cardápio...</div>';
+      
+      const catalogProducts = await getCatalogProducts();
       grid.innerHTML = '';
-      const catalogProducts = getCatalogProducts();
 
       if (catalogProducts.length === 0) {
         grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">Nenhum produto disponível no cardápio.</div>`;
@@ -469,7 +490,18 @@
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let kdsOrders = [];
+      try {
+        if (typeof dbFetchKdsOrders === 'function') {
+          kdsOrders = await dbFetchKdsOrders();
+        }
+        if (!kdsOrders || kdsOrders.length === 0) {
+          kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        }
+      } catch (e) {
+        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      }
+
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
       const cleanOrderId = String(nextSeqNumber);
@@ -531,12 +563,8 @@
 
           if (!resSale.error && !resKds.error) {
             cloudSaved = true;
-          } else {
-            console.error('Erro retornado pelas funções do Supabase:', resSale.error || resKds.error);
           }
-        } catch (err) {
-          console.error('Exceção ao tentar salvar via Supabase:', err);
-        }
+        } catch (err) {}
       }
 
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -545,11 +573,6 @@
 
       kdsOrders.unshift(newKdsOrder);
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      let currentSales = parseFloat(currentSalesRaw.replace(/\./g, '').replace(',', '.')) || 0;
-      currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
       pdvCart = [];
       rawCashGiven = 0;

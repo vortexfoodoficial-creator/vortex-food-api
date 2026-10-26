@@ -87,7 +87,6 @@
     .card-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: 1.05rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-    /* CARDS DE ATALHO OPERACIONAL */
     .shortcuts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
     .shortcut-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-decoration: none; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; transition: all 0.2s; }
     .shortcut-card:hover { border-color: var(--primary); transform: translateY(-3px); background: rgba(249, 115, 22, 0.08); }
@@ -102,7 +101,6 @@
 
     .dashboard-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
-    /* PROGRESS BARS & BARS VISUAIS */
     .progress-bar-bg { background: var(--bg-main); border-radius: 10px; height: 10px; width: 100%; overflow: hidden; margin-top: 6px; }
     .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.4s ease; }
 
@@ -499,6 +497,9 @@
     }
 
     async function loadDashboardData() {
+      // ⏱️ INSTRUMENTAÇÃO DIAGNÓSTICA (Início da Execução)
+      const tStartTotal = performance.now();
+
       applyTheme();
 
       let storeName = 'MEU ESTABELECIMENTO';
@@ -506,7 +507,6 @@
       let monthlyGoal = 15000;
       let totalTables = 10;
 
-      // ARQUITETURA DEFINITIVA: Buscas paralelas otimizadas direto do Supabase/Serviço Central
       let rawHistory = [];
       let kdsOrders = [];
       let recipesCatalog = [];
@@ -514,11 +514,31 @@
       let clientsLoyalty = {};
 
       try {
-        const [salesRes, kdsRes, recipesRes] = await Promise.all([
-          typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]),
-          typeof dbFetchKdsOrders === 'function' ? dbFetchKdsOrders() : Promise.resolve([]),
-          typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([])
-        ]);
+        // ⏱️ Medição individual de chamadas ao Supabase
+        const tStartSupabase = performance.now();
+
+        const tStartSales = performance.now();
+        const salesRes = typeof dbFetchSales === 'function' ? await dbFetchSales() : [];
+        const tEndSales = performance.now();
+
+        const tStartKds = performance.now();
+        const kdsRes = typeof dbFetchKdsOrders === 'function' ? await dbFetchKdsOrders() : [];
+        const tEndKds = performance.now();
+
+        const tStartRecipes = performance.now();
+        const recipesRes = typeof dbFetchRecipes === 'function' ? await dbFetchRecipes() : [];
+        const tEndRecipes = performance.now();
+
+        const tEndSupabase = performance.now();
+
+        console.log(`[Vortex Perf] 1. Chamadas Individuais Supabase:`);
+        console.log(`   - dbFetchSales(): ${(tEndSales - tStartSales).toFixed(2)} ms`);
+        console.log(`   - dbFetchKdsOrders(): ${(tEndKds - tStartKds).toFixed(2)} ms`);
+        console.log(`   - dbFetchRecipes(): ${(tEndRecipes - tStartRecipes).toFixed(2)} ms`);
+        console.log(`[Vortex Perf] 2. Tempo Total Aguardando Consultas: ${(tEndSupabase - tStartSupabase).toFixed(2)} ms`);
+
+        // ⏱️ Medição de leitura do localStorage e processamento local em memória
+        const tStartLocalProc = performance.now();
 
         rawHistory = salesRes.length > 0 ? salesRes : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
         kdsOrders = kdsRes.length > 0 ? kdsRes : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
@@ -532,201 +552,190 @@
         tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
         clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
 
-      } catch (e) {
-        console.error('Erro ao carregar dados do Supabase:', e);
-        rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        recipesCatalog = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-      }
+        const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
 
-      document.getElementById('sidebarStoreName').innerText = storeName;
-      const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (sidebarLogoUrl) {
-        sidebarLogo.src = sidebarLogoUrl;
-        sidebarLogo.style.display = 'block';
-      } else {
-        sidebarLogo.style.display = 'none';
-      }
+        let grossSales = 0;
+        let totalDiscounts = 0;
+        let totalCancelled = 0;
+        let totalCmvCost = 0;
 
-      const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
+        salesHistory.forEach(s => {
+          if (s.status === 'cancelled') {
+            totalCancelled++;
+          } else {
+            let val = parseFloat(s.total) || 0;
+            grossSales += val;
+            if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
 
-      let grossSales = 0;
-      let totalDiscounts = 0;
-      let totalCancelled = 0;
-      let totalCmvCost = 0;
+            let orderCmv = 0;
+            if (s.items && Array.isArray(s.items)) {
+              s.items.forEach(item => {
+                const qtySold = parseFloat(item.qty || 1);
+                const rec = recipesCatalog.find(r => String(r.productId) === String(item.id) || r.productName === item.name);
+                if (rec && rec.ingredients) {
+                  let itemUnitCost = 0;
+                  rec.ingredients.forEach(ing => {
+                    let ingCost = parseFloat(ing.unitCost || 0);
+                    if (ing.unit === 'g' || ing.unit === 'ml') itemUnitCost += (parseFloat(ing.qty || 0) / 1000) * ingCost;
+                    else itemUnitCost += parseFloat(ing.qty || 0) * ingCost;
+                  });
+                  orderCmv += itemUnitCost * qtySold;
+                } else if (item.cost) {
+                  orderCmv += parseFloat(item.cost) * qtySold;
+                } else {
+                  orderCmv += (parseFloat(item.price || item.total || 0) * 0.35);
+                }
+              });
+            }
 
-      salesHistory.forEach(s => {
-        if (s.status === 'cancelled') {
-          totalCancelled++;
+            if (orderCmv > 0) {
+              totalCmvCost += orderCmv;
+            } else if (s.cmvCost) {
+              totalCmvCost += parseFloat(s.cmvCost) || 0;
+            } else {
+              totalCmvCost += (val * 0.35);
+            }
+          }
+        });
+
+        const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
+        const netSales = Math.max(0, grossSales - totalDiscounts);
+        const grossProfit = Math.max(0, netSales - totalCmvCost);
+        const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
+        const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
+        const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
+        const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
+        const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
+
+        let occupiedCount = 0;
+        Object.keys(tableCarts).forEach(k => {
+          if (tableCarts[k] && tableCarts[k].items && tableCarts[k].items.length > 0) {
+            occupiedCount++;
+          }
+        });
+        const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
+        const totalClientsCount = Object.keys(clientsLoyalty).length;
+        const cancelRate = (totalOrdersCount + totalCancelled) > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
+
+        let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
+        salesHistory.forEach(s => {
+          if (s.status !== 'cancelled') {
+            const ch = String(s.channel || s.origin || '').toLowerCase();
+            if (ch.includes('ifood')) channelIFood += parseFloat(s.total) || 0;
+            else if (ch.includes('99') || ch.includes('99food')) channel99 += parseFloat(s.total) || 0;
+            else if (ch.includes('keeta')) channelKeeta += parseFloat(s.total) || 0;
+            else if (ch.includes('table') || ch.includes('mesa')) channelMesas += parseFloat(s.total) || 0;
+            else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += parseFloat(s.total) || 0;
+            else channelPdv += parseFloat(s.total) || 0;
+          }
+        });
+
+        const pPdv = grossSales > 0 ? Math.round((channelPdv / grossSales) * 100) : 0;
+        const pMesas = grossSales > 0 ? Math.round((channelMesas / grossSales) * 100) : 0;
+        const pDelivery = grossSales > 0 ? Math.round((channelDelivery / grossSales) * 100) : 0;
+        const pIFood = grossSales > 0 ? Math.round((channelIFood / grossSales) * 100) : 0;
+        const p99 = grossSales > 0 ? Math.round((channel99 / grossSales) * 100) : 0;
+        const pKeeta = grossSales > 0 ? Math.round((channelKeeta / grossSales) * 100) : 0;
+
+        let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
+        salesHistory.forEach(s => {
+          if (s.status !== 'cancelled') {
+            const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
+            if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) {
+              payDebit += parseFloat(s.total) || 0;
+            } else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit') || pm === 'card') {
+              payCredit += parseFloat(s.total) || 0;
+            } else if (pm.includes('pix')) {
+              payPix += parseFloat(s.total) || 0;
+            } else if (pm.includes('vr') || pm.includes('refeicao') || pm.includes('refeição')) {
+              payVr += parseFloat(s.total) || 0;
+            } else if (pm.includes('va') || pm.includes('alimentacao') || pm.includes('alimentação')) {
+              payVa += parseFloat(s.total) || 0;
+            } else if (pm.includes('cash') || pm.includes('dinheiro')) {
+              payDinheiro += parseFloat(s.total) || 0;
+            } else {
+              payPix += parseFloat(s.total) || 0;
+            }
+          }
+        });
+
+        const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
+        const pDebit = grossSales > 0 ? Math.round((payDebit / grossSales) * 100) : 0;
+        const pCredit = grossSales > 0 ? Math.round((payCredit / grossSales) * 100) : 0;
+        const pVr = grossSales > 0 ? Math.round((payVr / grossSales) * 100) : 0;
+        const pVa = grossSales > 0 ? Math.round((payVa / grossSales) * 100) : 0;
+        const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
+
+        const tEndLocalProc = performance.now();
+        console.log(`[Vortex Perf] 3. Tempo de Leitura Local e Processamento: ${(tEndLocalProc - tStartLocalProc).toFixed(2)} ms`);
+
+        // ⏱️ Medição de atualização do DOM
+        const tStartDom = performance.now();
+
+        document.getElementById('sidebarStoreName').innerText = storeName;
+        const sidebarLogo = document.getElementById('sidebarStoreLogo');
+        if (sidebarLogoUrl) {
+          sidebarLogo.src = sidebarLogoUrl;
+          sidebarLogo.style.display = 'block';
         } else {
-          let val = parseFloat(s.total) || 0;
-          grossSales += val;
-          if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
-
-          let orderCmv = 0;
-          if (s.items && Array.isArray(s.items)) {
-            s.items.forEach(item => {
-              const qtySold = parseFloat(item.qty || 1);
-              const rec = recipesCatalog.find(r => String(r.productId) === String(item.id) || r.productName === item.name);
-              if (rec && rec.ingredients) {
-                let itemUnitCost = 0;
-                rec.ingredients.forEach(ing => {
-                  let ingCost = parseFloat(ing.unitCost || 0);
-                  if (ing.unit === 'g' || ing.unit === 'ml') itemUnitCost += (parseFloat(ing.qty || 0) / 1000) * ingCost;
-                  else itemUnitCost += parseFloat(ing.qty || 0) * ingCost;
-                });
-                orderCmv += itemUnitCost * qtySold;
-              } else if (item.cost) {
-                orderCmv += parseFloat(item.cost) * qtySold;
-              } else {
-                orderCmv += (parseFloat(item.price || item.total || 0) * 0.35);
-              }
-            });
-          }
-
-          if (orderCmv > 0) {
-            totalCmvCost += orderCmv;
-          } else if (s.cmvCost) {
-            totalCmvCost += parseFloat(s.cmvCost) || 0;
-          } else {
-            totalCmvCost += (val * 0.35);
-          }
+          sidebarLogo.style.display = 'none';
         }
-      });
 
-      document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+        document.getElementById('dashVendas').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
+        document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
+        document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
+        document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+        document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
+        document.getElementById('dashMargemLucro').innerText = `Margem Média: ${profitMargin}%`;
+        document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
+        document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
+        document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
+        document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
+        document.getElementById('dashPedidosKds').innerText = activeKds;
+        document.getElementById('dashEntregasRota').innerText = deliveringCount;
+        document.getElementById('dashMesasStatus').innerText = `${occupiedCount} / ${totalTables}`;
+        document.getElementById('dashMesasPercent').innerText = `${tablesPercent}% de ocupação`;
+        document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
+        document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
 
-      const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
-      const netSales = Math.max(0, grossSales - totalDiscounts);
-      const grossProfit = Math.max(0, netSales - totalCmvCost);
-      const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
+        document.getElementById('valChannelPdv').innerText = `R$ ${formatFloatToCurrency(channelPdv)} (${pPdv}%)`;
+        document.getElementById('barChannelPdv').style.width = `${pPdv}%`;
+        document.getElementById('valChannelMesas').innerText = `R$ ${formatFloatToCurrency(channelMesas)} (${pMesas}%)`;
+        document.getElementById('barChannelMesas').style.width = `${pMesas}%`;
+        document.getElementById('valChannelDelivery').innerText = `R$ ${formatFloatToCurrency(channelDelivery)} (${pDelivery}%)`;
+        document.getElementById('barChannelDelivery').style.width = `${pDelivery}%`;
+        document.getElementById('valChannelIFood').innerText = `R$ ${formatFloatToCurrency(channelIFood)} (${pIFood}%)`;
+        document.getElementById('barChannelIFood').style.width = `${pIFood}%`;
+        document.getElementById('valChannel99').innerText = `R$ ${formatFloatToCurrency(channel99)} (${p99}%)`;
+        document.getElementById('barChannel99').style.width = `${p99}%`;
+        document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
+        document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
 
-      document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
-      document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
-      document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
+        document.getElementById('valPayPix').innerText = `R$ ${formatFloatToCurrency(payPix)} (${pPix}%)`;
+        document.getElementById('barPayPix').style.width = `${pPix}%`;
+        document.getElementById('valPayDebit').innerText = `R$ ${formatFloatToCurrency(payDebit)} (${pDebit}%)`;
+        document.getElementById('barPayDebit').style.width = `${pDebit}%`;
+        document.getElementById('valPayCredit').innerText = `R$ ${formatFloatToCurrency(payCredit)} (${pCredit}%)`;
+        document.getElementById('barPayCredit').style.width = `${pCredit}%`;
+        document.getElementById('valPayVr').innerText = `R$ ${formatFloatToCurrency(payVr)} (${pVr}%)`;
+        document.getElementById('barPayVr').style.width = `${pVr}%`;
+        document.getElementById('valPayVa').innerText = `R$ ${formatFloatToCurrency(payVa)} (${pVa}%)`;
+        document.getElementById('barPayVa').style.width = `${pVa}%`;
+        document.getElementById('valPayDinheiro').innerText = `R$ ${formatFloatToCurrency(payDinheiro)} (${pDinheiro}%)`;
+        document.getElementById('barPayDinheiro').style.width = `${pDinheiro}%`;
 
-      document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
-      document.getElementById('dashMargemLucro').innerText = `Margem Média: ${profitMargin}%`;
+        renderTopProducts(salesHistory);
+        checkSystemAlerts(activeKds, cancelRate);
 
-      const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
-      document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
-      document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
+        const tEndDom = performance.now();
+        console.log(`[Vortex Perf] 4. Tempo de Atualização do DOM: ${(tEndDom - tStartDom).toFixed(2)} ms`);
 
-      const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
-      document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;
-      document.getElementById('dashPontoEqBar').style.width = `${pointPercent}%`;
+      } catch (e) {
+        console.error('Erro no carregamento instrumentado:', e);
+      }
 
-      const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
-      document.getElementById('dashPedidosKds').innerText = activeKds;
-
-      const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
-      document.getElementById('dashEntregasRota').innerText = deliveringCount;
-
-      let occupiedCount = 0;
-      Object.keys(tableCarts).forEach(k => {
-        if (tableCarts[k] && tableCarts[k].items && tableCarts[k].items.length > 0) {
-          occupiedCount++;
-        }
-      });
-      document.getElementById('dashMesasStatus').innerText = `${occupiedCount} / ${totalTables}`;
-      const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
-      document.getElementById('dashMesasPercent').innerText = `${tablesPercent}% de ocupação`;
-
-      const totalClientsCount = Object.keys(clientsLoyalty).length;
-      document.getElementById('dashFidelidadeRetencao').innerText = `${totalClientsCount} clientes`;
-
-      const cancelRate = (totalOrdersCount + totalCancelled) > 0 ? ((totalCancelled / (totalOrdersCount + totalCancelled)) * 100).toFixed(1) : '0.0';
-      document.getElementById('dashCancelRate').innerText = `${cancelRate}%`;
-
-      let channelPdv = 0, channelMesas = 0, channelDelivery = 0, channelIFood = 0, channel99 = 0, channelKeeta = 0;
-
-      salesHistory.forEach(s => {
-        if (s.status !== 'cancelled') {
-          const ch = String(s.channel || s.origin || '').toLowerCase();
-          if (ch.includes('ifood')) channelIFood += parseFloat(s.total) || 0;
-          else if (ch.includes('99') || ch.includes('99food')) channel99 += parseFloat(s.total) || 0;
-          else if (ch.includes('keeta')) channelKeeta += parseFloat(s.total) || 0;
-          else if (ch.includes('table') || ch.includes('mesa')) channelMesas += parseFloat(s.total) || 0;
-          else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += parseFloat(s.total) || 0;
-          else channelPdv += parseFloat(s.total) || 0;
-        }
-      });
-
-      const pPdv = grossSales > 0 ? Math.round((channelPdv / grossSales) * 100) : 0;
-      const pMesas = grossSales > 0 ? Math.round((channelMesas / grossSales) * 100) : 0;
-      const pDelivery = grossSales > 0 ? Math.round((channelDelivery / grossSales) * 100) : 0;
-      const pIFood = grossSales > 0 ? Math.round((channelIFood / grossSales) * 100) : 0;
-      const p99 = grossSales > 0 ? Math.round((channel99 / grossSales) * 100) : 0;
-      const pKeeta = grossSales > 0 ? Math.round((channelKeeta / grossSales) * 100) : 0;
-
-      document.getElementById('valChannelPdv').innerText = `R$ ${formatFloatToCurrency(channelPdv)} (${pPdv}%)`;
-      document.getElementById('barChannelPdv').style.width = `${pPdv}%`;
-
-      document.getElementById('valChannelMesas').innerText = `R$ ${formatFloatToCurrency(channelMesas)} (${pMesas}%)`;
-      document.getElementById('barChannelMesas').style.width = `${pMesas}%`;
-
-      document.getElementById('valChannelDelivery').innerText = `R$ ${formatFloatToCurrency(channelDelivery)} (${pDelivery}%)`;
-      document.getElementById('barChannelDelivery').style.width = `${pDelivery}%`;
-
-      document.getElementById('valChannelIFood').innerText = `R$ ${formatFloatToCurrency(channelIFood)} (${pIFood}%)`;
-      document.getElementById('barChannelIFood').style.width = `${pIFood}%`;
-
-      document.getElementById('valChannel99').innerText = `R$ ${formatFloatToCurrency(channel99)} (${p99}%)`;
-      document.getElementById('barChannel99').style.width = `${p99}%`;
-
-      document.getElementById('valChannelKeeta').innerText = `R$ ${formatFloatToCurrency(channelKeeta)} (${pKeeta}%)`;
-      document.getElementById('barChannelKeeta').style.width = `${pKeeta}%`;
-
-      let payPix = 0, payDebit = 0, payCredit = 0, payVr = 0, payVa = 0, payDinheiro = 0;
-      salesHistory.forEach(s => {
-        if (s.status !== 'cancelled') {
-          const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
-          
-          if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) {
-            payDebit += parseFloat(s.total) || 0;
-          } else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit') || pm === 'card') {
-            payCredit += parseFloat(s.total) || 0;
-          } else if (pm.includes('pix')) {
-            payPix += parseFloat(s.total) || 0;
-          } else if (pm.includes('vr') || pm.includes('refeicao') || pm.includes('refeição')) {
-            payVr += parseFloat(s.total) || 0;
-          } else if (pm.includes('va') || pm.includes('alimentacao') || pm.includes('alimentação')) {
-            payVa += parseFloat(s.total) || 0;
-          } else if (pm.includes('cash') || pm.includes('dinheiro')) {
-            payDinheiro += parseFloat(s.total) || 0;
-          } else {
-            payPix += parseFloat(s.total) || 0;
-          }
-        }
-      });
-
-      const pPix = grossSales > 0 ? Math.round((payPix / grossSales) * 100) : 0;
-      const pDebit = grossSales > 0 ? Math.round((payDebit / grossSales) * 100) : 0;
-      const pCredit = grossSales > 0 ? Math.round((payCredit / grossSales) * 100) : 0;
-      const pVr = grossSales > 0 ? Math.round((payVr / grossSales) * 100) : 0;
-      const pVa = grossSales > 0 ? Math.round((payVa / grossSales) * 100) : 0;
-      const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
-
-      document.getElementById('valPayPix').innerText = `R$ ${formatFloatToCurrency(payPix)} (${pPix}%)`;
-      document.getElementById('barPayPix').style.width = `${pPix}%`;
-
-      document.getElementById('valPayDebit').innerText = `R$ ${formatFloatToCurrency(payDebit)} (${pDebit}%)`;
-      document.getElementById('barPayDebit').style.width = `${pDebit}%`;
-
-      document.getElementById('valPayCredit').innerText = `R$ ${formatFloatToCurrency(payCredit)} (${pCredit}%)`;
-      document.getElementById('barPayCredit').style.width = `${pCredit}%`;
-
-      document.getElementById('valPayVr').innerText = `R$ ${formatFloatToCurrency(payVr)} (${pVr}%)`;
-      document.getElementById('barPayVr').style.width = `${pVr}%`;
-
-      document.getElementById('valPayVa').innerText = `R$ ${formatFloatToCurrency(payVa)} (${pVa}%)`;
-      document.getElementById('barPayVa').style.width = `${pVa}%`;
-
-      document.getElementById('valPayDinheiro').innerText = `R$ ${formatFloatToCurrency(payDinheiro)} (${pDinheiro}%)`;
-      document.getElementById('barPayDinheiro').style.width = `${pDinheiro}%`;
-
-      renderTopProducts(salesHistory);
-      checkSystemAlerts(activeKds, cancelRate);
+      const tEndTotal = performance.now();
+      console.log(`[Vortex Perf] 5. Tempo Total desde o início de loadDashboardData(): ${(tEndTotal - tStartTotal).toFixed(2)} ms`);
     }
 
     function renderTopProducts(history) {

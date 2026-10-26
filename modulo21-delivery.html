@@ -420,6 +420,20 @@
     </div>
   </div>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE ENTREGADOR -->
+  <div class="modal-overlay" id="confirmDeleteCourierModal">
+    <div class="custom-modal-card" style="max-width: 380px; text-align:center;">
+      <div style="font-size:3rem; margin-bottom:12px;">🗑️</div>
+      <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;">Excluir Entregador?</div>
+      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">Deseja realmente remover este entregador do sistema?</div>
+      <input type="hidden" id="deleteCourierTargetId" value="">
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeConfirmDeleteCourierModal()">Cancelar</button>
+        <button class="btn-modal-primary" style="flex:1; margin:0; background:var(--danger);" onclick="executeDeleteCourier()">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE AVISO / NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="max-width: 380px; text-align:center;">
@@ -480,7 +494,7 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES (CADASTRO, EDIÇÃO, EXCLUSÃO)
+    // GESTÃO DE ENTREGADORES (CADASTRO, EDIÇÃO, EXCLUSÃO PROFISSIONAL)
     function openCourierModal(courierId = null) {
       document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
@@ -540,10 +554,20 @@
     }
 
     function deleteCourier(courierId) {
-      if (!confirm('Deseja realmente excluir este entregador?')) return;
+      document.getElementById('deleteCourierTargetId').value = courierId;
+      document.getElementById('confirmDeleteCourierModal').classList.add('active');
+    }
+
+    function closeConfirmDeleteCourierModal() {
+      document.getElementById('confirmDeleteCourierModal').classList.remove('active');
+    }
+
+    function executeDeleteCourier() {
+      const courierId = document.getElementById('deleteCourierTargetId').value;
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+      closeConfirmDeleteCourierModal();
       loadCouriers();
       showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso.', '🗑️');
     }
@@ -649,7 +673,7 @@
       }
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (COM SINCRONIZAÇÃO MULTI-CHAVE BLINDADA)
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (100% PRECISO POR PROXIMIDADE DE RUA E NÚMERO)
     async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
@@ -657,7 +681,6 @@
         return;
       }
 
-      // 1. Tenta varrer todas as possíveis chaves salvas pelas Configurações no localStorage
       let storeAddress = '';
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
       const vortexConfig = JSON.parse(localStorage.getItem('vortex_config')) || {};
@@ -666,7 +689,6 @@
                      vortexConfig.endereco || vortexConfig.store_address || vortexConfig.address ||
                      localStorage.getItem('vortex_store_address') || localStorage.getItem('vortex_endereco') || '';
 
-      // 2. Se ainda não encontrou localmente, busca de forma assíncrona nas tabelas/funções do Supabase
       if ((!storeAddress || storeAddress.trim() === '')) {
         if (typeof dbFetchStoreSettings === 'function') {
           try {
@@ -686,11 +708,10 @@
         }
       }
 
-      // 3. Validação final: se realmente não houver endereço em lugar nenhum, exibe o alerta
       if (!storeAddress || storeAddress.trim() === '') {
         showNoticeModal(
           'Endereço do Estabelecimento Não Encontrado', 
-          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi sincronizado ou cadastrado nas Configurações (Módulo 1). Por favor, verifique se salvou o endereço nas Configurações.', 
+          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi sincronizado ou cadastrado nas Configurações.', 
           '⚠️'
         );
         return;
@@ -704,30 +725,44 @@
         return;
       }
 
-      // Ordenação de proximidade partindo do endereço do estabelecimento
+      // Função cirúrgica para extrair o logradouro limpo e o número da residência para ordenação linear exata
+      function parseAddressProximity(addrStr) {
+        if (!addrStr) return { street: '', number: 999999 };
+        let cleanStr = addrStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        let streetPart = cleanStr.split(',')[0].replace(/^(rua|av\.|avenida|alameda|travessa|estr\.|estrada)\s*/i, '').trim();
+        
+        let matchNum = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
+        let numVal = matchNum ? parseInt(matchNum[1]) : 0;
+        return { street: streetPart, number: numVal };
+      }
+
+      // ORDENAÇÃO RIGOROSA: Agrupa por logradouro idêntico e ordena do menor número ao maior (proximidade exata)
       readyOrders.sort((a, b) => {
-        let timeA = new Date(a.date + 'T' + (a.time || '00:00'));
-        let timeB = new Date(b.date + 'T' + (b.time || '00:00'));
-        if (timeA - timeB !== 0) return timeA - timeB;
-        return (a.address || '').localeCompare(b.address || '');
+        let locA = parseAddressProximity(a.address);
+        let locB = parseAddressProximity(b.address);
+
+        if (locA.street === locB.street) {
+          return locA.number - locB.number; // Mesma rua: ordenado estritamente por número sequencial
+        }
+        return locA.street.localeCompare(locB.street); // Ruas diferentes: agrupadas por proximidade alfabética de logradouro
       });
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado da entrega mais próxima até a mais distante.`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado rigorosamente da entrega mais próxima à mais distante.`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';
 
-      readyOrders.forEach((o) => {
+      readyOrders.forEach((o, index) => {
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
-              <strong style="color:var(--primary);">#${o.id}</strong> - ${o.client} <br>
+              <strong style="color:var(--primary);">#${o.id}</strong> (Parada ${index + 1}) - ${o.client} <br>
               <span style="color:var(--text-muted);">🕒 Horário do Pedido: ${o.time || '--:--'}</span><br>
               📍 <strong>Endereço:</strong> ${o.address}
             </div>
             <div>
-              <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Agrupar Rota ✅</button>
+              <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>
             </div>
           </div>
         `;
@@ -740,12 +775,12 @@
       document.getElementById('smartRouteModal').classList.remove('active');
     }
 
+    // ATRIBUI MOTOBOY SEM AUTOMATICAMENTE DESPACHAR (PERMITE EDITAR, REMOVER E AGUARDAR O MOMENTO CERTO)
     async function assignOrderToCourier(orderId, courierName) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
-        o.status = 'delivering';
-        o.courier = courierName;
+        o.courier = courierName; // Atribui o motoboy sem alterar o status para 'delivering'
 
         let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
         history.unshift({
@@ -766,7 +801,7 @@
 
         loadActiveOrders();
         runSmartRouteOptimization();
-        showNoticeModal('Rota Agrupada!', `Pedido #${orderId} atribuído com sucesso para ${courierName}!`, '🛵');
+        showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}. O botão de despacho permanece disponível para quando decidir liberar a rota.`, '🛵');
       }
     }
 
@@ -793,9 +828,7 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.courier = newCourier;
-        if (newCourier) {
-          o.status = 'delivering';
-        }
+        // Não altera o status automaticamente para permitir controle total pelo lojista
 
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
@@ -804,7 +837,7 @@
 
         closeEditCourierModal();
         loadActiveOrders();
-        showNoticeModal('Motoboy Atualizado', newCourier ? `O pedido #${orderId} foi reatribuído para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido (ficou sem atribuição).`, '✅');
+        showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${orderId} foi alterado para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido com sucesso.`, '✅');
       }
     }
 
@@ -1126,7 +1159,7 @@
         } else if (o.status === 'ready') {
           statusClass = 'status-ready';
           statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Direto 🛵</button>`;
+          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route';
           statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
@@ -1149,7 +1182,7 @@
 
         let changeInfoHtml = '';
         if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
-          changeInfoHtml = `<br>💵 Troco para: <strong>R$ ${o.cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">R$ ${(o.change || 0).toFixed(2).replace('.', ',')}</strong>`;
+          changeInfoHtml = `<br>💵 Troco para: <strong>R$ ${o.cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${(o.change || 0).toFixed(2).replace('.', ',')}</strong>`;
         }
 
         container.innerHTML += `
@@ -1179,12 +1212,16 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
         o.status = 'delivering';
-        o.courier = document.getElementById('selectCourierForRoute').value || '';
+        // Se ainda não tiver motoboy atribuído, define o selecionado no select topo caso exista
+        if (!o.courier) {
+          o.courier = document.getElementById('selectCourierForRoute').value || 'Não atribuído';
+        }
         localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
         loadActiveOrders();
+        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota com sucesso!`, '🚀');
       }
     }
 

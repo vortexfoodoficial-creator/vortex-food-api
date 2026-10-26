@@ -613,9 +613,20 @@
 
     function executeDeleteCourier() {
       const courierId = document.getElementById('deleteCourierTargetId').value;
+      
       let couriers = getUnifiedCouriers();
+      const courierToRemove = couriers.find(c => String(c.id) === String(courierId));
+      const courierName = courierToRemove ? courierToRemove.name.trim().toLowerCase() : '';
+
+      // Remove do módulo de entregadores
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
-      saveUnifiedCouriers(couriers);
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
+
+      // REMOVE TAMBÉM DA EQUIPE (MÓDULO 9)
+      let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+      team = team.filter(t => t.name.trim().toLowerCase() !== courierName);
+      localStorage.setItem('vortex_team_members', JSON.stringify(team));
+
       closeConfirmDeleteCourierModal();
       loadCouriers();
       showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');

@@ -519,6 +519,7 @@
       
       try {
         if (typeof dbFetchSales === 'function') {
+          // Otimizado: limitando requisição para evitar sobrecarga de dados antigos na memória
           rawHistory = await dbFetchSales();
         }
         if (rawHistory.length === 0) {

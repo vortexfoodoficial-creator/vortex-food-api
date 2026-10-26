@@ -278,6 +278,7 @@
             <div class="menu-group-label">Configuração</div>
             <div class="menu-item active">⚙️ Módulo 1: Estabelecimento</div>
             <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
+            <div class="menu-item" onclick="window.location.href='modulo21-delivery.html'">🛵 Módulo 21: Delivery</div>
             
             <div class="menu-group-label">Navegação</div>
             <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
@@ -424,95 +425,157 @@
             input.value = partes.join(",");
         }
 
-        // CARREGAR DADOS DO SUPABASE AO ABRIR A PÁGINA
+        // CARREGAR DADOS DO SUPABASE E LOCALSTORAGE AO ABRIR A PÁGINA
         async function carregarConfiguracoes() {
-            const configSalva = JSON.parse(localStorage.getItem('vortex_config')) || {
-                nome: 'Vortex Food',
-                cnpj: '12.345.678/0001-90',
-                tel: '(11) 98888-7777',
-                email: 'contato@vortexfood.com',
-                endereco: '',
-                taxa: '10,00',
-                rodape: 'Obrigado pela preferência, volte sempre!'
-            };
+            let configSalva = {};
+            try {
+                configSalva = JSON.parse(localStorage.getItem('vortex_config')) || {};
+            } catch (e) {
+                configSalva = {};
+            }
 
-            preencherFormulario(configSalva);
+            // Tenta resgatar de chaves alternativas caso o vortex_config esteja parcial
+            const fallbackNome = configSalva.nome || configSalva.store_name || localStorage.getItem('vortex_store_name') || 'Vortex Food';
+            const fallbackEnd = configSalva.endereco || configSalva.store_address || localStorage.getItem('vortex_store_address') || localStorage.getItem('vortex_endereco') || '';
+            const fallbackCnpj = configSalva.cnpj || '12.345.678/0001-90';
+            const fallbackTel = configSalva.tel || configSalva.phone || '(11) 98888-7777';
+            const fallbackEmail = configSalva.email || 'contato@vortexfood.com';
+            const fallbackTaxa = configSalva.taxa || '10,00';
+            const fallbackRodape = configSalva.rodape || 'Obrigado pela preferência, volte sempre!';
 
-            if (typeof dbFetchStoreSettings === 'function') {
+            preencherFormulario({
+                nome: fallbackNome,
+                cnpj: fallbackCnpj,
+                tel: fallbackTel,
+                email: fallbackEmail,
+                endereco: fallbackEnd,
+                taxa: fallbackTaxa,
+                rodape: fallbackRodape
+            });
+
+            // Sincronização remota via Supabase
+            if (window.supabaseClient) {
+                try {
+                    const { data, error } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1);
+                    if (data && data.length > 0) {
+                        const row = data[0];
+                        const configRemota = {
+                            nome: row.store_name || row.nome || fallbackNome,
+                            cnpj: row.cnpj || fallbackCnpj,
+                            tel: row.phone || row.tel || fallbackTel,
+                            email: row.email || fallbackEmail,
+                            endereco: row.store_address || row.endereco || fallbackEnd,
+                            taxa: row.taxa || fallbackTaxa,
+                            rodape: row.rodape || fallbackRodape
+                        };
+                        preencherFormulario(configRemota);
+                        
+                        // Atualiza todas as chaves locais unificadas
+                        localStorage.setItem('vortex_config', JSON.stringify(configRemota));
+                        localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: configRemota.nome, storeAddress: configRemota.endereco }));
+                        localStorage.setItem('vortex_store_address', configRemota.endereco);
+                    }
+                } catch (err) {
+                    console.warn('Aviso: Não foi possível carregar do Supabase:', err);
+                }
+            } else if (typeof dbFetchStoreSettings === 'function') {
                 try {
                     const data = await dbFetchStoreSettings();
                     if (data) {
                         const configRemota = {
-                            nome: data.store_name || configSalva.nome,
-                            cnpj: data.cnpj || configSalva.cnpj,
-                            tel: data.phone || configSalva.tel,
-                            email: data.email || configSalva.email,
-                            endereco: data.store_address || configSalva.endereco,
-                            taxa: data.taxa || configSalva.taxa,
-                            rodape: data.rodape || configSalva.rodape
+                            nome: data.store_name || data.nome || fallbackNome,
+                            cnpj: data.cnpj || fallbackCnpj,
+                            tel: data.phone || data.tel || fallbackTel,
+                            email: data.email || fallbackEmail,
+                            endereco: data.store_address || data.endereco || fallbackEnd,
+                            taxa: data.taxa || fallbackTaxa,
+                            rodape: data.rodape || fallbackRodape
                         };
                         preencherFormulario(configRemota);
                         localStorage.setItem('vortex_config', JSON.stringify(configRemota));
                         localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: configRemota.nome, storeAddress: configRemota.endereco }));
+                        localStorage.setItem('vortex_store_address', configRemota.endereco);
                     }
-                } catch (err) {
-                    console.warn('Erro ao carregar configurações do Supabase:', err);
-                }
+                } catch (e) {}
             }
         }
 
         function preencherFormulario(cfg) {
-            document.getElementById('nomeEmpresa').value = cfg.nome || cfg.store_name || '';
+            document.getElementById('nomeEmpresa').value = cfg.nome || '';
             document.getElementById('cnpjEmpresa').value = cfg.cnpj || '';
-            document.getElementById('telEmpresa').value = cfg.tel || cfg.phone || '';
+            document.getElementById('telEmpresa').value = cfg.tel || '';
             document.getElementById('emailEmpresa').value = cfg.email || '';
-            document.getElementById('enderecoEmpresa').value = cfg.endereco || cfg.store_address || '';
+            document.getElementById('enderecoEmpresa').value = cfg.endereco || '';
             document.getElementById('taxaServico').value = cfg.taxa || '10,00';
             document.getElementById('rodapeCupom').value = cfg.rodape || '';
         }
 
-        // SALVAR DADOS NO SUPABASE E LOCALSTORAGE
+        // SALVAR DADOS NO SUPABASE E EM TODAS AS CHAVES DO LOCALSTORAGE COM UNIFICAÇÃO
         async function salvarConfig(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSalvar');
             btn.innerText = 'Salvando na nuvem...';
             btn.disabled = true;
 
-            const config = {
-                store_name: document.getElementById('nomeEmpresa').value,
-                store_address: document.getElementById('enderecoEmpresa').value,
-                cnpj: document.getElementById('cnpjEmpresa').value,
-                phone: document.getElementById('telEmpresa').value,
-                email: document.getElementById('emailEmpresa').value,
-                taxa: document.getElementById('taxaServico').value,
-                rodape: document.getElementById('rodapeCupom').value,
-                nome: document.getElementById('nomeEmpresa').value,
-                endereco: document.getElementById('enderecoEmpresa').value,
-                tel: document.getElementById('telEmpresa').value
+            const nomeVal = document.getElementById('nomeEmpresa').value.trim();
+            const enderecoVal = document.getElementById('enderecoEmpresa').value.trim();
+            const cnpjVal = document.getElementById('cnpjEmpresa').value.trim();
+            const telVal = document.getElementById('telEmpresa').value.trim();
+            const emailVal = document.getElementById('emailEmpresa').value.trim();
+            const taxaVal = document.getElementById('taxaServico').value.trim();
+            const rodapeVal = document.getElementById('rodapeCupom').value.trim();
+
+            const configUnified = {
+                store_name: nomeVal,
+                store_address: enderecoVal,
+                nome: nomeVal,
+                endereco: enderecoVal,
+                cnpj: cnpjVal,
+                phone: telVal,
+                tel: telVal,
+                email: emailVal,
+                taxa: taxaVal,
+                rodape: rodapeVal
             };
 
-            // Salva no localStorage em múltiplas chaves para compatibilidade absoluta com o Delivery
-            localStorage.setItem('vortex_config', JSON.stringify(config));
-            localStorage.setItem('vortex_store_settings', JSON.stringify({ 
-                storeName: config.store_name, 
-                storeAddress: config.store_address 
-            }));
+            // 1. Grava em TODAS as chaves possíveis do localStorage para garantir compatibilidade com qualquer módulo (incluindo o Módulo 21)
+            localStorage.setItem('vortex_config', JSON.stringify(configUnified));
+            localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: nomeVal, storeAddress: enderecoVal }));
+            localStorage.setItem('vortex_store_address', enderecoVal);
+            localStorage.setItem('vortex_endereco', enderecoVal);
+            localStorage.setItem('vortex_store_name', nomeVal);
 
+            // 2. Sincroniza com o Supabase de forma robusta
             let salvoNoSupabase = false;
-            if (typeof dbSaveStoreSettings === 'function') {
-                const { error } = await dbSaveStoreSettings(config);
-                if (!error) {
-                    salvoNoSupabase = true;
+            if (window.supabaseClient) {
+                try {
+                    // Tenta atualizar ou inserir na tabela vortex_store_settings
+                    const payload = { id: 1, store_name: nomeVal, store_address: enderecoVal, cnpj: cnpjVal, phone: telVal, email: emailVal, taxa: taxaVal, rodape: rodapeVal };
+                    const { error } = await window.supabaseClient.from('vortex_store_settings').upsert([payload]);
+                    if (!error) {
+                        salvoNoSupabase = true;
+                    }
+                } catch (err) {
+                    console.warn('Erro ao salvar no Supabase via client direto:', err);
                 }
+            }
+
+            if (!salvoNoSupabase && typeof dbSaveStoreSettings === 'function') {
+                try {
+                    const res = await dbSaveStoreSettings(configUnified);
+                    if (!res || !res.error) {
+                        salvoNoSupabase = true;
+                    }
+                } catch (e) {}
             }
 
             btn.innerText = 'Guardar Alterações';
             btn.disabled = false;
 
             if (salvoNoSupabase) {
-                mostrarAviso('Configurações salvas e sincronizadas com sucesso no Supabase! ☁️');
+                mostrarAviso('Configurações e endereço salvos e sincronizados com sucesso no Supabase! ☁️');
             } else {
-                mostrarAviso('Configurações salvas no navegador local (Atenção: Verifique sua conexão com o Supabase). ⚠️');
+                mostrarAviso('Configurações salvas localmente no navegador! (Endereço pronto para uso no Delivery). ✅');
             }
         }
 

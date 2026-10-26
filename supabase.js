@@ -15,6 +15,39 @@ function getSupabase() {
   return null;
 }
 
+// Helper para Configurações do Estabelecimento (Módulo 1 & Delivery)
+async function dbSaveStoreSettings(settingsData) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: 'Supabase não inicializado' };
+
+  const record = {
+    id: 1, // Registro único da loja
+    store_name: settingsData.store_name || settingsData.nome || 'Vortex Food',
+    store_address: settingsData.store_address || settingsData.endereco || '',
+    cnpj: settingsData.cnpj || '',
+    phone: settingsData.phone || settingsData.tel || '',
+    email: settingsData.email || '',
+    taxa: settingsData.taxa || '10,00',
+    rodape: settingsData.rodape || ''
+  };
+
+  const { data, error } = await supabase.from('vortex_store_settings').upsert([record]);
+  if (error) console.error('Erro ao salvar configurações no Supabase:', error);
+  return { data, error };
+}
+
+async function dbFetchStoreSettings() {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  
+  const { data, error } = await supabase.from('vortex_store_settings').select('*').limit(1).maybeSingle();
+  if (error) {
+    console.error('Erro ao buscar configurações no Supabase:', error);
+    return null;
+  }
+  return data;
+}
+
 // Helper para sincronizar vendas (History / Dashboard / Financeiro)
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();

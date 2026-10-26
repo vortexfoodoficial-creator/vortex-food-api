@@ -469,7 +469,6 @@
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Gera numeração sequencial limpa (#1, #2, #3...) reiniciando todo dia
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
@@ -482,7 +481,6 @@
 
       const channelLabel = `Balcão (${selectedConsumptionType})`;
       
-      // Estrutura exata esperada pelo dbSaveSale do supabase.js
       const newSaleRecord = {
         id: cleanOrderId,
         client: clientName,
@@ -504,7 +502,6 @@
         }))
       };
 
-      // Estrutura exata esperada pelo dbSaveKdsOrder do supabase.js
       const newKdsOrder = {
         id: cleanOrderId,
         origin: channelLabel,
@@ -526,7 +523,6 @@
         code: cleanOrderId
       };
 
-      // CHAMADA DAS FUNÇÕES OFICIAIS DO SUPABASE.JS
       let cloudSaved = false;
       if (typeof dbSaveSale === 'function' && typeof dbSaveKdsOrder === 'function') {
         try {
@@ -543,7 +539,6 @@
         }
       }
 
-      // Sincronia e contingência local para manter redundância e compatibilidade com o Caixa
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));

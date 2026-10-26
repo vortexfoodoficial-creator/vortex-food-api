@@ -110,6 +110,27 @@
     .rank-list { display: flex; flex-direction: column; gap: 8px; }
     .rank-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; }
 
+    /* PAINEL FLUTUANTE DE DIAGNÓSTICO */
+    #vortexDiagPanel {
+      position: fixed; bottom: 15px; right: 15px; z-index: 9999;
+      background: rgba(15, 23, 42, 0.95); border: 1px solid var(--primary);
+      border-radius: 12px; width: 300px; max-width: calc(100vw - 30px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-size: 0.78rem; color: var(--text-main);
+      backdrop-filter: blur(6px); transition: all 0.3s ease;
+    }
+    .diag-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: rgba(249, 115, 22, 0.15); border-top-left-radius: 11px;
+      border-top-right-radius: 11px; font-weight: bold; border-bottom: 1px solid var(--border);
+    }
+    .diag-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+    .diag-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 4px; }
+    .diag-label { color: var(--text-muted); }
+    .diag-val { font-weight: bold; color: var(--info); }
+    .diag-val.total { color: var(--success); }
+    .diag-toggle-btn { background: none; border: none; color: var(--text-main); cursor: pointer; font-size: 1rem; font-weight: bold; }
+    #vortexDiagPanel.minimized .diag-body { display: none; }
+
     @media (max-width: 900px) {
       .dashboard-grid-2 { grid-template-columns: 1fr; }
       .sidebar { transform: translateX(-100%); }
@@ -410,12 +431,36 @@
     </div>
   </main>
 
+  <!-- PAINEL VISUAL DE DIAGNÓSTICO FLUTUANTE -->
+  <div id="vortexDiagPanel">
+    <div class="diag-header">
+      <span>⚡ Vortex Perf (Diag)</span>
+      <button class="diag-toggle-btn" onclick="toggleDiagPanel()" id="diagToggleBtn">−</button>
+    </div>
+    <div class="diag-body" id="diagBodyContent">
+      <div class="diag-row"><span class="diag-label">dbFetchSales:</span><span class="diag-val" id="diagSales">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">dbFetchKdsOrders:</span><span class="diag-val" id="diagKds">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">dbFetchRecipes:</span><span class="diag-val" id="diagRecipes">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">Aguardando Consultas:</span><span class="diag-val" id="diagSupabaseTotal">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">Leitura/Proc. Local:</span><span class="diag-val" id="diagLocalProc">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">Atualização DOM:</span><span class="diag-val" id="diagDom">-- ms</span></div>
+      <div class="diag-row" style="border-bottom:none; margin-top:2px;"><span class="diag-label"><strong>Tempo Total:</strong></span><span class="diag-val total" id="diagTotal">-- ms</span></div>
+    </div>
+  </div>
+
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
 
   <script>
     let currentFilter = 'today';
+
+    function toggleDiagPanel() {
+      const panel = document.getElementById('vortexDiagPanel');
+      const btn = document.getElementById('diagToggleBtn');
+      panel.classList.toggle('minimized');
+      btn.innerText = panel.classList.contains('minimized') ? '+' : '−';
+    }
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -497,7 +542,6 @@
     }
 
     async function loadDashboardData() {
-      // ⏱️ INSTRUMENTAÇÃO DIAGNÓSTICA (Início da Execução)
       const tStartTotal = performance.now();
 
       applyTheme();
@@ -513,31 +557,35 @@
       let tableCarts = {};
       let clientsLoyalty = {};
 
+      let mSales = 0, mKds = 0, mRecipes = 0, mSupTotal = 0, mLocal = 0, mDom = 0, mTotal = 0;
+
       try {
-        // ⏱️ Medição individual de chamadas ao Supabase
         const tStartSupabase = performance.now();
 
         const tStartSales = performance.now();
         const salesRes = typeof dbFetchSales === 'function' ? await dbFetchSales() : [];
         const tEndSales = performance.now();
+        mSales = tEndSales - tStartSales;
 
         const tStartKds = performance.now();
         const kdsRes = typeof dbFetchKdsOrders === 'function' ? await dbFetchKdsOrders() : [];
         const tEndKds = performance.now();
+        mKds = tEndKds - tStartKds;
 
         const tStartRecipes = performance.now();
         const recipesRes = typeof dbFetchRecipes === 'function' ? await dbFetchRecipes() : [];
         const tEndRecipes = performance.now();
+        mRecipes = tEndRecipes - tStartRecipes;
 
         const tEndSupabase = performance.now();
+        mSupTotal = tEndSupabase - tStartSupabase;
 
         console.log(`[Vortex Perf] 1. Chamadas Individuais Supabase:`);
-        console.log(`   - dbFetchSales(): ${(tEndSales - tStartSales).toFixed(2)} ms`);
-        console.log(`   - dbFetchKdsOrders(): ${(tEndKds - tStartKds).toFixed(2)} ms`);
-        console.log(`   - dbFetchRecipes(): ${(tEndRecipes - tStartRecipes).toFixed(2)} ms`);
-        console.log(`[Vortex Perf] 2. Tempo Total Aguardando Consultas: ${(tEndSupabase - tStartSupabase).toFixed(2)} ms`);
+        console.log(`   - dbFetchSales(): ${mSales.toFixed(2)} ms`);
+        console.log(`   - dbFetchKdsOrders(): ${mKds.toFixed(2)} ms`);
+        console.log(`   - dbFetchRecipes(): ${mRecipes.toFixed(2)} ms`);
+        console.log(`[Vortex Perf] 2. Tempo Total Aguardando Consultas: ${mSupTotal.toFixed(2)} ms`);
 
-        // ⏱️ Medição de leitura do localStorage e processamento local em memória
         const tStartLocalProc = performance.now();
 
         rawHistory = salesRes.length > 0 ? salesRes : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
@@ -667,9 +715,9 @@
         const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
 
         const tEndLocalProc = performance.now();
-        console.log(`[Vortex Perf] 3. Tempo de Leitura Local e Processamento: ${(tEndLocalProc - tStartLocalProc).toFixed(2)} ms`);
+        mLocal = tEndLocalProc - tStartLocalProc;
+        console.log(`[Vortex Perf] 3. Tempo de Leitura Local e Processamento: ${mLocal.toFixed(2)} ms`);
 
-        // ⏱️ Medição de atualização do DOM
         const tStartDom = performance.now();
 
         document.getElementById('sidebarStoreName').innerText = storeName;
@@ -728,14 +776,26 @@
         checkSystemAlerts(activeKds, cancelRate);
 
         const tEndDom = performance.now();
-        console.log(`[Vortex Perf] 4. Tempo de Atualização do DOM: ${(tEndDom - tStartDom).toFixed(2)} ms`);
+        mDom = tEndDom - tStartDom;
+        console.log(`[Vortex Perf] 4. Tempo de Atualização do DOM: ${mDom.toFixed(2)} ms`);
 
       } catch (e) {
         console.error('Erro no carregamento instrumentado:', e);
+        document.getElementById('diagSales').innerText = 'ERRO';
       }
 
       const tEndTotal = performance.now();
-      console.log(`[Vortex Perf] 5. Tempo Total desde o início de loadDashboardData(): ${(tEndTotal - tStartTotal).toFixed(2)} ms`);
+      mTotal = tEndTotal - tStartTotal;
+      console.log(`[Vortex Perf] 5. Tempo Total desde o início de loadDashboardData(): ${mTotal.toFixed(2)} ms`);
+
+      // Atualiza o painel visual na tela do celular
+      document.getElementById('diagSales').innerText = `${mSales.toFixed(1)} ms`;
+      document.getElementById('diagKds').innerText = `${mKds.toFixed(1)} ms`;
+      document.getElementById('diagRecipes').innerText = `${mRecipes.toFixed(1)} ms`;
+      document.getElementById('diagSupabaseTotal').innerText = `${mSupTotal.toFixed(1)} ms`;
+      document.getElementById('diagLocalProc').innerText = `${mLocal.toFixed(1)} ms`;
+      document.getElementById('diagDom').innerText = `${mDom.toFixed(1)} ms`;
+      document.getElementById('diagTotal').innerText = `${mTotal.toFixed(1)} ms`;
     }
 
     function renderTopProducts(history) {

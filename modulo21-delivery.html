@@ -449,7 +449,7 @@
     function loadStoreSettings() {
       applyTheme();
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -559,22 +559,37 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE BASEADO NO ENDEREÇO DA CONFIGURAÇÃO DO ESTABELECIMENTO
-    function runSmartRouteOptimization() {
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE COM VERIFICAÇÃO ROBUSTA DE TODAS AS CHAVES DE CONFIGURAÇÃO (LOCALSTORAGE + SUPABASE)
+    async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
         showNoticeModal('Selecione o Entregador', 'Escolha um motoboy na lista para ver as sugestões de rotas.', '⚠️');
         return;
       }
 
-      // Validação do Endereço do Estabelecimento nas Configurações
+      // 1. Verifica todas as chaves possíveis de configuração no localStorage
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
-      const storeAddress = storeSettings.storeAddress || storeSettings.address || storeSettings.rua || '';
+      const vortexConfig = JSON.parse(localStorage.getItem('vortex_config')) || {};
 
+      let storeAddress = storeSettings.storeAddress || storeSettings.address || storeSettings.rua || vortexConfig.endereco || vortexConfig.store_address || '';
+
+      // 2. Se não achou no localStorage, tenta buscar diretamente no Supabase em tempo real
+      if ((!storeAddress || storeAddress.trim() === '') && window.supabaseClient) {
+        try {
+          const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1).maybeSingle();
+          if (data) {
+            storeAddress = data.store_address || data.address || data.endereco || '';
+          }
+        } catch (e) {
+          console.warn('Erro ao buscar endereço no Supabase:', e);
+        }
+      }
+
+      // Validação final: se continua vazio, dispara o aviso explicativo
       if (!storeAddress || storeAddress.trim() === '') {
         showNoticeModal(
           'Endereço do Estabelecimento Não Encontrado', 
-          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi cadastrado nas Configurações. Por favor, acesse o menu de Configurações, cadastre o endereço da sua loja e tente novamente.', 
+          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi cadastrado nas Configurações (Módulo 1). Por favor, acesse o menu de Configurações, preencha o endereço completo da sua loja, salve e tente novamente.', 
           '⚠️'
         );
         return;
@@ -588,7 +603,7 @@
         return;
       }
 
-      // Simulação de cálculo de proximidade partindo do endereço do estabelecimento
+      // Ordenação de proximidade partindo do estabelecimento
       readyOrders.sort((a, b) => {
         let timeA = new Date(a.date + 'T' + (a.time || '00:00'));
         let timeB = new Date(b.date + 'T' + (b.time || '00:00'));

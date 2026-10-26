@@ -594,10 +594,18 @@
 
     async function executeDeleteStaff(id) {
       closeCustomAlert();
+      
+      // Localiza o colaborador antes de apagar para capturar o nome
+      const member = staffMembers.find(m => String(m.id) === String(id));
+      const memberName = member ? member.name.trim().toLowerCase() : '';
+
+      // Remove da equipe local
       staffMembers = staffMembers.filter(m => String(m.id) !== String(id));
 
-      // Atualiza a sincronização de entregadores
-      syncCouriersStorage(staffMembers);
+      // REMOVE TAMBÉM DO MÓDULO DE ENTREGADORES (MÓDULO 21)
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      couriers = couriers.filter(c => c.name.trim().toLowerCase() !== memberName);
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
 
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
@@ -608,7 +616,7 @@
       localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
-      showCustomAlert('Removido', 'O colaborador foi removido com sucesso.', '✅');
+      showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
     }
 
     setInterval(() => {

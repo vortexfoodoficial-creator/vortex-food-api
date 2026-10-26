@@ -542,7 +542,6 @@
       const startStr = document.getElementById('startDate').value;
       const endStr = document.getElementById('endDate').value;
 
-      // Puxa unificado de todas as chaves possíveis para garantir que as saídas do Caixa e Financeiro entrem no DRE
       let localExp1 = JSON.parse(localStorage.getItem('vortex_expenses_history') || '[]');
       let localExp2 = JSON.parse(localStorage.getItem('vortex_despesas') || '[]');
       let localExp3 = JSON.parse(localStorage.getItem('vortex_financial') || '[]');
@@ -550,7 +549,6 @@
       
       let combined = [...cloudExpenses, ...localExp1, ...localExp2, ...localExp3, ...localExp4];
       
-      // Remove duplicados por ID
       let uniqueMap = new Map();
       combined.forEach(item => {
         let key = item.id || (item.description + item.value + item.date);
@@ -677,13 +675,11 @@
         let eType = String(e.type || '').toLowerCase();
         let val = parseFloat(e.value || e.amount || e.valor || 0);
         
-        // Se for despesa, sangria ou ajuste negativo conta como custo/saída
         if (eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)')) {
           totalOperatingExpenses += val;
         } else if (eType === 'income' || eType === 'suprimento' || eType.includes('ajuste (+)')) {
           manualIncome += val;
         } else {
-          // Fallback padrão se não tiver tipo definido
           totalOperatingExpenses += val;
         }
       });
@@ -722,6 +718,15 @@
         const dateDisplay = s.date || parseToLocalDateStr(s.timestamp) || 'Hoje';
         const timeDisplay = s.time || (s.timestamp ? new Date(s.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--');
         
+        // Padroniza o ID amigável do pedido (se for DELV-xxx ou timestamp longo, exibe de forma curta ou limpa)
+        let rawId = String(s.id || 'N/A');
+        let displayOrderId = rawId;
+        if (rawId.startsWith('DELV-')) {
+          // Extrai os dígitos finais do timestamp do delivery para parecer um número sequencial amigável
+          let digitsOnly = rawId.replace(/\D/g, '');
+          displayOrderId = digitsOnly.length > 4 ? digitsOnly.slice(-4) : rawId;
+        }
+
         let channelLabel = '💻 PDV / Caixa';
         const ch = String(s.channel || s.origin || '').toLowerCase();
         if (ch.includes('ifood')) channelLabel = '🔴 iFood';
@@ -756,7 +761,7 @@
 
         tbody.innerHTML += `
           <tr>
-            <td><strong>#${s.id || 'N/A'}</strong></td>
+            <td><strong>#${displayOrderId}</strong></td>
             <td>${dateDisplay} <small style="color:var(--text-muted);">${timeDisplay}</small></td>
             <td>${channelLabel}</td>
             <td style="font-size:0.82rem; line-height:1.4;">${itemsSummary}</td>

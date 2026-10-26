@@ -232,3 +232,151 @@ async function dbDeleteRecord(tableName, id) {
   if (error) console.error(`Erro ao deletar id ${id} da tabela ${tableName}:`, error);
   return { data, error };
 }
+
+// ==========================================
+// NOVAS FUNÇÕES RESULT (ADICIONADAS AO FINAL)
+// ==========================================
+
+async function dbFetchSalesResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: [], error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_sales_history').select('*');
+    if (error) {
+      console.error('Erro ao buscar vendas no Supabase:', error);
+      return { data: [], error: error };
+    }
+    if (!data) {
+      return { data: [], error: null };
+    }
+    const mapped = data.map(item => ({
+      id: item.id,
+      client: item.client,
+      channel: item.channel,
+      total: parseFloat(item.total) || 0,
+      subtotal: parseFloat(item.subtotal) || 0,
+      discount: parseFloat(item.discount) || 0,
+      payMethod: item.payMethod || item.pay_method || 'Pix',
+      status: item.status,
+      date: item.date,
+      time: item.time,
+      items: item.items || []
+    }));
+    return { data: mapped, error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchSalesResult:', err);
+    return { data: [], error: err };
+  }
+}
+
+async function dbFetchKdsOrdersResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: [], error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_kds_orders').select('*');
+    if (error) {
+      console.error('Erro ao buscar pedidos KDS no Supabase:', error);
+      return { data: [], error: error };
+    }
+    if (!data) {
+      return { data: [], error: null };
+    }
+    const mapped = data.map(item => ({
+      id: item.id,
+      origin: item.origin,
+      client: item.client,
+      address: item.address,
+      payment: item.payment,
+      cashGiven: item.cashGiven,
+      change: item.change,
+      time: item.time,
+      date: item.date,
+      dateFormatted: item.dateFormatted,
+      items: item.items || [],
+      total: parseFloat(item.total) || 0,
+      observation: item.observation,
+      status: item.status,
+      code: item.code
+    }));
+    return { data: mapped, error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchKdsOrdersResult:', err);
+    return { data: [], error: err };
+  }
+}
+
+async function dbFetchRecipesResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: [], error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
+    if (error) {
+      console.error('Erro ao buscar receitas:', error);
+      return { data: [], error: error };
+    }
+    return { data: data || [], error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchRecipesResult:', err);
+    return { data: [], error: err };
+  }
+}
+
+async function dbFetchFinancialEntriesResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: [], error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_financial').select('*');
+    if (error) {
+      console.error('Erro ao buscar financeiros no Supabase:', error);
+      return { data: [], error: error };
+    }
+    return { data: data || [], error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchFinancialEntriesResult:', err);
+    return { data: [], error: err };
+  }
+}
+
+async function dbFetchCatalogResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: { products: [] }, error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_products_catalog').select('*');
+    if (error) {
+      console.error('Erro ao buscar catálogo:', error);
+      return { data: { products: [] }, error: error };
+    }
+    return { data: { products: data || [] }, error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchCatalogResult:', err);
+    return { data: { products: [] }, error: err };
+  }
+}
+
+async function dbFetchStoreSettingsResult() {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { data: null, error: 'Supabase não inicializado' };
+    }
+    const { data, error } = await supabase.from('vortex_store_settings').select('*').limit(1).maybeSingle();
+    if (error) {
+      console.error('Erro ao buscar configurações no Supabase:', error);
+      return { data: null, error: error };
+    }
+    return { data: data || null, error: null };
+  } catch (err) {
+    console.error('Exceção inesperada em dbFetchStoreSettingsResult:', err);
+    return { data: null, error: err };
+  }
+}

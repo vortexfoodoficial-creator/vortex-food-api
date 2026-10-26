@@ -1,9 +1,9 @@
 {
   "name": "vortex-food-api",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.html",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.html"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

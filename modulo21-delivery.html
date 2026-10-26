@@ -494,7 +494,55 @@
       ];
     }
 
-    // GESTÃO DE ENTREGADORES COM SINCRONIZAÇÃO PERFEITA ENTRE MÓDULO 21 E MÓDULO DE EQUIPE
+    // SINCRONIZAÇÃO COMPLETA DE ENTREGADORES (MÓDULO 21 E MÓDULO 9 - EQUIPE)
+    function getUnifiedCouriers() {
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+      
+      // Filtra apenas membros que atuam como entregador na equipe se existirem
+      let teamCouriers = team.filter(m => (m.role && m.role.toLowerCase().includes('motoboy')) || (m.cargo && m.cargo.toLowerCase().includes('motoboy')) || (m.type && m.type.toLowerCase().includes('entregador')));
+      
+      // Garante unicidade por nome/telefone
+      let map = new Map();
+      couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
+      teamCouriers.forEach(t => {
+        if (!map.has(t.name.trim().toLowerCase())) {
+          map.set(t.name.trim().toLowerCase(), {
+            id: t.id || 'cour_' + Date.now(),
+            name: t.name,
+            phone: t.phone || t.telefone || '',
+            type: t.type || t.cargo || 'Próprio'
+          });
+        }
+      });
+
+      return Array.from(map.values());
+    }
+
+    function saveUnifiedCouriers(couriersList) {
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriersList));
+      
+      // Sincroniza também com a Equipe (`vortex_team_members`) para compatibilidade com o Módulo 9
+      let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+      couriersList.forEach(c => {
+        let found = team.find(t => String(t.name).trim().toLowerCase() === String(c.name).trim().toLowerCase());
+        if (found) {
+          found.phone = c.phone;
+          found.role = 'Entregador';
+          found.type = c.type;
+        } else {
+          team.push({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            role: 'Entregador',
+            type: c.type
+          });
+        }
+      });
+      localStorage.setItem('vortex_team_members', JSON.stringify(team));
+    }
+
     function openCourierModal(courierId = null) {
       document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
@@ -502,7 +550,7 @@
       document.getElementById('courierTypeSelect').value = 'Próprio';
 
       if (courierId) {
-        let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+        let couriers = getUnifiedCouriers();
         const found = couriers.find(c => String(c.id) === String(courierId));
         if (found) {
           document.getElementById('courierEditId').value = found.id;
@@ -533,9 +581,7 @@
         return;
       }
 
-      // Sincroniza em vortex_couriers
-      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
-      let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
+      let couriers = getUnifiedCouriers();
 
       if (editId) {
         let index = couriers.findIndex(c => String(c.id) === String(editId));
@@ -544,35 +590,15 @@
           couriers[index].phone = phone;
           couriers[index].type = type;
         }
-        // Sincroniza também na Equipe
-        let tIndex = teamMembers.findIndex(t => String(t.id) === String(editId) || (t.name === couriers[index]?.name));
-        if (tIndex !== -1) {
-          teamMembers[tIndex].name = name;
-          teamMembers[tIndex].phone = phone;
-          teamMembers[tIndex].role = `Entregador (${type})`;
-        }
       } else {
-        const newId = 'cour_' + Date.now();
-        const newCourierObj = { id: newId, name, phone, type, status: 'disponivel' };
-        couriers.push(newCourierObj);
-
-        // Adiciona de forma sincronizada no módulo de equipe se não existir
-        teamMembers.push({
-          id: newId,
-          name: name,
-          phone: phone,
-          role: `Entregador (${type})`,
-          email: `${name.toLowerCase().replace(/\s+/g, '')}@vortex.com`,
-          status: 'Ativo'
-        });
+        couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
       }
 
-      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
-      localStorage.setItem('vortex_team_members', JSON.stringify(teamMembers));
+      saveUnifiedCouriers(couriers);
 
       closeCourierModal();
       loadCouriers();
-      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado e sincronizado com sucesso!` : `Entregador ${name} cadastrado e sincronizado com sucesso!`, '✅');
+      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado com sucesso!` : `Entregador ${name} cadastrado com sucesso e sincronizado com a Equipe!`, '✅');
     }
 
     function deleteCourier(courierId) {
@@ -586,39 +612,16 @@
 
     function executeDeleteCourier() {
       const courierId = document.getElementById('deleteCourierTargetId').value;
-      
-      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      let couriers = getUnifiedCouriers();
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
-      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
-
-      let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
-      teamMembers = teamMembers.filter(t => String(t.id) !== String(courierId));
-      localStorage.setItem('vortex_team_members', JSON.stringify(teamMembers));
-
+      saveUnifiedCouriers(couriers);
       closeConfirmDeleteCourierModal();
       loadCouriers();
       showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');
     }
 
     function loadCouriers() {
-      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
-      
-      // Fallback: se vortex_couriers estiver vazio mas houver na equipe, sincroniza automaticamente
-      if (couriers.length === 0) {
-        let teamMembers = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
-        let potentialCouriers = teamMembers.filter(t => t.role && t.role.toLowerCase().includes('entregador'));
-        if (potentialCouriers.length > 0) {
-          couriers = potentialCouriers.map(p => ({
-            id: p.id || 'cour_' + Date.now(),
-            name: p.name,
-            phone: p.phone || '',
-            type: p.role.includes('Terceirizado') ? 'Terceirizado' : 'Próprio',
-            status: 'disponivel'
-          }));
-          localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
-        }
-      }
-
+      let couriers = getUnifiedCouriers();
       const select = document.getElementById('selectCourierForRoute');
       const editSelect = document.getElementById('modalEditCourierSelect');
       const summary = document.getElementById('couriersListSummary');
@@ -676,7 +679,7 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    // FORMATAÇÃO E BUSCA AUTOMÁTICA DE CEP RESTAURADAS
+    // FORMATAÇÃO E BUSCA AUTOMÁTICA DE CEP
     function handleCepKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -718,7 +721,7 @@
       }
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (ALGORITMO VORAZ / NEAREST NEIGHBOR POR CEP + NÚMERO)
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE
     async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
@@ -863,7 +866,7 @@
       document.getElementById('smartRouteModal').classList.remove('active');
     }
 
-    // ATRIBUI OU DESVINCULA MOTOBOY (NÃO GRAVA NO HISTÓRICO AINDA - AGUARDA DESPACHO)
+    // ATRIBUI OU DESVINCULA MOTOBOY (NÃO CRIA HISTÓRICO AUTOMÁTICO AQUI MAIS)
     async function assignOrderToCourier(orderId, courierName) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
@@ -921,31 +924,51 @@
       }
     }
 
-    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (REGISTRA APÓS DESPACHO / CONCLUSÃO)
-    function openCourierHistoryModal() {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      // Filtra pedidos que foram despachados (delivering) ou concluídos (finished) e possuem motoboy
-      let historyOrders = kdsOrders.filter(o => o.origin && o.origin.includes('Delivery') && (o.status === 'delivering' || o.status === 'finished') && o.courier && o.courier.trim() !== '');
+    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (ALIMENTADO APENAS QUANDO DESPACHADO OU CONCLUÍDO)
+    function recordCourierHistory(o) {
+      if (!o.courier) return;
+      let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
+      
+      // Verifica se já existe registro para este pedido e motoboy para evitar duplicadas
+      let existingIndex = history.findIndex(h => String(h.orderId) === String(o.id));
+      let routeStatusText = o.status === 'finished' ? 'Entregue / Concluído ✅' : 'Em Rota de Entrega 🛵';
 
+      const historyItem = {
+        id: 'hist_' + Date.now(),
+        orderId: o.id,
+        client: o.client,
+        courier: o.courier,
+        address: o.address,
+        status: routeStatusText,
+        timeAssigned: new Date().toLocaleTimeString('pt-BR'),
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      if (existingIndex !== -1) {
+        history[existingIndex] = historyItem; // Atualiza o status atual (Ex: de Em Rota para Entregue)
+      } else {
+        history.unshift(historyItem);
+      }
+
+      localStorage.setItem('vortex_courier_history', JSON.stringify(history));
+    }
+
+    function openCourierHistoryModal() {
+      let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
       const content = document.getElementById('courierHistoryContent');
       content.innerHTML = '';
 
-      if (historyOrders.length === 0) {
-        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de entregas despachadas registrado ainda.</div>`;
+      if (history.length === 0) {
+        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de entregas despachadas registrado.</div>`;
       } else {
-        historyOrders.forEach(h => {
-          let isFinished = h.status === 'finished';
-          let statusBadge = isFinished 
-            ? `<span style="color:var(--success); font-weight:bold;">Concluído ✅</span>` 
-            : `<span style="color:var(--primary); font-weight:bold;">Em Rota 🛵</span>`;
-
+        history.forEach(h => {
           content.innerHTML += `
             <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">
-              🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.id}<br>
+              🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.orderId}<br>
+              📊 <strong>Status:</strong> <span style="color:var(--primary); font-weight:bold;">${h.status || 'Em Rota'}</span><br>
               👤 <strong>Cliente:</strong> ${h.client}<br>
               📍 <strong>Destino:</strong> ${h.address}<br>
-              📊 <strong>Status:</strong> ${statusBadge}<br>
-              🕒 <strong>Data/Hora:</strong> ${h.time || '--:--'} (${h.dateFormatted || h.date})
+              🕒 <strong>Registrado às:</strong> ${h.timeAssigned} (${h.date})
             </div>
           `;
         });
@@ -1202,6 +1225,12 @@
     }
 
     async function loadActiveOrders() {
+      // Impede recarregamento total caso o usuário esteja digitando no campo de código de validação
+      const activeElement = document.activeElement;
+      if (activeElement && activeElement.classList.contains('code-input')) {
+        return;
+      }
+
       const todayDateStr = new Date().toISOString().split('T')[0];
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
@@ -1308,8 +1337,12 @@
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
+
+        // REGISTRA NO HISTÓRICO SOMENTE AGORA (AO SER DESPACHADO)
+        recordCourierHistory(o);
+
         loadActiveOrders();
-        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota com sucesso e adicionado ao histórico!`, '🚀');
+        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota e registrado no histórico!`, '🚀');
       }
     }
 
@@ -1322,6 +1355,10 @@
         if (window.supabaseClient) {
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
+
+        // ATUALIZA O HISTÓRICO PARA ENTREGUE/CONCLUÍDO
+        recordCourierHistory(o);
+
         loadActiveOrders();
         showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
       }
@@ -1338,6 +1375,9 @@
           if (window.supabaseClient) {
             try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
           }
+
+          recordCourierHistory(o);
+
           loadActiveOrders();
           showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
         } else {

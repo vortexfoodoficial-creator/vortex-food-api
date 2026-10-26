@@ -225,6 +225,7 @@
             <tr>
               <th>Nome</th>
               <th>Função / Cargo</th>
+              <th>Telefone</th>
               <th>Comissão (%)</th>
               <th>Status</th>
               <th>Ações</th>
@@ -232,7 +233,7 @@
           </thead>
           <tbody id="staffTableBody">
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
                 Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.
               </td>
             </tr>
@@ -251,6 +252,11 @@
       <div class="form-group">
         <label>Nome Completo:*</label>
         <input type="text" class="form-input" id="staffName" placeholder="Ex: Nome do Colaborador">
+      </div>
+
+      <div class="form-group">
+        <label>Telefone / WhatsApp (Obrigatório p/ Entregadores):</label>
+        <input type="text" class="form-input" id="staffPhone" placeholder="(00) 00000-0000" maxlength="15" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event, this)">
       </div>
 
       <div class="form-group">
@@ -312,6 +318,32 @@
       }
     }
 
+    // FORMATAÇÃO AUTOMÁTICA DE TELEFONE
+    function handlePhoneKeyDown(e, input) {
+      if (e.key === 'Backspace') {
+        let v = input.value;
+        if (v.endsWith('-') || v.endsWith(' ') || v.endsWith(')')) {
+          e.preventDefault();
+          let digits = v.replace(/\D/g, '').slice(0, -1);
+          formatAndSetPhone(input, digits);
+        }
+      }
+    }
+
+    function handlePhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      formatAndSetPhone(input, digits);
+    }
+
+    function formatAndSetPhone(input, digits) {
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      if (digits.length === 0) input.value = '';
+      else if (digits.length <= 2) input.value = `(${digits}`;
+      else if (digits.length <= 6) input.value = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      else if (digits.length <= 10) input.value = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
     function showCustomAlert(title, message, icon = '⚠️', customButtonsHtml = null) {
       document.getElementById('alertIcon').innerText = icon;
       document.getElementById('alertTitle').innerText = title;
@@ -331,6 +363,35 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
+    // SINCRONIZAÇÃO COMPLETA COM ENTREGADORES (MÓDULO 21)
+    function syncCouriersStorage(staffList) {
+      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      
+      // Filtra quem é entregador na equipe atualizada
+      let teamCouriers = staffList.filter(m => String(m.role || '').toLowerCase().includes('entregador'));
+      
+      let map = new Map();
+      couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
+      
+      // Sincroniza entregadores da equipe para a lista de entregadores do Módulo 21
+      teamCouriers.forEach(t => {
+        if (t.status === 'ativo') {
+          map.set(t.name.trim().toLowerCase(), {
+            id: t.id,
+            name: t.name,
+            phone: t.phone || '',
+            type: 'Próprio'
+          });
+        } else {
+          // Se inativou o colaborador, remove dos entregadores ativos
+          map.delete(t.name.trim().toLowerCase());
+        }
+      });
+
+      let finalCouriers = Array.from(map.values());
+      localStorage.setItem('vortex_couriers', JSON.stringify(finalCouriers));
+    }
+
     // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE
     async function loadStaffData() {
       let loaded = false;
@@ -345,7 +406,7 @@
       }
 
       if (!loaded) {
-        const local = localStorage.getItem('vortex_staff_members');
+        const local = localStorage.getItem('vortex_team_members');
         if (local) {
           try { staffMembers = JSON.parse(local); } catch(e){}
         } else {
@@ -362,7 +423,7 @@
       tbody.innerHTML = '';
 
       if (staffMembers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
         return;
       }
 
@@ -371,6 +432,7 @@
         tr.innerHTML = `
           <td><strong>${m.name}</strong></td>
           <td><span class="badge-role">${m.role}</span></td>
+          <td>${m.phone || m.telefone || '<span style="color:var(--text-muted);">-</span>'}</td>
           <td>${m.commission ? m.commission + '%' : '0%'}</td>
           <td><span class="badge-status ${m.status === 'ativo' ? 'badge-active' : 'badge-inactive'}">${(m.status || 'ativo').toUpperCase()}</span></td>
           <td>
@@ -417,6 +479,7 @@
     function openStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffName').value = '';
+      document.getElementById('staffPhone').value = '';
       document.getElementById('staffRole').value = 'Gerente';
       document.getElementById('staffCommission').value = '';
       document.getElementById('staffStatus').value = 'ativo';
@@ -434,6 +497,7 @@
 
       document.getElementById('staffEditId').value = member.id;
       document.getElementById('staffName').value = member.name;
+      document.getElementById('staffPhone').value = member.phone || member.telefone || '';
       document.getElementById('staffRole').value = member.role;
       document.getElementById('staffCommission').value = member.commission || '';
       document.getElementById('staffStatus').value = member.status || 'ativo';
@@ -444,6 +508,7 @@
     async function saveStaffMember() {
       const editId = document.getElementById('staffEditId').value;
       const name = document.getElementById('staffName').value.trim();
+      const phone = document.getElementById('staffPhone').value.trim();
       const role = document.getElementById('staffRole').value;
       const commission = parseFloat(document.getElementById('staffCommission').value) || 0;
       const status = document.getElementById('staffStatus').value;
@@ -455,7 +520,7 @@
 
       const newRecord = {
         id: editId || 'staff_' + Date.now(),
-        name, role, commission, status
+        name, phone, role, commission, status
       };
 
       if (editId) {
@@ -465,17 +530,20 @@
         staffMembers.push(newRecord);
       }
 
+      // Sincroniza com a tabela de entregadores do Módulo 21
+      syncCouriersStorage(staffMembers);
+
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           await supabaseClient.from('vortex_staff').upsert([newRecord]);
         } catch(e){}
       }
 
-      localStorage.setItem('vortex_staff_members', JSON.stringify(staffMembers));
+      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
       closeStaffModal();
-      showCustomAlert('Sucesso', 'Dados do colaborador salvos com sucesso!', '✅');
+      showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
     }
 
     function confirmDeleteStaff(id) {
@@ -494,13 +562,16 @@
       closeCustomAlert();
       staffMembers = staffMembers.filter(m => String(m.id) !== String(id));
 
+      // Atualiza a sincronização de entregadores
+      syncCouriersStorage(staffMembers);
+
       if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         try {
           await supabaseClient.from('vortex_staff').delete().eq('id', id);
         } catch(e){}
       }
 
-      localStorage.setItem('vortex_staff_members', JSON.stringify(staffMembers));
+      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
       showCustomAlert('Removido', 'O colaborador foi removido com sucesso.', '✅');

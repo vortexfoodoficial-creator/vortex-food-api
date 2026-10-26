@@ -105,6 +105,7 @@
     th { color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; background: rgba(0,0,0,0.1); }
 
     .badge-role { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; background: rgba(56, 189, 248, 0.15); color: var(--info); }
+    .badge-type { padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(249, 115, 22, 0.15); color: var(--primary); margin-left: 6px; }
     .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
     .badge-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .badge-inactive { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
@@ -261,12 +262,21 @@
 
       <div class="form-group">
         <label>Função / Cargo:*</label>
-        <select class="form-input" id="staffRole">
+        <select class="form-input" id="staffRole" onchange="toggleCourierTypeField()">
           <option value="Gerente">Gerente</option>
           <option value="Operador de Caixa">Operador de Caixa</option>
           <option value="Garçom / Atendente">Garçom / Atendente</option>
           <option value="Cozinha / KDS">Cozinha / KDS</option>
           <option value="Entregador">Entregador</option>
+        </select>
+      </div>
+
+      <!-- CAMPO DE TIPO DE VÍNCULO (EXCLUSIVO PARA ENTREGADORES) -->
+      <div class="form-group" id="courierTypeGroup" style="display: none;">
+        <label>Tipo de Vínculo do Entregador:</label>
+        <select class="form-input" id="staffCourierType">
+          <option value="Próprio">Entregador Próprio</option>
+          <option value="Terceirizado">Entregador Terceirizado / Aplicativo</option>
         </select>
       </div>
 
@@ -315,6 +325,16 @@
         document.body.classList.add('light-theme');
       } else {
         document.body.classList.remove('light-theme');
+      }
+    }
+
+    function toggleCourierTypeField() {
+      const role = document.getElementById('staffRole').value;
+      const group = document.getElementById('courierTypeGroup');
+      if (role === 'Entregador') {
+        group.style.display = 'block';
+      } else {
+        group.style.display = 'none';
       }
     }
 
@@ -367,23 +387,20 @@
     function syncCouriersStorage(staffList) {
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       
-      // Filtra quem é entregador na equipe atualizada
       let teamCouriers = staffList.filter(m => String(m.role || '').toLowerCase().includes('entregador'));
       
       let map = new Map();
       couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
       
-      // Sincroniza entregadores da equipe para a lista de entregadores do Módulo 21
       teamCouriers.forEach(t => {
-        if (t.status === 'ativo') {
+        if ((t.status || 'ativo') === 'ativo') {
           map.set(t.name.trim().toLowerCase(), {
             id: t.id,
             name: t.name,
-            phone: t.phone || '',
-            type: 'Próprio'
+            phone: t.phone || t.telefone || '',
+            type: t.courierType || t.type || 'Próprio'
           });
         } else {
-          // Se inativou o colaborador, remove dos entregadores ativos
           map.delete(t.name.trim().toLowerCase());
         }
       });
@@ -414,6 +431,11 @@
         }
       }
 
+      // Garante que todo colaborador carregado tenha status ativo por padrão se ausente
+      staffMembers.forEach(m => {
+        if (!m.status) m.status = 'ativo';
+      });
+
       renderStaffTable();
       calculateStaffMetrics();
     }
@@ -428,13 +450,20 @@
       }
 
       staffMembers.forEach(m => {
+        const isAtivo = (m.status || 'ativo') === 'ativo';
+        let typeBadge = '';
+        if (String(m.role || '').toLowerCase().includes('entregador')) {
+          let cType = m.courierType || m.type || 'Próprio';
+          typeBadge = `<span class="badge-type">${cType}</span>`;
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${m.name}</strong></td>
-          <td><span class="badge-role">${m.role}</span></td>
+          <td><span class="badge-role">${m.role}</span>${typeBadge}</td>
           <td>${m.phone || m.telefone || '<span style="color:var(--text-muted);">-</span>'}</td>
           <td>${m.commission ? m.commission + '%' : '0%'}</td>
-          <td><span class="badge-status ${m.status === 'ativo' ? 'badge-active' : 'badge-inactive'}">${(m.status || 'ativo').toUpperCase()}</span></td>
+          <td><span class="badge-status ${isAtivo ? 'badge-active' : 'badge-inactive'}">${isAtivo ? 'ATIVO' : 'INATIVO'}</span></td>
           <td>
             <button class="btn-secondary" onclick="editStaff('${m.id}')">✏️ Editar</button>
             <button class="btn-danger" onclick="confirmDeleteStaff('${m.id}')">🗑️ Excluir</button>
@@ -447,7 +476,7 @@
     // METRICAS AUTOMÁTICAS
     async function calculateStaffMetrics() {
       document.getElementById('statTotalStaff').innerText = staffMembers.length;
-      const activeCount = staffMembers.filter(m => m.status === 'ativo').length;
+      const activeCount = staffMembers.filter(m => (m.status || 'ativo') === 'ativo').length;
       document.getElementById('statActiveStaff').innerText = activeCount;
 
       let salesHistory = [];
@@ -466,7 +495,7 @@
       let totalCommissions = 0;
       if (staffMembers.length > 0 && totalSales > 0) {
         staffMembers.forEach(m => {
-          if (m.status === 'ativo' && m.commission && parseFloat(m.commission) > 0) {
+          if ((m.status || 'ativo') === 'ativo' && m.commission && parseFloat(m.commission) > 0) {
             totalCommissions += totalSales * (parseFloat(m.commission) / 100);
           }
         });
@@ -481,8 +510,10 @@
       document.getElementById('staffName').value = '';
       document.getElementById('staffPhone').value = '';
       document.getElementById('staffRole').value = 'Gerente';
+      document.getElementById('staffCourierType').value = 'Próprio';
       document.getElementById('staffCommission').value = '';
       document.getElementById('staffStatus').value = 'ativo';
+      toggleCourierTypeField();
       document.getElementById('staffModalTitle').innerText = 'Cadastrar Colaborador';
       document.getElementById('staffModal').classList.add('active');
     }
@@ -499,8 +530,10 @@
       document.getElementById('staffName').value = member.name;
       document.getElementById('staffPhone').value = member.phone || member.telefone || '';
       document.getElementById('staffRole').value = member.role;
+      document.getElementById('staffCourierType').value = member.courierType || member.type || 'Próprio';
       document.getElementById('staffCommission').value = member.commission || '';
       document.getElementById('staffStatus').value = member.status || 'ativo';
+      toggleCourierTypeField();
       document.getElementById('staffModalTitle').innerText = 'Editar Colaborador';
       document.getElementById('staffModal').classList.add('active');
     }
@@ -510,6 +543,7 @@
       const name = document.getElementById('staffName').value.trim();
       const phone = document.getElementById('staffPhone').value.trim();
       const role = document.getElementById('staffRole').value;
+      const courierType = role === 'Entregador' ? document.getElementById('staffCourierType').value : 'Próprio';
       const commission = parseFloat(document.getElementById('staffCommission').value) || 0;
       const status = document.getElementById('staffStatus').value;
 
@@ -520,7 +554,7 @@
 
       const newRecord = {
         id: editId || 'staff_' + Date.now(),
-        name, phone, role, commission, status
+        name, phone, role, courierType, type: courierType, commission, status
       };
 
       if (editId) {

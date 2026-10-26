@@ -673,7 +673,7 @@
       }
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (100% PRECISO POR PROXIMIDADE DE RUA E NÚMERO)
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (ALGORITMO VORAZ / NEAREST NEIGHBOR POR CEP + NÚMERO)
     async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
@@ -725,35 +725,73 @@
         return;
       }
 
-      // Função cirúrgica para extrair o logradouro limpo e o número da residência para ordenação linear exata
-      function parseAddressProximity(addrStr) {
-        if (!addrStr) return { street: '', number: 999999 };
-        let cleanStr = addrStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        let streetPart = cleanStr.split(',')[0].replace(/^(rua|av\.|avenida|alameda|travessa|estr\.|estrada)\s*/i, '').trim();
-        
-        let matchNum = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
-        let numVal = matchNum ? parseInt(matchNum[1]) : 0;
-        return { street: streetPart, number: numVal };
+      // Função auxiliar para extrair métricas numéricas robustas (CEP + Número da residência)
+      function extractMetrics(addrStr) {
+        if (!addrStr) return { cepNum: 0, houseNum: 0 };
+        // Extrai o CEP numérico (ex: 07262-010 vira 7262010)
+        let cepMatch = addrStr.match(/CEP:\s*(\d{5})-?(\d{3})/i) || addrStr.match(/(\d{5}-\d{3})/);
+        let cepVal = 0;
+        if (cepMatch) {
+          cepVal = parseInt(cepMatch[0].replace(/\D/g, '')) || 0;
+        }
+
+        // Extrai o número do endereço
+        let numMatch = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
+        let houseVal = numMatch ? parseInt(numMatch[1]) : 0;
+
+        return { cepNum: cepVal, houseNum: houseVal };
       }
 
-      // ORDENAÇÃO RIGOROSA: Agrupa por logradouro idêntico e ordena do menor número ao maior (proximidade exata)
-      readyOrders.sort((a, b) => {
-        let locA = parseAddressProximity(a.address);
-        let locB = parseAddressProximity(b.address);
+      // Extrai métrica de proximidade da Loja
+      let storeMetrics = extractMetrics(storeAddress);
 
-        if (locA.street === locB.street) {
-          return locA.number - locB.number; // Mesma rua: ordenado estritamente por número sequencial
-        }
-        return locA.street.localeCompare(locB.street); // Ruas diferentes: agrupadas por proximidade alfabética de logradouro
-      });
+      // Distância estimada simples baseada na diferença numérica do CEP + proximidade da numeração
+      function calculateDistanceScore(metrics, refCep, refHouse) {
+        let cepDiff = Math.abs(metrics.cepNum - refCep);
+        let houseDiff = Math.abs(metrics.houseNum - refHouse);
+        // O CEP tem peso maior (mesma região/bairro), o número refina a proximidade na rua
+        return (cepDiff * 1000) + houseDiff;
+      }
+
+      // Algoritmo Voraz (Nearest Neighbor): Encadeia do mais perto até o mais longe de forma contínua
+      let unassigned = [...readyOrders];
+      let optimizedRoute = [];
+
+      // Ponto de referência inicial: Estabelecimento
+      let currentRefCep = storeMetrics.cepNum || 7000000;
+      let currentRefHouse = storeMetrics.houseNum || 1;
+
+      while (unassigned.length > 0) {
+        // Encontra o pedido mais próximo da referência atual
+        let nearestIndex = 0;
+        let minScore = Infinity;
+
+        unassigned.forEach((ord, idx) => {
+          let m = extractMetrics(ord.address);
+          let score = calculateDistanceScore(m, currentRefCep, currentRefHouse);
+          if (score < minScore) {
+            minScore = score;
+            nearestIndex = idx;
+          }
+        });
+
+        // Retira o mais próximo da lista pendente e adiciona à rota otimizada
+        let nextOrder = unassigned.splice(nearestIndex, 1)[0];
+        optimizedRoute.push(nextOrder);
+
+        // Atualiza a referência para o endereço que acabou de ser inserido (formando a cadeia contínua)
+        let nextMetrics = extractMetrics(nextOrder.address);
+        currentRefCep = nextMetrics.cepNum || currentRefCep;
+        currentRefHouse = nextMetrics.houseNum || currentRefHouse;
+      }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado rigorosamente da entrega mais próxima à mais distante.`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado em cadeia contínua do endereço mais próximo ao mais distante.`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';
 
-      readyOrders.forEach((o, index) => {
+      optimizedRoute.forEach((o, index) => {
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">

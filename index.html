@@ -441,7 +441,7 @@
       <div class="diag-row"><span class="diag-label">dbFetchSales:</span><span class="diag-val" id="diagSales">-- ms</span></div>
       <div class="diag-row"><span class="diag-label">dbFetchKdsOrders:</span><span class="diag-val" id="diagKds">-- ms</span></div>
       <div class="diag-row"><span class="diag-label">dbFetchRecipes:</span><span class="diag-val" id="diagRecipes">-- ms</span></div>
-      <div class="diag-row"><span class="diag-label">Aguardando Consultas:</span><span class="diag-val" id="diagSupabaseTotal">-- ms</span></div>
+      <div class="diag-row"><span class="diag-label">Tempo Total Supabase:</span><span class="diag-val" id="diagSupabaseTotal">-- ms</span></div>
       <div class="diag-row"><span class="diag-label">Leitura/Proc. Local:</span><span class="diag-val" id="diagLocalProc">-- ms</span></div>
       <div class="diag-row"><span class="diag-label">Atualização DOM:</span><span class="diag-val" id="diagDom">-- ms</span></div>
       <div class="diag-row" style="border-bottom:none; margin-top:2px;"><span class="diag-label"><strong>Tempo Total:</strong></span><span class="diag-val total" id="diagTotal">-- ms</span></div>
@@ -562,29 +562,34 @@
       try {
         const tStartSupabase = performance.now();
 
+        // Disparadas em paralelo (Promise.all implícito via Promessas independentes)
+        const pSales = typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]);
+        const pKds = typeof dbFetchKdsOrders === 'function' ? dbFetchKdsOrders() : Promise.resolve([]);
+        const pRecipes = typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([]);
+
         const tStartSales = performance.now();
-        const salesRes = typeof dbFetchSales === 'function' ? await dbFetchSales() : [];
+        const salesRes = await pSales;
         const tEndSales = performance.now();
         mSales = tEndSales - tStartSales;
 
         const tStartKds = performance.now();
-        const kdsRes = typeof dbFetchKdsOrders === 'function' ? await dbFetchKdsOrders() : [];
+        const kdsRes = await pKds;
         const tEndKds = performance.now();
         mKds = tEndKds - tStartKds;
 
         const tStartRecipes = performance.now();
-        const recipesRes = typeof dbFetchRecipes === 'function' ? await dbFetchRecipes() : [];
+        const recipesRes = await pRecipes;
         const tEndRecipes = performance.now();
         mRecipes = tEndRecipes - tStartRecipes;
 
         const tEndSupabase = performance.now();
         mSupTotal = tEndSupabase - tStartSupabase;
 
-        console.log(`[Vortex Perf] 1. Chamadas Individuais Supabase:`);
+        console.log(`[Vortex Perf] 1. Chamadas Paralelas Supabase:`);
         console.log(`   - dbFetchSales(): ${mSales.toFixed(2)} ms`);
         console.log(`   - dbFetchKdsOrders(): ${mKds.toFixed(2)} ms`);
         console.log(`   - dbFetchRecipes(): ${mRecipes.toFixed(2)} ms`);
-        console.log(`[Vortex Perf] 2. Tempo Total Aguardando Consultas: ${mSupTotal.toFixed(2)} ms`);
+        console.log(`[Vortex Perf] 2. Tempo Real Total (Paralelo): ${mSupTotal.toFixed(2)} ms`);
 
         const tStartLocalProc = performance.now();
 

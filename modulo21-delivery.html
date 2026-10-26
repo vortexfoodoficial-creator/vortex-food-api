@@ -649,7 +649,7 @@
       }
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (COM BUSCA ASSÍNCRONA BLINDADA NO SUPABASE)
+    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE (COM SINCRONIZAÇÃO MULTI-CHAVE BLINDADA)
     async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
@@ -657,32 +657,40 @@
         return;
       }
 
-      // 1. Tenta buscar o endereço nas chaves do localStorage
+      // 1. Tenta varrer todas as possíveis chaves salvas pelas Configurações no localStorage
       let storeAddress = '';
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
       const vortexConfig = JSON.parse(localStorage.getItem('vortex_config')) || {};
       
-      storeAddress = storeSettings.storeAddress || storeSettings.address || vortexConfig.endereco || vortexConfig.store_address || '';
+      storeAddress = storeSettings.storeAddress || storeSettings.address || storeSettings.endereco || 
+                     vortexConfig.endereco || vortexConfig.store_address || vortexConfig.address ||
+                     localStorage.getItem('vortex_store_address') || localStorage.getItem('vortex_endereco') || '';
 
-      // 2. Se não encontrou no cache local, busca direto no Supabase em tempo real de forma assíncrona
-      if ((!storeAddress || storeAddress.trim() === '') && typeof dbFetchStoreSettings === 'function') {
-        try {
-          const remoteData = await dbFetchStoreSettings();
-          if (remoteData) {
-            storeAddress = remoteData.store_address || remoteData.endereco || '';
-            // Atualiza o cache local para agilizar futuras consultas
-            localStorage.setItem('vortex_store_settings', JSON.stringify({ storeName: remoteData.store_name, storeAddress: storeAddress }));
-          }
-        } catch (err) {
-          console.warn('Erro ao buscar endereço da loja no Supabase:', err);
+      // 2. Se ainda não encontrou localmente, busca de forma assíncrona nas tabelas/funções do Supabase
+      if ((!storeAddress || storeAddress.trim() === '')) {
+        if (typeof dbFetchStoreSettings === 'function') {
+          try {
+            const remoteData = await dbFetchStoreSettings();
+            if (remoteData) {
+              storeAddress = remoteData.store_address || remoteData.endereco || remoteData.address || '';
+            }
+          } catch (e) {}
+        }
+        if ((!storeAddress || storeAddress.trim() === '') && window.supabaseClient) {
+          try {
+            const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1);
+            if (data && data.length > 0) {
+              storeAddress = data[0].store_address || data[0].endereco || data[0].address || '';
+            }
+          } catch (e) {}
         }
       }
 
-      // 3. Validação final: se ainda estiver vazio, exibe o aviso explicativo exigido
+      // 3. Validação final: se realmente não houver endereço em lugar nenhum, exibe o alerta
       if (!storeAddress || storeAddress.trim() === '') {
         showNoticeModal(
           'Endereço do Estabelecimento Não Encontrado', 
-          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi cadastrado nas Configurações (Módulo 1). Por favor, acesse o menu de Configurações, preencha o endereço completo da sua loja, salve e tente novamente.', 
+          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi sincronizado ou cadastrado nas Configurações (Módulo 1). Por favor, verifique se salvou o endereço nas Configurações.', 
           '⚠️'
         );
         return;

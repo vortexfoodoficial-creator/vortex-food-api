@@ -499,10 +499,8 @@
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
       
-      // Filtra apenas membros que atuam como entregador na equipe se existirem
-      let teamCouriers = team.filter(m => (m.role && m.role.toLowerCase().includes('motoboy')) || (m.cargo && m.cargo.toLowerCase().includes('motoboy')) || (m.type && m.type.toLowerCase().includes('entregador')));
+      let teamCouriers = team.filter(m => (m.status || 'ativo') === 'ativo' && ((m.role && m.role.toLowerCase().includes('entregador')) || (m.cargo && m.cargo.toLowerCase().includes('motoboy')) || (m.type && m.type.toLowerCase().includes('entregador'))));
       
-      // Garante unicidade por nome/telefone
       let map = new Map();
       couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
       teamCouriers.forEach(t => {
@@ -511,7 +509,7 @@
             id: t.id || 'cour_' + Date.now(),
             name: t.name,
             phone: t.phone || t.telefone || '',
-            type: t.type || t.cargo || 'Próprio'
+            type: t.courierType || t.type || 'Próprio'
           });
         }
       });
@@ -522,21 +520,24 @@
     function saveUnifiedCouriers(couriersList) {
       localStorage.setItem('vortex_couriers', JSON.stringify(couriersList));
       
-      // Sincroniza também com a Equipe (`vortex_team_members`) para compatibilidade com o Módulo 9
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
       couriersList.forEach(c => {
         let found = team.find(t => String(t.name).trim().toLowerCase() === String(c.name).trim().toLowerCase());
         if (found) {
           found.phone = c.phone;
           found.role = 'Entregador';
+          found.courierType = c.type;
           found.type = c.type;
+          found.status = 'ativo';
         } else {
           team.push({
             id: c.id,
             name: c.name,
             phone: c.phone,
             role: 'Entregador',
-            type: c.type
+            courierType: c.type,
+            type: c.type,
+            status: 'ativo'
           });
         }
       });
@@ -866,7 +867,6 @@
       document.getElementById('smartRouteModal').classList.remove('active');
     }
 
-    // ATRIBUI OU DESVINCULA MOTOBOY (NÃO CRIA HISTÓRICO AUTOMÁTICO AQUI MAIS)
     async function assignOrderToCourier(orderId, courierName) {
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
@@ -889,7 +889,6 @@
       }
     }
 
-    // FUNÇÕES DE EDIÇÃO / ALTERAÇÃO DE MOTOBOY DO PEDIDO
     function openEditCourierModal(orderId) {
       document.getElementById('editCourierOrderId').value = orderId;
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -924,12 +923,10 @@
       }
     }
 
-    // HISTÓRICO DE ENTREGAS DOS MOTOBOYS (ALIMENTADO APENAS QUANDO DESPACHADO OU CONCLUÍDO)
     function recordCourierHistory(o) {
       if (!o.courier) return;
       let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
       
-      // Verifica se já existe registro para este pedido e motoboy para evitar duplicadas
       let existingIndex = history.findIndex(h => String(h.orderId) === String(o.id));
       let routeStatusText = o.status === 'finished' ? 'Entregue / Concluído ✅' : 'Em Rota de Entrega 🛵';
 
@@ -945,7 +942,7 @@
       };
 
       if (existingIndex !== -1) {
-        history[existingIndex] = historyItem; // Atualiza o status atual (Ex: de Em Rota para Entregue)
+        history[existingIndex] = historyItem;
       } else {
         history.unshift(historyItem);
       }
@@ -1145,7 +1142,6 @@
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // Determina o número sequencial curto unificado (mesmo ID da Cozinha/KDS)
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       const nextKdsId = kdsOrders.length > 0 ? Math.max(...kdsOrders.map(o => (typeof o.id === 'number' || !isNaN(parseInt(o.id)) ? parseInt(o.id) : 201))) + 1 : 201;
       const unifiedOrderId = String(nextKdsId);
@@ -1226,7 +1222,6 @@
     }
 
     async function loadActiveOrders() {
-      // Impede recarregamento total caso o usuário esteja digitando no campo de código de validação
       const activeElement = document.activeElement;
       if (activeElement && activeElement.classList.contains('code-input')) {
         return;
@@ -1339,7 +1334,6 @@
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
 
-        // REGISTRA NO HISTÓRICO SOMENTE AGORA (AO SER DESPACHADO)
         recordCourierHistory(o);
 
         loadActiveOrders();
@@ -1357,7 +1351,6 @@
           try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
         }
 
-        // ATUALIZA O HISTÓRICO PARA ENTREGUE/CONCLUÍDO
         recordCourierHistory(o);
 
         loadActiveOrders();

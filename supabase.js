@@ -75,11 +75,13 @@ async function dbSaveSale(saleData) {
 async function dbFetchSales() {
   const supabase = getSupabase();
   if (!supabase) return [];
-  const { data, error } = await supabase.from('vortex_sales_history').select('*').order('created_at', { ascending: false });
+  // Removido o .order('created_at') para evitar falhas caso a coluna não exista na tabela SQL
+  const { data, error } = await supabase.from('vortex_sales_history').select('*');
   if (error) {
     console.error('Erro ao buscar vendas no Supabase:', error);
     return [];
   }
+  if (!data) return [];
   return data.map(item => ({
     id: item.id,
     client: item.client,
@@ -126,11 +128,13 @@ async function dbSaveKdsOrder(orderData) {
 async function dbFetchKdsOrders() {
   const supabase = getSupabase();
   if (!supabase) return [];
-  const { data, error } = await supabase.from('vortex_kds_orders').select('*').order('created_at', { ascending: false });
+  // Removido o .order('created_at') para garantir estabilidade na busca
+  const { data, error } = await supabase.from('vortex_kds_orders').select('*');
   if (error) {
     console.error('Erro ao buscar pedidos KDS no Supabase:', error);
     return [];
   }
+  if (!data) return [];
   return data.map(item => ({
     id: item.id,
     origin: item.origin,
@@ -173,7 +177,7 @@ async function dbFetchIntegrations() {
     console.error('Erro ao buscar integrações no Supabase:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
 // Helper para Lançamentos Financeiros
@@ -194,12 +198,13 @@ async function dbSaveFinancialEntry(entryData) {
 async function dbFetchFinancialEntries() {
   const supabase = getSupabase();
   if (!supabase) return [];
-  const { data, error } = await supabase.from('vortex_financial').select('*').order('created_at', { ascending: false });
+  // Removido o .order('created_at') para blindar contra colunas ausentes
+  const { data, error } = await supabase.from('vortex_financial').select('*');
   if (error) {
     console.error('Erro ao buscar financeiros no Supabase:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
 // Helpers para Catálogo e Fichas Técnicas

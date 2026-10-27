@@ -879,25 +879,17 @@
     }
 
     async function assignOrderToCourier(orderId, courierName) {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (o) {
-        o.courier = courierName;
-
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-
-        loadActiveOrders();
-        runSmartRouteOptimization();
-
-        if (courierName) {
-          showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}.`, '🛵');
-        } else {
-          showNoticeModal('Entrega Desvinculada', `O pedido #${orderId} foi desvinculado do motoboy.`, 'ℹ️');
-        }
-      }
+      const kdsOrders = readLocalKdsOrders();
+      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      order.courier = courierName;
+      saveLocalKdsOrders(kdsOrders);
+      renderActiveDeliveryOrders(kdsOrders, true);
+      runSmartRouteOptimization();
+      if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}.`, '🛵');
+      else showNoticeModal('Entrega Desvinculada', `O pedido #${orderId} foi desvinculado do motoboy.`, 'ℹ️');
+      const result = await syncKdsPatch(orderId, { courier: courierName || '' });
+      if (result.error) showNoticeModal('Sincronização pendente', `A atribuição do pedido #${orderId} foi atualizada neste dispositivo, mas não foi confirmada na nuvem. ${result.error.message || ''}`, '⚠️');
     }
 
     function openEditCourierModal(orderId) {
@@ -917,21 +909,16 @@
     async function saveOrderCourierChange() {
       const orderId = document.getElementById('editCourierOrderId').value;
       const newCourier = document.getElementById('modalEditCourierSelect').value;
-
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (o) {
-        o.courier = newCourier;
-
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-
-        closeEditCourierModal();
-        loadActiveOrders();
-        showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${orderId} foi alterado para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido com sucesso.`, '✅');
-      }
+      const kdsOrders = readLocalKdsOrders();
+      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      order.courier = newCourier;
+      saveLocalKdsOrders(kdsOrders);
+      closeEditCourierModal();
+      renderActiveDeliveryOrders(kdsOrders, true);
+      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${orderId} foi alterado para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido com sucesso.`, '✅');
+      const result = await syncKdsPatch(orderId, { courier: newCourier || '' });
+      if (result.error) showNoticeModal('Sincronização pendente', `A alteração foi salva neste dispositivo, mas não foi confirmada na nuvem. ${result.error.message || ''}`, '⚠️');
     }
 
     function recordCourierHistory(o) {
@@ -1174,12 +1161,7 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      if (window.supabaseClient) {
-        try { await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]); } catch (err) {}
-      }
-      if (typeof dbSaveSale === 'function') {
-        try { await dbSaveSale(newSaleRecord); } catch(e){}
-      }
+      // A gravação na nuvem será iniciada uma única vez, em segundo plano.
 
       const deliveryCode = generateDeliveryCode();
 
@@ -1203,14 +1185,9 @@
       };
 
       kdsOrders.unshift(newOrder);
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      saveLocalKdsOrders(kdsOrders);
 
-      if (window.supabaseClient) {
-        try { await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]); } catch (err) {}
-      }
-      if (typeof dbSaveKdsOrder === 'function') {
-        try { await dbSaveKdsOrder(newOrder); } catch(e){}
-      }
+      // O pedido completo permanece no dispositivo; a nuvem recebe apenas campos compatíveis.
 
       deliveryCart = [];
       rawCashGiven = 0;
@@ -1229,166 +1206,233 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado com sucesso, integrado ao Dashboard, Relatórios, Financeiro e KDS!`, '🛵');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado neste dispositivo. Sincronizando com a nuvem em segundo plano...`, '🛵');
+      Promise.all([syncDeliverySale(newSaleRecord), syncNewDeliveryOrder(newOrder)]).then(results => {
+        const failed = results.find(result => result && result.error);
+        if (failed) {
+          console.error('Falha na sincronização do pedido Delivery:', failed.error);
+          showNoticeModal('Pedido salvo localmente', `O pedido #${nextKdsId} foi cadastrado neste dispositivo, mas a sincronização com a nuvem falhou. ${failed.error.message || 'Verifique a conexão e o esquema da tabela.'}`, '⚠️');
+        } else {
+          showNoticeModal('Pedido sincronizado', `O pedido #${nextKdsId} foi cadastrado e a sincronização com a nuvem foi confirmada.`, '✅');
+        }
+      }).catch(error => {
+        console.error('Erro ao sincronizar pedido Delivery:', error);
+        showNoticeModal('Pedido salvo localmente', `O pedido #${nextKdsId} foi cadastrado neste dispositivo, mas não foi possível confirmar a sincronização.`, '⚠️');
+      });
     }
 
-    async function loadActiveOrders() {
-      const activeElement = document.activeElement;
-      if (activeElement && activeElement.classList.contains('code-input')) {
-        return;
+    // Otimização de renderização e sincronização do Delivery.
+    // A interface usa os dados locais imediatamente; a rede não bloqueia os cliques.
+    let deliveryOrdersFetchInFlight = false;
+    let deliveryLastLocalMutationAt = 0;
+    let deliveryLastRenderedSignature = '';
+
+    function readLocalKdsOrders() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.error('Não foi possível ler os pedidos locais:', error);
+        return [];
       }
+    }
 
-      const todayDateStr = new Date().toISOString().split('T')[0];
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+    function saveLocalKdsOrders(orders) {
+      deliveryLastLocalMutationAt = Date.now();
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+    }
 
-      if (window.supabaseClient) {
-        try {
-          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
-          if (data && data.length > 0) {
-            kdsOrders = data;
-            localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-          }
-        } catch (e) {}
+    function deliveryOrdersSignature(orders) {
+      try {
+        return JSON.stringify(orders.map(o => ({
+          id: o.id, status: o.status, courier: o.courier, client: o.client,
+          address: o.address, total: o.total, payment: o.payment,
+          date: o.date, time: o.time, items: o.items, observation: o.observation,
+          cashGiven: o.cashGiven, change: o.change, code: o.code
+        })));
+      } catch (error) {
+        return String(Date.now());
       }
+    }
 
-      const deliveryOrders = kdsOrders.filter(o => {
-        if (!o.origin || !o.origin.includes('Delivery')) return false;
-        if (o.status === 'cancelled') return false;
-        if (o.status === 'finished') {
-          return o.date === todayDateStr;
+    async function syncKdsPatch(orderId, patch) {
+      if (!window.supabaseClient) return { error: new Error('Supabase não inicializado') };
+      try {
+        // Atualiza somente as colunas alteradas; não reenvia o pedido inteiro
+        // (evita erros de colunas opcionais ausentes, como cashGiven).
+        const result = await window.supabaseClient
+          .from('vortex_kds_orders')
+          .update(patch)
+          .eq('id', String(orderId));
+        return result || { error: null };
+      } catch (error) {
+        return { error };
+      }
+    }
+
+    async function syncDeliverySale(sale) {
+      try {
+        if (typeof dbSaveSale === 'function') return await dbSaveSale(sale);
+        if (window.supabaseClient) {
+          return await window.supabaseClient.from('vortex_sales_history').upsert([sale]);
         }
+        return { error: new Error('Supabase não inicializado') };
+      } catch (error) {
+        return { error };
+      }
+    }
+
+    async function syncNewDeliveryOrder(order) {
+      try {
+        if (!window.supabaseClient) return { error: new Error('Supabase não inicializado') };
+        // cashGiven/change são mantidos no armazenamento local, mas não enviados
+        // porque a tabela atual não reconhece cashGiven no esquema do Supabase.
+        const cloudRecord = {
+          id: String(order.id), origin: order.origin, client: order.client,
+          address: order.address, payment: order.payment, observation: order.observation || '',
+          items: order.items || [], total: Number(order.total) || 0,
+          status: order.status || 'new', date: order.date, time: order.time,
+          courier: order.courier || '', code: order.code
+        };
+        return await window.supabaseClient.from('vortex_kds_orders').upsert([cloudRecord]);
+      } catch (error) {
+        return { error };
+      }
+    }
+
+    function renderActiveDeliveryOrders(kdsOrders, force = false) {
+      const todayDateStr = new Date().toISOString().split('T')[0];
+      const deliveryOrders = kdsOrders.filter(o => {
+        if (!o.origin || !String(o.origin).includes('Delivery')) return false;
+        if (o.status === 'cancelled') return false;
+        if (o.status === 'finished') return o.date === todayDateStr;
         return true;
       });
+      const signature = deliveryOrdersSignature(deliveryOrders);
+      if (!force && signature === deliveryLastRenderedSignature) return;
+      deliveryLastRenderedSignature = signature;
 
       const container = document.getElementById('deliveryOrdersList');
-      container.innerHTML = '';
-
+      if (!container) return;
       if (deliveryOrders.length === 0) {
         container.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:20px;">Nenhum pedido de delivery ativo no momento.</div>`;
         return;
       }
 
-      deliveryOrders.forEach(o => {
+      const cardsHtml = deliveryOrders.map(o => {
         let statusClass = 'status-new';
         let statusText = 'Em Espera';
         let actionAreaHtml = '';
-
         if (o.status === 'new') {
-          statusClass = 'status-new';
-          statusText = 'Novo / Na Fila';
+          statusClass = 'status-new'; statusText = 'Novo / Na Fila';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:4px;">Aguardando aceite na cozinha...</div>`;
         } else if (o.status === 'preparing') {
-          statusClass = 'status-preparing';
-          statusText = 'Em Preparo na Cozinha ⏳';
+          statusClass = 'status-preparing'; statusText = 'Em Preparo na Cozinha ⏳';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--warning); text-align:center; margin-top:4px;">Em produção pela cozinha...</div>`;
         } else if (o.status === 'ready') {
-          statusClass = 'status-ready';
-          statusText = 'Pronto na Cozinha 🟢';
+          statusClass = 'status-ready'; statusText = 'Pronto na Cozinha 🟢';
           actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>`;
         } else if (o.status === 'delivering') {
-          statusClass = 'status-route';
-          statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
-          actionAreaHtml = `
-            <div style="margin-top:6px;">
-              <div class="code-input-row">
-                <input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Digitar Código" maxlength="4">
-                <button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button>
-              </div>
-              <button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue ✅</button>
-            </div>
-          `;
+          statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
+          actionAreaHtml = `<div style="margin-top:6px;"><div class="code-input-row"><input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Digitar Código" maxlength="4"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div><button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue ✅</button></div>`;
         } else if (o.status === 'finished') {
-          statusClass = 'status-finished';
-          statusText = 'Entregue / Concluído ✅';
+          statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
         }
-
         const itemsText = o.items ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '';
+        const cashGiven = Number(o.cashGiven) || 0;
+        const change = Number(o.change) || 0;
+        const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
+          ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${o.id} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço Completo:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}🔒 Código de Validação: <strong style="color:var(--info);">**** (Cliente)</strong><br>💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+      }).join('');
+      container.innerHTML = cardsHtml;
+    }
 
-        let changeInfoHtml = '';
-        if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
-          changeInfoHtml = `<br>💵 Troco para: <strong>R$ ${o.cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${(o.change || 0).toFixed(2).replace('.', ',')}</strong>`;
-        }
+    async function loadActiveOrders(options = {}) {
+      const activeElement = document.activeElement;
+      if (activeElement && activeElement.classList.contains('code-input')) return;
 
-        container.innerHTML += `
-          <div class="order-card">
-            <div class="order-header">
-              <span class="order-id">#${o.id} - ${o.client}</span>
-              <span class="order-status ${statusClass}">${statusText}</span>
-            </div>
-            <div style="font-size:0.82rem; color:var(--text-muted);">
-              📍 <strong>Endereço Completo:</strong> ${o.address}<br>
-              🍔 ${itemsText}<br>
-              🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> 
-              <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>
-              ${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}
-              🔒 Código de Validação: <strong style="color:var(--info);">**** (Cliente)</strong><br>
-              💰 Total: <strong>R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment})${changeInfoHtml}
-            </div>
-            ${actionAreaHtml}
-            <button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button>
-          </div>
-        `;
-      });
+      // Exibe imediatamente a cópia local e não recria os cartões se nada mudou.
+      const localOrders = readLocalKdsOrders();
+      renderActiveDeliveryOrders(localOrders);
+      if (options.skipRemote || !window.supabaseClient || deliveryOrdersFetchInFlight) return;
+
+      deliveryOrdersFetchInFlight = true;
+      try {
+        const { data, error } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+        if (error) throw error;
+        if (!Array.isArray(data)) return;
+
+        // Evita que uma resposta antiga do servidor sobrescreva uma ação local recente.
+        if (Date.now() - deliveryLastLocalMutationAt < 2500) return;
+        const currentLocal = readLocalKdsOrders();
+        const localById = new Map(currentLocal.map(order => [String(order.id), order]));
+        const merged = data.map(remoteOrder => {
+          const localOrder = localById.get(String(remoteOrder.id)) || {};
+          return { ...localOrder, ...remoteOrder,
+            cashGiven: localOrder.cashGiven ?? remoteOrder.cashGiven ?? 0,
+            change: localOrder.change ?? remoteOrder.change ?? 0,
+            code: remoteOrder.code ?? localOrder.code
+          };
+        });
+        // Preserva pedidos locais ainda não vistos na resposta remota (ex.: sincronização pendente).
+        const remoteIds = new Set(merged.map(order => String(order.id)));
+        currentLocal.forEach(order => {
+          if (!remoteIds.has(String(order.id))) merged.push(order);
+        });
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(merged));
+        renderActiveDeliveryOrders(merged);
+      } catch (error) {
+        console.warn('Falha ao atualizar pedidos do Delivery; mantendo os dados locais.', error);
+      } finally {
+        deliveryOrdersFetchInFlight = false;
+      }
     }
 
     async function dispatchOrderDirect(orderId) {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (o) {
-        o.status = 'delivering';
-        if (!o.courier) {
-          o.courier = document.getElementById('selectCourierForRoute').value || 'Não atribuído';
-        }
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-
-        recordCourierHistory(o);
-
-        loadActiveOrders();
-        showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota e registrado no histórico!`, '🚀');
-      }
+      const kdsOrders = readLocalKdsOrders();
+      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      order.status = 'delivering';
+      if (!order.courier) order.courier = document.getElementById('selectCourierForRoute').value || 'Não atribuído';
+      saveLocalKdsOrders(kdsOrders);
+      recordCourierHistory(order);
+      renderActiveDeliveryOrders(kdsOrders, true);
+      showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota. Sincronizando em segundo plano.`, '🚀');
+      const result = await syncKdsPatch(orderId, { status: 'delivering', courier: order.courier });
+      if (result.error) showNoticeModal('Sincronização pendente', `O pedido #${orderId} foi atualizado neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
     }
 
     async function finishDeliveryOrder(orderId) {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (o) {
-        o.status = 'finished';
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-        }
-
-        recordCourierHistory(o);
-
-        loadActiveOrders();
-        showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído com sucesso.`, '✅');
-      }
+      const kdsOrders = readLocalKdsOrders();
+      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      order.status = 'finished';
+      saveLocalKdsOrders(kdsOrders);
+      recordCourierHistory(order);
+      renderActiveDeliveryOrders(kdsOrders, true);
+      showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído neste dispositivo. Sincronizando em segundo plano.`, '✅');
+      const result = await syncKdsPatch(orderId, { status: 'finished' });
+      if (result.error) showNoticeModal('Sincronização pendente', `O pedido #${orderId} foi atualizado neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
     }
 
     async function confirmDeliveryWithCode(orderId) {
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      const o = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (o) {
-        const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
-        if (inputVal === o.code) {
-          o.status = 'finished';
-          localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-          if (window.supabaseClient) {
-            try { await window.supabaseClient.from('vortex_kds_orders').upsert([o]); } catch(e){}
-          }
-
-          recordCourierHistory(o);
-
-          loadActiveOrders();
-          showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada com sucesso!`, '🎉');
-        } else {
-          showNoticeModal('Código Incorreto', `O código digitado (${inputVal}) não confere com o código do cliente.`, '⚠️');
-        }
+      const kdsOrders = readLocalKdsOrders();
+      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
+      if (inputVal !== order.code) {
+        showNoticeModal('Código Incorreto', `O código digitado (${inputVal || ''}) não confere com o código do cliente.`, '⚠️');
+        return;
       }
+      order.status = 'finished';
+      saveLocalKdsOrders(kdsOrders);
+      recordCourierHistory(order);
+      renderActiveDeliveryOrders(kdsOrders, true);
+      showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada neste dispositivo. Sincronizando em segundo plano.`, '🎉');
+      const result = await syncKdsPatch(orderId, { status: 'finished' });
+      if (result.error) showNoticeModal('Sincronização pendente', `A entrega foi validada neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
     }
 
     function printDeliveryTicket(orderId) {

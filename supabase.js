@@ -60,7 +60,7 @@ async function dbSaveSale(saleData) {
     total: parseFloat(saleData.total) || 0,
     subtotal: parseFloat(saleData.subtotal) || 0,
     discount: parseFloat(saleData.discount) || 0,
-    payMethod: saleData.payMethod || saleData.pay_method || saleData.paymentMethod || 'PIX',
+    pay_method: saleData.payMethod || saleData.pay_method || saleData.paymentMethod || 'PIX',
     status: saleData.status || 'finished',
     date: saleData.date || new Date().toISOString().split('T')[0],
     time: saleData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),

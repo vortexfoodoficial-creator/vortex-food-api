@@ -1255,12 +1255,29 @@
       }
     }
 
-    async function syncKdsPatch(orderId, patch) {
-      if (!window.supabaseClient) return { error: new Error('Supabase não inicializado') };
+    function getDeliverySupabaseClient() {
+      // O cliente central é inicializado sob demanda por getSupabase().
+      // Não verificar apenas window.supabaseClient: isso pode gerar falso erro
+      // antes de qualquer função central ter inicializado a conexão.
       try {
+        if (typeof getSupabase === 'function') {
+          const client = getSupabase();
+          if (client) return client;
+        }
+      } catch (error) {
+        console.error('Não foi possível inicializar o Supabase:', error);
+      }
+      if (window.supabaseClient) return window.supabaseClient;
+      return null;
+    }
+
+    async function syncKdsPatch(orderId, patch) {
+      try {
+        const supabase = getDeliverySupabaseClient();
+        if (!supabase) return { error: new Error('Supabase não inicializado. Verifique se supabase.js e o SDK foram carregados.') };
         // Atualiza somente as colunas alteradas; não reenvia o pedido inteiro
         // (evita erros de colunas opcionais ausentes, como cashGiven).
-        const result = await window.supabaseClient
+        const result = await supabase
           .from('vortex_kds_orders')
           .update(patch)
           .eq('id', String(orderId));
@@ -1284,7 +1301,8 @@
 
     async function syncNewDeliveryOrder(order) {
       try {
-        if (!window.supabaseClient) return { error: new Error('Supabase não inicializado') };
+        const supabase = getDeliverySupabaseClient();
+        if (!supabase) return { error: new Error('Supabase não inicializado. Verifique se supabase.js e o SDK foram carregados.') };
         // cashGiven/change são mantidos no armazenamento local, mas não enviados
         // porque a tabela atual não reconhece cashGiven no esquema do Supabase.
         const cloudRecord = {
@@ -1294,7 +1312,7 @@
           status: order.status || 'new', date: order.date, time: order.time,
           courier: order.courier || '', code: order.code
         };
-        return await window.supabaseClient.from('vortex_kds_orders').upsert([cloudRecord]);
+        return await supabase.from('vortex_kds_orders').upsert([cloudRecord]);
       } catch (error) {
         return { error };
       }

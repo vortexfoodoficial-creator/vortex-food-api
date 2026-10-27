@@ -267,6 +267,7 @@
     let activeFilter = 'all';
     let pendingCancelOrderId = null;
     let lastKnownNewOrdersCount = -1;
+    let isRefreshingKds = false;
 
     function playNewOrderSound() {
       try {
@@ -421,13 +422,19 @@
 
       try {
         if (window.supabaseClient) {
-          const { data: cloudKds } = await window.supabaseClient.from('vortex_kds_orders').select('*');
-          if (cloudKds && cloudKds.length > 0) kdsOrders = cloudKds;
-
-          const { data: cloudSales } = await window.supabaseClient.from('vortex_sales_history').select('*');
-          if (cloudSales && cloudSales.length > 0) salesHistory = cloudSales;
+          // As duas leituras independentes são executadas em paralelo.
+          const [kdsResponse, salesResponse] = await Promise.all([
+            window.supabaseClient.from('vortex_kds_orders').select('*'),
+            window.supabaseClient.from('vortex_sales_history').select('*')
+          ]);
+          if (kdsResponse.error) throw kdsResponse.error;
+          if (salesResponse.error) throw salesResponse.error;
+          if (Array.isArray(kdsResponse.data) && kdsResponse.data.length > 0) kdsOrders = kdsResponse.data;
+          if (Array.isArray(salesResponse.data) && salesResponse.data.length > 0) salesHistory = salesResponse.data;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Não foi possível atualizar os pedidos pela nuvem; será usado o cache local:', e);
+      }
 
       if (kdsOrders.length === 0) {
         if (typeof dbFetchKdsOrders === 'function') kdsOrders = await dbFetchKdsOrders();
@@ -476,22 +483,32 @@
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
     }
 
-    async function renderKds() {
+    // Sincroniza em segundo plano. A renderização e os filtros não esperam pela rede.
+    async function refreshKdsData() {
+      if (isRefreshingKds) return;
+      isRefreshingKds = true;
+      try {
+        await syncSalesHistoryToKds();
+      } catch (e) {
+        console.error('Falha ao sincronizar os dados do KDS:', e);
+      } finally {
+        isRefreshingKds = false;
+        renderKds();
+      }
+    }
+
+    // Renderiza apenas os dados locais em cache: sem consultas ao Supabase.
+    function renderKds() {
       loadStoreSettings();
-      await syncSalesHistoryToKds();
 
       const todayDateStr = getLocalDateStr(new Date());
       let orders = [];
-      
-      // Leitura primária do LocalStorage para estabilidade instantânea
-      orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-
       try {
-        if (window.supabaseClient) {
-          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
-          if (data && data.length > 0) orders = data;
-        }
-      } catch (e) {}
+        orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      } catch (e) {
+        console.error('Cache local de pedidos inválido:', e);
+        orders = [];
+      }
 
       // Filtro estrito para manter ativos e finalizados do dia
       orders = orders.filter(o => {
@@ -542,6 +559,7 @@
         return;
       }
 
+      let cardsHtml = '';
       filteredOrders.forEach(order => {
         let statusClass = `status-${order.status}`;
         let statusLabel = '';
@@ -588,7 +606,7 @@
           `;
         }
 
-        container.innerHTML += `
+        cardsHtml += `
           <div class="kds-card ${statusClass}">
             <div>
               <div class="kds-card-header">
@@ -611,6 +629,7 @@
           </div>
         `;
       });
+      container.innerHTML = cardsHtml;
     }
 
     async function updateOrderStatus(id, newStatus) {
@@ -621,28 +640,26 @@
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         
-        let syncError = null;
-        try {
-          await persistKdsOrderStatus(id, newStatus);
-        } catch (err) {
-          syncError = err;
-          console.error('Falha ao sincronizar o status do pedido:', err);
-        }
+        // Atualiza a interface imediatamente, sem esperar a rede.
+        renderKds();
 
-        let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        let salesHistory = [];
+        try { salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || []; }
+        catch (e) { salesHistory = []; }
         let saleMatch = salesHistory.find(s => String(s.id) === String(id));
         if (saleMatch) {
           saleMatch.status = newStatus;
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-          try {
-            await persistSaleStatus(id, newStatus);
-          } catch (err) {
-            syncError = syncError || err;
-            console.error('Falha ao sincronizar o status da venda:', err);
-          }
         }
 
-        await renderKds();
+        // Persiste as alterações em paralelo para não somar os tempos de rede.
+        const syncTasks = [persistKdsOrderStatus(id, newStatus)];
+        if (saleMatch) syncTasks.push(persistSaleStatus(id, newStatus));
+        const syncResults = await Promise.allSettled(syncTasks);
+        const failedSync = syncResults.find(result => result.status === 'rejected');
+        const syncError = failedSync ? failedSync.reason : null;
+        if (syncError) console.error('Falha ao sincronizar o status:', syncError);
+
         if (syncError) {
           showNoticeModal('Atualização salva localmente', `O pedido #${id} foi atualizado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
         } else {
@@ -678,6 +695,8 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
+        // Mostra o cancelamento local imediatamente; a nuvem sincroniza em seguida.
+        renderKds();
         let syncError = null;
         try {
           await persistKdsOrderStatus(id, 'cancelled');
@@ -686,7 +705,6 @@
           console.error('Falha ao sincronizar o cancelamento do pedido:', err);
         }
 
-        await renderKds();
         if (syncError) {
           showNoticeModal('Cancelamento salvo localmente', `O pedido #${id} foi marcado como cancelado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
         } else {
@@ -752,13 +770,15 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    // Verificação de novos pedidos a cada 6 segundos
+    // Atualiza dados da nuvem a cada 6 segundos, sem bloquear filtros/ações locais.
     setInterval(() => {
-      renderKds();
+      refreshKdsData();
     }, 6000);
 
     window.onload = function() {
+      // Mostra primeiro o cache local e sincroniza a nuvem em segundo plano.
       renderKds();
+      refreshKdsData();
     };
   </script>
 </body>

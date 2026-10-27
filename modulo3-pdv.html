@@ -666,8 +666,32 @@
 
       // As duas gravaÃ§Ãµes sÃ£o independentes e executadas em paralelo.
       const syncSale = (async () => {
-        if (typeof dbSaveSale !== 'function') return { error: new Error('FunÃ§Ã£o dbSaveSale nÃ£o encontrada') };
-        return await dbSaveSale(newSaleRecord);
+        // Usa o nome real da coluna confirmado no Supabase: pay_method.
+        // Assim evitamos que dbSaveSale envie a chave antiga payMethod.
+        let client = null;
+        try {
+          if (typeof getSupabase === 'function') client = getSupabase();
+          if (!client && window.supabaseClient) client = window.supabaseClient;
+        } catch (error) {
+          return { error };
+        }
+        if (!client) return { error: new Error('Supabase nÃ£o inicializado') };
+
+        const saleRecord = {
+          id: String(newSaleRecord.id),
+          client: newSaleRecord.client,
+          channel: newSaleRecord.channel,
+          total: Number(newSaleRecord.total) || 0,
+          subtotal: Number(newSaleRecord.subtotal) || 0,
+          discount: Number(newSaleRecord.discount) || 0,
+          pay_method: payment,
+          status: newSaleRecord.status || 'finished',
+          date: newSaleRecord.date,
+          time: newSaleRecord.time,
+          items: Array.isArray(newSaleRecord.items) ? newSaleRecord.items : []
+        };
+        const { data, error } = await client.from('vortex_sales_history').upsert([saleRecord]);
+        return { data, error };
       })();
       const syncKds = savePdvKdsOrderToCloud(newKdsOrder);
 

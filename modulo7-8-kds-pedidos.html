@@ -383,6 +383,31 @@
       throw new Error('Supabase indisponível: a venda foi mantida localmente, mas não foi sincronizada.');
     }
 
+    // Atualiza somente o status na nuvem. Evita reenviar campos como cashGiven,
+    // que podem não existir na estrutura atual da tabela KDS.
+    async function persistKdsOrderStatus(id, status) {
+      if (!window.supabaseClient) {
+        throw new Error('Supabase indisponível: o status foi salvo localmente, mas não foi sincronizado.');
+      }
+      const { error } = await window.supabaseClient
+        .from('vortex_kds_orders')
+        .update({ status })
+        .eq('id', String(id));
+      if (error) throw error;
+    }
+
+    // Sincroniza apenas o status da venda, sem reenviar todo o registro.
+    async function persistSaleStatus(id, status) {
+      if (!window.supabaseClient) {
+        throw new Error('Supabase indisponível: o status da venda não foi sincronizado.');
+      }
+      const { error } = await window.supabaseClient
+        .from('vortex_sales_history')
+        .update({ status })
+        .eq('id', String(id));
+      if (error) throw error;
+    }
+
     function getPersistenceErrorMessage(error) {
       if (!error) return 'Erro desconhecido de sincronização.';
       if (typeof error === 'string') return error;
@@ -598,7 +623,7 @@
         
         let syncError = null;
         try {
-          await persistKdsOrder(order);
+          await persistKdsOrderStatus(id, newStatus);
         } catch (err) {
           syncError = err;
           console.error('Falha ao sincronizar o status do pedido:', err);
@@ -610,7 +635,7 @@
           saleMatch.status = newStatus;
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
           try {
-            await persistSale(saleMatch);
+            await persistSaleStatus(id, newStatus);
           } catch (err) {
             syncError = syncError || err;
             console.error('Falha ao sincronizar o status da venda:', err);
@@ -655,7 +680,7 @@
 
         let syncError = null;
         try {
-          await persistKdsOrder(order);
+          await persistKdsOrderStatus(id, 'cancelled');
         } catch (err) {
           syncError = err;
           console.error('Falha ao sincronizar o cancelamento do pedido:', err);

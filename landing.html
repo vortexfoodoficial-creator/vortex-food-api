@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Food - O Sistema Definitivo para Restaurantes e Delivery</title>
+    <style>
+        :root {
+            --primary: #ff5722;
+            --primary-glow: rgba(255, 87, 34, 0.4);
+            --secondary: #38bdf8;
+            --dark-bg: #090d16;
+            --card-bg: #111827;
+            --card-border: #1f293d;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Efeito de brilho de fundo */
+        .bg-glow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 87, 34, 0.15) 0%, rgba(9, 13, 22, 0) 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        header {
+            position: relative;
+            background: linear-gradient(180deg, #0f172a 0%, var(--dark-bg) 100%);
+            padding: 50px 20px 70px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--card-border);
+            z-index: 1;
+        }
+
+        .logo-container {
+            margin-bottom: 25px;
+            text-align: center;
+            width: 100%;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .logo-img {
+            width: 100%;
+            max-width: 380px;
+            height: auto;
+            border-radius: 14px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: block;
+            margin: 0 auto;
+        }
+
+        .badge-trial {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        header h1 {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: 16px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            font-size: clamp(16px, 2vw, 18px);
+            opacity: 0.9;
+            margin-bottom: 35px;
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
+            color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff5722 0%, #ff784e 100%);
+            color: white;
+            padding: 18px 38px;
+            border-radius: 35px;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 10px 25px var(--primary-glow);
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.25s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(255, 87, 34, 0.6);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .section-container {
+            padding: 70px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(24px, 3vw, 32px);
+            font-weight: 800;
+            margin-bottom: 45px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        /* VANTAGENS (Grid Moderna) */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 30px 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 87, 34, 0.4);
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .feature-title {
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .feature-desc {
+            font-size: 14.5px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* MÓDULOS EXPANSÍVEIS */
+        .modules-wrapper {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        .btn-toggle-modules {
+            background: var(--card-bg);
+            color: white;
+            border: 1px solid var(--card-border);
+            padding: 20px 25px;
+            width: 100%;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-modules:hover {
+            border-color: var(--primary);
+            background: #162032;
+        }
+
+        .modules-list {
+            display: none;
+            margin-top: 30px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .modules-list.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .module-category-header {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-weight: 800;
+            color: #ffffff;
+            font-size: 14px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid var(--primary);
+            border-top: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .module-card-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .module-item-card {
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            padding: 16px 20px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+
+        .module-item-card:hover {
+            transform: translateX(6px);
+            border-color: rgba(255, 87, 34, 0.5);
+            background: #162032;
+        }
+
+        .module-info {
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .module-badge {
+            font-size: 10.5px;
+            font-weight: 800;
+            padding: 5px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge-ia { background: rgba(255, 87, 34, 0.15); color: #ff784e; border: 1px solid rgba(255, 87, 34, 0.3); }
+        .badge-fast { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-pro { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+        /* PLANO ÚNICO (Card de Destaque Absoluto) */
+        .plan-card-wrapper {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .single-plan-card {
+            background: linear-gradient(145deg, #111827 0%, #0d131f 100%);
+            color: var(--text-main);
+            border: 2px solid var(--primary);
+            border-radius: 28px;
+            padding: 45px 30px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+            position: relative;
+        }
+
+        .badge-plan {
+            background: linear-gradient(135deg, #ff5722, #ff784e);
+            color: white;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 8px 22px;
+            border-radius: 20px;
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 6px 15px var(--primary-glow);
+            letter-spacing: 1px;
+        }
+
+        .pricing-structure {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 24px 20px;
+            margin: 25px 0;
+            display: grid;
+            gap: 15px;
+            text-align: left;
+        }
+
+        .pricing-step {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+
+        .pricing-step:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .step-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .step-value {
+            font-size: 19px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .step-highlight {
+            color: var(--success);
+            font-weight: 900;
+            font-size: 20px;
+        }
+
+        .plan-list {
+            text-align: left;
+            list-style: none;
+            margin: 30px 0;
+            font-size: 15px;
+        }
+
+        .plan-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-list li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: 900;
+            font-size: 18px;
+        }
+
+        /* MODAL DE CADASTRO REFINADO */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 8, 15, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeInModal 0.3s ease;
+        }
+
+        @keyframes fadeInModal {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 35px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            max-height: 90vh;
+            overflow-y: auto;
+            color: var(--text-main);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 6px;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+
+        .modal-sub {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: #090d16;
+            border: 1px solid var(--card-border);
+            color: #ffffff;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.2);
+        }
+
+        .btn-submit {
+            background: var(--success);
+            color: white;
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            width: 100%;
+            margin-top: 15px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-close:hover {
+            color: #ffffff;
+        }
+
+        /* TELA DE SUCESSO */
+        .success-box {
+            display: none;
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        .success-box.active {
+            display: block;
+        }
+
+        .btn-access-system {
+            background: linear-gradient(135deg, #ff5722, #ff784e);
+            color: white;
+            padding: 18px;
+            width: 100%;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 800;
+            border: none;
+            cursor: pointer;
+            margin-top: 25px;
+            box-shadow: 0 10px 25px var(--primary-glow);
+        }
+
+        footer {
+            background: #060910;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 14px;
+            margin-top: 60px;
+            border-top: 1px solid var(--card-border);
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <header>
+        <div class="logo-container">
+            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food Logo" class="logo-img" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='block';">
+            <div id="fallback-logo" style="display:none; font-size:32px; font-weight:900; color:var(--primary);">⚡ Vortex Food</div>
+        </div>
+        <div class="badge-trial">✨ Oferta de Lançamento: 30 Dias Grátis</div>
+        <h1>Gerencie o seu restaurante com poder total e zero comissões</h1>
+        <p>Acelere as suas vendas, automatize os pedidos no WhatsApp e controle o seu estoque e finanças numa plataforma unificada de alta performance.</p>
+        <button class="btn-primary" onclick="abrirModal()">Iniciar Teste Grátis de 30 Dias</button>
+    </header>
+
+    <!-- SEÇÃO DE VANTAGENS -->
+    <section class="section-container">
+        <h2 class="section-title">Por que os melhores estabelecimentos escolhem o Vortex Food?</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <div class="feature-title">Zero Comissão por Venda</div>
+                <div class="feature-desc">Fique com 100% do lucro das suas vendas. Não cobramos taxas ou percentagens abusivas por cada pedido efetuado no seu cardápio.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <div class="feature-title">Cardápio Digital & WhatsApp Auto</div>
+                <div class="feature-desc">Seu cliente faz o pedido em segundos pelo seu link exclusivo, integrado diretamente com a cozinha (KDS) e com confirmação automática.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <div class="feature-title">Vortex Copiloto (IA Integrada)</div>
+                <div class="feature-desc">Inteligência artificial proprietária que analisa custos, sugere engenharia de cardápio e auxilia ativamente na gestão do seu lucro.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE MÓDULOS -->
+    <section class="section-container" style="padding-top: 0;">
+        <div class="modules-wrapper">
+            <h2 class="section-title">Um ecossistema robusto com 41 Módulos Integrados</h2>
+            
+            <button class="btn-toggle-modules" onclick="toggleModulos()">
+                <span>📂 Explorar Todos os 41 Módulos do Sistema</span>
+                <span id="arrow-icon">▼</span>
+            </button>
+
+            <div id="modules-list" class="modules-list">
+                
+                <div class="module-category-header">1. Operação & Atendimento no Balcão</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 1:</strong> Cadastro & Configuração do Estabelecimento</span><span class="module-badge badge-fast">ESSENCIAL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 2:</strong> Cardápio Digital, Sabores & Variantes</span><span class="module-badge badge-fast">DINÂMICO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 3:</strong> PDV Frente de Caixa Ultra Rápido</span><span class="module-badge badge-fast">ALTA VELOCIDADE</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 4:</strong> Gestão de Caixa, Turnos & Sangrias</span><span class="module-badge badge-pro">AUDITÁVEL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 5:</strong> Controle de Mesas, Comandas & QR Code</span><span class="module-badge badge-pro">QR CODE</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 6:</strong> Cardápio Web Interativo para Clientes</span><span class="module-badge badge-fast">AUTOATENDIMENTO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 7:</strong> Central de Pedidos Multicanal</span><span class="module-badge badge-pro">UNIFICADO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 8:</strong> Monitor Digital de Cozinha (KDS)</span><span class="module-badge badge-fast">SEM PAPEL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 10:</strong> Acompanhamento de Pedido pelo Cliente</span><span class="module-badge badge-pro">TEMPO REAL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 11:</strong> Automação de Atendimento WhatsApp</span><span class="module-badge badge-ia">AUTOMÁTICO</span></div>
+                </div>
+
+                <div class="module-category-header">2. Logística & Frota de Entregas</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 9:</strong> Gestão de Entregadores & Taxas por Bairro</span><span class="module-badge badge-pro">ROTAS</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 26:</strong> Vortex Dispatch (Despacho Inteligente)</span><span class="module-badge badge-ia">OTIMIZADO POR IA</span></div>
+                </div>
+
+                <div class="module-category-header">3. Estoque, Compras & Fichas Técnicas</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 12:</strong> Controle de Estoque & Inventário</span><span class="module-badge badge-pro">PRECISÃO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 13:</strong> Fichas Técnicas & Custo de Produção (CMV)</span><span class="module-badge badge-pro">CUSTO REAL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 14:</strong> Gestão de Compras & Fornecedores</span><span class="module-badge badge-pro">COTAÇÕES</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 24:</strong> Previsão de Demanda de Ingredientes</span><span class="module-badge badge-ia">IA PREDITIVA</span></div>
+                </div>
+
+                <div class="module-category-header">4. Finanças & Resultados Empresariais</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 15:</strong> Contas a Pagar/Receber & Fluxo de Caixa</span><span class="module-badge badge-pro">FINANCEIRO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 16:</strong> Dashboards Executivos & DRE Gerencial</span><span class="module-badge badge-pro">DRE COMPLETO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 27:</strong> Simulador de Lucratividade & Preços</span><span class="module-badge badge-ia">INTELIGENTE</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 29:</strong> Prevenção de Perdas & Auditoria</span><span class="module-badge badge-pro">SEGURANÇA</span></div>
+                </div>
+
+                <div class="module-category-header">5. CRM, Marketing & Fidelização</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 17:</strong> Cadastro & Histórico de Clientes</span><span class="module-badge badge-pro">CRM</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 18:</strong> Programa de Fidelidade & Cashback</span><span class="module-badge badge-fast">RECOMPENSAS</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 19:</strong> Automações de Marketing & Cupons</span><span class="module-badge badge-fast">DISPAROS</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 30:</strong> Pesquisa de Satisfação (NPS)</span><span class="module-badge badge-pro">FEEDBACK</span></div>
+                </div>
+
+                <div class="module-category-header">6. Equipe & Processos de Qualidade</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 20:</strong> Perfis de Acesso & Permissões</span><span class="module-badge badge-pro">CONTROLE</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 21:</strong> Checklists Digitais de Qualidade</span><span class="module-badge badge-pro">PADRÃO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 32:</strong> Rotinas Operacionais da Equipe</span><span class="module-badge badge-pro">TAREFAS</span></div>
+                </div>
+
+                <div class="module-category-header">7. Módulos com Inteligência Artificial (Vortex AI)</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 23:</strong> Vortex Copiloto (Assistente de Gestão)</span><span class="module-badge badge-ia">IA EXCLUSIVA</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 25:</strong> Engenharia de Cardápio por IA</span><span class="module-badge badge-ia">MARGEM MÁXIMA</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 28:</strong> Alertas & Relatórios Diários Inteligentes</span><span class="module-badge badge-ia">INSIGHTS</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 31:</strong> Benchmarking de Mercado</span><span class="module-badge badge-ia">COMPARATIVO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 40:</strong> Recursos Exclusivos Vortex</span><span class="module-badge badge-ia">INOVAÇÕES</span></div>
+                </div>
+
+                <div class="module-category-header">8. Infraestrutura, Redes & Segurança</div>
+                <div class="module-card-grid">
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 22:</strong> Gestão de Múltiplas Lojas & Franquias</span><span class="module-badge badge-pro">MULTILOJA</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 33:</strong> API Aberta & Integrações</span><span class="module-badge badge-pro">INTEGRÁVEL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 34:</strong> Segurança, Criptografia & LGPD</span><span class="module-badge badge-pro">PROTEÇÃO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 35:</strong> Gestão da Assinatura SaaS</span><span class="module-badge badge-pro">PAINEL</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 36:</strong> Acesso Responsivo (Telemóvel & Web)</span><span class="module-badge badge-fast">QUALQUER TELA</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 37:</strong> Contingência Operacional (Modo Offline)</span><span class="module-badge badge-fast">SEM INTERNET</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 38:</strong> Suporte & Treinamento de Equipe</span><span class="module-badge badge-pro">SUPORTE</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 39:</strong> Painel Administrativo do Sistema</span><span class="module-badge badge-pro">GESTÃO</span></div>
+                    <div class="module-item-card"><span class="module-info"><strong>Módulo 41:</strong> Definições Claras de Escopo & Hardware</span><span class="module-badge badge-pro">REGRAS</span></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE PLANO ÚNICO -->
+    <section class="section-container" style="padding-top: 0;">
+        <h2 class="section-title">Condições Especiais de Lançamento</h2>
+        
+        <div class="plan-card-wrapper">
+            <div class="single-plan-card">
+                <div class="badge-plan">Plano Completo Unificado</div>
+                
+                <div class="pricing-structure">
+                    <div class="pricing-step">
+                        <span class="step-label">📅 Primeiros 30 Dias:</span>
+                        <span class="step-value step-highlight">GRÁTIS</span>
+                    </div>
+                    <div class="pricing-step">
+                        <span class="step-label">🔥 1º ao 3º Mês (Promocional):</span>
+                        <span class="step-value" style="color: var(--primary);">R$ 100 <span style="font-size: 13px; font-weight: normal; color: var(--text-muted);">/mês</span></span>
+                    </div>
+                    <div class="pricing-step">
+                        <span class="step-label">⚡ Do 4º Mês em diante:</span>
+                        <span class="step-value">R$ 199 <span style="font-size: 13px; font-weight: normal; color: var(--text-muted);">/mês</span></span>
+                    </div>
+                </div>
+
+                <ul class="plan-list">
+                    <li>Acesso ilimitado a todos os **41 Módulos** do sistema</li>
+                    <li>Sem limite de pedidos, faturamento ou produtos</li>
+                    <li>Assistente de Inteligência Artificial (Vortex Copiloto)</li>
+                    <li>Cardápio Digital com QR Code + Link Exclusivo</li>
+                    <li>Monitor da Cozinha (KDS), PDV e Controle de Caixa</li>
+                    <li>Suporte técnico dedicado via canais oficiais</li>
+                </ul>
+
+                <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="abrirModal()">Começar Teste Grátis de 30 Dias</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODAL DE CADASTRO -->
+    <div id="modal-cadastro" class="modal-overlay">
+        <div class="modal-box">
+            
+            <!-- FORMULÁRIO -->
+            <div id="form-container">
+                <div class="modal-title">Crie sua conta no Vortex Food</div>
+                <div class="modal-sub">30 dias grátis + condições especiais de lançamento!</div>
+
+                <form onsubmit="concluirCadastro(event)">
+                    <div class="form-group">
+                        <label>Nome do Restaurante / Estabelecimento *</label>
+                        <input type="text" required placeholder="Ex: Burger Gourmet da Vila">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nome Completo do Responsável *</label>
+                        <input type="text" required placeholder="Ex: João da Silva">
+                    </div>
+
+                    <div class="form-group">
+                        <label>CPF ou CNPJ *</label>
+                        <input type="text" required placeholder="000.000.000-00">
+                    </div>
+
+                    <div class="form-group">
+                        <label>WhatsApp / Telemóvel *</label>
+                        <input type="tel" required placeholder="(11) 99999-9999">
+                    </div>
+
+                    <div class="form-group">
+                        <label>E-mail (para login) *</label>
+                        <input type="email" required placeholder="seuemail@restaurante.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Crie uma Palavra-passe *</label>
+                        <input type="password" required placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" class="btn-submit">Concluir Cadastro & Iniciar Teste</button>
+                </form>
+                <button class="btn-close" onclick="fecharModal()">Cancelar</button>
+            </div>
+
+            <!-- TELA DE SUCESSO -->
+            <div id="success-container" class="success-box">
+                <div style="font-size: 50px; margin-bottom: 10px;">🎉</div>
+                <h3 style="margin: 0 0 10px 0; color: #fff;">Conta Criada com Sucesso!</h3>
+                <p style="font-size: 14px; color: var(--text-muted);">O seu período de <strong>30 dias grátis</strong> foi ativado com sucesso. O seu painel de gestão está pronto.</p>
+                
+                <button class="btn-access-system" onclick="irParaOSistema()">
+                    Acessar Sistema Vortex Food 🚀
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Vortex Food. Todos os direitos reservados. Tecnologia de ponta para restaurantes.</p>
+    </footer>
+
+    <script>
+        function toggleModulos() {
+            const list = document.getElementById('modules-list');
+            const arrow = document.getElementById('arrow-icon');
+            list.classList.toggle('active');
+            arrow.textContent = list.classList.contains('active') ? '▲' : '▼';
+        }
+
+        function abrirModal() {
+            document.getElementById('modal-cadastro').classList.add('active');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-cadastro').classList.remove('active');
+        }
+
+        function concluirCadastro(e) {
+            e.preventDefault();
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('success-container').classList.add('active');
+        }
+
+        function irParaOSistema() {
+            alert('Redirecionando para o Painel Interno do Vortex Food...');
+            // window.location.href = 'index.html'; // Altere para o link do seu dashboard interno se necessário
+        }
+    </script>
+
+</body>
+</html>

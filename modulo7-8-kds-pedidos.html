@@ -347,6 +347,48 @@
       return '';
     }
 
+    // Persistência centralizada: cada registro é enviado ao Supabase apenas uma vez.
+    // Prioriza as funções do supabase.js e usa o cliente direto somente como fallback.
+    async function persistKdsOrder(order) {
+      let result;
+      if (typeof dbSaveKdsOrder === 'function') {
+        result = await dbSaveKdsOrder(order);
+        if (result && result.error) throw result.error;
+        return result;
+      }
+
+      if (window.supabaseClient) {
+        result = await window.supabaseClient.from('vortex_kds_orders').upsert([order]);
+        if (result && result.error) throw result.error;
+        return result;
+      }
+
+      throw new Error('Supabase indisponível: o pedido foi mantido localmente, mas não foi sincronizado.');
+    }
+
+    async function persistSale(sale) {
+      let result;
+      if (typeof dbSaveSale === 'function') {
+        result = await dbSaveSale(sale);
+        if (result && result.error) throw result.error;
+        return result;
+      }
+
+      if (window.supabaseClient) {
+        result = await window.supabaseClient.from('vortex_sales_history').upsert([sale]);
+        if (result && result.error) throw result.error;
+        return result;
+      }
+
+      throw new Error('Supabase indisponível: a venda foi mantida localmente, mas não foi sincronizada.');
+    }
+
+    function getPersistenceErrorMessage(error) {
+      if (!error) return 'Erro desconhecido de sincronização.';
+      if (typeof error === 'string') return error;
+      return error.message || error.details || error.hint || 'Não foi possível sincronizar com o Supabase.';
+    }
+
     async function syncSalesHistoryToKds() {
       const todayDateStr = getLocalDateStr(new Date());
       let kdsOrders = [];
@@ -398,11 +440,10 @@
             };
             kdsOrders.unshift(newKdsItem);
             try {
-              if (window.supabaseClient) {
-                await window.supabaseClient.from('vortex_kds_orders').upsert([newKdsItem]);
-              }
-              if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
-            } catch (err) {}
+              await persistKdsOrder(newKdsItem);
+            } catch (err) {
+              console.error('Pedido adicionado ao KDS localmente, mas a sincronização falhou:', err);
+            }
           }
         }
       }
@@ -555,11 +596,12 @@
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([order]); } catch(e){}
-        }
-        if (typeof dbSaveKdsOrder === 'function') {
-          try { await dbSaveKdsOrder(order); } catch (err) {}
+        let syncError = null;
+        try {
+          await persistKdsOrder(order);
+        } catch (err) {
+          syncError = err;
+          console.error('Falha ao sincronizar o status do pedido:', err);
         }
 
         let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -567,16 +609,20 @@
         if (saleMatch) {
           saleMatch.status = newStatus;
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-          if (window.supabaseClient) {
-            try { await window.supabaseClient.from('vortex_sales_history').upsert([saleMatch]); } catch(e){}
-          }
-          if (typeof dbSaveSale === 'function') {
-            try { await dbSaveSale(saleMatch); } catch (err) {}
+          try {
+            await persistSale(saleMatch);
+          } catch (err) {
+            syncError = syncError || err;
+            console.error('Falha ao sincronizar o status da venda:', err);
           }
         }
 
-        renderKds();
-        showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado para ${newStatus}.`, '👨‍🍳');
+        await renderKds();
+        if (syncError) {
+          showNoticeModal('Atualização salva localmente', `O pedido #${id} foi atualizado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
+        } else {
+          showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado para ${newStatus}.`, '👨‍🍳');
+        }
       }
     }
 
@@ -607,15 +653,20 @@
         order.status = 'cancelled';
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        if (window.supabaseClient) {
-          try { await window.supabaseClient.from('vortex_kds_orders').upsert([order]); } catch(e){}
-        }
-        if (typeof dbSaveKdsOrder === 'function') {
-          try { await dbSaveKdsOrder(order); } catch (err) {}
+        let syncError = null;
+        try {
+          await persistKdsOrder(order);
+        } catch (err) {
+          syncError = err;
+          console.error('Falha ao sincronizar o cancelamento do pedido:', err);
         }
 
-        renderKds();
-        showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
+        await renderKds();
+        if (syncError) {
+          showNoticeModal('Cancelamento salvo localmente', `O pedido #${id} foi marcado como cancelado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
+        } else {
+          showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
+        }
       }
     }
 
@@ -663,7 +714,7 @@
     function showNoticeModal(title, desc, icon) {
       document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeDesc').textContent = desc;
       document.getElementById('noticeModal').classList.add('active');
     }
 

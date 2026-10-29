@@ -253,9 +253,9 @@
       </div>
 
       <div class="metric-card">
-        <span class="metric-title">CMV Total Real</span>
+        <span class="metric-title">CMV Total Conhecido</span>
         <span class="metric-value" style="color:var(--warning);" id="finCmvTotal">R$ 0,00</span>
-        <span class="metric-sub" id="finCmvSub">Baseado em fichas e custos</span>
+        <span class="metric-sub" id="finCmvSub">Custo de mercadoria vendida</span>
       </div>
 
       <div class="metric-card" style="border-color:var(--primary);">
@@ -312,7 +312,7 @@
           <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
         </div>
         <div class="dre-row sub">
-          <span>(-) Custo de Mercadorias Vendidas (CMV Real)</span>
+          <span>(-) Custo de Mercadorias (CMV)</span>
           <span id="dreCmv">R$ 0,00</span>
         </div>
         <div class="dre-row total">
@@ -334,15 +334,15 @@
         <div class="card-title">💳 Recebimentos & Taxas de Adquirentes</div>
         
         <div class="dre-row">
-          <span>⚡ PIX (Taxa 0%)</span>
+          <span>⚡ PIX (Sem Taxa Cadastrada)</span>
           <strong id="payPixVal" style="color:var(--success);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>💳 Cartão de Crédito (Liq. c/ Taxa)</span>
+          <span>💳 Cartão de Crédito</span>
           <strong id="payCreditVal" style="color:#8b5cf6;">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>💳 Cartão de Débito (Liq. c/ Taxa)</span>
+          <span>💳 Cartão de Débito</span>
           <strong id="payDebitVal" style="color:var(--info);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
@@ -350,7 +350,7 @@
           <strong id="payCashVal" style="color:var(--warning);">R$ 0,00</strong>
         </div>
         <div class="dre-row">
-          <span>🍴 Vale Refeição (VR / VA)</span>
+          <span>🍴 Vale Refeição / Alimentação</span>
           <strong id="payVrVal" style="color:#ec4899;">R$ 0,00</strong>
         </div>
       </div>
@@ -495,6 +495,15 @@
   <script>
     let currentQuickFilter = 'today';
 
+    // Cache interno para otimizar desempenho e evitar leituras redundantes ao Storage/Supabase
+    let localCache = {
+      sales: [],
+      entries: [],
+      recipes: [],
+      products: [],
+      lastFetched: 0
+    };
+
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -610,22 +619,20 @@
       return true;
     }
 
-    // CMV REAL: Busca custo real do catálogo de receitas ou produtos. Se não houver, retorna 0 (sem inventar custos).
-    function getProductCostFromCardapio(productName, catalogRecipes, catalogProducts) {
-      if (!productName) return { cost: 0, known: false };
-      const nameClean = productName.trim().toLowerCase();
-
-      const fichaMatch = catalogRecipes.find(f => f.productName && f.productName.trim().toLowerCase() === nameClean);
-      if (fichaMatch && (fichaMatch.totalCost !== undefined || fichaMatch.custoTotal !== undefined)) {
-        return { cost: parseFloat(fichaMatch.totalCost || fichaMatch.custoTotal || 0), known: true };
+    function getProductCostFromCardapio(productName) {
+      const fichas = localCache.recipes;
+      const fichaMatch = fichas.find(f => f.productName && f.productName.toLowerCase() === productName.toLowerCase());
+      if (fichaMatch && fichaMatch.totalCost) {
+        return parseFloat(fichaMatch.totalCost) || 0;
       }
 
-      const prodMatch = catalogProducts.find(p => p.name && p.name.trim().toLowerCase() === nameClean);
-      if (prodMatch && (prodMatch.cost !== undefined || prodMatch.costPrice !== undefined || prodMatch.custo !== undefined)) {
-        return { cost: parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0), known: true };
+      const cardapio = localCache.products;
+      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
+      if (prodMatch) {
+        return parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0);
       }
 
-      return { cost: 0, known: false };
+      return 0; // CMV transparente caso não informado
     }
 
     function openEntryModal() { 
@@ -663,7 +670,7 @@
       document.getElementById('socioModalTitle').innerText = '👥 Pró-Labore / Aporte de Sócio';
 
       if (id) {
-        let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+        let entries = localCache.entries;
         let entry = entries.find(e => String(e.id) === String(id));
         if (entry) {
           document.getElementById('editSocioId').value = entry.id;
@@ -713,9 +720,8 @@
         let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
         entries = entries.filter(e => String(e.id) !== String(id));
         localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
-        showCustomAlert('Removido', 'Registro excluído com sucesso.', '🗑️');
       }
-      loadFinancialData();
+      await loadFinancialData(true); // Força refresh após exclusão
     }
 
     async function saveBankAccount() {
@@ -738,7 +744,7 @@
 
       localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
       closeBankModal();
-      loadFinancialData();
+      await loadFinancialData(true);
       showCustomAlert('Sucesso!', editId ? 'Conta bancária atualizada com sucesso.' : 'Conta bancária cadastrada com sucesso.', '🏦');
     }
 
@@ -781,7 +787,7 @@
 
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
       closeSocioModal();
-      loadFinancialData();
+      await loadFinancialData(true);
       showCustomAlert('Sucesso!', 'Operação de sócios salva com sucesso.', '✅');
     }
 
@@ -812,7 +818,7 @@
       localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
 
       closeEntryModal();
-      loadFinancialData();
+      await loadFinancialData(true);
       showCustomAlert('Sucesso!', 'Lançamento financeiro salvo com sucesso.', '🎉');
     }
 
@@ -820,8 +826,10 @@
       askDelete(id, 'entry', 'Deseja realmente excluir este lançamento financeiro?');
     }
 
-    // CARREGAMENTO PARALELO OTIMIZADO PARA SUPRESSÃO DE LENTIDÃO
-    async function loadFinancialData() {
+    /**
+     * Carregamento Otimizado com Promise.all Paralelo e Cache Inteligente
+     */
+    async function loadFinancialData(forceRefresh = false) {
       applyTheme();
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
@@ -855,39 +863,35 @@
         });
       }
 
-      // EXECUÇÃO EM PARALELO COM PROMISE.ALLSETTLED PARA MÁXIMA PERFORMANCE E RESILIÊNCIA
-      const pSales = (typeof dbFetchSalesResult === 'function') ? dbFetchSalesResult() : Promise.resolve({ data: [] });
-      const pFinancial = (typeof dbFetchFinancialEntriesResult === 'function') ? dbFetchFinancialEntriesResult() : Promise.resolve({ data: [] });
-      const pRecipes = (typeof dbFetchRecipesResult === 'function') ? dbFetchRecipesResult() : Promise.resolve({ data: [] });
-      const pCatalog = (typeof dbFetchCatalogResult === 'function') ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } });
+      // Execução assíncrona paralela (Promise.all) para evitar lentidão
+      const now = Date.now();
+      if (forceRefresh || now - localCache.lastFetched > 30000 || localCache.sales.length === 0) {
+        try {
+          const [salesRes, entriesRes, recipesRes, catalogRes] = await Promise.all([
+            typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] }),
+            typeof dbFetchFinancialEntriesResult === 'function' ? dbFetchFinancialEntriesResult() : Promise.resolve({ data: [] }),
+            typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([]),
+            typeof dbFetchCatalog === 'function' ? dbFetchCatalog() : Promise.resolve({ products: [] })
+          ]);
 
-      const results = await Promise.allSettled([pSales, pFinancial, pRecipes, pCatalog]);
-
-      let rawSales = results[0].status === 'fulfilled' && results[0].value.data ? results[0].value.data : [];
-      if (rawSales.length === 0) {
-        rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+          localCache.sales = (salesRes && salesRes.data && salesRes.data.length > 0) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+          localCache.entries = (entriesRes && entriesRes.data && entriesRes.data.length > 0) ? entriesRes.data : (JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
+          localCache.recipes = (recipesRes && recipesRes.length > 0) ? recipesRes : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
+          localCache.products = (catalogRes && catalogRes.products && catalogRes.products.length > 0) ? catalogRes.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
+          localCache.lastFetched = now;
+        } catch (e) {
+          console.warn('Erro ao carregar dados do Supabase, usando cache local.', e);
+          localCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+          localCache.entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+        }
       }
-      const sales = rawSales.filter(s => isDateInFilter(s.date || s.timestamp));
 
-      let cloudEntries = results[1].status === 'fulfilled' && results[1].value.data ? results[1].value.data : [];
-      let localEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      let combined = [...cloudEntries, ...localEntries];
-      let uniqueMap = new Map();
-      combined.forEach(item => {
-        let key = item.id || (item.description + item.value + (item.date || ''));
-        uniqueMap.set(key, item);
-      });
-      let allEntries = Array.from(uniqueMap.values());
-      const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
-
-      const catalogRecipes = results[2].status === 'fulfilled' && results[2].value.data ? results[2].value.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
-      const catalogProducts = results[3].status === 'fulfilled' && results[3].value.data && results[3].value.data.products ? results[3].value.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
+      const sales = localCache.sales.filter(s => isDateInFilter(s.date || s.timestamp));
 
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancels = 0;
       let totalCmv = 0;
-      let unknownCmvCount = 0;
       let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0;
 
       sales.forEach(s => {
@@ -902,24 +906,22 @@
             s.items.forEach(i => {
               let qty = i.qty || i.quantity || 1;
               let itemName = i.name || i.title || '';
-              let costCheck = getProductCostFromCardapio(itemName, catalogRecipes, catalogProducts);
-              if (costCheck.known) {
-                totalCmv += (costCheck.cost * qty);
-              } else {
-                unknownCmvCount++;
-              }
+              let unitCost = getProductCostFromCardapio(itemName);
+              totalCmv += (unitCost * qty);
             });
           }
 
           let pm = String(s.payMethod || s.payment || s.paymentMethod || '').toLowerCase();
           if (pm.includes('pix')) payPix += val;
-          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += (val * 0.975); // Taxa média adquirente crédito 2.5%
-          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += (val * 0.988); // Taxa média adquirente débito 1.2%
+          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += val;
+          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += val;
           else if (pm.includes('dinheiro') || pm.includes('cash')) payCash += val;
-          else if (pm.includes('vr') || pm.includes('va')) payVr += (val * 0.95); // Taxa média VR/VA 5%
+          else if (pm.includes('vr') || pm.includes('va')) payVr += val;
           else payPix += val;
         }
       });
+
+      const entries = localCache.entries.filter(e => isDateInFilter(e.date || e.timestamp));
 
       const socioEntries = entries.filter(e => e.description && (e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]')));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
@@ -947,15 +949,16 @@
         let eType = String(e.type || '').toLowerCase();
         let val = parseFloat(e.value || e.amount || e.valor || 0);
 
-        if (eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)')) {
+        if (eType === 'expense' || eType === 'sangria' || eType === 'despesa') {
           manualExpenses += val;
-        } else if (eType === 'income' || eType === 'suprimento' || eType.includes('ajuste (+)')) {
+        } else if (eType === 'income' || eType === 'suprimento') {
           manualIncome += val;
         } else {
           manualExpenses += val;
         }
       });
 
+      // Cálculos Matemáticos DRE rigorosos
       const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels + manualIncome);
       const grossMargin = Math.max(0, netSales - totalCmv);
       const netProfit = grossMargin - manualExpenses;
@@ -966,14 +969,6 @@
       
       document.getElementById('finExpensesTotal').innerText = `R$ ${formatFloatToCurrency(manualExpenses)}`;
       document.getElementById('finCmvTotal').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
-      if (unknownCmvCount > 0) {
-        document.getElementById('finCmvSub').innerText = `⚠️ ${unknownCmvCount} item(ns) sem custo cadastrado`;
-        document.getElementById('finCmvSub').style.color = 'var(--warning)';
-      } else {
-        document.getElementById('finCmvSub').innerText = `Custo real baseado em fichas`;
-        document.getElementById('finCmvSub').style.color = 'var(--text-muted)';
-      }
-
       document.getElementById('finNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
       document.getElementById('finProfitMargin').innerText = `Margem Líquida: ${profitMarginPct}%`;
 
@@ -1007,7 +1002,7 @@
 
       entries.forEach(e => {
         let eType = String(e.type || '').toLowerCase();
-        const isExpense = eType === 'expense' || eType === 'sangria' || eType === 'despesa' || eType.includes('ajuste (-)');
+        const isExpense = eType === 'expense' || eType === 'sangria' || eType === 'despesa';
         const typeBadge = isExpense ? `<span style="color:var(--danger); font-weight:bold;">🔴 Saída</span>` : `<span style="color:var(--success); font-weight:bold;">🟢 Entrada</span>`;
         const valColor = isExpense ? 'color:var(--danger);' : 'color:var(--success);';
         const valNum = parseFloat(e.value || e.amount || e.valor || 0);

@@ -224,7 +224,7 @@
         <button class="btn-quick-filter" id="btnFilterWeek" onclick="setQuickFilter('week')">Esta Semana</button>
         <button class="btn-quick-filter" id="btnFilterMonth" onclick="setQuickFilter('month')">Este Mês</button>
         
-        <!-- FILTRO DE DATAS ESPECÍFICAS (SUBSTITUIU O "TUDO") -->
+        <!-- FILTRO DE DATAS ESPECÍFICAS -->
         <div style="display:inline-flex; align-items:center; gap:6px; margin-left:5px;">
           <input type="date" id="filterDateStart" class="custom-date-input" onchange="onCustomDateChange()">
           <span style="font-size:0.8rem; color:var(--text-muted);">até</span>
@@ -253,9 +253,9 @@
       </div>
 
       <div class="metric-card">
-        <span class="metric-title">CMV Total Estimado</span>
+        <span class="metric-title">CMV Total Real</span>
         <span class="metric-value" style="color:var(--warning);" id="finCmvTotal">R$ 0,00</span>
-        <span class="metric-sub">Custo de mercadoria vendida</span>
+        <span class="metric-sub" id="finCmvSub">Baseado em fichas e custos</span>
       </div>
 
       <div class="metric-card" style="border-color:var(--primary);">
@@ -312,7 +312,7 @@
           <strong id="dreNetSales" style="color:var(--info);">R$ 0,00</strong>
         </div>
         <div class="dre-row sub">
-          <span>(-) Custo de Mercadorias Vendidas (CMV)</span>
+          <span>(-) Custo de Mercadorias Vendidas (CMV Real)</span>
           <span id="dreCmv">R$ 0,00</span>
         </div>
         <div class="dre-row total">
@@ -320,7 +320,7 @@
           <strong id="dreGrossMargin">R$ 0,00</strong>
         </div>
         <div class="dre-row sub">
-          <span>(-) Despesas Operacionais, Sangrias e Caixa</span>
+          <span>(-) Despesas Operacionais e Sangrias</span>
           <span id="dreOperatingExpenses">R$ 0,00</span>
         </div>
         <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 12px 10px; border-radius: 8px; margin-top: 10px;">
@@ -558,7 +558,6 @@
       else if (type === 'week') document.getElementById('btnFilterWeek').classList.add('active');
       else if (type === 'month') document.getElementById('btnFilterMonth').classList.add('active');
 
-      // Limpa os inputs de datas personalizadas ao usar botões rápidos
       document.getElementById('filterDateStart').value = '';
       document.getElementById('filterDateEnd').value = '';
 
@@ -570,7 +569,6 @@
       const end = document.getElementById('filterDateEnd').value;
 
       if (start || end) {
-        // Desativa os botões rápidos se houver filtro customizado ativo
         document.querySelectorAll('.btn-quick-filter').forEach(btn => btn.classList.remove('active'));
         currentQuickFilter = 'custom';
         loadFinancialData();
@@ -612,20 +610,22 @@
       return true;
     }
 
-    function getProductCostFromCardapio(productName) {
-      const fichas = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-      const fichaMatch = fichas.find(f => f.productName && f.productName.toLowerCase() === productName.toLowerCase());
-      if (fichaMatch && fichaMatch.totalCost) {
-        return parseFloat(fichaMatch.totalCost) || 0;
+    // CMV REAL: Busca custo real do catálogo de receitas ou produtos. Se não houver, retorna 0 (sem inventar custos).
+    function getProductCostFromCardapio(productName, catalogRecipes, catalogProducts) {
+      if (!productName) return { cost: 0, known: false };
+      const nameClean = productName.trim().toLowerCase();
+
+      const fichaMatch = catalogRecipes.find(f => f.productName && f.productName.trim().toLowerCase() === nameClean);
+      if (fichaMatch && (fichaMatch.totalCost !== undefined || fichaMatch.custoTotal !== undefined)) {
+        return { cost: parseFloat(fichaMatch.totalCost || fichaMatch.custoTotal || 0), known: true };
       }
 
-      const cardapio = JSON.parse(localStorage.getItem('vortex_products_catalog')) || [];
-      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
-      if (prodMatch) {
-        return parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0);
+      const prodMatch = catalogProducts.find(p => p.name && p.name.trim().toLowerCase() === nameClean);
+      if (prodMatch && (prodMatch.cost !== undefined || prodMatch.costPrice !== undefined || prodMatch.custo !== undefined)) {
+        return { cost: parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0), known: true };
       }
 
-      return 0;
+      return { cost: 0, known: false };
     }
 
     function openEntryModal() { 
@@ -820,6 +820,7 @@
       askDelete(id, 'entry', 'Deseja realmente excluir este lançamento financeiro?');
     }
 
+    // CARREGAMENTO PARALELO OTIMIZADO PARA SUPRESSÃO DE LENTIDÃO
     async function loadFinancialData() {
       applyTheme();
 
@@ -854,19 +855,39 @@
         });
       }
 
-      let rawSales = [];
-      if (typeof dbFetchSales === 'function') {
-        rawSales = await dbFetchSales();
-      }
+      // EXECUÇÃO EM PARALELO COM PROMISE.ALLSETTLED PARA MÁXIMA PERFORMANCE E RESILIÊNCIA
+      const pSales = (typeof dbFetchSalesResult === 'function') ? dbFetchSalesResult() : Promise.resolve({ data: [] });
+      const pFinancial = (typeof dbFetchFinancialEntriesResult === 'function') ? dbFetchFinancialEntriesResult() : Promise.resolve({ data: [] });
+      const pRecipes = (typeof dbFetchRecipesResult === 'function') ? dbFetchRecipesResult() : Promise.resolve({ data: [] });
+      const pCatalog = (typeof dbFetchCatalogResult === 'function') ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } });
+
+      const results = await Promise.allSettled([pSales, pFinancial, pRecipes, pCatalog]);
+
+      let rawSales = results[0].status === 'fulfilled' && results[0].value.data ? results[0].value.data : [];
       if (rawSales.length === 0) {
         rawSales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       }
       const sales = rawSales.filter(s => isDateInFilter(s.date || s.timestamp));
 
+      let cloudEntries = results[1].status === 'fulfilled' && results[1].value.data ? results[1].value.data : [];
+      let localEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+      let combined = [...cloudEntries, ...localEntries];
+      let uniqueMap = new Map();
+      combined.forEach(item => {
+        let key = item.id || (item.description + item.value + (item.date || ''));
+        uniqueMap.set(key, item);
+      });
+      let allEntries = Array.from(uniqueMap.values());
+      const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
+
+      const catalogRecipes = results[2].status === 'fulfilled' && results[2].value.data ? results[2].value.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
+      const catalogProducts = results[3].status === 'fulfilled' && results[3].value.data && results[3].value.data.products ? results[3].value.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
+
       let grossSales = 0;
       let totalDiscounts = 0;
       let totalCancels = 0;
       let totalCmv = 0;
+      let unknownCmvCount = 0;
       let payPix = 0, payCredit = 0, payDebit = 0, payCash = 0, payVr = 0;
 
       sales.forEach(s => {
@@ -881,38 +902,24 @@
             s.items.forEach(i => {
               let qty = i.qty || i.quantity || 1;
               let itemName = i.name || i.title || '';
-              let unitCost = getProductCostFromCardapio(itemName);
-              if (unitCost === 0 && (i.price || i.unitPrice)) unitCost = (i.price || i.unitPrice) * 0.35;
-              totalCmv += (unitCost * qty);
+              let costCheck = getProductCostFromCardapio(itemName, catalogRecipes, catalogProducts);
+              if (costCheck.known) {
+                totalCmv += (costCheck.cost * qty);
+              } else {
+                unknownCmvCount++;
+              }
             });
-          } else {
-            totalCmv += (val * 0.35);
           }
 
           let pm = String(s.payMethod || s.payment || s.paymentMethod || '').toLowerCase();
           if (pm.includes('pix')) payPix += val;
-          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += (val * 0.975);
-          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += (val * 0.988);
+          else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit')) payCredit += (val * 0.975); // Taxa média adquirente crédito 2.5%
+          else if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) payDebit += (val * 0.988); // Taxa média adquirente débito 1.2%
           else if (pm.includes('dinheiro') || pm.includes('cash')) payCash += val;
-          else if (pm.includes('vr') || pm.includes('va')) payVr += (val * 0.95);
+          else if (pm.includes('vr') || pm.includes('va')) payVr += (val * 0.95); // Taxa média VR/VA 5%
           else payPix += val;
         }
       });
-
-      let cloudEntries = [];
-      if (typeof dbFetchFinancialEntries === 'function') {
-        cloudEntries = await dbFetchFinancialEntries();
-      }
-      let localEntries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-      
-      let combined = [...cloudEntries, ...localEntries];
-      let uniqueMap = new Map();
-      combined.forEach(item => {
-        let key = item.id || (item.description + item.value + (item.date || ''));
-        uniqueMap.set(key, item);
-      });
-      let allEntries = Array.from(uniqueMap.values());
-      const entries = allEntries.filter(e => isDateInFilter(e.date || e.timestamp));
 
       const socioEntries = entries.filter(e => e.description && (e.description.includes('[Pró-Labore/Retirada]') || e.description.includes('[Aporte Capital]')));
       const socioSummaryEl = document.getElementById('sociosSummaryList');
@@ -959,6 +966,14 @@
       
       document.getElementById('finExpensesTotal').innerText = `R$ ${formatFloatToCurrency(manualExpenses)}`;
       document.getElementById('finCmvTotal').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
+      if (unknownCmvCount > 0) {
+        document.getElementById('finCmvSub').innerText = `⚠️ ${unknownCmvCount} item(ns) sem custo cadastrado`;
+        document.getElementById('finCmvSub').style.color = 'var(--warning)';
+      } else {
+        document.getElementById('finCmvSub').innerText = `Custo real baseado em fichas`;
+        document.getElementById('finCmvSub').style.color = 'var(--text-muted)';
+      }
+
       document.getElementById('finNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
       document.getElementById('finProfitMargin').innerText = `Margem Líquida: ${profitMarginPct}%`;
 
@@ -1017,7 +1032,6 @@
 
     window.onload = async function() {
       applyTheme();
-      // Inicializa automaticamente filtrando para a data de hoje por padrão
       setQuickFilter('today');
       await loadFinancialData();
     };

@@ -421,48 +421,99 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
+      let settings = { storeName: 'MEU ESTABELECIMENTO' };
+      try {
+        const savedSettings = localStorage.getItem('vortex_store_settings');
+        if (savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
+      } catch (error) {
+        console.warn('Não foi possível ler as configurações locais da loja.', error);
+      }
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
     }
 
+    let stockSyncPromise = null;
+    let stockRefreshPromise = null;
+    let stockRenderVersion = 0;
+
     function getStockItems() {
-      let saved = localStorage.getItem('vortex_stock_items');
-      if (!saved) {
-        localStorage.setItem('vortex_stock_items', JSON.stringify(defaultStockItems));
-        return defaultStockItems;
+      try {
+        const saved = localStorage.getItem('vortex_stock_items');
+        if (!saved) {
+          localStorage.setItem('vortex_stock_items', JSON.stringify(defaultStockItems));
+          return [...defaultStockItems];
+        }
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [...defaultStockItems];
+      } catch (error) {
+        console.warn('Não foi possível ler o estoque local.', error);
+        return [...defaultStockItems];
       }
-      return JSON.parse(saved);
     }
 
     function getStockMovements() {
-      let saved = localStorage.getItem('vortex_stock_movements');
-      return saved ? JSON.parse(saved) : [];
-    }
-
-    async function syncStockToCloud() {
       try {
-        if (typeof dbSaveStock === 'function') {
-          await dbSaveStock(getStockItems());
-        }
-      } catch (e) {
-        console.error('Erro ao sincronizar estoque no Supabase:', e);
+        const saved = localStorage.getItem('vortex_stock_movements');
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.warn('Não foi possível ler o histórico de movimentações.', error);
+        return [];
       }
     }
 
-    async function renderStockTable() {
-      loadStoreSettings();
+    function escapeStockHtml(value) {
+      return String(value ?? '').replace(/[&<>\"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
 
-      try {
-        if (typeof dbFetchStock === 'function') {
-          const cloudStock = await dbFetchStock();
-          if (cloudStock && cloudStock.length > 0) {
-            localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
-          }
+    async function syncStockToCloud() {
+      if (stockSyncPromise) return stockSyncPromise;
+      if (typeof dbSaveStock !== 'function') return false;
+
+      const snapshot = getStockItems();
+      stockSyncPromise = (async () => {
+        try {
+          await dbSaveStock(snapshot);
+          return true;
+        } catch (error) {
+          console.error('Erro ao sincronizar estoque no Supabase:', error);
+          return false;
+        } finally {
+          stockSyncPromise = null;
         }
-      } catch (e) {}
+      })();
+      return stockSyncPromise;
+    }
+
+    async function refreshStockFromCloud() {
+      if (stockRefreshPromise) return stockRefreshPromise;
+      if (typeof dbFetchStock !== 'function') return false;
+
+      stockRefreshPromise = (async () => {
+        try {
+          const cloudStock = await dbFetchStock();
+          // Não substitui os dados locais por uma resposta vazia.
+          if (Array.isArray(cloudStock) && cloudStock.length > 0) {
+            localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
+            return true;
+          }
+        } catch (error) {
+          console.warn('Não foi possível atualizar o estoque pela nuvem; usando os dados locais.', error);
+        } finally {
+          stockRefreshPromise = null;
+        }
+        return false;
+      })();
+      return stockRefreshPromise;
+    }
+
+    function renderStockTable() {
+      const renderVersion = ++stockRenderVersion;
+      loadStoreSettings();
 
       let items = getStockItems();
       const search = document.getElementById('searchInput').value.toUpperCase().trim();
@@ -524,13 +575,13 @@
 
           tbody.innerHTML += `
             <tr>
-              <td><strong>${i.name}</strong></td>
+              <td><strong>${escapeStockHtml(i.name)}</strong></td>
               <td style="color:${qty <= 0 ? 'var(--danger)' : 'var(--warning)'}; font-weight:bold;">${qty} ${i.unit}</td>
               <td>${min} ${i.unit}</td>
               <td style="font-weight:bold; color:var(--info);">+ ${needed.toFixed(2)} ${i.unit}</td>
               <td>R$ ${estCost.toFixed(2).replace('.', ',')}</td>
               <td style="text-align:center;">
-                <button class="btn-action" style="padding:4px 8px; font-size:0.75rem;" onclick="sendWhatsappOrder('${i.name}', '${needed}', '${i.unit}')">📱 Pedir via WhatsApp</button>
+                <button class="btn-action" style="padding:4px 8px; font-size:0.75rem;" onclick="sendWhatsappOrder('${escapeStockHtml(i.name)}', '${needed}', '${i.unit}')">📱 Pedir via WhatsApp</button>
               </td>
             </tr>
           `;
@@ -560,11 +611,11 @@
         movs.forEach(m => {
           tbody.innerHTML += `
             <tr>
-              <td>${m.date}</td>
-              <td><strong>${m.itemName}</strong></td>
+              <td>${escapeStockHtml(m.date)}</td>
+              <td><strong>${escapeStockHtml(m.itemName)}</strong></td>
               <td><span class="badge badge-danger">${m.type === 'loss' ? 'Avaria / Perda' : 'Desperdício / Vencido'}</span></td>
               <td style="font-weight:bold; color:var(--danger);">- ${m.qty}</td>
-              <td>${m.reason || 'Sem observação'}</td>
+              <td>${escapeStockHtml(m.reason || 'Sem observação')}</td>
             </tr>
           `;
         });
@@ -606,10 +657,10 @@
 
           tbody.innerHTML += `
             <tr>
-              <td><strong>${item.name}</strong></td>
-              <td>${item.category}</td>
-              <td><strong>${qty.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit}</strong></td>
-              <td>${min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit}</td>
+              <td><strong>${escapeStockHtml(item.name)}</strong></td>
+              <td>${escapeStockHtml(item.category)}</td>
+              <td><strong>${qty.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeStockHtml(item.unit)}</strong></td>
+              <td>${min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeStockHtml(item.unit)}</td>
               <td>R$ ${(parseFloat(item.cost || 0)).toFixed(2).replace('.', ',')}</td>
               <td>${statusBadge}</td>
               <td style="text-align:center;">
@@ -745,7 +796,7 @@
         return;
       }
       items.forEach(i => {
-        select.innerHTML += `<option value="${i.id}">${i.name} (Atual: ${i.qty} ${i.unit})</option>`;
+        select.innerHTML += `<option value="${i.id}">${escapeStockHtml(i.name)} (Atual: ${i.qty} ${i.unit})</option>`;
       });
 
       document.getElementById('movType').value = type === 'entry' ? 'entry' : 'exit';
@@ -777,16 +828,21 @@
       let item = items.find(i => String(i.id) === String(itemId));
       if (!item) return;
 
+      // Normaliza números que possam ter sido salvos como texto no navegador.
+      const currentQty = Number(item.qty) || 0;
+      const currentCost = Number(item.cost) || 0;
+
       if (movType === 'entry') {
-        // Cálculo de Custo Ponderado caso informado
+        // Custo médio ponderado, sem divisão por zero.
         if (unitCost > 0) {
-          let currentTotal = item.qty * item.cost;
-          let newTotal = qty * unitCost;
-          item.cost = (currentTotal + newTotal) / (item.qty + qty);
+          const currentTotal = currentQty * currentCost;
+          const newTotal = qty * unitCost;
+          const totalQty = currentQty + qty;
+          item.cost = totalQty > 0 ? (currentTotal + newTotal) / totalQty : unitCost;
         }
-        item.qty += qty;
+        item.qty = currentQty + qty;
       } else {
-        item.qty = Math.max(0, item.qty - qty);
+        item.qty = Math.max(0, currentQty - qty);
       }
 
       // Registrar histórico de movimentações/perdas
@@ -806,13 +862,13 @@
 
       closeMovementModal();
       renderStockTable();
-      showNoticeModal('Movimentação Concluída', `Estoque de <strong>${item.name}</strong> atualizado com sucesso!`, '⚡');
+      showNoticeModal('Movimentação Concluída', `Estoque de ${item.name} atualizado com sucesso!`, '⚡');
     }
 
     function showNoticeModal(title, desc, icon) {
       document.getElementById('noticeIcon').innerText = icon || '🎉';
       document.getElementById('noticeTitle').innerText = title;
-      document.getElementById('noticeDesc').innerHTML = desc;
+      document.getElementById('noticeDesc').textContent = desc;
       document.getElementById('noticeModal').classList.add('active');
     }
 
@@ -824,9 +880,12 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
-      renderStockTable();
-    };
+    window.addEventListener('load', async function() {
+      loadStoreSettings();
+      renderStockTable(); // Mostra imediatamente o estoque local, sem aguardar a rede.
+      const refreshed = await refreshStockFromCloud();
+      if (refreshed) renderStockTable();
+    });
   </script>
 </body>
 </html>

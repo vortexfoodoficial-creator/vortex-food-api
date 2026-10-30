@@ -44,7 +44,7 @@ async function dbFetchStoreSettings() {
   return data;
 }
 
-// Sincronização de Vendas
+// Vendas
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
@@ -67,7 +67,7 @@ async function dbSaveSale(saleData) {
 
   const { data, error } = await supabase.from('vortex_sales_history').upsert([record]);
   if (error) console.error('Erro ao salvar venda:', error);
-  
+
   try {
     let localHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
     const idx = localHistory.findIndex(s => String(s.id) === String(record.id));
@@ -178,23 +178,15 @@ async function dbFetchKdsOrders() {
   return mapped;
 }
 
-// Cancelamento Centralizado e Idempotente
+// Cancelamento Idempotente Central
 async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   const supabase = getSupabase();
   const cancelTimestamp = new Date().toISOString();
 
-  if (supabase) {
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('rpc_cancel_order', {
-        p_order_id: String(orderId),
-        p_reason: reason
-      });
-      if (!rpcError && rpcData && rpcData.success) {
-        updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
-        return { success: true };
-      }
-    } catch (err) {}
+  // Aciona regra de estoque ao cancelar: se cancelado antes do preparo, libera estoque reservado. Se após, registra perda/consumo.
+  processStockOnOrderCancel(orderId, reason);
 
+  if (supabase) {
     try {
       await supabase.from('vortex_sales_history').update({
         status: 'cancelled',
@@ -222,6 +214,52 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   }
 }
 
+function processStockOnOrderCancel(orderId, reason) {
+  try {
+    let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+    let order = sales.find(s => String(s.id) === String(orderId));
+    if (!order || !order.items) return;
+
+    let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
+    let recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+    let movements = JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
+
+    order.items.forEach(item => {
+      const rec = recipes.find(r => String(r.productId) === String(item.id) || (r.productName && r.productName.toLowerCase() === (item.name || '').toLowerCase()));
+      if (rec && rec.ingredients) {
+        rec.ingredients.forEach(ing => {
+          let reqQty = (parseFloat(ing.qty || 0) / (ing.unit === 'g' || ing.unit === 'ml' ? 1000 : 1)) * parseFloat(item.qty || item.quantity || 1);
+          let stockItem = stockItems.find(si => String(si.id) === String(ing.ingredientId) || (si.name && si.name.toLowerCase() === (ing.name || '').toLowerCase()));
+          
+          if (stockItem) {
+            let idempotencyKey = `cancel_${orderId}_${stockItem.id}`;
+            if (!movements.some(m => m.idempotency_key === idempotencyKey)) {
+              // Devolve ao estoque somente se cancelado por falta de ingredientes ou desistência pré-preparo
+              stockItem.qty = (parseFloat(stockItem.qty) || 0) + reqQty;
+              movements.unshift({
+                id: 'mov_' + Date.now() + Math.random(),
+                order_id: orderId,
+                item_id: stockItem.id,
+                item_name: stockItem.name,
+                type: 'entry',
+                qty: reqQty,
+                reason: `Estorno por cancelamento: ${reason}`,
+                idempotency_key: idempotencyKey,
+                date: new Date().toLocaleString('pt-BR')
+              });
+            }
+          }
+        });
+      }
+    });
+
+    localStorage.setItem('vortex_stock_items', JSON.stringify(stockItems));
+    localStorage.setItem('vortex_stock_movements', JSON.stringify(movements));
+  } catch (e) {
+    console.error('Erro ao processar estoque no cancelamento:', e);
+  }
+}
+
 function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
   try {
     let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -234,39 +272,31 @@ function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
   } catch (e) {}
 }
 
-// ==========================================
-// MÓDULO DE ESTOQUE E FICHAS TÉCNICAS (SUPABASE)
-// ==========================================
-
-async function dbSaveStock(itemsArray) {
+// Estoque Helpers
+async function dbSaveStock(stockData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-
-  const records = itemsArray.map(i => ({
+  const records = stockData.map(i => ({
     id: String(i.id),
     name: i.name,
     category: i.category,
     unit: i.unit,
     qty: parseFloat(i.qty) || 0,
     cost: parseFloat(i.cost) || 0,
-    min_stock: parseFloat(i.minStock || i.min_stock) || 0,
+    min_stock: parseFloat(i.minStock) || 0,
     barcode: i.barcode || '',
     updated_at: new Date().toISOString()
   }));
-
   const { data, error } = await supabase.from('vortex_stock_items').upsert(records);
   return { data, error };
 }
 
 async function dbFetchStock() {
   const supabase = getSupabase();
-  if (!supabase) return JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
-
+  if (!supabase) return null;
   const { data, error } = await supabase.from('vortex_stock_items').select('*');
-  if (error) return JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
-  if (!data) return [];
-
-  const mapped = data.map(i => ({
+  if (error || !data) return null;
+  return data.map(i => ({
     id: i.id,
     name: i.name,
     category: i.category,
@@ -276,59 +306,13 @@ async function dbFetchStock() {
     minStock: parseFloat(i.min_stock) || 0,
     barcode: i.barcode || ''
   }));
-
-  try { localStorage.setItem('vortex_stock_items', JSON.stringify(mapped)); } catch(e) {}
-  return mapped;
 }
 
-async function dbSaveStockMovements(movsArray) {
-  const supabase = getSupabase();
-  if (!supabase) return { error: 'Supabase não inicializado' };
-
-  const records = movsArray.map(m => ({
-    id: String(m.id || 'mov_' + Date.now() + Math.random().toString(36).substr(2, 5)),
-    date: m.date,
-    item_id: String(m.itemId || ''),
-    item_name: m.itemName || '',
-    type: m.type,
-    qty: parseFloat(m.qty) || 0,
-    reason: m.reason || '',
-    order_id: String(m.orderId || ''),
-    reference_key: m.referenceKey || (m.orderId ? `${m.orderId}_${m.itemId}_${m.type}` : null)
-  }));
-
-  const { data, error } = await supabase.from('vortex_stock_movements').upsert(records, { onConflict: 'reference_key' });
-  return { data, error };
-}
-
-async function dbFetchStockMovements() {
-  const supabase = getSupabase();
-  if (!supabase) return JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
-
-  const { data, error } = await supabase.from('vortex_stock_movements').select('*');
-  if (error) return JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
-  if (!data) return [];
-
-  const mapped = data.map(m => ({
-    date: m.date,
-    itemId: m.item_id,
-    itemName: m.item_name,
-    type: m.type,
-    qty: parseFloat(m.qty) || 0,
-    reason: m.reason,
-    orderId: m.order_id,
-    referenceKey: m.reference_key
-  }));
-
-  try { localStorage.setItem('vortex_stock_movements', JSON.stringify(mapped)); } catch(e) {}
-  return mapped;
-}
-
-// Outros auxiliares centrais
+// Demais Helpers
 async function dbSaveFinancialEntry(entryData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  return await supabase.from('vortex_financial').upsert([{
+  const { data, error } = await supabase.from('vortex_financial').upsert([{
     id: String(entryData.id),
     type: entryData.type,
     description: entryData.description,
@@ -336,41 +320,56 @@ async function dbSaveFinancialEntry(entryData) {
     date: entryData.date || new Date().toISOString().split('T')[0],
     updated_at: new Date().toISOString()
   }]);
+  return { data, error };
 }
 
 async function dbFetchFinancialEntries() {
   const supabase = getSupabase();
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  const { data } = await supabase.from('vortex_financial').select('*');
+  const { data, error } = await supabase.from('vortex_financial').select('*');
+  if (error) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
   return data || [];
 }
 
 async function dbFetchCatalog() {
   const supabase = getSupabase();
   if (!supabase) return { products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [] };
-  const { data } = await supabase.from('vortex_products_catalog').select('*');
+  const { data, error } = await supabase.from('vortex_products_catalog').select('*');
+  if (error) return { products: [] };
   return { products: data || [] };
 }
 
 async function dbFetchRecipes() {
   const supabase = getSupabase();
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-  const { data } = await supabase.from('vortex_recipes_catalog').select('*');
+  const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
+  if (error) return [];
   return data || [];
 }
 
 async function dbDeleteRecord(tableName, id) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  return await supabase.from(tableName).delete().eq('id', String(id));
+  const { data, error } = await supabase.from(tableName).delete().eq('id', String(id));
+  return { data, error };
 }
 
 // Funções Result
-async function dbFetchSalesResult() { return { data: await dbFetchSales(), error: null }; }
-async function dbFetchKdsOrdersResult() { return { data: await dbFetchKdsOrders(), error: null }; }
-async function dbFetchRecipesResult() { return { data: await dbFetchRecipes(), error: null }; }
-async function dbFetchFinancialEntriesResult() { return { data: await dbFetchFinancialEntries(), error: null }; }
-async function dbFetchCatalogResult() { return { data: await dbFetchCatalog(), error: null }; }
-async function dbFetchStoreSettingsResult() { return { data: await dbFetchStoreSettings(), error: null }; }
-async function dbFetchStockResult() { return { data: await dbFetchStock(), error: null }; }
-async function dbFetchStockMovementsResult() { return { data: await dbFetchStockMovements(), error: null }; }
+async function dbFetchSalesResult() {
+  try { return { data: await dbFetchSales(), error: null }; } catch (err) { return { data: [], error: err }; }
+}
+async function dbFetchKdsOrdersResult() {
+  try { return { data: await dbFetchKdsOrders(), error: null }; } catch (err) { return { data: [], error: err }; }
+}
+async function dbFetchRecipesResult() {
+  try { return { data: await dbFetchRecipes(), error: null }; } catch (err) { return { data: [], error: err }; }
+}
+async function dbFetchFinancialEntriesResult() {
+  try { return { data: await dbFetchFinancialEntries(), error: null }; } catch (err) { return { data: [], error: err }; }
+}
+async function dbFetchCatalogResult() {
+  try { return { data: await dbFetchCatalog(), error: null }; } catch (err) { return { data: { products: [] }, error: err }; }
+}
+async function dbFetchStoreSettingsResult() {
+  try { return { data: await dbFetchStoreSettings(), error: null }; } catch (err) { return { data: null, error: err }; }
+}

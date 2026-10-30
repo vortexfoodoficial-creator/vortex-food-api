@@ -97,10 +97,10 @@
     .kds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
     .kds-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; border-top: 5px solid var(--border); }
     
-    .kds-card.status-new { border-top-color: var(--warning); animation: pulseNewOrder 2s infinite; }
+    .kds-card.status-new, .kds-card.status-received { border-top-color: var(--warning); animation: pulseNewOrder 2s infinite; }
     .kds-card.status-preparing { border-top-color: var(--info); }
     .kds-card.status-ready { border-top-color: var(--success); }
-    .kds-card.status-finished { border-top-color: var(--text-muted); opacity: 0.75; }
+    .kds-card.status-finished, .kds-card.status-completed { border-top-color: var(--text-muted); opacity: 0.75; }
     .kds-card.status-cancelled { border-top-color: var(--danger); opacity: 0.6; }
 
     .kds-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -113,7 +113,6 @@
     .items-list { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
     .item-row { font-size: 0.85rem; display: flex; justify-content: space-between; font-weight: 600; }
     .order-obs { font-size: 0.78rem; color: var(--warning); background: rgba(234, 179, 8, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid var(--warning); margin-top: 4px; }
-    .order-cancel-reason { font-size: 0.78rem; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid var(--danger); margin-top: 4px; }
 
     .kds-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .btn-action-kds { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; transition: opacity 0.2s; }
@@ -132,9 +131,9 @@
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
-    
-    .cancel-reason-select { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 12px; outline: none; }
-    .cancel-reason-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 15px; outline: none; display: none; }
+
+    .cancel-reason-select, .cancel-reason-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-top: 8px; outline: none; }
+    .cancel-reason-select:focus, .cancel-reason-input:focus { border-color: var(--danger); }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -238,31 +237,33 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM MOTIVO -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM MOTIVOS -->
   <div class="modal-overlay" id="confirmCancelModal">
     <div class="custom-modal-card">
       <div style="text-align:center; font-size:2.5rem; margin-bottom:10px;">⚠️</div>
-      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:8px; text-align:center;">Cancelar Pedido</div>
-      <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:15px; text-align:center;" id="confirmCancelText">
-        Selecione o motivo do cancelamento:
+      <div style="text-align:center; font-size:1.2rem; font-weight:bold; margin-bottom:8px;">Cancelar Pedido</div>
+      <div style="text-align:center; font-size:0.88rem; color:var(--text-muted); margin-bottom:15px;" id="confirmCancelText">
+        Tem certeza que deseja cancelar o pedido?
       </div>
 
-      <select id="cancelReasonSelect" class="cancel-reason-select" onchange="handleCancelReasonChange()">
-        <option value="Cliente desistiu">Cliente desistiu</option>
-        <option value="Falta de ingredientes">Falta de ingredientes</option>
-        <option value="Problema na cozinha">Problema na cozinha</option>
-        <option value="Problema na entrega">Problema na entrega</option>
-        <option value="Pagamento não confirmado">Pagamento não confirmado</option>
-        <option value="Pedido duplicado">Pedido duplicado</option>
-        <option value="Erro no pedido">Erro no pedido</option>
-        <option value="Outro motivo">Outro motivo...</option>
-      </select>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:0.78rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Selecione o motivo:</label>
+        <select id="cancelReasonSelect" class="cancel-reason-select" onchange="checkCustomReason(this)">
+          <option value="Cliente desistiu">Cliente desistiu</option>
+          <option value="Falta de ingredientes">Falta de ingredientes</option>
+          <option value="Problema na cozinha">Problema na cozinha</option>
+          <option value="Problema na entrega">Problema na entrega</option>
+          <option value="Pagamento não confirmado">Pagamento não confirmado</option>
+          <option value="Pedido duplicado">Pedido duplicado</option>
+          <option value="Erro no pedido">Erro no pedido</option>
+          <option value="Outro motivo">Outro motivo...</option>
+        </select>
+        <input type="text" id="cancelReasonCustomInput" class="cancel-reason-input" placeholder="Descreva o motivo..." style="display:none;">
+      </div>
 
-      <input type="text" id="cancelReasonCustomInput" class="cancel-reason-input" placeholder="Especifique o motivo...">
-
-      <div style="display:flex; gap:10px; margin-top:10px;">
+      <div style="display:flex; gap:10px; margin-top:15px;">
         <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Voltar</button>
-        <button class="btn-modal-danger" id="btnConfirmCancelAction">Confirmar Cancelamento</button>
+        <button class="btn-modal-danger" id="btnConfirmCancelAction">Sim, Cancelar Pedido</button>
       </div>
     </div>
   </div>
@@ -321,15 +322,22 @@
       }
     }
 
-    function loadStoreSettings() {
+    async function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
+      let storeName = 'MEU ESTABELECIMENTO';
+      let logoUrl = localStorage.getItem('vortex_store_logo') || '';
 
-      const savedLogo = localStorage.getItem('vortex_store_logo');
+      if (typeof dbFetchStoreSettingsResult === 'function') {
+        const res = await dbFetchStoreSettingsResult();
+        if (res && res.data) {
+          storeName = res.data.store_name || res.data.nome || storeName;
+        }
+      }
+
+      document.getElementById('sidebarStoreName').innerText = storeName;
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
-      if (savedLogo) {
-        sidebarLogo.src = savedLogo;
+      if (logoUrl) {
+        sidebarLogo.src = logoUrl;
         sidebarLogo.style.display = 'block';
       } else {
         sidebarLogo.style.display = 'none';
@@ -366,71 +374,33 @@
       return '';
     }
 
-    async function syncSalesHistoryToKds() {
-      const todayDateStr = getLocalDateStr(new Date());
-      let kdsOrders = [];
-      let salesHistory = [];
-
-      try {
-        // Utiliza as funções result centralizadas da etapa anterior (supabase.js)
-        const [kdsRes, salesRes] = await Promise.all([
-          typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : Promise.resolve({ data: [] }),
-          typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] })
-        ]);
-
-        if (kdsRes && kdsRes.data && kdsRes.data.length > 0) kdsOrders = kdsRes.data;
-        if (salesRes && salesRes.data && salesRes.data.length > 0) salesHistory = salesRes.data;
-      } catch (e) {
-        console.warn('Falha na sincronização remota do KDS, utilizando cache local:', e);
-      }
-
-      if (kdsOrders.length === 0) {
-        kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      }
-      if (salesHistory.length === 0) {
-        salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      }
-
-      for (let sale of salesHistory) {
-        let saleDateStr = parseToLocalDateStr(sale.date || sale.timestamp) || todayDateStr;
-        let strSaleId = String(sale.id);
-
-        if (saleDateStr === todayDateStr && sale.status !== 'cancelled') {
-          let foundInKds = kdsOrders.find(o => String(o.id) === strSaleId || (o.origin && o.origin.includes('Delivery') && o.client === sale.client && Math.abs((o.total || 0) - (sale.total || 0)) < 0.01));
-          
-          if (!foundInKds) {
-            const newKdsItem = {
-              id: strSaleId,
-              origin: sale.channel || 'Delivery 🛵',
-              client: sale.client || 'Cliente',
-              time: sale.time || new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
-              date: todayDateStr,
-              items: sale.items || [],
-              total: parseFloat(sale.total) || 0,
-              observation: sale.observation || '',
-              payMethod: sale.payMethod || sale.payment || 'Dinheiro',
-              status: sale.status || 'new'
-            };
-            kdsOrders.unshift(newKdsItem);
-            try {
-              if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
-            } catch (err) {
-              console.error('Erro ao salvar novo pedido KDS:', err);
-            }
-          }
-        }
-      }
-
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-    }
-
+    // Sincronização em segundo plano entre Supabase e cache local
     async function refreshKdsData() {
       if (isRefreshingKds) return;
       isRefreshingKds = true;
+
       try {
-        await syncSalesHistoryToKds();
+        const todayDateStr = getLocalDateStr(new Date());
+        let remoteKds = [];
+        let remoteSales = [];
+
+        if (typeof dbFetchKdsOrdersResult === 'function') {
+          const kdsRes = await dbFetchKdsOrdersResult();
+          if (kdsRes && kdsRes.data) remoteKds = kdsRes.data;
+        }
+        if (typeof dbFetchSalesResult === 'function') {
+          const salesRes = await dbFetchSalesResult();
+          if (salesRes && salesRes.data) remoteSales = salesRes.data;
+        }
+
+        if (remoteKds.length > 0) {
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(remoteKds));
+        }
+        if (remoteSales.length > 0) {
+          localStorage.setItem('vortex_sales_history', JSON.stringify(remoteSales));
+        }
       } catch (e) {
-        console.error('Erro ao atualizar KDS:', e);
+        console.warn('Modo offline ativo ou falha ao buscar da nuvem:', e);
       } finally {
         isRefreshingKds = false;
         renderKds();
@@ -448,33 +418,43 @@
         orders = [];
       }
 
+      // Filtra pedidos do dia ou ativos
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
-        if (o.status === 'finished' || o.status === 'cancelled') {
+        if (o.status === 'finished' || o.status === 'completed' || o.status === 'cancelled') {
           return itemDate === todayDateStr;
         }
         return true;
       });
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+
+      // Atualiza contadores das abas
+      const countNew = orders.filter(o => o.status === 'new' || o.status === 'received').length;
+      const countPrep = orders.filter(o => o.status === 'preparing').length;
+      const countReady = orders.filter(o => o.status === 'ready').length;
+      const countFin = orders.filter(o => o.status === 'finished' || o.status === 'completed').length;
+      const countCanc = orders.filter(o => o.status === 'cancelled').length;
 
       document.getElementById('countAll').innerText = orders.length;
-      document.getElementById('countNew').innerText = orders.filter(o => o.status === 'new').length;
-      document.getElementById('countPrep').innerText = orders.filter(o => o.status === 'preparing').length;
-      document.getElementById('countReady').innerText = orders.filter(o => o.status === 'ready').length;
-      document.getElementById('countFin').innerText = orders.filter(o => o.status === 'finished').length;
-      document.getElementById('countCanc').innerText = orders.filter(o => o.status === 'cancelled').length;
+      document.getElementById('countNew').innerText = countNew;
+      document.getElementById('countPrep').innerText = countPrep;
+      document.getElementById('countReady').innerText = countReady;
+      document.getElementById('countFin').innerText = countFin;
+      document.getElementById('countCanc').innerText = countCanc;
 
-      let currentNewCount = orders.filter(o => o.status === 'new').length;
-      if (lastKnownNewOrdersCount !== -1 && currentNewCount > lastKnownNewOrdersCount) {
+      if (lastKnownNewOrdersCount !== -1 && countNew > lastKnownNewOrdersCount) {
         playNewOrderSound();
       }
-      lastKnownNewOrdersCount = currentNewCount;
+      lastKnownNewOrdersCount = countNew;
 
       const container = document.getElementById('kdsContainer');
       container.innerHTML = '';
 
       let filteredOrders = orders;
-      if (activeFilter !== 'all') {
+      if (activeFilter === 'new') {
+        filteredOrders = orders.filter(o => o.status === 'new' || o.status === 'received');
+      } else if (activeFilter === 'finished') {
+        filteredOrders = orders.filter(o => o.status === 'finished' || o.status === 'completed');
+      } else if (activeFilter !== 'all') {
         filteredOrders = orders.filter(o => o.status === activeFilter);
       }
 
@@ -497,12 +477,12 @@
 
       let cardsHtml = '';
       filteredOrders.forEach(order => {
-        let statusClass = `status-${order.status}`;
+        let statusClass = `status-${order.status || 'received'}`;
         let statusLabel = '';
-        if (order.status === 'new') statusLabel = '🟡 NOVO';
+        if (order.status === 'new' || order.status === 'received') statusLabel = '🟡 NOVO';
         else if (order.status === 'preparing') statusLabel = '🔵 EM PREPARO';
         else if (order.status === 'ready') statusLabel = '🟢 PRONTO';
-        else if (order.status === 'finished') statusLabel = '🏁 FINALIZADO';
+        else if (order.status === 'finished' || order.status === 'completed') statusLabel = '🏁 FINALIZADO';
         else if (order.status === 'cancelled') statusLabel = '🔴 CANCELADO';
 
         let itemsHtml = (order.items || []).map(i => `
@@ -513,34 +493,25 @@
         `).join('');
 
         let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
-        let cancelReasonHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div class="order-cancel-reason">❌ <strong>Motivo:</strong> ${order.cancellationReason}</div>` : '';
+        let cancelInfoHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:4px;">Motivo: ${order.cancellationReason}</div>` : '';
+        
         const isTableOrder = String(order.origin || '').toLowerCase().includes('mesa');
+        let isCancelled = order.status === 'cancelled';
+        let isFinished = order.status === 'finished' || order.status === 'completed';
 
         let actionsHtml = '';
-        if (order.status === 'new') {
-          actionsHtml = `
-            <button class="btn-action-kds btn-start" onclick="updateOrderStatus('${order.id}', 'preparing')">👨‍🍳 Iniciar Preparo</button>
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
-          `;
-        } else if (order.status === 'preparing') {
-          actionsHtml = `
-            <button class="btn-action-kds btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')">✅ Marcar como Pronto</button>
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
-          `;
-        } else if (order.status === 'ready') {
-          if (!isTableOrder) {
-            actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar Pedido</button>`;
+        if (!isCancelled && !isFinished) {
+          if (order.status === 'new' || order.status === 'received') {
+            actionsHtml += `<button class="btn-action-kds btn-start" onclick="updateOrderStatus('${order.id}', 'preparing')">👨‍🍳 Iniciar Preparo</button>`;
+          } else if (order.status === 'preparing') {
+            actionsHtml += `<button class="btn-action-kds btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')">✅ Marcar como Pronto</button>`;
+          } else if (order.status === 'ready' && !isTableOrder) {
+            actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar</button>`;
           }
-          actionsHtml += `
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
-            <button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>
-          `;
+          actionsHtml += `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
+          actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
         } else {
-          actionsHtml = `
-            <button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>
-          `;
+          actionsHtml = `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
         }
 
         cardsHtml += `
@@ -552,11 +523,11 @@
               </div>
               <div class="order-client">👤 ${order.client || 'Cliente'}</div>
               <div class="order-time">🕒 ${order.time || '--:--'} | <strong>${statusLabel}</strong></div>
+              ${cancelInfoHtml}
               <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
               
               <div class="items-list">${itemsHtml}</div>
               ${obsHtml}
-              ${cancelReasonHtml}
               
               <div style="font-weight:bold; font-size:0.9rem; margin-top:10px; color:var(--success);">
                 Total: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}
@@ -579,53 +550,43 @@
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         renderKds();
 
-        let salesHistory = [];
-        try { salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || []; }
-        catch (e) { salesHistory = []; }
-        let saleMatch = salesHistory.find(s => String(s.id) === String(id));
-        if (saleMatch) {
-          saleMatch.status = newStatus;
-          localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-        }
-
-        // Sincronização centralizada com Supabase
-        if (window.supabaseClient) {
-          try {
-            await Promise.all([
-              window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id)),
-              saleMatch ? window.supabaseClient.from('vortex_sales_history').update({ status: newStatus }).eq('id', String(id)) : Promise.resolve()
-            ]);
-          } catch (err) {
-            console.error('Erro na sincronização de status:', err);
+        // Sincroniza com o Supabase utilizando a camada central
+        try {
+          if (window.supabaseClient) {
+            await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id));
+            await window.supabaseClient.from('vortex_sales_history').update({ status: newStatus }).eq('id', String(id));
           }
+        } catch (e) {
+          console.warn('Erro ao sincronizar status na nuvem:', e);
         }
 
-        showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado para ${newStatus}.`, '👨‍🍳');
+        showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado com sucesso.`, '👨‍🍳');
       }
     }
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?`;
       document.getElementById('cancelReasonSelect').value = 'Cliente desistiu';
-      document.getElementById('cancelReasonCustomInput').value = '';
       document.getElementById('cancelReasonCustomInput').style.display = 'none';
-      
+      document.getElementById('cancelReasonCustomInput').value = '';
+
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
-        executeCancelOrder();
+        confirmCancelOrder(id);
       };
 
       document.getElementById('confirmCancelModal').classList.add('active');
     }
 
-    function handleCancelReasonChange() {
-      const selectVal = document.getElementById('cancelReasonSelect').value;
+    function checkCustomReason(selectEl) {
       const customInput = document.getElementById('cancelReasonCustomInput');
-      if (selectVal === 'Outro motivo') {
+      if (selectEl.value === 'Outro motivo') {
         customInput.style.display = 'block';
         customInput.focus();
       } else {
         customInput.style.display = 'none';
+        customInput.value = '';
       }
     }
 
@@ -634,28 +595,25 @@
       document.getElementById('confirmCancelModal').classList.remove('active');
     }
 
-    async function executeCancelOrder() {
-      if (!pendingCancelOrderId) return;
-      const id = pendingCancelOrderId;
-      
-      const selectVal = document.getElementById('cancelReasonSelect').value;
-      let reason = selectVal;
-      if (selectVal === 'Outro motivo') {
-        const customText = document.getElementById('cancelReasonCustomInput').value.trim();
-        reason = customText ? `Outro: ${customText}` : 'Outro motivo';
+    async function confirmCancelOrder(id) {
+      const selectEl = document.getElementById('cancelReasonSelect');
+      const customInput = document.getElementById('cancelReasonCustomInput');
+      let reason = selectEl.value;
+      if (reason === 'Outro motivo') {
+        reason = customInput.value.trim() || 'Outro motivo (não especificado)';
       }
 
       closeConfirmCancelModal();
 
-      // Utiliza a função centralizada e idempotente dbCancelOrder definida no supabase.js da Etapa 1
+      // Utiliza rigorosamente a função central idempotente implementada na Etapa 1
       if (typeof dbCancelOrder === 'function') {
         const res = await dbCancelOrder(id, reason);
-        if (res && res.success === false) {
-          showNoticeModal('Erro ao Cancelar', 'Não foi possível concluir o cancelamento no servidor.', '⚠️');
+        if (res && res.error) {
+          showNoticeModal('Erro ao Cancelar', `Não foi possível concluir o cancelamento: ${res.error.message || res.error}`, '⚠️');
           return;
         }
       } else {
-        // Fallback local caso a camada central não esteja carregada
+        // Fallback local seguro caso a função central não esteja acessível
         let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         let order = orders.find(o => String(o.id) === String(id));
         if (order) {
@@ -666,8 +624,8 @@
       }
 
       renderKds();
-      showNoticeModal('Pedido Cancelado', `Pedido #${id} cancelado com sucesso. O faturamento foi ajustado.`, '🔴');
-      pendingCancelOrderId = null;
+      showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso. O faturamento foi recalculado automaticamente.`, '🔴');
+      refreshKdsData();
     }
 
     function printOrderTicket(id) {
@@ -675,9 +633,7 @@
       let order = orders.find(o => String(o.id) === String(id));
       if (!order) return;
 
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       const printWin = window.open('', '_blank', 'width=380,height=600');
-
       let itemsTxt = (order.items || []).map(i => `
         <tr>
           <td style="text-align:left;">${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}</td>
@@ -689,7 +645,7 @@
         <html>
           <head><title>Comanda - Pedido #${order.id}</title></head>
           <body style="font-family:monospace; font-size:12px; width:280px; padding:10px; margin:0 auto;">
-            <h2 style="text-align:center; margin:0;">${settings.storeName || settings.nome || 'VORTEX FOOD'}</h2>
+            <h2 style="text-align:center; margin:0;">${document.getElementById('sidebarStoreName').innerText}</h2>
             <p style="text-align:center; margin:4px 0 10px 0;">COMANDA DE PRODUÇÃO</p>
             <hr>
             <p><strong>PEDIDO #${order.id}</strong></p>
@@ -726,9 +682,10 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
+    // Sincronização em segundo plano a cada 8 segundos
     setInterval(() => {
       refreshKdsData();
-    }, 6000);
+    }, 8000);
 
     window.onload = function() {
       renderKds();

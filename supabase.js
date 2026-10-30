@@ -178,13 +178,97 @@ async function dbFetchKdsOrders() {
   return mapped;
 }
 
+/**
+ * REGRA CENTRAL DE CONSUMO DE ESTOQUE AO ENTRAR EM PREPARO (IDEMPOTENTE)
+ */
+async function processStockConsumptionForOrder(order) {
+  if (!order || !order.items || order.items.length === 0) return;
+
+  try {
+    let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
+    let recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+    let movements = JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
+    let stockChanged = false;
+
+    order.items.forEach((item, itemIndex) => {
+      // Localiza a ficha técnica pelo productId ou nome do produto
+      const rec = recipes.find(r => 
+        String(r.productId) === String(item.id || item.productId) || 
+        (r.productName && r.productName.trim().toLowerCase() === (item.name || item.title || '').trim().toLowerCase())
+      );
+
+      if (rec && rec.ingredients && Array.isArray(rec.ingredients)) {
+        rec.ingredients.forEach(ing => {
+          let ingredientQtyPerUnit = parseFloat(ing.qty || 0);
+          // Conversão de unidades se necessário (ex: gramas/ml para kg/l base do estoque se o insumo estiver em kg e receita em g)
+          let itemQty = parseFloat(item.qty || item.quantity || 1);
+          let totalReqQty = ingredientQtyPerUnit * itemQty;
+
+          // Se a ficha técnica estiver em gramas/ml e o estoque em kg/l, converte adequadamente
+          let stockItem = stockItems.find(si => String(si.id) === String(ing.insumoId || ing.ingredientId) || (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase()));
+
+          if (stockItem) {
+            let unitToUse = ing.unit || 'g';
+            let calculatedQty = totalReqQty;
+            if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) {
+              calculatedQty = totalReqQty / 1000;
+            }
+
+            const idempotencyKey = `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}`;
+            
+            // Verifica se a movimentação já foi registrada (Idempotência rigorosa)
+            const alreadyProcessed = movements.some(m => m.idempotency_key === idempotencyKey);
+            if (!alreadyProcessed) {
+              stockItem.qty = Math.max(0, parseFloat(stockItem.qty || 0) - calculatedQty);
+              stockChanged = true;
+
+              const newMov = {
+                id: 'mov_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                order_id: String(order.id),
+                item_id: String(stockItem.id),
+                item_name: String(stockItem.name),
+                type: 'consumption',
+                qty: calculatedQty,
+                reason: `Consumo automático - Pedido #${order.id} (${item.name || 'Produto'})`,
+                idempotency_key: idempotencyKey,
+                date: new Date().toLocaleString('pt-BR')
+              };
+              movements.unshift(newMov);
+            }
+          }
+        });
+      }
+    });
+
+    if (stockChanged) {
+      localStorage.setItem('vortex_stock_items', JSON.stringify(stockItems));
+      localStorage.setItem('vortex_stock_movements', JSON.stringify(movements));
+
+      // Sincroniza com o Supabase de forma assíncrona
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.from('vortex_stock_items').upsert(stockItems.map(i => ({
+          id: String(i.id),
+          name: i.name,
+          category: i.category,
+          unit: i.unit,
+          qty: parseFloat(i.qty) || 0,
+          cost: parseFloat(i.cost) || 0,
+          min_stock: parseFloat(i.minStock) || 0,
+          barcode: i.barcode || '',
+          updated_at: new Date().toISOString()
+        })));
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao processar consumo automático de estoque:', e);
+  }
+}
+
 // Cancelamento Idempotente Central
 async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   const supabase = getSupabase();
   const cancelTimestamp = new Date().toISOString();
-
-  // Aciona regra de estoque ao cancelar: se cancelado antes do preparo, libera estoque reservado. Se após, registra perda/consumo.
-  processStockOnOrderCancel(orderId, reason);
 
   if (supabase) {
     try {
@@ -211,52 +295,6 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   } else {
     updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
     return { success: true, offline: true };
-  }
-}
-
-function processStockOnOrderCancel(orderId, reason) {
-  try {
-    let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-    let order = sales.find(s => String(s.id) === String(orderId));
-    if (!order || !order.items) return;
-
-    let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
-    let recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-    let movements = JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
-
-    order.items.forEach(item => {
-      const rec = recipes.find(r => String(r.productId) === String(item.id) || (r.productName && r.productName.toLowerCase() === (item.name || '').toLowerCase()));
-      if (rec && rec.ingredients) {
-        rec.ingredients.forEach(ing => {
-          let reqQty = (parseFloat(ing.qty || 0) / (ing.unit === 'g' || ing.unit === 'ml' ? 1000 : 1)) * parseFloat(item.qty || item.quantity || 1);
-          let stockItem = stockItems.find(si => String(si.id) === String(ing.ingredientId) || (si.name && si.name.toLowerCase() === (ing.name || '').toLowerCase()));
-          
-          if (stockItem) {
-            let idempotencyKey = `cancel_${orderId}_${stockItem.id}`;
-            if (!movements.some(m => m.idempotency_key === idempotencyKey)) {
-              // Devolve ao estoque somente se cancelado por falta de ingredientes ou desistência pré-preparo
-              stockItem.qty = (parseFloat(stockItem.qty) || 0) + reqQty;
-              movements.unshift({
-                id: 'mov_' + Date.now() + Math.random(),
-                order_id: orderId,
-                item_id: stockItem.id,
-                item_name: stockItem.name,
-                type: 'entry',
-                qty: reqQty,
-                reason: `Estorno por cancelamento: ${reason}`,
-                idempotency_key: idempotencyKey,
-                date: new Date().toLocaleString('pt-BR')
-              });
-            }
-          }
-        });
-      }
-    });
-
-    localStorage.setItem('vortex_stock_items', JSON.stringify(stockItems));
-    localStorage.setItem('vortex_stock_movements', JSON.stringify(movements));
-  } catch (e) {
-    console.error('Erro ao processar estoque no cancelamento:', e);
   }
 }
 

@@ -113,6 +113,7 @@
     .items-list { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
     .item-row { font-size: 0.85rem; display: flex; justify-content: space-between; font-weight: 600; }
     .order-obs { font-size: 0.78rem; color: var(--warning); background: rgba(234, 179, 8, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid var(--warning); margin-top: 4px; }
+    .order-cancel-reason { font-size: 0.78rem; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid var(--danger); margin-top: 4px; }
 
     .kds-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .btn-action-kds { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; transition: opacity 0.2s; }
@@ -131,6 +132,9 @@
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn-modal-danger { background: var(--danger); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
+    
+    .cancel-reason-select { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 12px; outline: none; }
+    .cancel-reason-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 15px; outline: none; display: none; }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -234,17 +238,31 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM MOTIVO -->
   <div class="modal-overlay" id="confirmCancelModal">
-    <div class="custom-modal-card" style="text-align:center;">
-      <div style="font-size:3rem; margin-bottom:12px;">⚠️</div>
-      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;">Cancelar Pedido</div>
-      <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="confirmCancelText">
-        Tem certeza que deseja cancelar o pedido?
+    <div class="custom-modal-card">
+      <div style="text-align:center; font-size:2.5rem; margin-bottom:10px;">⚠️</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:8px; text-align:center;">Cancelar Pedido</div>
+      <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:15px; text-align:center;" id="confirmCancelText">
+        Selecione o motivo do cancelamento:
       </div>
-      <div style="display:flex; gap:10px;">
-        <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Não, Manter Pedido</button>
-        <button class="btn-modal-danger" id="btnConfirmCancelAction">Sim, Cancelar Pedido</button>
+
+      <select id="cancelReasonSelect" class="cancel-reason-select" onchange="handleCancelReasonChange()">
+        <option value="Cliente desistiu">Cliente desistiu</option>
+        <option value="Falta de ingredientes">Falta de ingredientes</option>
+        <option value="Problema na cozinha">Problema na cozinha</option>
+        <option value="Problema na entrega">Problema na entrega</option>
+        <option value="Pagamento não confirmado">Pagamento não confirmado</option>
+        <option value="Pedido duplicado">Pedido duplicado</option>
+        <option value="Erro no pedido">Erro no pedido</option>
+        <option value="Outro motivo">Outro motivo...</option>
+      </select>
+
+      <input type="text" id="cancelReasonCustomInput" class="cancel-reason-input" placeholder="Especifique o motivo...">
+
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Voltar</button>
+        <button class="btn-modal-danger" id="btnConfirmCancelAction">Confirmar Cancelamento</button>
       </div>
     </div>
   </div>
@@ -306,7 +324,7 @@
     function loadStoreSettings() {
       applyTheme();
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      document.getElementById('sidebarStoreName').innerText = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -348,103 +366,26 @@
       return '';
     }
 
-    // Persistência centralizada: cada registro é enviado ao Supabase apenas uma vez.
-    // Prioriza as funções do supabase.js e usa o cliente direto somente como fallback.
-    async function persistKdsOrder(order) {
-      let result;
-      if (typeof dbSaveKdsOrder === 'function') {
-        result = await dbSaveKdsOrder(order);
-        if (result && result.error) throw result.error;
-        return result;
-      }
-
-      if (window.supabaseClient) {
-        result = await window.supabaseClient.from('vortex_kds_orders').upsert([order]);
-        if (result && result.error) throw result.error;
-        return result;
-      }
-
-      throw new Error('Supabase indisponível: o pedido foi mantido localmente, mas não foi sincronizado.');
-    }
-
-    async function persistSale(sale) {
-      let result;
-      if (typeof dbSaveSale === 'function') {
-        result = await dbSaveSale(sale);
-        if (result && result.error) throw result.error;
-        return result;
-      }
-
-      if (window.supabaseClient) {
-        result = await window.supabaseClient.from('vortex_sales_history').upsert([sale]);
-        if (result && result.error) throw result.error;
-        return result;
-      }
-
-      throw new Error('Supabase indisponível: a venda foi mantida localmente, mas não foi sincronizada.');
-    }
-
-    // Atualiza somente o status na nuvem. Evita reenviar campos como cashGiven,
-    // que podem não existir na estrutura atual da tabela KDS.
-    async function persistKdsOrderStatus(id, status) {
-      if (!window.supabaseClient) {
-        throw new Error('Supabase indisponível: o status foi salvo localmente, mas não foi sincronizado.');
-      }
-      const { error } = await window.supabaseClient
-        .from('vortex_kds_orders')
-        .update({ status })
-        .eq('id', String(id));
-      if (error) throw error;
-    }
-
-    // Sincroniza apenas o status da venda, sem reenviar todo o registro.
-    async function persistSaleStatus(id, status) {
-      if (!window.supabaseClient) {
-        throw new Error('Supabase indisponível: o status da venda não foi sincronizado.');
-      }
-      const { error } = await window.supabaseClient
-        .from('vortex_sales_history')
-        .update({ status })
-        .eq('id', String(id));
-      if (error) throw error;
-    }
-
-    function getPersistenceErrorMessage(error) {
-      if (!error) return 'Erro desconhecido de sincronização.';
-      if (typeof error === 'string') return error;
-      return error.message || error.details || error.hint || 'Não foi possível sincronizar com o Supabase.';
-    }
-
     async function syncSalesHistoryToKds() {
       const todayDateStr = getLocalDateStr(new Date());
       let kdsOrders = [];
       let salesHistory = [];
 
       try {
-        if (window.supabaseClient) {
-          // As duas leituras independentes são executadas em paralelo.
-          const [kdsResponse, salesResponse] = await Promise.all([
-            window.supabaseClient.from('vortex_kds_orders').select('*'),
-            window.supabaseClient.from('vortex_sales_history').select('*')
-          ]);
-          if (kdsResponse.error) throw kdsResponse.error;
-          if (salesResponse.error) throw salesResponse.error;
-          if (Array.isArray(kdsResponse.data) && kdsResponse.data.length > 0) kdsOrders = kdsResponse.data;
-          if (Array.isArray(salesResponse.data) && salesResponse.data.length > 0) salesHistory = salesResponse.data;
-        }
+        // Utiliza as funções result centralizadas da etapa anterior (supabase.js)
+        const [kdsRes, salesRes] = await Promise.all([
+          typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : Promise.resolve({ data: [] }),
+          typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] })
+        ]);
+
+        if (kdsRes && kdsRes.data && kdsRes.data.length > 0) kdsOrders = kdsRes.data;
+        if (salesRes && salesRes.data && salesRes.data.length > 0) salesHistory = salesRes.data;
       } catch (e) {
-        console.warn('Não foi possível atualizar os pedidos pela nuvem; será usado o cache local:', e);
+        console.warn('Falha na sincronização remota do KDS, utilizando cache local:', e);
       }
 
-      if (kdsOrders.length === 0) {
-        if (typeof dbFetchKdsOrders === 'function') kdsOrders = await dbFetchKdsOrders();
-      }
       if (kdsOrders.length === 0) {
         kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      }
-
-      if (salesHistory.length === 0) {
-        if (typeof dbFetchSales === 'function') salesHistory = await dbFetchSales();
       }
       if (salesHistory.length === 0) {
         salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -472,9 +413,9 @@
             };
             kdsOrders.unshift(newKdsItem);
             try {
-              await persistKdsOrder(newKdsItem);
+              if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newKdsItem);
             } catch (err) {
-              console.error('Pedido adicionado ao KDS localmente, mas a sincronização falhou:', err);
+              console.error('Erro ao salvar novo pedido KDS:', err);
             }
           }
         }
@@ -483,21 +424,19 @@
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
     }
 
-    // Sincroniza em segundo plano. A renderização e os filtros não esperam pela rede.
     async function refreshKdsData() {
       if (isRefreshingKds) return;
       isRefreshingKds = true;
       try {
         await syncSalesHistoryToKds();
       } catch (e) {
-        console.error('Falha ao sincronizar os dados do KDS:', e);
+        console.error('Erro ao atualizar KDS:', e);
       } finally {
         isRefreshingKds = false;
         renderKds();
       }
     }
 
-    // Renderiza apenas os dados locais em cache: sem consultas ao Supabase.
     function renderKds() {
       loadStoreSettings();
 
@@ -506,11 +445,9 @@
       try {
         orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       } catch (e) {
-        console.error('Cache local de pedidos inválido:', e);
         orders = [];
       }
 
-      // Filtro estrito para manter ativos e finalizados do dia
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'cancelled') {
@@ -520,7 +457,6 @@
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-      // Atualiza contadores nas abas
       document.getElementById('countAll').innerText = orders.length;
       document.getElementById('countNew').innerText = orders.filter(o => o.status === 'new').length;
       document.getElementById('countPrep').innerText = orders.filter(o => o.status === 'preparing').length;
@@ -571,12 +507,13 @@
 
         let itemsHtml = (order.items || []).map(i => `
           <div class="item-row">
-            <span>${i.qty || 1}x ${i.name || 'Item'}</span>
-            <span>R$ ${((i.price || 0) * (i.qty || 1)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+            <span>${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}</span>
+            <span>R$ ${(((i.price || 0) * (i.qty || i.quantity || 1))).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         `).join('');
 
         let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
+        let cancelReasonHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div class="order-cancel-reason">❌ <strong>Motivo:</strong> ${order.cancellationReason}</div>` : '';
         const isTableOrder = String(order.origin || '').toLowerCase().includes('mesa');
 
         let actionsHtml = '';
@@ -619,6 +556,7 @@
               
               <div class="items-list">${itemsHtml}</div>
               ${obsHtml}
+              ${cancelReasonHtml}
               
               <div style="font-weight:bold; font-size:0.9rem; margin-top:10px; color:var(--success);">
                 Total: R$ ${(order.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}
@@ -639,8 +577,6 @@
       if (order) {
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-        
-        // Atualiza a interface imediatamente, sem esperar a rede.
         renderKds();
 
         let salesHistory = [];
@@ -652,32 +588,45 @@
           localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
         }
 
-        // Persiste as alterações em paralelo para não somar os tempos de rede.
-        const syncTasks = [persistKdsOrderStatus(id, newStatus)];
-        if (saleMatch) syncTasks.push(persistSaleStatus(id, newStatus));
-        const syncResults = await Promise.allSettled(syncTasks);
-        const failedSync = syncResults.find(result => result.status === 'rejected');
-        const syncError = failedSync ? failedSync.reason : null;
-        if (syncError) console.error('Falha ao sincronizar o status:', syncError);
-
-        if (syncError) {
-          showNoticeModal('Atualização salva localmente', `O pedido #${id} foi atualizado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
-        } else {
-          showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado para ${newStatus}.`, '👨‍🍳');
+        // Sincronização centralizada com Supabase
+        if (window.supabaseClient) {
+          try {
+            await Promise.all([
+              window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id)),
+              saleMatch ? window.supabaseClient.from('vortex_sales_history').update({ status: newStatus }).eq('id', String(id)) : Promise.resolve()
+            ]);
+          } catch (err) {
+            console.error('Erro na sincronização de status:', err);
+          }
         }
+
+        showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado para ${newStatus}.`, '👨‍🍳');
       }
     }
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?`;
+      document.getElementById('cancelReasonSelect').value = 'Cliente desistiu';
+      document.getElementById('cancelReasonCustomInput').value = '';
+      document.getElementById('cancelReasonCustomInput').style.display = 'none';
       
       const btnConfirm = document.getElementById('btnConfirmCancelAction');
       btnConfirm.onclick = function() {
-        confirmCancelOrder(id);
+        executeCancelOrder();
       };
 
       document.getElementById('confirmCancelModal').classList.add('active');
+    }
+
+    function handleCancelReasonChange() {
+      const selectVal = document.getElementById('cancelReasonSelect').value;
+      const customInput = document.getElementById('cancelReasonCustomInput');
+      if (selectVal === 'Outro motivo') {
+        customInput.style.display = 'block';
+        customInput.focus();
+      } else {
+        customInput.style.display = 'none';
+      }
     }
 
     function closeConfirmCancelModal() {
@@ -685,32 +634,40 @@
       document.getElementById('confirmCancelModal').classList.remove('active');
     }
 
-    async function confirmCancelOrder(id) {
+    async function executeCancelOrder() {
+      if (!pendingCancelOrderId) return;
+      const id = pendingCancelOrderId;
+      
+      const selectVal = document.getElementById('cancelReasonSelect').value;
+      let reason = selectVal;
+      if (selectVal === 'Outro motivo') {
+        const customText = document.getElementById('cancelReasonCustomInput').value.trim();
+        reason = customText ? `Outro: ${customText}` : 'Outro motivo';
+      }
+
       closeConfirmCancelModal();
 
-      let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      let order = orders.find(o => String(o.id) === String(id));
-
-      if (order && order.status !== 'cancelled') {
-        order.status = 'cancelled';
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-
-        // Mostra o cancelamento local imediatamente; a nuvem sincroniza em seguida.
-        renderKds();
-        let syncError = null;
-        try {
-          await persistKdsOrderStatus(id, 'cancelled');
-        } catch (err) {
-          syncError = err;
-          console.error('Falha ao sincronizar o cancelamento do pedido:', err);
+      // Utiliza a função centralizada e idempotente dbCancelOrder definida no supabase.js da Etapa 1
+      if (typeof dbCancelOrder === 'function') {
+        const res = await dbCancelOrder(id, reason);
+        if (res && res.success === false) {
+          showNoticeModal('Erro ao Cancelar', 'Não foi possível concluir o cancelamento no servidor.', '⚠️');
+          return;
         }
-
-        if (syncError) {
-          showNoticeModal('Cancelamento salvo localmente', `O pedido #${id} foi marcado como cancelado neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e tente novamente. Detalhe: ${getPersistenceErrorMessage(syncError)}`, '⚠️');
-        } else {
-          showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
+      } else {
+        // Fallback local caso a camada central não esteja carregada
+        let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+        let order = orders.find(o => String(o.id) === String(id));
+        if (order) {
+          order.status = 'cancelled';
+          order.cancellationReason = reason;
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
         }
       }
+
+      renderKds();
+      showNoticeModal('Pedido Cancelado', `Pedido #${id} cancelado com sucesso. O faturamento foi ajustado.`, '🔴');
+      pendingCancelOrderId = null;
     }
 
     function printOrderTicket(id) {
@@ -723,8 +680,8 @@
 
       let itemsTxt = (order.items || []).map(i => `
         <tr>
-          <td style="text-align:left;">${i.qty || 1}x ${i.name || 'Item'}</td>
-          <td style="text-align:right;">R$ ${((i.price || 0) * (i.qty || 1)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+          <td style="text-align:left;">${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}</td>
+          <td style="text-align:right;">R$ ${(((i.price || 0) * (i.qty || i.quantity || 1))).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         </tr>
       `).join('');
 
@@ -732,7 +689,7 @@
         <html>
           <head><title>Comanda - Pedido #${order.id}</title></head>
           <body style="font-family:monospace; font-size:12px; width:280px; padding:10px; margin:0 auto;">
-            <h2 style="text-align:center; margin:0;">${settings.storeName || 'VORTEX FOOD'}</h2>
+            <h2 style="text-align:center; margin:0;">${settings.storeName || settings.nome || 'VORTEX FOOD'}</h2>
             <p style="text-align:center; margin:4px 0 10px 0;">COMANDA DE PRODUÇÃO</p>
             <hr>
             <p><strong>PEDIDO #${order.id}</strong></p>
@@ -765,18 +722,15 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
-    // Relógio exato de 1 em 1 segundo
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    // Atualiza dados da nuvem a cada 6 segundos, sem bloquear filtros/ações locais.
     setInterval(() => {
       refreshKdsData();
     }, 6000);
 
     window.onload = function() {
-      // Mostra primeiro o cache local e sincroniza a nuvem em segundo plano.
       renderKds();
       refreshKdsData();
     };

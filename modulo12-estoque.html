@@ -419,16 +419,16 @@
       }
     }
 
-    function loadStoreSettings() {
+    async function loadStoreSettings() {
       applyTheme();
-      let settings = { storeName: 'MEU ESTABELECIMENTO' };
-      try {
-        const savedSettings = localStorage.getItem('vortex_store_settings');
-        if (savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
-      } catch (error) {
-        console.warn('Não foi possível ler as configurações locais da loja.', error);
+      let storeName = 'MEU ESTABELECIMENTO';
+      if (typeof dbFetchStoreSettingsResult === 'function') {
+        const res = await dbFetchStoreSettingsResult();
+        if (res && res.data) {
+          storeName = res.data.store_name || res.data.nome || storeName;
+        }
       }
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
+      document.getElementById('sidebarStoreName').innerText = storeName;
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
       if (savedLogo) { sidebarLogo.src = savedLogo; sidebarLogo.style.display = 'block'; }
@@ -448,7 +448,6 @@
         const parsed = JSON.parse(saved);
         return Array.isArray(parsed) ? parsed : [...defaultStockItems];
       } catch (error) {
-        console.warn('Não foi possível ler o estoque local.', error);
         return [...defaultStockItems];
       }
     }
@@ -459,7 +458,6 @@
         const parsed = saved ? JSON.parse(saved) : [];
         return Array.isArray(parsed) ? parsed : [];
       } catch (error) {
-        console.warn('Não foi possível ler o histórico de movimentações.', error);
         return [];
       }
     }
@@ -496,13 +494,12 @@
       stockRefreshPromise = (async () => {
         try {
           const cloudStock = await dbFetchStock();
-          // Não substitui os dados locais por uma resposta vazia.
           if (Array.isArray(cloudStock) && cloudStock.length > 0) {
             localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
             return true;
           }
         } catch (error) {
-          console.warn('Não foi possível atualizar o estoque pela nuvem; usando os dados locais.', error);
+          console.warn('Não foi possível atualizar o estoque pela nuvem:', error);
         } finally {
           stockRefreshPromise = null;
         }
@@ -526,7 +523,6 @@
       let zeroCount = 0;
       let totalSuggestCost = 0;
 
-      // Calcular Indicadores Gerais
       items.forEach(item => {
         let qty = parseFloat(item.qty || 0);
         let min = parseFloat(item.minStock || 0);
@@ -546,7 +542,6 @@
       document.getElementById('statZeroItems').innerText = zeroCount;
       document.getElementById('statSuggestCost').innerText = 'R$ ' + totalSuggestCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-      // ABA 1: SUGESTÕES DE COMPRA
       if (activeTab === 'suggestions') {
         thead.innerHTML = `
           <tr>
@@ -589,7 +584,6 @@
         return;
       }
 
-      // ABA 2: PERDAS & AVARIAS
       if (activeTab === 'losses') {
         thead.innerHTML = `
           <tr>
@@ -612,7 +606,7 @@
           tbody.innerHTML += `
             <tr>
               <td>${escapeStockHtml(m.date)}</td>
-              <td><strong>${escapeStockHtml(m.itemName)}</strong></td>
+              <td><strong>${escapeStockHtml(m.item_name || m.itemName)}</strong></td>
               <td><span class="badge badge-danger">${m.type === 'loss' ? 'Avaria / Perda' : 'Desperdício / Vencido'}</span></td>
               <td style="font-weight:bold; color:var(--danger);">- ${m.qty}</td>
               <td>${escapeStockHtml(m.reason || 'Sem observação')}</td>
@@ -622,7 +616,6 @@
         return;
       }
 
-      // ABAS PADRÃO (TODOS / CATEGORIAS)
       thead.innerHTML = `
         <tr>
           <th>Item / Nome</th>
@@ -828,12 +821,10 @@
       let item = items.find(i => String(i.id) === String(itemId));
       if (!item) return;
 
-      // Normaliza números que possam ter sido salvos como texto no navegador.
       const currentQty = Number(item.qty) || 0;
       const currentCost = Number(item.cost) || 0;
 
       if (movType === 'entry') {
-        // Custo médio ponderado, sem divisão por zero.
         if (unitCost > 0) {
           const currentTotal = currentQty * currentCost;
           const newTotal = qty * unitCost;
@@ -845,12 +836,11 @@
         item.qty = Math.max(0, currentQty - qty);
       }
 
-      // Registrar histórico de movimentações/perdas
       let movs = getStockMovements();
       movs.unshift({
         date: new Date().toLocaleString('pt-BR'),
-        itemId: item.id,
-        itemName: item.name,
+        item_id: item.id,
+        item_name: item.name,
         type: movType,
         qty: qty,
         reason: reason
@@ -882,7 +872,7 @@
 
     window.addEventListener('load', async function() {
       loadStoreSettings();
-      renderStockTable(); // Mostra imediatamente o estoque local, sem aguardar a rede.
+      renderStockTable();
       const refreshed = await refreshStockFromCloud();
       if (refreshed) renderStockTable();
     });

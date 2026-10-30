@@ -2,7 +2,6 @@
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDU0OTAsImV4cCI6MjEwNzkyMTQ5MH0.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
 
-// Função helper para garantir conexão sempre ativa e evitar 'undefined'
 function getSupabase() {
   if (window.supabaseClient) {
     return window.supabaseClient;
@@ -15,13 +14,13 @@ function getSupabase() {
   return null;
 }
 
-// Helper para Configurações do Estabelecimento (Módulo 1 & Delivery)
+// Configurações do Estabelecimento
 async function dbSaveStoreSettings(settingsData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
 
   const record = {
-    id: 1, // Registro único da loja
+    id: 1,
     store_name: settingsData.store_name || settingsData.nome || 'Vortex Food',
     store_address: settingsData.store_address || settingsData.endereco || '',
     cnpj: settingsData.cnpj || '',
@@ -40,16 +39,12 @@ async function dbSaveStoreSettings(settingsData) {
 async function dbFetchStoreSettings() {
   const supabase = getSupabase();
   if (!supabase) return null;
-  
   const { data, error } = await supabase.from('vortex_store_settings').select('*').limit(1).maybeSingle();
-  if (error) {
-    console.error('Erro ao buscar configurações no Supabase:', error);
-    return null;
-  }
+  if (error) return null;
   return data;
 }
 
-// Helper central para sincronizar vendas (History / Dashboard / Financeiro / Relatórios)
+// Sincronização de Vendas
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
@@ -62,7 +57,7 @@ async function dbSaveSale(saleData) {
     subtotal: parseFloat(saleData.subtotal) || 0,
     discount: parseFloat(saleData.discount) || 0,
     pay_method: saleData.payMethod || saleData.pay_method || saleData.paymentMethod || 'PIX',
-    status: saleData.status || 'completed', // 'completed' ou 'cancelled', etc.
+    status: saleData.status || 'completed',
     financial_status: saleData.financialStatus || saleData.financial_status || 'paid',
     date: saleData.date || new Date().toISOString().split('T')[0],
     time: saleData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -71,37 +66,25 @@ async function dbSaveSale(saleData) {
   };
 
   const { data, error } = await supabase.from('vortex_sales_history').upsert([record]);
-  if (error) console.error('Erro ao salvar venda no Supabase (vortex_sales_history):', error);
+  if (error) console.error('Erro ao salvar venda:', error);
   
-  // Sincronização auxiliar com LocalStorage para suporte offline/cache
   try {
     let localHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
     const idx = localHistory.findIndex(s => String(s.id) === String(record.id));
-    if (idx >= 0) {
-      localHistory[idx] = { ...localHistory[idx], ...record };
-    } else {
-      localHistory.unshift(record);
-    }
+    if (idx >= 0) localHistory[idx] = { ...localHistory[idx], ...record };
+    else localHistory.unshift(record);
     localStorage.setItem('vortex_sales_history', JSON.stringify(localHistory));
-  } catch(e) {
-    console.warn('Erro ao atualizar cache local de vendas:', e);
-  }
+  } catch(e) {}
 
   return { data, error };
 }
 
 async function dbFetchSales() {
   const supabase = getSupabase();
-  if (!supabase) {
-    // Fallback seguro para LocalStorage se offline
-    return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-  }
+  if (!supabase) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
   
   const { data, error } = await supabase.from('vortex_sales_history').select('*');
-  if (error) {
-    console.error('Erro ao buscar vendas no Supabase, usando cache local:', error);
-    return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-  }
+  if (error) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
   if (!data) return [];
   
   const mapped = data.map(item => ({
@@ -121,15 +104,11 @@ async function dbFetchSales() {
     items: item.items || []
   }));
 
-  // Atualiza cache local com os dados mais recentes do servidor
-  try {
-    localStorage.setItem('vortex_sales_history', JSON.stringify(mapped));
-  } catch(e) {}
-
+  try { localStorage.setItem('vortex_sales_history', JSON.stringify(mapped)); } catch(e) {}
   return mapped;
 }
 
-// Helper central para KDS (Cozinha & Delivery)
+// KDS Orders
 async function dbSaveKdsOrder(orderData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
@@ -155,17 +134,13 @@ async function dbSaveKdsOrder(orderData) {
   };
 
   const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
-  if (error) console.error('Erro ao salvar pedido KDS no Supabase (vortex_kds_orders):', error);
+  if (error) console.error('Erro ao salvar KDS:', error);
   
-  // Atualiza cache local do KDS
   try {
     let localKds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
     const idx = localKds.findIndex(o => String(o.id) === String(record.id));
-    if (idx >= 0) {
-      localKds[idx] = { ...localKds[idx], ...record };
-    } else {
-      localKds.unshift(record);
-    }
+    if (idx >= 0) localKds[idx] = { ...localKds[idx], ...record };
+    else localKds.unshift(record);
     localStorage.setItem('vortex_kds_orders', JSON.stringify(localKds));
   } catch(e) {}
 
@@ -174,15 +149,10 @@ async function dbSaveKdsOrder(orderData) {
 
 async function dbFetchKdsOrders() {
   const supabase = getSupabase();
-  if (!supabase) {
-    return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-  }
+  if (!supabase) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
   const { data, error } = await supabase.from('vortex_kds_orders').select('*');
-  if (error) {
-    console.error('Erro ao buscar pedidos KDS no Supabase:', error);
-    return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-  }
+  if (error) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
   if (!data) return [];
 
   const mapped = data.map(item => ({
@@ -204,23 +174,15 @@ async function dbFetchKdsOrders() {
     code: item.code
   }));
 
-  try {
-    localStorage.setItem('vortex_kds_orders', JSON.stringify(mapped));
-  } catch(e) {}
-
+  try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mapped)); } catch(e) {}
   return mapped;
 }
 
-/**
- * REGRA CENTRAL DE CANCELAMENTO IDEMPOTENTE
- * Cancela um pedido de forma atômica no KDS e remove seu impacto do faturamento no Histórico de Vendas,
- * preservando o registro para fins de auditoria e relatórios.
- */
+// Cancelamento Centralizado e Idempotente
 async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   const supabase = getSupabase();
   const cancelTimestamp = new Date().toISOString();
 
-  // 1. Tenta executar via RPC atômica no PostgreSQL se disponível
   if (supabase) {
     try {
       const { data: rpcData, error: rpcError } = await supabase.rpc('rpc_cancel_order', {
@@ -228,16 +190,11 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
         p_reason: reason
       });
       if (!rpcError && rpcData && rpcData.success) {
-        console.log('Cancelamento atômico executado via RPC:', rpcData.message);
-        // Atualiza caches locais correspondentes
         updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
         return { success: true };
       }
-    } catch (err) {
-      console.warn('RPC rpc_cancel_order indisponível, executando fallback via cliente:', err);
-    }
+    } catch (err) {}
 
-    // 2. Fallback via cliente (atualização sequencial segura em ambas as tabelas)
     try {
       await supabase.from('vortex_sales_history').update({
         status: 'cancelled',
@@ -257,11 +214,9 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
       updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
       return { success: true };
     } catch (clientErr) {
-      console.error('Erro no fallback de cancelamento via cliente:', clientErr);
       return { success: false, error: clientErr };
     }
   } else {
-    // Modo estritamente offline / LocalStorage
     updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
     return { success: true, offline: true };
   }
@@ -269,61 +224,111 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
 
 function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
   try {
-    // Atualiza vendas locais
     let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-    sales = sales.map(s => {
-      if (String(s.id) === String(orderId)) {
-        return { ...s, status: 'cancelled', financialStatus: 'reversed', cancellationReason: reason, cancelledAt: timestamp };
-      }
-      return s;
-    });
+    sales = sales.map(s => String(s.id) === String(orderId) ? { ...s, status: 'cancelled', financialStatus: 'reversed', cancellationReason: reason, cancelledAt: timestamp } : s);
     localStorage.setItem('vortex_sales_history', JSON.stringify(sales));
 
-    // Atualiza KDS local
     let kds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-    kds = kds.map(k => {
-      if (String(k.id) === String(orderId)) {
-        return { ...k, status: 'cancelled', cancellationReason: reason, cancelledAt: timestamp };
-      }
-      return k;
-    });
+    kds = kds.map(k => String(k.id) === String(orderId) ? { ...k, status: 'cancelled', cancellationReason: reason, cancelledAt: timestamp } : k);
     localStorage.setItem('vortex_kds_orders', JSON.stringify(kds));
-  } catch (e) {
-    console.error('Erro ao atualizar caches locais após cancelamento:', e);
-  }
+  } catch (e) {}
 }
 
-// Helper para Integrações de Delivery na Nuvem
-async function dbSaveIntegration(platform, credentials) {
+// ==========================================
+// MÓDULO DE ESTOQUE E FICHAS TÉCNICAS (SUPABASE)
+// ==========================================
+
+async function dbSaveStock(itemsArray) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const record = {
-    platform: platform,
-    connected: true,
-    credentials: credentials,
+
+  const records = itemsArray.map(i => ({
+    id: String(i.id),
+    name: i.name,
+    category: i.category,
+    unit: i.unit,
+    qty: parseFloat(i.qty) || 0,
+    cost: parseFloat(i.cost) || 0,
+    min_stock: parseFloat(i.minStock || i.min_stock) || 0,
+    barcode: i.barcode || '',
     updated_at: new Date().toISOString()
-  };
-  const { data, error } = await supabase.from('vortex_integrations').upsert([record], { onConflict: 'platform' });
-  if (error) console.error('Erro ao salvar integração no Supabase:', error);
+  }));
+
+  const { data, error } = await supabase.from('vortex_stock_items').upsert(records);
   return { data, error };
 }
 
-async function dbFetchIntegrations() {
+async function dbFetchStock() {
   const supabase = getSupabase();
-  if (!supabase) return [];
-  const { data, error } = await supabase.from('vortex_integrations').select('*');
-  if (error) {
-    console.error('Erro ao buscar integrações no Supabase:', error);
-    return [];
-  }
-  return data || [];
+  if (!supabase) return JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
+
+  const { data, error } = await supabase.from('vortex_stock_items').select('*');
+  if (error) return JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
+  if (!data) return [];
+
+  const mapped = data.map(i => ({
+    id: i.id,
+    name: i.name,
+    category: i.category,
+    unit: i.unit,
+    qty: parseFloat(i.qty) || 0,
+    cost: parseFloat(i.cost) || 0,
+    minStock: parseFloat(i.min_stock) || 0,
+    barcode: i.barcode || ''
+  }));
+
+  try { localStorage.setItem('vortex_stock_items', JSON.stringify(mapped)); } catch(e) {}
+  return mapped;
 }
 
-// Helper para Lançamentos Financeiros
+async function dbSaveStockMovements(movsArray) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: 'Supabase não inicializado' };
+
+  const records = movsArray.map(m => ({
+    id: String(m.id || 'mov_' + Date.now() + Math.random().toString(36).substr(2, 5)),
+    date: m.date,
+    item_id: String(m.itemId || ''),
+    item_name: m.itemName || '',
+    type: m.type,
+    qty: parseFloat(m.qty) || 0,
+    reason: m.reason || '',
+    order_id: String(m.orderId || ''),
+    reference_key: m.referenceKey || (m.orderId ? `${m.orderId}_${m.itemId}_${m.type}` : null)
+  }));
+
+  const { data, error } = await supabase.from('vortex_stock_movements').upsert(records, { onConflict: 'reference_key' });
+  return { data, error };
+}
+
+async function dbFetchStockMovements() {
+  const supabase = getSupabase();
+  if (!supabase) return JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
+
+  const { data, error } = await supabase.from('vortex_stock_movements').select('*');
+  if (error) return JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
+  if (!data) return [];
+
+  const mapped = data.map(m => ({
+    date: m.date,
+    itemId: m.item_id,
+    itemName: m.item_name,
+    type: m.type,
+    qty: parseFloat(m.qty) || 0,
+    reason: m.reason,
+    orderId: m.order_id,
+    referenceKey: m.reference_key
+  }));
+
+  try { localStorage.setItem('vortex_stock_movements', JSON.stringify(mapped)); } catch(e) {}
+  return mapped;
+}
+
+// Outros auxiliares centrais
 async function dbSaveFinancialEntry(entryData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const { data, error } = await supabase.from('vortex_financial').upsert([{
+  return await supabase.from('vortex_financial').upsert([{
     id: String(entryData.id),
     type: entryData.type,
     description: entryData.description,
@@ -331,102 +336,41 @@ async function dbSaveFinancialEntry(entryData) {
     date: entryData.date || new Date().toISOString().split('T')[0],
     updated_at: new Date().toISOString()
   }]);
-  if (error) console.error('Erro ao salvar lançamento no Supabase:', error);
-  return { data, error };
 }
 
 async function dbFetchFinancialEntries() {
   const supabase = getSupabase();
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  
-  const { data, error } = await supabase.from('vortex_financial').select('*');
-  if (error) {
-    console.error('Erro ao buscar financeiros no Supabase:', error);
-    return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  }
+  const { data } = await supabase.from('vortex_financial').select('*');
   return data || [];
 }
 
-// Helpers para Catálogo e Fichas Técnicas
 async function dbFetchCatalog() {
   const supabase = getSupabase();
   if (!supabase) return { products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [] };
-  const { data, error } = await supabase.from('vortex_products_catalog').select('*');
-  if (error) return { products: [] };
+  const { data } = await supabase.from('vortex_products_catalog').select('*');
   return { products: data || [] };
 }
 
 async function dbFetchRecipes() {
   const supabase = getSupabase();
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-  const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
-  if (error) return [];
+  const { data } = await supabase.from('vortex_recipes_catalog').select('*');
   return data || [];
 }
 
-// Exclusão genérica
 async function dbDeleteRecord(tableName, id) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const { data, error } = await supabase.from(tableName).delete().eq('id', String(id));
-  if (error) console.error(`Erro ao deletar id ${id} da tabela ${tableName}:`, error);
-  return { data, error };
+  return await supabase.from(tableName).delete().eq('id', String(id));
 }
 
-// ==========================================
-// FUNÇÕES RESULT (PADRÃO ROBUSTO DE RETORNO)
-// ==========================================
-
-async function dbFetchSalesResult() {
-  try {
-    const data = await dbFetchSales();
-    return { data, error: null };
-  } catch (err) {
-    return { data: [], error: err };
-  }
-}
-
-async function dbFetchKdsOrdersResult() {
-  try {
-    const data = await dbFetchKdsOrders();
-    return { data, error: null };
-  } catch (err) {
-    return { data: [], error: err };
-  }
-}
-
-async function dbFetchRecipesResult() {
-  try {
-    const data = await dbFetchRecipes();
-    return { data, error: null };
-  } catch (err) {
-    return { data: [], error: err };
-  }
-}
-
-async function dbFetchFinancialEntriesResult() {
-  try {
-    const data = await dbFetchFinancialEntries();
-    return { data, error: null };
-  } catch (err) {
-    return { data: [], error: err };
-  }
-}
-
-async function dbFetchCatalogResult() {
-  try {
-    const res = await dbFetchCatalog();
-    return { data: res, error: null };
-  } catch (err) {
-    return { data: { products: [] }, error: err };
-  }
-}
-
-async function dbFetchStoreSettingsResult() {
-  try {
-    const data = await dbFetchStoreSettings();
-    return { data, error: null };
-  } catch (err) {
-    return { data: null, error: err };
-  }
-}
+// Funções Result
+async function dbFetchSalesResult() { return { data: await dbFetchSales(), error: null }; }
+async function dbFetchKdsOrdersResult() { return { data: await dbFetchKdsOrders(), error: null }; }
+async function dbFetchRecipesResult() { return { data: await dbFetchRecipes(), error: null }; }
+async function dbFetchFinancialEntriesResult() { return { data: await dbFetchFinancialEntries(), error: null }; }
+async function dbFetchCatalogResult() { return { data: await dbFetchCatalog(), error: null }; }
+async function dbFetchStoreSettingsResult() { return { data: await dbFetchStoreSettings(), error: null }; }
+async function dbFetchStockResult() { return { data: await dbFetchStock(), error: null }; }
+async function dbFetchStockMovementsResult() { return { data: await dbFetchStockMovements(), error: null }; }

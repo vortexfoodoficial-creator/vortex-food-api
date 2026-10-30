@@ -76,7 +76,6 @@
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
 
-    /* FILTROS DE ABAS E BUSCA */
     .kds-controls-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; flex-shrink: 0; }
     .filter-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
     .tab-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 14px; border-radius: 10px; font-weight: bold; font-size: 0.82rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
@@ -85,7 +84,6 @@
     .search-kds-input { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 10px; font-size: 0.85rem; outline: none; width: 220px; }
     .search-kds-input:focus { border-color: var(--primary); }
 
-    /* ROLAGEM INDEPENDENTE PARA A LISTA DE PEDIDOS */
     .kds-scroll-container { flex: 1; overflow-y: auto; padding-right: 4px; padding-bottom: 20px; }
 
     @keyframes pulseNewOrder {
@@ -124,7 +122,6 @@
     .btn-print { background: var(--border); color: var(--text-main); }
     .btn-cancel { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-    /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 25px; width: 100%; max-width: 440px; }
@@ -133,7 +130,6 @@
     .btn-modal-secondary { background: var(--border); color: var(--text-main); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9rem; }
 
     .cancel-reason-select, .cancel-reason-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-top: 8px; outline: none; }
-    .cancel-reason-select:focus, .cancel-reason-input:focus { border-color: var(--danger); }
 
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -231,13 +227,11 @@
       </div>
     </div>
 
-    <!-- ÁREA DE ROLAGEM INDEPENDENTE -->
     <div class="kds-scroll-container">
       <div class="kds-grid" id="kdsContainer"></div>
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO COM MOTIVOS -->
   <div class="modal-overlay" id="confirmCancelModal">
     <div class="custom-modal-card">
       <div style="text-align:center; font-size:2.5rem; margin-bottom:10px;">⚠️</div>
@@ -268,7 +262,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE NOTIFICAÇÃO MODERNA -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
@@ -374,13 +367,11 @@
       return '';
     }
 
-    // Sincronização em segundo plano entre Supabase e cache local
     async function refreshKdsData() {
       if (isRefreshingKds) return;
       isRefreshingKds = true;
 
       try {
-        const todayDateStr = getLocalDateStr(new Date());
         let remoteKds = [];
         let remoteSales = [];
 
@@ -418,7 +409,6 @@
         orders = [];
       }
 
-      // Filtra pedidos do dia ou ativos
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'completed' || o.status === 'cancelled') {
@@ -427,7 +417,6 @@
         return true;
       });
 
-      // Atualiza contadores das abas
       const countNew = orders.filter(o => o.status === 'new' || o.status === 'received').length;
       const countPrep = orders.filter(o => o.status === 'preparing').length;
       const countReady = orders.filter(o => o.status === 'ready').length;
@@ -548,9 +537,14 @@
       if (order) {
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+
+        // REGRA OFICIAL: Se o pedido entrar em preparo, executa imediatamente a baixa automática dos ingredientes
+        if (newStatus === 'preparing' && typeof processStockConsumptionForOrder === 'function') {
+          await processStockConsumptionForOrder(order);
+        }
+
         renderKds();
 
-        // Sincroniza com o Supabase utilizando a camada central
         try {
           if (window.supabaseClient) {
             await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id));
@@ -560,7 +554,11 @@
           console.warn('Erro ao sincronizar status na nuvem:', e);
         }
 
-        showNoticeModal('Atualização do Pedido', `Pedido #${id} atualizado com sucesso.`, '👨‍🍳');
+        let noticeMsg = `Pedido #${id} atualizado com sucesso.`;
+        if (newStatus === 'preparing') {
+          noticeMsg = `Pedido #${id} em preparo! Insumos descontados automaticamente do estoque.`;
+        }
+        showNoticeModal('Atualização do Pedido', noticeMsg, '👨‍🍳');
       }
     }
 
@@ -605,7 +603,6 @@
 
       closeConfirmCancelModal();
 
-      // Utiliza rigorosamente a função central idempotente implementada na Etapa 1
       if (typeof dbCancelOrder === 'function') {
         const res = await dbCancelOrder(id, reason);
         if (res && res.error) {
@@ -613,7 +610,6 @@
           return;
         }
       } else {
-        // Fallback local seguro caso a função central não esteja acessível
         let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
         let order = orders.find(o => String(o.id) === String(id));
         if (order) {
@@ -682,7 +678,6 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    // Sincronização em segundo plano a cada 8 segundos
     setInterval(() => {
       refreshKdsData();
     }, 8000);

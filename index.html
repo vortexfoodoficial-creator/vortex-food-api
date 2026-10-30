@@ -417,11 +417,12 @@
   <script>
     let currentFilter = 'today';
 
-    // Cache local otimizado para evitar requisições redundantes ao Supabase/Storage
-    let dashboardCache = {
+    // Cache local otimizado para evitar requisições repetidas
+    let dashCache = {
       sales: [],
       kds: [],
       recipes: [],
+      products: [],
       lastFetched: 0
     };
 
@@ -504,9 +505,18 @@
       return true;
     }
 
-    /**
-     * Carregamento Otimizado com Promise.all Paralelo e Cache Inteligente
-     */
+    function getProductCost(itemName, recipesCatalog, productsCatalog) {
+      const rec = recipesCatalog.find(r => r.productName && r.productName.toLowerCase() === itemName.toLowerCase());
+      if (rec && rec.totalCost) {
+        return parseFloat(rec.totalCost) || 0;
+      }
+      const prod = productsCatalog.find(p => p.name && p.name.toLowerCase() === itemName.toLowerCase());
+      if (prod) {
+        return parseFloat(prod.cost || prod.costPrice || prod.custo || 0);
+      }
+      return 0; // CMV transparente caso não cadastrado
+    }
+
     async function loadDashboardData(forceRefresh = false) {
       applyTheme();
 
@@ -514,38 +524,33 @@
       let sidebarLogoUrl = '';
       let monthlyGoal = 15000;
       let totalTables = 10;
-
-      let rawHistory = [];
-      let kdsOrders = [];
-      let recipesCatalog = [];
       let tableCarts = {};
       let clientsLoyalty = {};
 
       const now = Date.now();
-      if (forceRefresh || now - dashboardCache.lastFetched > 20000 || dashboardCache.sales.length === 0) {
+      if (forceRefresh || now - dashCache.lastFetched > 30000 || dashCache.sales.length === 0) {
         try {
-          // Executa todas as consultas ao Supabase em paralelo de forma segura
-          const [salesRes, kdsRes, recipesRes] = await Promise.all([
-            typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : (typeof dbFetchSales === 'function' ? dbFetchSales().then(d => ({ data: d })) : Promise.resolve({ data: [] })),
-            typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : (typeof dbFetchKdsOrders === 'function' ? dbFetchKdsOrders().then(d => ({ data: d })) : Promise.resolve({ data: [] })),
-            typeof dbFetchRecipesResult === 'function' ? dbFetchRecipesResult() : (typeof dbFetchRecipes === 'function' ? dbFetchRecipes().then(d => ({ data: d })) : Promise.resolve({ data: [] }))
+          // Carregamento paralelo simultâneo otimizado (Promise.all)
+          const [salesRes, kdsRes, recipesRes, catalogRes] = await Promise.all([
+            typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] }),
+            typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : Promise.resolve({ data: [] }),
+            typeof dbFetchRecipesResult === 'function' ? dbFetchRecipesResult() : Promise.resolve({ data: [] }),
+            typeof dbFetchCatalogResult === 'function' ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } })
           ]);
 
-          dashboardCache.sales = (salesRes && salesRes.data && salesRes.data.length > 0) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
-          dashboardCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
-          dashboardCache.recipes = (recipesRes && recipesRes.data && recipesRes.data.length > 0) ? recipesRes.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
-          dashboardCache.lastFetched = now;
+          dashCache.sales = (salesRes && salesRes.data && salesRes.data.length > 0) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+          dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
+          dashCache.recipes = (recipesRes && recipesRes.data && recipesRes.data.length > 0) ? recipesRes.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
+          dashCache.products = (catalogRes && catalogRes.data && catalogRes.data.products && catalogRes.data.products.length > 0) ? catalogRes.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
+          dashCache.lastFetched = now;
         } catch (e) {
-          console.warn('Falha na sincronização remota, recuperando do cache local.', e);
-          dashboardCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-          dashboardCache.kds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-          dashboardCache.recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+          console.warn('Erro ao buscar dados do Supabase, recorrendo ao cache local.', e);
+          dashCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+          dashCache.kds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+          dashCache.recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+          dashCache.products = JSON.parse(localStorage.getItem('vortex_products_catalog')) || [];
         }
       }
-
-      rawHistory = dashboardCache.sales;
-      kdsOrders = dashboardCache.kds;
-      recipesCatalog = dashboardCache.recipes;
 
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
       storeName = settings.storeName || settings.nome || settings.store_name || 'MEU ESTABELECIMENTO';
@@ -555,7 +560,8 @@
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
 
-      const salesHistory = rawHistory.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
+      const salesHistory = dashCache.sales.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
+      const kdsOrders = dashCache.kds;
 
       let grossSales = 0;
       let totalDiscounts = 0;
@@ -563,40 +569,20 @@
       let totalCmvCost = 0;
 
       salesHistory.forEach(s => {
+        let val = parseFloat(s.total) || 0;
         if (s.status === 'cancelled') {
           totalCancelled++;
         } else {
-          let val = parseFloat(s.total) || 0;
           grossSales += val;
           if (s.discount) totalDiscounts += parseFloat(s.discount) || 0;
 
-          let orderCmv = 0;
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(item => {
-              const qtySold = parseFloat(item.qty || 1);
-              const rec = recipesCatalog.find(r => String(r.productId) === String(item.id) || r.productName === item.name);
-              if (rec && rec.ingredients) {
-                let itemUnitCost = 0;
-                rec.ingredients.forEach(ing => {
-                  let ingCost = parseFloat(ing.unitCost || 0);
-                  if (ing.unit === 'g' || ing.unit === 'ml') itemUnitCost += (parseFloat(ing.qty || 0) / 1000) * ingCost;
-                  else itemUnitCost += parseFloat(ing.qty || 0) * ingCost;
-                });
-                orderCmv += itemUnitCost * qtySold;
-              } else if (item.cost) {
-                orderCmv += parseFloat(item.cost) * qtySold;
-              } else {
-                orderCmv += (parseFloat(item.price || item.total || 0) * 0.35);
-              }
+              const qtySold = parseFloat(item.qty || item.quantity || 1);
+              const itemName = item.name || item.title || '';
+              const unitCost = getProductCost(itemName, dashCache.recipes, dashCache.products);
+              totalCmvCost += (unitCost * qtySold);
             });
-          }
-
-          if (orderCmv > 0) {
-            totalCmvCost += orderCmv;
-          } else if (s.cmvCost) {
-            totalCmvCost += parseFloat(s.cmvCost) || 0;
-          } else {
-            totalCmvCost += (val * 0.35);
           }
         }
       });
@@ -605,7 +591,7 @@
       const netSales = Math.max(0, grossSales - totalDiscounts);
       const grossProfit = Math.max(0, netSales - totalCmvCost);
       const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
-      const ticketMedio = totalOrdersCount > 0 ? grossSales / totalOrdersCount : 0;
+      const ticketMedio = totalOrdersCount > 0 ? netSales / totalOrdersCount : 0;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
       const deliveringCount = kdsOrders.filter(o => o.status === 'delivering').length;
@@ -624,12 +610,13 @@
       salesHistory.forEach(s => {
         if (s.status !== 'cancelled') {
           const ch = String(s.channel || s.origin || '').toLowerCase();
-          if (ch.includes('ifood')) channelIFood += parseFloat(s.total) || 0;
-          else if (ch.includes('99') || ch.includes('99food')) channel99 += parseFloat(s.total) || 0;
-          else if (ch.includes('keeta')) channelKeeta += parseFloat(s.total) || 0;
-          else if (ch.includes('table') || ch.includes('mesa')) channelMesas += parseFloat(s.total) || 0;
-          else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += parseFloat(s.total) || 0;
-          else channelPdv += parseFloat(s.total) || 0;
+          let val = parseFloat(s.total) || 0;
+          if (ch.includes('ifood')) channelIFood += val;
+          else if (ch.includes('99') || ch.includes('99food')) channel99 += val;
+          else if (ch.includes('keeta')) channelKeeta += val;
+          else if (ch.includes('table') || ch.includes('mesa')) channelMesas += val;
+          else if (ch.includes('delivery') || ch.includes('entrega')) channelDelivery += val;
+          else channelPdv += val;
         }
       });
 
@@ -644,20 +631,21 @@
       salesHistory.forEach(s => {
         if (s.status !== 'cancelled') {
           const pm = String(s.payMethod || s.payment || s.paymentMethod || s.formaPagamento || '').toLowerCase();
+          let val = parseFloat(s.total) || 0;
           if (pm.includes('debito') || pm.includes('débito') || pm.includes('debit')) {
-            payDebit += parseFloat(s.total) || 0;
+            payDebit += val;
           } else if (pm.includes('credito') || pm.includes('crédito') || pm.includes('credit') || pm === 'card') {
-            payCredit += parseFloat(s.total) || 0;
+            payCredit += val;
           } else if (pm.includes('pix')) {
-            payPix += parseFloat(s.total) || 0;
+            payPix += val;
           } else if (pm.includes('vr') || pm.includes('refeicao') || pm.includes('refeição')) {
-            payVr += parseFloat(s.total) || 0;
+            payVr += val;
           } else if (pm.includes('va') || pm.includes('alimentacao') || pm.includes('alimentação')) {
-            payVa += parseFloat(s.total) || 0;
+            payVa += val;
           } else if (pm.includes('cash') || pm.includes('dinheiro')) {
-            payDinheiro += parseFloat(s.total) || 0;
+            payDinheiro += val;
           } else {
-            payPix += parseFloat(s.total) || 0;
+            payPix += val;
           }
         }
       });
@@ -669,7 +657,7 @@
       const pVa = grossSales > 0 ? Math.round((payVa / grossSales) * 100) : 0;
       const pDinheiro = grossSales > 0 ? Math.round((payDinheiro / grossSales) * 100) : 0;
 
-      // Atualização limpa e otimizada do DOM
+      // Atualização otimizada dos elementos DOM
       document.getElementById('sidebarStoreName').innerText = storeName;
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
       if (sidebarLogoUrl) {
@@ -733,9 +721,9 @@
       history.forEach(s => {
         if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
           s.items.forEach(item => {
-            const pName = item.name || 'Produto sem nome';
+            const pName = item.name || item.title || 'Produto sem nome';
             if (!productMap[pName]) productMap[pName] = 0;
-            productMap[pName] += item.qty || 1;
+            productMap[pName] += parseFloat(item.qty || item.quantity || 1);
           });
         }
       });
@@ -747,16 +735,16 @@
         return;
       }
 
-      let htmlContent = '';
+      let html = '';
       sorted.forEach((prodName, idx) => {
-        htmlContent += `
+        html += `
           <div class="rank-item">
             <span><strong>#${idx + 1}</strong> ${prodName}</span>
             <strong style="color:var(--primary);">${productMap[prodName]} un.</strong>
           </div>
         `;
       });
-      rankContainer.innerHTML = htmlContent;
+      rankContainer.innerHTML = html;
     }
 
     function checkSystemAlerts(activeKds, cancelRate) {

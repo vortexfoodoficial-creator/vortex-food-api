@@ -1149,10 +1149,8 @@
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      let kdsOrders = readLocalKdsOrders();
-      const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === todayDateStr && !isNaN(parseInt(o.id, 10)));
-      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id, 10))) + 1 : 1;
-      const unifiedOrderId = String(nextSeqNumber);
+      // Geração de ID único e permanente para evitar colisões com pedidos antigos ou PDV/Mesas
+      const unifiedOrderId = 'deliv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
 
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
@@ -1193,6 +1191,7 @@
         courier: ''
       };
 
+      let kdsOrders = readLocalKdsOrders();
       kdsOrders.unshift(newOrder);
       saveLocalKdsOrders(kdsOrders);
 
@@ -1213,13 +1212,29 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${unifiedOrderId} registrado e encaminhado para o KDS com sucesso!`, '🛵');
-      
+      // Verificação explícita do retorno de erro do Supabase (sem expor PII)
+      let cloudSuccess = true;
+      let cloudErrorMsg = '';
       try {
-        if (typeof dbSaveSale === 'function') await dbSaveSale(newSaleRecord);
-        await saveDeliveryKdsOrderToCloud(newOrder);
+        if (typeof dbSaveSale === 'function') {
+          await dbSaveSale(newSaleRecord);
+        }
+        const cloudRes = await saveDeliveryKdsOrderToCloud(newOrder);
+        if (cloudRes && cloudRes.error) {
+          cloudSuccess = false;
+          cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
+          console.warn('Aviso de sincronização remota KDS:', { code: cloudRes.error.code || 'erro' });
+        }
       } catch (e) {
-        console.error('Erro ao sincronizar pedido de Delivery na nuvem:', e);
+        cloudSuccess = false;
+        cloudErrorMsg = e.message || String(e);
+        console.error('Erro de exceção na sincronização do pedido de Delivery:', e);
+      }
+
+      if (cloudSuccess) {
+        showNoticeModal('Pedido Cadastrado!', `Pedido #${unifiedOrderId} registrado e encaminhado para o KDS com sucesso!`, '🛵');
+      } else {
+        showNoticeModal('Salvo Localmente (Aviso de Nuvem)', `Pedido #${unifiedOrderId} salvo no dispositivo, mas a nuvem retornou aviso: ${cloudErrorMsg}`, '⚠️');
       }
     }
 
@@ -1317,14 +1332,27 @@
         if (Date.now() - deliveryLastLocalMutationAt < 2500) return;
         const currentLocal = readLocalKdsOrders();
         const localById = new Map(currentLocal.map(order => [String(order.id), order]));
-        const merged = data.map(remoteOrder => {
+        const remoteIds = new Set(data.map(r => String(r.id)));
+
+        // Mesclagem robusta preservando alterações locais e pedidos pendentes na nuvem
+        const mergedMap = new Map();
+        data.forEach(remoteOrder => {
           const localOrder = localById.get(String(remoteOrder.id)) || {};
-          return { ...localOrder, ...remoteOrder };
+          mergedMap.set(String(remoteOrder.id), { ...localOrder, ...remoteOrder });
         });
+
+        // Garante que pedidos locais recém-criados/pendentes não sejam descartados pela resposta remota
+        currentLocal.forEach(localOrder => {
+          if (!remoteIds.has(String(localOrder.id))) {
+            mergedMap.set(String(localOrder.id), localOrder);
+          }
+        });
+
+        const merged = Array.from(mergedMap.values());
         localStorage.setItem('vortex_kds_orders', JSON.stringify(merged));
         renderActiveDeliveryOrders(merged);
       } catch (error) {
-        console.warn('Falha ao atualizar pedidos do Delivery na nuvem.', error);
+        console.warn('Falha ao atualizar pedidos do Delivery na nuvem (mantendo dados locais).', error);
       } finally {
         deliveryOrdersFetchInFlight = false;
       }

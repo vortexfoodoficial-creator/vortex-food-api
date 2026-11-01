@@ -320,11 +320,19 @@
       let storeName = 'MEU ESTABELECIMENTO';
       let logoUrl = localStorage.getItem('vortex_store_logo') || '';
 
-      if (typeof dbFetchStoreSettingsResult === 'function') {
-        const res = await dbFetchStoreSettingsResult();
-        if (res && res.data) {
-          storeName = res.data.store_name || res.data.nome || storeName;
-        }
+      // CORREÇÃO CRítica: Carrega o nome oficial das configurações (compartilhado em vortex_store_settings ou vortex_config)
+      try {
+        const localSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || JSON.parse(localStorage.getItem('vortex_config')) || {};
+        storeName = localSettings.storeName || localSettings.store_name || localSettings.nome || localSettings.name || storeName;
+      } catch(e) {}
+
+      if (typeof dbFetchStoreSettings === 'function') {
+        try {
+          const res = await dbFetchStoreSettings();
+          if (res) {
+            storeName = res.store_name || res.storeName || res.nome || res.name || storeName;
+          }
+        } catch(e) {}
       }
 
       document.getElementById('sidebarStoreName').innerText = storeName;
@@ -378,17 +386,13 @@
         if (typeof dbFetchKdsOrdersResult === 'function') {
           const kdsRes = await dbFetchKdsOrdersResult();
           if (kdsRes && kdsRes.data) remoteKds = kdsRes.data;
-        }
-        if (typeof dbFetchSalesResult === 'function') {
-          const salesRes = await dbFetchSalesResult();
-          if (salesRes && salesRes.data) remoteSales = salesRes.data;
+        } else if (window.supabaseClient) {
+          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+          if (data) remoteKds = data;
         }
 
         if (remoteKds.length > 0) {
           localStorage.setItem('vortex_kds_orders', JSON.stringify(remoteKds));
-        }
-        if (remoteSales.length > 0) {
-          localStorage.setItem('vortex_sales_history', JSON.stringify(remoteSales));
         }
       } catch (e) {
         console.warn('Modo offline ativo ou falha ao buscar da nuvem:', e);
@@ -538,26 +542,17 @@
         order.status = newStatus;
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
 
-        // REGRA OFICIAL: Se o pedido entrar em preparo, executa imediatamente a baixa automática dos ingredientes
-        if (newStatus === 'preparing' && typeof processStockConsumptionForOrder === 'function') {
-          await processStockConsumptionForOrder(order);
-        }
-
         renderKds();
 
         try {
           if (window.supabaseClient) {
             await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id));
-            await window.supabaseClient.from('vortex_sales_history').update({ status: newStatus }).eq('id', String(id));
           }
         } catch (e) {
           console.warn('Erro ao sincronizar status na nuvem:', e);
         }
 
         let noticeMsg = `Pedido #${id} atualizado com sucesso.`;
-        if (newStatus === 'preparing') {
-          noticeMsg = `Pedido #${id} em preparo! Insumos descontados automaticamente do estoque.`;
-        }
         showNoticeModal('Atualização do Pedido', noticeMsg, '👨‍🍳');
       }
     }
@@ -603,24 +598,22 @@
 
       closeConfirmCancelModal();
 
-      if (typeof dbCancelOrder === 'function') {
-        const res = await dbCancelOrder(id, reason);
-        if (res && res.error) {
-          showNoticeModal('Erro ao Cancelar', `Não foi possível concluir o cancelamento: ${res.error.message || res.error}`, '⚠️');
-          return;
-        }
-      } else {
-        let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-        let order = orders.find(o => String(o.id) === String(id));
-        if (order) {
-          order.status = 'cancelled';
-          order.cancellationReason = reason;
-          localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-        }
+      let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let order = orders.find(o => String(o.id) === String(id));
+      if (order) {
+        order.status = 'cancelled';
+        order.cancellationReason = reason;
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
       }
 
+      try {
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_kds_orders').update({ status: 'cancelled', cancellation_reason: reason }).eq('id', String(id));
+        }
+      } catch (e) {}
+
       renderKds();
-      showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso. O faturamento foi recalculado automaticamente.`, '🔴');
+      showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
       refreshKdsData();
     }
 

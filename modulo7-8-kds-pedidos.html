@@ -398,7 +398,6 @@
           remoteKds.forEach(r => {
             let localItem = localMap.get(String(r.id));
             if (localItem) {
-              // Preserva estado local caso a nuvem esteja desatualizada, mas atualiza status se houver consenso
               localMap.set(String(r.id), { ...r, ...localItem, status: r.status || localItem.status });
             } else {
               localMap.set(String(r.id), r);
@@ -426,7 +425,6 @@
         orders = [];
       }
 
-      // CORREÇÃO CRÍTICA: Filtro flexível que não elimina pedidos ativos por divergência de fuso
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'completed' || o.status === 'cancelled') {
@@ -559,6 +557,9 @@
         renderKds();
 
         try {
+          if (typeof processStockConsumptionForOrder === 'function' && newStatus === 'preparing') {
+            await processStockConsumptionForOrder(order);
+          }
           if (window.supabaseClient) {
             await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id));
           }
@@ -621,7 +622,9 @@
       }
 
       try {
-        if (window.supabaseClient) {
+        if (typeof dbCancelOrder === 'function') {
+          await dbCancelOrder(id, reason);
+        } else if (window.supabaseClient) {
           await window.supabaseClient.from('vortex_kds_orders').update({ status: 'cancelled', cancellation_reason: reason }).eq('id', String(id));
         }
       } catch (e) {}

@@ -347,7 +347,7 @@
     let totalTablesCount = 10;
     let activeTableId = null;
     let tableCarts = {};
-    let tempCart = []; // Armazena APENAS OS NOVOS ITENS ADICIONADOS NA VEZ ATUAL
+    let tempCart = [];
     let rawCashGiven = 0;
     let isQrEnabled = false;
 
@@ -366,8 +366,12 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || 'BESTBURGUERS';
+      let storeName = 'MEU ESTABELECIMENTO';
+      try {
+        const localSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || JSON.parse(localStorage.getItem('vortex_config')) || {};
+        storeName = localSettings.storeName || localSettings.store_name || localSettings.nome || localSettings.name || storeName;
+      } catch(e) {}
+      document.getElementById('sidebarStoreName').innerText = storeName;
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -478,10 +482,8 @@
       document.getElementById('tableClientNameInput').value = currentData.client || '';
       document.getElementById('tableObsInput').value = '';
       
-      // O carrinho temporário começa VAZIO para permitir adicionar apenas novos itens adicionais
       tempCart = [];
 
-      // Exibe os itens já enviados anteriormente, se houver
       const sentBox = document.getElementById('alreadySentItemsBox');
       const sentText = document.getElementById('alreadySentItemsText');
       if (currentData.sentItems && currentData.sentItems.length > 0) {
@@ -541,7 +543,6 @@
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       let currentData = tableCarts[activeTableId] || { totalAccumulated: 0 };
 
-      // Calcula o total acumulado (itens já enviados anteriormente + novos itens selecionados no carrinho temp)
       let tempTotal = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       let alreadySentTotal = currentData.sentItems ? currentData.sentItems.reduce((acc, i) => acc + (i.price * i.qty), 0) : 0;
       let grandTotal = alreadySentTotal + tempTotal;
@@ -592,7 +593,6 @@
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [] };
 
-      // Gera numeração sequencial limpa (#1, #2, #3...) para o novo lote de acréscimo
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
       const newOrderId = String(nextSeqNumber);
@@ -605,7 +605,7 @@
         payment: 'Comanda de Mesa',
         payMethod: 'Comanda de Mesa',
         observation: observation,
-        items: [...tempCart], // Apenas os novos itens para a cozinha preparar!
+        items: [...tempCart],
         total: incrementalTotal,
         status: 'new',
         date: dateStr,
@@ -617,7 +617,6 @@
       if (!currentData.orderIds) currentData.orderIds = [];
       currentData.orderIds.push(newOrderId);
 
-      // Junta os novos itens aos itens já enviados anteriormente
       let combinedSentItems = [...(currentData.sentItems || [])];
       tempCart.forEach(newItem => {
         let existing = combinedSentItems.find(i => i.name === newItem.name);
@@ -640,10 +639,11 @@
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
-      // Salva no Supabase (KDS)
       try {
         if (typeof dbSaveKdsOrder === 'function') {
           await dbSaveKdsOrder(targetOrder);
+        } else if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_kds_orders').upsert([targetOrder]);
         }
       } catch (err) {
         console.error('Erro ao salvar KDS mesa no Supabase:', err);
@@ -749,14 +749,12 @@
         changeVal = rawCashGiven - total;
       }
 
-      // Atualiza acumulador diário local
       let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
       let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
       let currentSales = parseFloat(cleanedSalesStr) || 0;
       currentSales += total;
       localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      // Histórico local
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: primaryOrderId,
@@ -776,16 +774,16 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      // Salva venda no Supabase
       try {
         if (typeof dbSaveSale === 'function') {
           await dbSaveSale(newSaleRecord);
+        } else if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
         }
       } catch (err) {
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
       }
 
-      // Finaliza todos os pedidos/lotes associados a esta mesa no KDS
       let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       kdsOrders.forEach(o => {
         if (currentData.orderIds && currentData.orderIds.includes(String(o.id))) {
@@ -798,10 +796,9 @@
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
       try {
-        if (typeof dbSaveKdsOrder === 'function') {
+        if (window.supabaseClient) {
           for (let id of (currentData.orderIds || [])) {
-            let found = kdsOrders.find(o => String(o.id) === String(id));
-            if (found) await dbSaveKdsOrder(found);
+            await window.supabaseClient.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id));
           }
         }
       } catch (err) {}

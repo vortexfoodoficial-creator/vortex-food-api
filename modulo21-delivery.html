@@ -129,7 +129,6 @@
     .code-input-row { display: flex; gap: 6px; margin-top: 6px; }
     .code-input { flex: 1; text-align: center; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 8px; }
 
-    /* MODAL PADRÃO */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 480px; text-align: left; max-height: 90vh; overflow-y: auto; }
@@ -217,7 +216,6 @@
       </div>
     </header>
 
-    <!-- PAINEL DE GESTÃO DE ENTREGADORES & ROTEIRIZAÇÃO INTELIGENTE -->
     <div class="card-box">
       <div class="card-title">
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
@@ -350,7 +348,6 @@
     </div>
   </main>
 
-  <!-- MODAL DE SUGESTÃO DE ROTAS OTIMIZADAS -->
   <div class="modal-overlay" id="smartRouteModal">
     <div class="custom-modal-card" style="max-width: 600px;">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px; color:var(--primary);" id="smartRouteModalTitle">🚀 Sugestão de Rotas</div>
@@ -362,7 +359,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE EDITAR / REATRIBUIR MOTOBOY DO PEDIDO -->
   <div class="modal-overlay" id="editCourierModal">
     <div class="custom-modal-card" style="max-width: 400px; text-align:left;">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">✏️ Alterar Motoboy da Rota</div>
@@ -382,7 +378,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE HISTÓRICO DE ENTREGAS DOS MOTOBOYS -->
   <div class="modal-overlay" id="courierHistoryModal">
     <div class="custom-modal-card" style="max-width: 600px;">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;">📋 Histórico de Entregas por Motoboy</div>
@@ -393,7 +388,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE CADASTRO / EDIÇÃO DE ENTREGADOR -->
   <div class="modal-overlay" id="courierModal">
     <div class="custom-modal-card">
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:15px;" id="courierModalTitle">👤 Cadastrar Entregador</div>
@@ -420,7 +414,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE ENTREGADOR -->
   <div class="modal-overlay" id="confirmDeleteCourierModal">
     <div class="custom-modal-card" style="max-width: 380px; text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;">🗑️</div>
@@ -434,7 +427,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE AVISO / NOTIFICAÇÃO -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="max-width: 380px; text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
@@ -463,8 +455,12 @@
 
     function loadStoreSettings() {
       applyTheme();
-      const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      document.getElementById('sidebarStoreName').innerText = settings.storeName || settings.nome || 'MEU ESTABELECIMENTO';
+      let storeName = 'MEU ESTABELECIMENTO';
+      try {
+        const localSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || JSON.parse(localStorage.getItem('vortex_config')) || {};
+        storeName = localSettings.storeName || localSettings.store_name || localSettings.nome || localSettings.name || storeName;
+      } catch(e) {}
+      document.getElementById('sidebarStoreName').innerText = storeName;
 
       const savedLogo = localStorage.getItem('vortex_store_logo');
       const sidebarLogo = document.getElementById('sidebarStoreLogo');
@@ -494,7 +490,6 @@
       ];
     }
 
-    // SINCRONIZAÇÃO COMPLETA DE ENTREGADORES (MÓDULO 21 E MÓDULO 9 - EQUIPE)
     function getUnifiedCouriers() {
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
@@ -618,11 +613,9 @@
       const courierToRemove = couriers.find(c => String(c.id) === String(courierId));
       const courierName = courierToRemove ? courierToRemove.name.trim().toLowerCase() : '';
 
-      // Remove do módulo de entregadores
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
 
-      // REMOVE TAMBÉM DA EQUIPE (MÓDULO 9)
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
       team = team.filter(t => t.name.trim().toLowerCase() !== courierName);
       localStorage.setItem('vortex_team_members', JSON.stringify(team));
@@ -665,7 +658,6 @@
       summary.innerHTML = summaryHtml;
     }
 
-    // FORMATAÇÃO AUTOMÁTICA DE TELEFONE
     function handlePhoneKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -691,7 +683,6 @@
       else input.value = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
     }
 
-    // FORMATAÇÃO E BUSCA AUTOMÁTICA DE CEP
     function handleCepKeyDown(e, input) {
       if (e.key === 'Backspace') {
         let v = input.value;
@@ -733,7 +724,6 @@
       }
     }
 
-    // CÉREBRO DE ROTEIRIZAÇÃO INTELIGENTE
     async function runSmartRouteOptimization() {
       const selectedCourier = document.getElementById('selectCourierForRoute').value;
       if (!selectedCourier) {
@@ -749,29 +739,10 @@
                      vortexConfig.endereco || vortexConfig.store_address || vortexConfig.address ||
                      localStorage.getItem('vortex_store_address') || localStorage.getItem('vortex_endereco') || '';
 
-      if ((!storeAddress || storeAddress.trim() === '')) {
-        if (typeof dbFetchStoreSettings === 'function') {
-          try {
-            const remoteData = await dbFetchStoreSettings();
-            if (remoteData) {
-              storeAddress = remoteData.store_address || remoteData.endereco || remoteData.address || '';
-            }
-          } catch (e) {}
-        }
-        if ((!storeAddress || storeAddress.trim() === '') && window.supabaseClient) {
-          try {
-            const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1);
-            if (data && data.length > 0) {
-              storeAddress = data[0].store_address || data[0].endereco || data[0].address || '';
-            }
-          } catch (e) {}
-        }
-      }
-
       if (!storeAddress || storeAddress.trim() === '') {
         showNoticeModal(
           'Endereço do Estabelecimento Não Encontrado', 
-          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi sincronizado ou cadastrado nas Configurações.', 
+          'Não é possível otimizar as rotas pois o <strong>endereço do estabelecimento</strong> não foi cadastrado nas Configurações.', 
           '⚠️'
         );
         return;
@@ -788,28 +759,15 @@
       function extractMetrics(addrStr) {
         if (!addrStr) return { cepNum: 0, houseNum: 0 };
         let cepMatch = addrStr.match(/CEP:\s*(\d{5})-?(\d{3})/i) || addrStr.match(/(\d{5}-\d{3})/);
-        let cepVal = 0;
-        if (cepMatch) {
-          cepVal = parseInt(cepMatch[0].replace(/\D/g, '')) || 0;
-        }
-
+        let cepVal = cepMatch ? parseInt(cepMatch[0].replace(/\D/g, '')) || 0 : 0;
         let numMatch = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
         let houseVal = numMatch ? parseInt(numMatch[1]) : 0;
-
         return { cepNum: cepVal, houseNum: houseVal };
       }
 
       let storeMetrics = extractMetrics(storeAddress);
-
-      function calculateDistanceScore(metrics, refCep, refHouse) {
-        let cepDiff = Math.abs(metrics.cepNum - refCep);
-        let houseDiff = Math.abs(metrics.houseNum - refHouse);
-        return (cepDiff * 1000) + houseDiff;
-      }
-
       let unassigned = [...readyOrders];
       let optimizedRoute = [];
-
       let currentRefCep = storeMetrics.cepNum || 7000000;
       let currentRefHouse = storeMetrics.houseNum || 1;
 
@@ -819,7 +777,7 @@
 
         unassigned.forEach((ord, idx) => {
           let m = extractMetrics(ord.address);
-          let score = calculateDistanceScore(m, currentRefCep, currentRefHouse);
+          let score = (Math.abs(m.cepNum - currentRefCep) * 1000) + Math.abs(m.houseNum - currentRefHouse);
           if (score < minScore) {
             minScore = score;
             nearestIndex = idx;
@@ -828,45 +786,31 @@
 
         let nextOrder = unassigned.splice(nearestIndex, 1)[0];
         optimizedRoute.push(nextOrder);
-
         let nextMetrics = extractMetrics(nextOrder.address);
         currentRefCep = nextMetrics.cepNum || currentRefCep;
         currentRefHouse = nextMetrics.houseNum || currentRefHouse;
       }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong><br>Ordenado em cadeia contínua do endereço mais próximo ao mais distante.`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong>`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';
 
       optimizedRoute.forEach((o, index) => {
         let isAssigned = o.courier && o.courier.trim() !== '';
-        let actionBtnHtml = '';
-
-        if (isAssigned) {
-          actionBtnHtml = `
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
-              <span style="font-size:0.75rem; background:rgba(34,197,94,0.15); color:var(--success); border:1px solid var(--success); padding:4px 8px; border-radius:6px; font-weight:bold;">Atribuído a ${o.courier} ✅</span>
-              <button class="btn-secondary" style="font-size:0.7rem; padding:3px 8px; background:var(--danger); color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="assignOrderToCourier('${o.id}', '')">Desvincular ❌</button>
-            </div>
-          `;
-        } else {
-          actionBtnHtml = `
-            <button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>
-          `;
-        }
+        let actionBtnHtml = isAssigned ? 
+          `<button class="btn-secondary" style="font-size:0.7rem; padding:3px 8px; background:var(--danger); color:#fff;" onclick="assignOrderToCourier('${o.id}', '')">Desvincular ❌</button>` :
+          `<button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>`;
 
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
               <strong style="color:var(--primary);">#${o.id}</strong> (Parada ${index + 1}) - ${o.client} <br>
-              <span style="color:var(--text-muted);">🕒 Horário do Pedido: ${o.time || '--:--'}</span><br>
+              <span style="color:var(--text-muted);">🕒 Horário: ${o.time || '--:--'}</span><br>
               📍 <strong>Endereço:</strong> ${o.address}
             </div>
-            <div>
-              ${actionBtnHtml}
-            </div>
+            <div>${actionBtnHtml}</div>
           </div>
         `;
       });
@@ -887,9 +831,8 @@
       renderActiveDeliveryOrders(kdsOrders, true);
       runSmartRouteOptimization();
       if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${orderId} foi vinculado a ${courierName}.`, '🛵');
-      else showNoticeModal('Entrega Desvinculada', `O pedido #${orderId} foi desvinculado do motoboy.`, 'ℹ️');
-      const result = await syncKdsPatch(orderId, { courier: courierName || '' });
-      if (result.error) showNoticeModal('Sincronização pendente', `A atribuição do pedido #${orderId} foi atualizada neste dispositivo, mas não foi confirmada na nuvem. ${result.error.message || ''}`, '⚠️');
+      else showNoticeModal('Entrega Desvinculada', `O pedido #${orderId} foi desvinculado.`, 'ℹ️');
+      await syncKdsPatch(orderId, { courier: courierName || '' });
     }
 
     function openEditCourierModal(orderId) {
@@ -916,16 +859,13 @@
       saveLocalKdsOrders(kdsOrders);
       closeEditCourierModal();
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${orderId} foi alterado para ${newCourier}.` : `O motoboy do pedido #${orderId} foi removido com sucesso.`, '✅');
-      const result = await syncKdsPatch(orderId, { courier: newCourier || '' });
-      if (result.error) showNoticeModal('Sincronização pendente', `A alteração foi salva neste dispositivo, mas não foi confirmada na nuvem. ${result.error.message || ''}`, '⚠️');
+      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${orderId} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
+      await syncKdsPatch(orderId, { courier: newCourier || '' });
     }
 
     function recordCourierHistory(o) {
       if (!o.courier) return;
       let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
-      
-      let existingIndex = history.findIndex(h => String(h.orderId) === String(o.id));
       let routeStatusText = o.status === 'finished' ? 'Entregue / Concluído ✅' : 'Em Rota de Entrega 🛵';
 
       const historyItem = {
@@ -939,11 +879,9 @@
         date: new Date().toISOString().split('T')[0]
       };
 
-      if (existingIndex !== -1) {
-        history[existingIndex] = historyItem;
-      } else {
-        history.unshift(historyItem);
-      }
+      let existingIndex = history.findIndex(h => String(h.orderId) === String(o.id));
+      if (existingIndex !== -1) history[existingIndex] = historyItem;
+      else history.unshift(historyItem);
 
       localStorage.setItem('vortex_courier_history', JSON.stringify(history));
     }
@@ -954,16 +892,16 @@
       content.innerHTML = '';
 
       if (history.length === 0) {
-        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico de entregas despachadas registrado.</div>`;
+        content.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">Nenhum histórico registrado.</div>`;
       } else {
         history.forEach(h => {
           content.innerHTML += `
             <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">
               🛵 <strong>Motoboy:</strong> ${h.courier} | <strong>Pedido:</strong> #${h.orderId}<br>
-              📊 <strong>Status:</strong> <span style="color:var(--primary); font-weight:bold;">${h.status || 'Em Rota'}</span><br>
+              📊 <strong>Status:</strong> <span style="color:var(--primary); font-weight:bold;">${h.status}</span><br>
               👤 <strong>Cliente:</strong> ${h.client}<br>
               📍 <strong>Destino:</strong> ${h.address}<br>
-              🕒 <strong>Registrado às:</strong> ${h.timeAssigned} (${h.date})
+              🕒 <strong>Horário:</strong> ${h.timeAssigned} (${h.date})
             </div>
           `;
         });
@@ -1161,8 +1099,6 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      // A gravação na nuvem será iniciada uma única vez, em segundo plano.
-
       const deliveryCode = generateDeliveryCode();
 
       const newOrder = {
@@ -1187,8 +1123,6 @@
       kdsOrders.unshift(newOrder);
       saveLocalKdsOrders(kdsOrders);
 
-      // O pedido completo permanece no dispositivo; a nuvem recebe apenas campos compatíveis.
-
       deliveryCart = [];
       rawCashGiven = 0;
       document.getElementById('clientNameInput').value = '';
@@ -1206,23 +1140,17 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado neste dispositivo. Sincronizando com a nuvem em segundo plano...`, '🛵');
-      Promise.all([syncDeliverySale(newSaleRecord), syncNewDeliveryOrder(newOrder)]).then(results => {
-        const failed = results.find(result => result && result.error);
-        if (failed) {
-          console.error('Falha na sincronização do pedido Delivery:', failed.error);
-          showNoticeModal('Pedido salvo localmente', `O pedido #${nextKdsId} foi cadastrado neste dispositivo, mas a sincronização com a nuvem falhou. ${failed.error.message || 'Verifique a conexão e o esquema da tabela.'}`, '⚠️');
-        } else {
-          showNoticeModal('Pedido sincronizado', `O pedido #${nextKdsId} foi cadastrado e a sincronização com a nuvem foi confirmada.`, '✅');
+      showNoticeModal('Pedido Cadastrado!', `Pedido #${nextKdsId} registrado e encaminhado para o KDS com sucesso!`, '🛵');
+      
+      try {
+        if (typeof dbSaveSale === 'function') await dbSaveSale(newSaleRecord);
+        if (typeof dbSaveKdsOrder === 'function') await dbSaveKdsOrder(newOrder);
+        else if (window.supabaseClient) {
+          await window.supabaseClient.from('vortex_kds_orders').upsert([newOrder]);
         }
-      }).catch(error => {
-        console.error('Erro ao sincronizar pedido Delivery:', error);
-        showNoticeModal('Pedido salvo localmente', `O pedido #${nextKdsId} foi cadastrado neste dispositivo, mas não foi possível confirmar a sincronização.`, '⚠️');
-      });
+      } catch (e) {}
     }
 
-    // Otimização de renderização e sincronização do Delivery.
-    // A interface usa os dados locais imediatamente; a rede não bloqueia os cliques.
     let deliveryOrdersFetchInFlight = false;
     let deliveryLastLocalMutationAt = 0;
     let deliveryLastRenderedSignature = '';
@@ -1232,7 +1160,6 @@
         const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
         return Array.isArray(parsed) ? parsed : [];
       } catch (error) {
-        console.error('Não foi possível ler os pedidos locais:', error);
         return [];
       }
     }
@@ -1246,9 +1173,7 @@
       try {
         return JSON.stringify(orders.map(o => ({
           id: o.id, status: o.status, courier: o.courier, client: o.client,
-          address: o.address, total: o.total, payment: o.payment,
-          date: o.date, time: o.time, items: o.items, observation: o.observation,
-          cashGiven: o.cashGiven, change: o.change, code: o.code
+          address: o.address, total: o.total, payment: o.payment
         })));
       } catch (error) {
         return String(Date.now());
@@ -1256,17 +1181,12 @@
     }
 
     function getDeliverySupabaseClient() {
-      // O cliente central é inicializado sob demanda por getSupabase().
-      // Não verificar apenas window.supabaseClient: isso pode gerar falso erro
-      // antes de qualquer função central ter inicializado a conexão.
       try {
         if (typeof getSupabase === 'function') {
           const client = getSupabase();
           if (client) return client;
         }
-      } catch (error) {
-        console.error('Não foi possível inicializar o Supabase:', error);
-      }
+      } catch (error) {}
       if (window.supabaseClient) return window.supabaseClient;
       return null;
     }
@@ -1274,45 +1194,8 @@
     async function syncKdsPatch(orderId, patch) {
       try {
         const supabase = getDeliverySupabaseClient();
-        if (!supabase) return { error: new Error('Supabase não inicializado. Verifique se supabase.js e o SDK foram carregados.') };
-        // Atualiza somente as colunas alteradas; não reenvia o pedido inteiro
-        // (evita erros de colunas opcionais ausentes, como cashGiven).
-        const result = await supabase
-          .from('vortex_kds_orders')
-          .update(patch)
-          .eq('id', String(orderId));
-        return result || { error: null };
-      } catch (error) {
-        return { error };
-      }
-    }
-
-    async function syncDeliverySale(sale) {
-      try {
-        if (typeof dbSaveSale === 'function') return await dbSaveSale(sale);
-        if (window.supabaseClient) {
-          return await window.supabaseClient.from('vortex_sales_history').upsert([sale]);
-        }
-        return { error: new Error('Supabase não inicializado') };
-      } catch (error) {
-        return { error };
-      }
-    }
-
-    async function syncNewDeliveryOrder(order) {
-      try {
-        const supabase = getDeliverySupabaseClient();
-        if (!supabase) return { error: new Error('Supabase não inicializado. Verifique se supabase.js e o SDK foram carregados.') };
-        // cashGiven/change são mantidos no armazenamento local, mas não enviados
-        // porque a tabela atual não reconhece cashGiven no esquema do Supabase.
-        const cloudRecord = {
-          id: String(order.id), origin: order.origin, client: order.client,
-          address: order.address, payment: order.payment, observation: order.observation || '',
-          items: order.items || [], total: Number(order.total) || 0,
-          status: order.status || 'new', date: order.date, time: order.time,
-          courier: order.courier || '', code: order.code
-        };
-        return await supabase.from('vortex_kds_orders').upsert([cloudRecord]);
+        if (!supabase) return { error: new Error('Supabase não inicializado') };
+        return await supabase.from('vortex_kds_orders').update(patch).eq('id', String(orderId));
       } catch (error) {
         return { error };
       }
@@ -1326,6 +1209,7 @@
         if (o.status === 'finished') return o.date === todayDateStr;
         return true;
       });
+
       const signature = deliveryOrdersSignature(deliveryOrders);
       if (!force && signature === deliveryLastRenderedSignature) return;
       deliveryLastRenderedSignature = signature;
@@ -1362,7 +1246,7 @@
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${o.id} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço Completo:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}🔒 Código de Validação: <strong style="color:var(--info);">**** (Cliente)</strong><br>💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${o.id} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}🔒 Código de Validação: <strong style="color:var(--info);">${o.code || '----'}</strong><br>💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }
@@ -1371,7 +1255,6 @@
       const activeElement = document.activeElement;
       if (activeElement && activeElement.classList.contains('code-input')) return;
 
-      // Exibe imediatamente a cópia local e não recria os cartões se nada mudou.
       const localOrders = readLocalKdsOrders();
       renderActiveDeliveryOrders(localOrders);
       if (options.skipRemote || !window.supabaseClient || deliveryOrdersFetchInFlight) return;
@@ -1382,27 +1265,17 @@
         if (error) throw error;
         if (!Array.isArray(data)) return;
 
-        // Evita que uma resposta antiga do servidor sobrescreva uma ação local recente.
         if (Date.now() - deliveryLastLocalMutationAt < 2500) return;
         const currentLocal = readLocalKdsOrders();
         const localById = new Map(currentLocal.map(order => [String(order.id), order]));
         const merged = data.map(remoteOrder => {
           const localOrder = localById.get(String(remoteOrder.id)) || {};
-          return { ...localOrder, ...remoteOrder,
-            cashGiven: localOrder.cashGiven ?? remoteOrder.cashGiven ?? 0,
-            change: localOrder.change ?? remoteOrder.change ?? 0,
-            code: remoteOrder.code ?? localOrder.code
-          };
-        });
-        // Preserva pedidos locais ainda não vistos na resposta remota (ex.: sincronização pendente).
-        const remoteIds = new Set(merged.map(order => String(order.id)));
-        currentLocal.forEach(order => {
-          if (!remoteIds.has(String(order.id))) merged.push(order);
+          return { ...localOrder, ...remoteOrder };
         });
         localStorage.setItem('vortex_kds_orders', JSON.stringify(merged));
         renderActiveDeliveryOrders(merged);
       } catch (error) {
-        console.warn('Falha ao atualizar pedidos do Delivery; mantendo os dados locais.', error);
+        console.warn('Falha ao atualizar pedidos do Delivery na nuvem.', error);
       } finally {
         deliveryOrdersFetchInFlight = false;
       }
@@ -1417,9 +1290,8 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota. Sincronizando em segundo plano.`, '🚀');
-      const result = await syncKdsPatch(orderId, { status: 'delivering', courier: order.courier });
-      if (result.error) showNoticeModal('Sincronização pendente', `O pedido #${orderId} foi atualizado neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
+      showNoticeModal('Pedido Despachado!', `O pedido #${orderId} foi enviado para rota.`, '🚀');
+      await syncKdsPatch(orderId, { status: 'delivering', courier: order.courier });
     }
 
     async function finishDeliveryOrder(orderId) {
@@ -1430,9 +1302,8 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído neste dispositivo. Sincronizando em segundo plano.`, '✅');
-      const result = await syncKdsPatch(orderId, { status: 'finished' });
-      if (result.error) showNoticeModal('Sincronização pendente', `O pedido #${orderId} foi atualizado neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
+      showNoticeModal('Pedido Entregue!', `O pedido #${orderId} foi concluído.`, '✅');
+      await syncKdsPatch(orderId, { status: 'finished' });
     }
 
     async function confirmDeliveryWithCode(orderId) {
@@ -1441,16 +1312,15 @@
       if (!order) return;
       const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
       if (inputVal !== order.code) {
-        showNoticeModal('Código Incorreto', `O código digitado (${inputVal || ''}) não confere com o código do cliente.`, '⚠️');
+        showNoticeModal('Código Incorreto', `O código digitado não confere com o código do cliente.`, '⚠️');
         return;
       }
       order.status = 'finished';
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada neste dispositivo. Sincronizando em segundo plano.`, '🎉');
-      const result = await syncKdsPatch(orderId, { status: 'finished' });
-      if (result.error) showNoticeModal('Sincronização pendente', `A entrega foi validada neste dispositivo, mas a nuvem não confirmou a alteração. ${result.error.message || ''}`, '⚠️');
+      showNoticeModal('Código Confirmado!', `Entrega do pedido #${orderId} validada.`, '🎉');
+      await syncKdsPatch(orderId, { status: 'finished' });
     }
 
     function printDeliveryTicket(orderId) {
@@ -1486,13 +1356,11 @@
               <p>Data: ${o.dateFormatted || new Date().toLocaleDateString('pt-BR')} | Horário: ${o.time || '--:--'}</p>
             </div>
             <div class="line"></div>
-            <p><strong>CLIENTE:</strong> ${o.client}<br><strong>ENDEREÇO COMPLETO:</strong><br>${o.address}</p>
+            <p><strong>CLIENTE:</strong> ${o.client}<br><strong>ENDEREÇO:</strong><br>${o.address}</p>
             <div class="line"></div>
-            <table>
-              <tbody>${itemsHtml}</tbody>
-            </table>
+            <table><tbody>${itemsHtml}</tbody></table>
             <div class="line"></div>
-            ${o.observation ? `<p><strong>OBSERVAÇÃO:</strong> ${o.observation}</p><div class="line"></div>` : ''}
+            ${o.observation ? `<p><strong>OBS:</strong> ${o.observation}</p><div class="line"></div>` : ''}
             <p><strong>PAGAMENTO:</strong> ${o.payment}</p>
             ${trocoPrintHtml}
             <p style="font-size: 14px;"><strong>TOTAL: R$ ${parseFloat(o.total || 0).toFixed(2).replace('.', ',')}</strong></p>
@@ -1517,8 +1385,7 @@
     }
 
     setInterval(() => {
-      const now = new Date();
-      document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
+      document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
     setInterval(() => {

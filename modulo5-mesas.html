@@ -406,6 +406,48 @@
       ];
     }
 
+    function readLocalKdsOrders() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function mergeKdsOrders(remoteOrders, localOrders) {
+      const byId = new Map();
+      (Array.isArray(remoteOrders) ? remoteOrders : []).forEach(o => { if (o && o.id != null) byId.set(String(o.id), o); });
+      (Array.isArray(localOrders) ? localOrders : []).forEach(o => { if (o && o.id != null) byId.set(String(o.id), o); });
+      return Array.from(byId.values());
+    }
+
+    async function saveTableKdsOrderToCloud(order) {
+      let client = null;
+      try {
+        if (typeof getSupabase === 'function') client = getSupabase();
+        if (!client && window.supabaseClient) client = window.supabaseClient;
+      } catch (e) {}
+      if (!client) return { data: null, error: new Error('Supabase não inicializado') };
+
+      const record = {
+        id: String(order.id),
+        origin: order.origin || 'Balcão',
+        client: order.client || 'Cliente Balcão',
+        address: order.address || '',
+        payment: order.payment || 'Dinheiro',
+        time: order.time || '',
+        date: order.date || new Date().toISOString().slice(0, 10),
+        items: Array.isArray(order.items) ? order.items : [],
+        total: Number(order.total) || 0,
+        observation: order.observation || '',
+        status: order.status || 'new',
+        code: order.code || String(order.id)
+      };
+      const { data, error } = await client.from('vortex_kds_orders').upsert([record]);
+      return { data, error };
+    }
+
     function toggleQrFeature(enabled) {
       isQrEnabled = enabled;
       localStorage.setItem('vortex_qr_enabled', enabled ? 'true' : 'false');
@@ -590,11 +632,11 @@
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let localOrders = readLocalKdsOrders();
       let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [] };
 
-      const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id)));
-      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id))) + 1 : 1;
+      const todayOrders = localOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id, 10)));
+      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id, 10))) + 1 : 1;
       const newOrderId = String(nextSeqNumber);
 
       let targetOrder = {
@@ -609,10 +651,12 @@
         total: incrementalTotal,
         status: 'new',
         date: dateStr,
-        time: timeStr
+        dateFormatted: now.toLocaleDateString('pt-BR'),
+        time: timeStr,
+        code: newOrderId
       };
 
-      kdsOrders.unshift(targetOrder);
+      localOrders.unshift(targetOrder);
 
       if (!currentData.orderIds) currentData.orderIds = [];
       currentData.orderIds.push(newOrderId);
@@ -637,21 +681,17 @@
       };
 
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
-      try {
-        if (typeof dbSaveKdsOrder === 'function') {
-          await dbSaveKdsOrder(targetOrder);
-        } else if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_kds_orders').upsert([targetOrder]);
-        }
-      } catch (err) {
-        console.error('Erro ao salvar KDS mesa no Supabase:', err);
-      }
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(localOrders));
 
       closeMesaModal();
       renderMesas();
       showNoticeModal('Pedido Adicional Enviado!', `Novo lote de pedidos #${newOrderId} enviado para a Cozinha com sucesso!`, '👨‍🍳');
+
+      try {
+        await saveTableKdsOrderToCloud(targetOrder);
+      } catch (err) {
+        console.error('Erro ao salvar KDS mesa no Supabase:', err);
+      }
     }
 
     function openPaymentModal() {
@@ -763,7 +803,7 @@
         total: total,
         subtotal: total,
         discount: 0,
-        payMethod: payment,
+        pay_method: payment,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
         changeValue: changeVal,
         status: 'finished',
@@ -784,7 +824,7 @@
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
       }
 
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let kdsOrders = readLocalKdsOrders();
       kdsOrders.forEach(o => {
         if (currentData.orderIds && currentData.orderIds.includes(String(o.id))) {
           o.status = 'finished';
@@ -796,9 +836,12 @@
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
 
       try {
-        if (window.supabaseClient) {
+        let client = null;
+        if (typeof getSupabase === 'function') client = getSupabase();
+        if (!client && window.supabaseClient) client = window.supabaseClient;
+        if (client) {
           for (let id of (currentData.orderIds || [])) {
-            await window.supabaseClient.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id));
+            await client.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id));
           }
         }
       } catch (err) {}

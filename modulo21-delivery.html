@@ -473,17 +473,35 @@
       loadCouriers();
     }
 
-    function getCatalogProducts() {
-      const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
-      if (saved) {
-        let products = JSON.parse(saved);
-        return products.filter(p => p.active !== false).map(p => ({
+    async function getCatalogProducts() {
+      let rawProducts = [];
+      try {
+        if (typeof dbFetchProducts === 'function') {
+          rawProducts = await dbFetchProducts();
+        } else if (typeof dbFetchCatalog === 'function') {
+          const result = await dbFetchCatalog();
+          rawProducts = Array.isArray(result) ? result : (result && Array.isArray(result.products) ? result.products : []);
+        }
+      } catch (e) {}
+
+      if (!Array.isArray(rawProducts) || rawProducts.length === 0) {
+        try {
+          const saved = localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos');
+          if (saved) rawProducts = JSON.parse(saved);
+        } catch (e) {
+          rawProducts = [];
+        }
+      }
+
+      if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+        return rawProducts.filter(p => p && p.active !== false).map(p => ({
           id: p.id,
-          name: p.name,
-          price: parseFloat(p.price ?? p.salePrice ?? p.preco) || 0,
-          category: p.category
+          name: String(p.name || p.nome || 'Produto'),
+          price: parseFloat(p.price ?? p.salePrice ?? p.preco ?? 0),
+          category: p.category || p.categoria || 'Geral'
         }));
       }
+
       return [
         { id: 1, name: 'X-Burger Especial', price: 28.50 },
         { id: 2, name: 'X-Salada Duplo', price: 32.00 }
@@ -913,10 +931,10 @@
       document.getElementById('courierHistoryModal').classList.remove('active');
     }
 
-    function renderCatalog() {
+    async function renderCatalog() {
       const grid = document.getElementById('menuSelectGrid');
       grid.innerHTML = '';
-      const catalogProducts = getCatalogProducts();
+      const catalogProducts = await getCatalogProducts();
 
       if (catalogProducts.length === 0) {
         grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">Nenhum produto disponível.</div>`;
@@ -1022,6 +1040,14 @@
       return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
+    function getLocalDateStr(dateObj) {
+      const d = dateObj || new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     async function submitDeliveryOrder() {
       const clientName = document.getElementById('clientNameInput').value.trim();
       const clientPhone = document.getElementById('clientPhoneInput').value.trim();
@@ -1068,15 +1094,9 @@
       if (ref) fullAddress += ` | Ref: ${ref}`;
 
       const now = new Date();
-      const todayDateStr = now.toISOString().split('T')[0];
+      const todayDateStr = getLocalDateStr(now);
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-      let currentSales = parseFloat(cleanedSalesStr) || 0;
-      currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
       let kdsOrders = readLocalKdsOrders();
       const todayOrders = kdsOrders.filter(o => (o.date || '').split('T')[0] === todayDateStr && !isNaN(parseInt(o.id, 10)));
@@ -1209,11 +1229,12 @@
     }
 
     function renderActiveDeliveryOrders(kdsOrders, force = false) {
-      const todayDateStr = new Date().toISOString().split('T')[0];
+      const todayDateStr = getLocalDateStr(new Date());
       const deliveryOrders = kdsOrders.filter(o => {
         if (!o.origin || !String(o.origin).includes('Delivery')) return false;
         if (o.status === 'cancelled') return false;
-        if (o.status === 'finished') return o.date === todayDateStr;
+        let itemDate = o.date ? o.date.split('T')[0] : todayDateStr;
+        if (o.status === 'finished') return itemDate === todayDateStr;
         return true;
       });
 

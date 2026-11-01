@@ -320,7 +320,6 @@
       let storeName = 'MEU ESTABELECIMENTO';
       let logoUrl = localStorage.getItem('vortex_store_logo') || '';
 
-      // CORREÇÃO CRítica: Carrega o nome oficial das configurações (compartilhado em vortex_store_settings ou vortex_config)
       try {
         const localSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || JSON.parse(localStorage.getItem('vortex_config')) || {};
         storeName = localSettings.storeName || localSettings.store_name || localSettings.nome || localSettings.name || storeName;
@@ -381,8 +380,6 @@
 
       try {
         let remoteKds = [];
-        let remoteSales = [];
-
         if (typeof dbFetchKdsOrdersResult === 'function') {
           const kdsRes = await dbFetchKdsOrdersResult();
           if (kdsRes && kdsRes.data) remoteKds = kdsRes.data;
@@ -391,8 +388,24 @@
           if (data) remoteKds = data;
         }
 
-        if (remoteKds.length > 0) {
-          localStorage.setItem('vortex_kds_orders', JSON.stringify(remoteKds));
+        if (remoteKds && remoteKds.length > 0) {
+          let localOrders = [];
+          try {
+            localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+          } catch(e) { localOrders = []; }
+
+          let localMap = new Map(localOrders.map(o => [String(o.id), o]));
+          remoteKds.forEach(r => {
+            let localItem = localMap.get(String(r.id));
+            if (localItem) {
+              // Preserva estado local caso a nuvem esteja desatualizada, mas atualiza status se houver consenso
+              localMap.set(String(r.id), { ...r, ...localItem, status: r.status || localItem.status });
+            } else {
+              localMap.set(String(r.id), r);
+            }
+          });
+
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(Array.from(localMap.values())));
         }
       } catch (e) {
         console.warn('Modo offline ativo ou falha ao buscar da nuvem:', e);
@@ -413,6 +426,7 @@
         orders = [];
       }
 
+      // CORREÇÃO CRÍTICA: Filtro flexível que não elimina pedidos ativos por divergência de fuso
       orders = orders.filter(o => {
         let itemDate = parseToLocalDateStr(o.date) || todayDateStr;
         if (o.status === 'finished' || o.status === 'completed' || o.status === 'cancelled') {

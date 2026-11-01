@@ -1048,6 +1048,57 @@
       return `${year}-${month}-${day}`;
     }
 
+    function readLocalKdsOrders() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveLocalKdsOrders(orders) {
+      deliveryLastLocalMutationAt = Date.now();
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+    }
+
+    function getDeliverySupabaseClient() {
+      try {
+        if (typeof getSupabase === 'function') {
+          const client = getSupabase();
+          if (client) return client;
+        }
+      } catch (error) {}
+      if (window.supabaseClient) return window.supabaseClient;
+      return null;
+    }
+
+    async function saveDeliveryKdsOrderToCloud(order) {
+      const client = getDeliverySupabaseClient();
+      if (!client) return { data: null, error: new Error('Supabase não inicializado') };
+
+      const record = {
+        id: String(order.id),
+        origin: order.origin || 'Delivery 🛵',
+        client: order.client || 'Cliente',
+        address: order.address || '',
+        payment: order.payment || order.payMethod || 'Pix',
+        cashGiven: parseFloat(order.cashGiven || 0),
+        change: parseFloat(order.change || 0),
+        time: order.time || '',
+        date: order.date || new Date().toISOString().slice(0, 10),
+        dateFormatted: order.dateFormatted || new Date().toLocaleDateString('pt-BR'),
+        items: Array.isArray(order.items) ? order.items : [],
+        total: Number(order.total) || 0,
+        observation: order.observation || '',
+        status: order.status || 'new',
+        code: order.code || String(order.id),
+        courier: order.courier || ''
+      };
+      const { data, error } = await client.from('vortex_kds_orders').upsert([record]);
+      return { data, error };
+    }
+
     async function submitDeliveryOrder() {
       const clientName = document.getElementById('clientNameInput').value.trim();
       const clientPhone = document.getElementById('clientPhoneInput').value.trim();
@@ -1103,13 +1154,6 @@
       const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id, 10))) + 1 : 1;
       const unifiedOrderId = String(nextSeqNumber);
 
-      const saleItems = deliveryCart.map(item => ({
-        name: item.name,
-        price: Number(item.price) || 0,
-        qty: Number(item.qty) || 1,
-        category: item.category || 'Geral'
-      }));
-
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         id: unifiedOrderId,
@@ -1122,7 +1166,7 @@
         status: 'finished',
         date: todayDateStr,
         time: timeStr,
-        items: saleItems
+        items: [...deliveryCart]
       };
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
@@ -1139,7 +1183,7 @@
         cashGiven: cashGivenVal,
         change: changeVal,
         observation: observation,
-        items: saleItems,
+        items: [...deliveryCart],
         total: total,
         status: 'new',
         date: todayDateStr,
@@ -1173,38 +1217,15 @@
       
       try {
         if (typeof dbSaveSale === 'function') await dbSaveSale(newSaleRecord);
-        if (typeof dbSaveKdsOrder === 'function') {
-          await dbSaveKdsOrder(newOrder);
-        } else {
-          let client = null;
-          if (typeof getSupabase === 'function') client = getSupabase();
-          if (!client && window.supabaseClient) client = window.supabaseClient;
-          if (client) {
-            await client.from('vortex_kds_orders').upsert([newOrder]);
-          }
-        }
+        await saveDeliveryKdsOrderToCloud(newOrder);
       } catch (e) {
-        console.warn('Erro ao sincronizar pedido de delivery com a nuvem:', e);
+        console.error('Erro ao sincronizar pedido de Delivery na nuvem:', e);
       }
     }
 
     let deliveryOrdersFetchInFlight = false;
     let deliveryLastLocalMutationAt = 0;
     let deliveryLastRenderedSignature = '';
-
-    function readLocalKdsOrders() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        return [];
-      }
-    }
-
-    function saveLocalKdsOrders(orders) {
-      deliveryLastLocalMutationAt = Date.now();
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-    }
 
     function deliveryOrdersSignature(orders) {
       try {
@@ -1215,17 +1236,6 @@
       } catch (error) {
         return String(Date.now());
       }
-    }
-
-    function getDeliverySupabaseClient() {
-      try {
-        if (typeof getSupabase === 'function') {
-          const client = getSupabase();
-          if (client) return client;
-        }
-      } catch (error) {}
-      if (window.supabaseClient) return window.supabaseClient;
-      return null;
     }
 
     async function syncKdsPatch(orderId, patch) {
@@ -1279,7 +1289,7 @@
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
         }
-        const itemsText = o.items ? o.items.map(i => `${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}`).join(', ') : '';
+        const itemsText = o.items ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '';
         const cashGiven = Number(o.cashGiven) || 0;
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
@@ -1368,11 +1378,11 @@
       if (!o) return;
 
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
-      const itemsHtml = o.items ? o.items.map(i => `<tr><td>${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}</td><td style="text-align:right;">R$ ${((Number(i.price || 0) * Number(i.qty || i.quantity || 1))).toFixed(2).replace('.', ',')}</td></tr>`).join('') : '';
+      const itemsHtml = o.items ? o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('') : '';
 
       let trocoPrintHtml = '';
       if (o.payment === 'Dinheiro' && o.cashGiven > 0) {
-        trocoPrintHtml = `<p>Troco para: R$ ${Number(o.cashGiven).toFixed(2).replace('.', ',')}<br><strong>LEVAR TROCO: R$ ${Number(o.change || 0).toFixed(2).replace('.', ',')}</strong></p>`;
+        trocoPrintHtml = `<p>Troco para: R$ ${o.cashGiven.toFixed(2).replace('.', ',')}<br><strong>LEVAR TROCO: R$ ${(o.change || 0).toFixed(2).replace('.', ',')}</strong></p>`;
       }
 
       const printWin = window.open('', '_blank', 'width=380,height=600');

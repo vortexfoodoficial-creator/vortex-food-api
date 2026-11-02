@@ -398,16 +398,22 @@
           remoteKds.forEach(r => {
             let localItem = localMap.get(String(r.id));
             if (localItem) {
+              const remoteDisplayId = r.displayId ?? r.displayid;
+              const finalDisplayId = (remoteDisplayId !== undefined && remoteDisplayId !== null && String(remoteDisplayId).trim() !== '')
+                ? remoteDisplayId
+                : localItem.displayId;
+
               localMap.set(String(r.id), { 
+                ...localItem,
                 ...r, 
-                ...localItem, 
-                displayId: r.displayId || r.displayid || localItem.displayId, 
-                status: r.status || localItem.status 
+                displayId: finalDisplayId, 
+                status: localItem.status || r.status 
               });
             } else {
+              const remoteDisplayId = r.displayId ?? r.displayid;
               localMap.set(String(r.id), {
                 ...r,
-                displayId: r.displayId || r.displayid
+                displayId: (remoteDisplayId !== undefined && remoteDisplayId !== null && String(remoteDisplayId).trim() !== '') ? remoteDisplayId : undefined
               });
             }
           });

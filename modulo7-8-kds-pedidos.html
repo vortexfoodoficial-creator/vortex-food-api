@@ -398,9 +398,17 @@
           remoteKds.forEach(r => {
             let localItem = localMap.get(String(r.id));
             if (localItem) {
-              localMap.set(String(r.id), { ...r, ...localItem, status: r.status || localItem.status });
+              localMap.set(String(r.id), { 
+                ...r, 
+                ...localItem, 
+                displayId: r.displayId || r.displayid || localItem.displayId, 
+                status: r.status || localItem.status 
+              });
             } else {
-              localMap.set(String(r.id), r);
+              localMap.set(String(r.id), {
+                ...r,
+                displayId: r.displayId || r.displayid
+              });
             }
           });
 
@@ -466,6 +474,7 @@
       const searchTerm = document.getElementById('searchKdsInput')?.value.trim().toLowerCase() || '';
       if (searchTerm) {
         filteredOrders = filteredOrders.filter(o => 
+          String(o.displayId || o.id).toLowerCase().includes(searchTerm) || 
           String(o.id).toLowerCase().includes(searchTerm) || 
           String(o.client || '').toLowerCase().includes(searchTerm)
         );
@@ -482,6 +491,7 @@
 
       let cardsHtml = '';
       filteredOrders.forEach(order => {
+        let visibleDisplayId = order.displayId || order.id;
         let statusClass = `status-${order.status || 'received'}`;
         let statusLabel = '';
         if (order.status === 'new' || order.status === 'received') statusLabel = '🟡 NOVO';
@@ -523,7 +533,7 @@
           <div class="kds-card ${statusClass}">
             <div>
               <div class="kds-card-header">
-                <span class="order-id-tag">#${order.id}</span>
+                <span class="order-id-tag">#${visibleDisplayId}</span>
                 <span class="order-origin">${order.origin || 'Balcão'}</span>
               </div>
               <div class="order-client">👤 ${order.client || 'Cliente'}</div>
@@ -567,14 +577,19 @@
           console.warn('Erro ao sincronizar status na nuvem:', e);
         }
 
-        let noticeMsg = `Pedido #${id} atualizado com sucesso.`;
+        let visibleDisplayId = order.displayId || id;
+        let noticeMsg = `Pedido #${visibleDisplayId} atualizado com sucesso.`;
         showNoticeModal('Atualização do Pedido', noticeMsg, '👨‍🍳');
       }
     }
 
     function askCancelOrder(id) {
       pendingCancelOrderId = id;
-      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${id}</strong>?`;
+      let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      let order = orders.find(o => String(o.id) === String(id));
+      let visibleDisplayId = order ? (order.displayId || id) : id;
+
+      document.getElementById('confirmCancelText').innerHTML = `Tem certeza que deseja cancelar o <strong>Pedido #${visibleDisplayId}</strong>?`;
       document.getElementById('cancelReasonSelect').value = 'Cliente desistiu';
       document.getElementById('cancelReasonCustomInput').style.display = 'none';
       document.getElementById('cancelReasonCustomInput').value = '';
@@ -615,6 +630,8 @@
 
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
+      let visibleDisplayId = order ? (order.displayId || id) : id;
+
       if (order) {
         order.status = 'cancelled';
         order.cancellationReason = reason;
@@ -630,7 +647,7 @@
       } catch (e) {}
 
       renderKds();
-      showNoticeModal('Pedido Cancelado', `Pedido #${id} foi cancelado com sucesso.`, '🔴');
+      showNoticeModal('Pedido Cancelado', `Pedido #${visibleDisplayId} foi cancelado com sucesso.`, '🔴');
       refreshKdsData();
     }
 
@@ -639,6 +656,7 @@
       let order = orders.find(o => String(o.id) === String(id));
       if (!order) return;
 
+      let visibleDisplayId = order.displayId || order.id;
       const printWin = window.open('', '_blank', 'width=380,height=600');
       let itemsTxt = (order.items || []).map(i => `
         <tr>
@@ -649,12 +667,12 @@
 
       printWin.document.write(`
         <html>
-          <head><title>Comanda - Pedido #${order.id}</title></head>
+          <head><title>Comanda - Pedido #${visibleDisplayId}</title></head>
           <body style="font-family:monospace; font-size:12px; width:280px; padding:10px; margin:0 auto;">
             <h2 style="text-align:center; margin:0;">${document.getElementById('sidebarStoreName').innerText}</h2>
             <p style="text-align:center; margin:4px 0 10px 0;">COMANDA DE PRODUÇÃO</p>
             <hr>
-            <p><strong>PEDIDO #${order.id}</strong></p>
+            <p><strong>PEDIDO #${visibleDisplayId}</strong></p>
             <p>Origem: ${order.origin || 'Balcão'}</p>
             <p>Cliente: ${order.client || 'Cliente'}</p>
             <p>Data: ${order.date || new Date().toLocaleDateString('pt-BR')} | Horário: ${order.time || '--:--'}</p>

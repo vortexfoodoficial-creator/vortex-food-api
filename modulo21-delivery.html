@@ -821,10 +821,11 @@
           `<button class="btn-secondary" style="font-size:0.7rem; padding:3px 8px; background:var(--danger); color:#fff;" onclick="assignOrderToCourier('${o.id}', '')">Desvincular ❌</button>` :
           `<button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>`;
 
+        const visibleNum = o.displayId || o.id;
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
-              <strong style="color:var(--primary);">#${o.displayId || o.id}</strong> (Parada ${index + 1}) - ${o.client} <br>
+              <strong style="color:var(--primary);">#${visibleNum}</strong> (Parada ${index + 1}) - ${o.client} <br>
               <span style="color:var(--text-muted);">🕒 Horário: ${o.time || '--:--'}</span><br>
               📍 <strong>Endereço:</strong> ${o.address}
             </div>
@@ -848,8 +849,9 @@
       saveLocalKdsOrders(kdsOrders);
       renderActiveDeliveryOrders(kdsOrders, true);
       runSmartRouteOptimization();
-      if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${order.displayId || orderId} foi vinculado a ${courierName}.`, '🛵');
-      else showNoticeModal('Entrega Desvinculada', `O pedido #${order.displayId || orderId} foi desvinculado.`, 'ℹ️');
+      const visibleNum = order.displayId || orderId;
+      if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${visibleNum} foi vinculado a ${courierName}.`, '🛵');
+      else showNoticeModal('Entrega Desvinculada', `O pedido #${visibleNum} foi desvinculado.`, 'ℹ️');
       await syncKdsPatch(orderId, { courier: courierName || '' });
     }
 
@@ -877,7 +879,8 @@
       saveLocalKdsOrders(kdsOrders);
       closeEditCourierModal();
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${order.displayId || orderId} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
+      const visibleNum = order.displayId || orderId;
+      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${visibleNum} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
       await syncKdsPatch(orderId, { courier: newCourier || '' });
     }
 
@@ -886,9 +889,10 @@
       let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
       let routeStatusText = o.status === 'finished' ? 'Entregue / Concluído ✅' : 'Em Rota de Entrega 🛵';
 
+      const visibleNum = o.displayId || o.id;
       const historyItem = {
         id: 'hist_' + Date.now(),
-        orderId: o.displayId || o.id,
+        orderId: visibleNum,
         client: o.client,
         courier: o.courier,
         address: o.address,
@@ -897,7 +901,7 @@
         date: new Date().toISOString().split('T')[0]
       };
 
-      let existingIndex = history.findIndex(h => String(h.orderId) === String(o.displayId || o.id));
+      let existingIndex = history.findIndex(h => String(h.orderId) === String(visibleNum));
       if (existingIndex !== -1) history[existingIndex] = historyItem;
       else history.unshift(historyItem);
 
@@ -1073,7 +1077,6 @@
       return null;
     }
 
-    // Função de gravação compatibilizada com os nomes reais das colunas em minúsculo do Supabase
     async function saveDeliveryKdsOrderToCloud(order) {
       const client = getDeliverySupabaseClient();
       if (!client) return { data: null, error: new Error('Supabase não inicializado') };
@@ -1100,24 +1103,19 @@
       return { data, error };
     }
 
-    // Função para calcular o próximo número sequencial global compartilhado (#1, #2, #3...)
+    // Função para calcular o próximo número de exibição simples (#1, #2, #3...) sem alterar chaves técnicas
     function getNextGlobalOrderNumber() {
       try {
         let allNumbers = [];
         const kds = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
         kds.forEach(o => {
-          let num = parseInt(o.displayId || o.id, 10);
-          if (!isNaN(num)) allNumbers.push(num);
-        });
-        const sales = JSON.parse(localStorage.getItem('vortex_sales_history') || '[]');
-        sales.forEach(s => {
-          let num = parseInt(s.id, 10);
+          let num = parseInt(o.displayId, 10);
           if (!isNaN(num)) allNumbers.push(num);
         });
         if (allNumbers.length === 0) return 1;
         return Math.max(...allNumbers) + 1;
       } catch (e) {
-        return Math.floor(100 + Math.random() * 900);
+        return Math.floor(1 + Math.random() * 90);
       }
     }
 
@@ -1171,14 +1169,14 @@
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      // Geração de ID interno técnico único e número sequencial global visível (#1, #2, #3...)
-      const seqNumber = getNextGlobalOrderNumber();
+      // ID técnico único preservado inalterado + Número de exibição limpo (#1, #2, #3...)
       const technicalId = 'deliv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const displaySeqNumber = getNextGlobalOrderNumber();
 
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
-        id: String(seqNumber),
-        technicalId: technicalId,
+        id: technicalId,
+        displayId: displaySeqNumber,
         client: `${clientName} (${clientPhone})`,
         channel: 'Delivery 🛵',
         total: total,
@@ -1197,7 +1195,7 @@
 
       const newOrder = {
         id: technicalId,
-        displayId: seqNumber,
+        displayId: displaySeqNumber,
         origin: 'Delivery 🛵',
         client: `${clientName} (${clientPhone})`,
         address: fullAddress,
@@ -1237,7 +1235,6 @@
       renderDeliveryCart();
       loadActiveOrders();
 
-      // Validação rigorosa do retorno de erro do Supabase (sem expor PII)
       let cloudSuccess = true;
       let cloudErrorMsg = '';
       try {
@@ -1248,18 +1245,16 @@
         if (cloudRes && cloudRes.error) {
           cloudSuccess = false;
           cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
-          console.warn('Aviso de sincronização remota KDS:', { code: cloudRes.error.code || 'erro' });
         }
       } catch (e) {
         cloudSuccess = false;
         cloudErrorMsg = e.message || String(e);
-        console.error('Erro de exceção na sincronização do pedido de Delivery:', e);
       }
 
       if (cloudSuccess) {
-        showNoticeModal('Pedido Cadastrado!', `Pedido #${seqNumber} registrado e encaminhado para o KDS com sucesso!`, '🛵');
+        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado e encaminhado para o KDS com sucesso!`, '🛵');
       } else {
-        showNoticeModal('Salvo Localmente (Aviso de Nuvem)', `Pedido #${seqNumber} salvo no dispositivo, mas a nuvem retornou aviso: ${cloudErrorMsg}`, '⚠️');
+        showNoticeModal('Salvo Localmente (Aviso de Nuvem)', `Pedido #${displaySeqNumber} salvo no dispositivo, mas a nuvem retornou aviso: ${cloudErrorMsg}`, '⚠️');
       }
     }
 
@@ -1360,7 +1355,6 @@
         const localById = new Map(currentLocal.map(order => [String(order.id), order]));
         const remoteIds = new Set(data.map(r => String(r.id)));
 
-        // Sincronização segura: preserva pedidos locais recentes e pendentes contra substituição agressiva
         const mergedMap = new Map();
         data.forEach(remoteOrder => {
           const localOrder = localById.get(String(remoteOrder.id)) || {};
@@ -1392,7 +1386,8 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Pedido Despachado!', `O pedido #${order.displayId || orderId} foi enviado para rota.`, '🚀');
+      const visibleNum = order.displayId || orderId;
+      showNoticeModal('Pedido Despachado!', `O pedido #${visibleNum} foi enviado para rota.`, '🚀');
       await syncKdsPatch(orderId, { status: 'delivering', courier: order.courier });
     }
 
@@ -1404,7 +1399,8 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Pedido Entregue!', `O pedido #${order.displayId || orderId} foi concluído.`, '✅');
+      const visibleNum = order.displayId || orderId;
+      showNoticeModal('Pedido Entregue!', `O pedido #${visibleNum} foi concluído.`, '✅');
       await syncKdsPatch(orderId, { status: 'finished' });
     }
 
@@ -1413,6 +1409,7 @@
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
       const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
+      const visibleNum = order.displayId || orderId;
       if (inputVal !== order.code) {
         showNoticeModal('Código Incorreto', `O código digitado não confere com o código do cliente.`, '⚠️');
         return;
@@ -1421,7 +1418,7 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Código Confirmado!', `Entrega do pedido #${order.displayId || orderId} validada.`, '🎉');
+      showNoticeModal('Código Confirmado!', `Entrega do pedido #${visibleNum} validada.`, '🎉');
       await syncKdsPatch(orderId, { status: 'finished' });
     }
 

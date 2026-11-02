@@ -1083,6 +1083,7 @@
 
       const record = {
         id: String(order.id),
+        displayId: order.displayId ? String(order.displayId) : null,
         origin: order.origin || 'Delivery 🛵',
         client: order.client || 'Cliente',
         address: order.address || '',

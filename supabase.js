@@ -1,6 +1,6 @@
 // supabase.js - Módulo central de conexão, persistência e sincronização do Vortex Food
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDU0OTAsImV4cCI6MjEwNzkyMTQ5MH0.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6MTc5MjM0NTQ5MCwiZXhwIjoyMTA3OTIxNDkwfQ.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
 
 function getSupabase() {
   if (window.supabaseClient) {
@@ -48,7 +48,7 @@ async function dbFetchStoreSettings() {
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  
+
   const record = {
     id: String(saleData.id),
     client: saleData.client || 'Cliente Balcão',
@@ -82,11 +82,11 @@ async function dbSaveSale(saleData) {
 async function dbFetchSales() {
   const supabase = getSupabase();
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-  
+
   const { data, error } = await supabase.from('vortex_sales_history').select('*');
   if (error) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
   if (!data) return [];
-  
+
   const mapped = data.map(item => ({
     id: item.id,
     client: item.client,
@@ -130,12 +130,13 @@ async function dbSaveKdsOrder(orderData) {
     status: orderData.status || 'received',
     financial_status: orderData.financialStatus || 'paid',
     code: orderData.code || '',
+    displayId: orderData.displayId || orderData.displayid || null,
     updated_at: new Date().toISOString()
   };
 
   const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
   if (error) console.error('Erro ao salvar KDS:', error);
-  
+
   try {
     let localKds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
     const idx = localKds.findIndex(o => String(o.id) === String(record.id));
@@ -171,7 +172,8 @@ async function dbFetchKdsOrders() {
     observation: item.observation,
     status: item.status || 'received',
     financialStatus: item.financial_status || 'paid',
-    code: item.code
+    code: item.code,
+    displayId: item.displayId || item.displayid || null
   }));
 
   try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mapped)); } catch(e) {}
@@ -215,7 +217,7 @@ async function processStockConsumptionForOrder(order) {
             }
 
             const idempotencyKey = `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}`;
-            
+
             // Verifica se a movimentação já foi registrada (Idempotência rigorosa)
             const alreadyProcessed = movements.some(m => m.idempotency_key === idempotencyKey);
             if (!alreadyProcessed) {

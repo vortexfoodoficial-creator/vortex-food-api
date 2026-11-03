@@ -1110,7 +1110,7 @@
         let allNumbers = [];
         const kds = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
         kds.forEach(o => {
-          let num = parseInt(o.displayId, 10);
+          let num = parseInt(o.displayId || o.displayid, 10);
           if (!isNaN(num)) allNumbers.push(num);
         });
         if (allNumbers.length === 0) return 1;
@@ -1359,7 +1359,12 @@
         const mergedMap = new Map();
         data.forEach(remoteOrder => {
           const localOrder = localById.get(String(remoteOrder.id)) || {};
-          mergedMap.set(String(remoteOrder.id), { ...localOrder, ...remoteOrder });
+          const finalDisplayId = remoteOrder.displayId || remoteOrder.displayid || localOrder.displayId || localOrder.displayid || null;
+          mergedMap.set(String(remoteOrder.id), {
+            ...localOrder,
+            ...remoteOrder,
+            displayId: finalDisplayId
+          });
         });
 
         currentLocal.forEach(localOrder => {

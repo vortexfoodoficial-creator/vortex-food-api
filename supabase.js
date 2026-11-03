@@ -156,7 +156,7 @@ async function dbFetchKdsOrders() {
   if (error) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
   if (!data) return [];
 
-  const mapped = data.map(item => ({
+  const remoteMapped = data.map(item => ({
     id: item.id,
     origin: item.origin,
     client: item.client,
@@ -176,8 +176,28 @@ async function dbFetchKdsOrders() {
     displayId: item.displayId || item.displayid || null
   }));
 
-  try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mapped)); } catch(e) {}
-  return mapped;
+  // Mantém dados locais que não vieram da nuvem (incluindo displayId).
+  // Assim, uma coluna ausente/nula no Supabase não troca #1 pelo ID técnico.
+  let localOrders = [];
+  try {
+    localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+  } catch(e) {
+    localOrders = [];
+  }
+
+  const localMap = new Map(localOrders.map(order => [String(order.id), order]));
+  remoteMapped.forEach(remoteOrder => {
+    const localOrder = localMap.get(String(remoteOrder.id)) || {};
+    localMap.set(String(remoteOrder.id), {
+      ...localOrder,
+      ...remoteOrder,
+      displayId: remoteOrder.displayId || remoteOrder.displayid || localOrder.displayId || localOrder.displayid || null
+    });
+  });
+
+  const mergedOrders = Array.from(localMap.values());
+  try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mergedOrders)); } catch(e) {}
+  return mergedOrders;
 }
 
 /**

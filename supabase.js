@@ -1,6 +1,6 @@
 // supabase.js - Módulo central de conexão, persistência e sincronização do Vortex Food
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3hsbWZ3a2t1YmFieXZxYW1hIiwicm9sZSI6MTc5MjM0NTQ5MCwiZXhwIjoyMTA3OTIxNDkwfQ.WiNjGtnve1frVt07mcKV3-09j7xH8o6me5lC2iA-YCE';
+const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
 
 function getSupabase() {
   if (window.supabaseClient) {

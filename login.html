@@ -12,7 +12,7 @@
     .panel { width:min(100%,420px); padding:32px; background:rgba(30,41,59,.96); border:1px solid var(--border); border-radius:20px; box-shadow:0 24px 70px #0005; }
     .brand { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
     .mark { width:46px; height:46px; display:grid; place-items:center; border-radius:13px; background:var(--accent); color:white; font-size:24px; font-weight:800; }
-    h1 { margin:0; font-size:24px; } .sub { color:var(--muted); margin:6px 0 26px; font-size:14px; }
+    h1 { margin:0; font-size:24px; } .sub { color:var(--muted); margin:6px 0 26px; font-size:14px; line-height:1.5; }
     label { display:block; margin:16px 0 7px; font-size:13px; color:#cbd5e1; }
     input { width:100%; padding:14px; border-radius:10px; border:1px solid var(--border); background:#0f172a; color:var(--text); font-size:16px; outline:none; }
     input:focus { border-color:var(--accent); box-shadow:0 0 0 3px #f9731625; }
@@ -20,61 +20,187 @@
     button:disabled { opacity:.65; cursor:wait; }
     #message { min-height:20px; margin-top:16px; font-size:13px; line-height:1.5; color:var(--muted); }
     #message.error { color:#fca5a5; } #message.success { color:#86efac; }
+    .links { display:flex; justify-content:space-between; gap:12px; margin-top:18px; font-size:13px; }
+    a, .link-button { color:#fdba74; text-decoration:none; }
+    a:hover, .link-button:hover { text-decoration:underline; }
+    .link-button { background:none; border:0; padding:0; margin:0; width:auto; font:inherit; cursor:pointer; }
     .foot { margin-top:24px; text-align:center; color:var(--muted); font-size:12px; }
+    [hidden] { display:none !important; }
   </style>
 </head>
 <body>
   <main class="panel">
     <div class="brand"><div class="mark">V</div><div><h1>Vortex Food</h1><div style="color:#94a3b8;font-size:13px;margin-top:3px">Gestão inteligente para restaurantes</div></div></div>
-    <p class="sub">Entre com o e-mail e a senha da sua conta.</p>
-    <form id="loginForm">
-      <label for="email">E-mail</label>
-      <input id="email" name="email" type="email" autocomplete="username" required placeholder="seu@email.com">
-      <label for="password">Senha</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Sua senha">
-      <button id="submitButton" type="submit">Entrar</button>
-    </form>
+
+    <section id="loginSection">
+      <p class="sub">Entre com o e-mail e a senha da sua conta.</p>
+      <form id="loginForm">
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="username" required placeholder="seu@email.com">
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Sua senha">
+        <button id="submitButton" type="submit">Entrar</button>
+      </form>
+      <div class="links">
+        <button type="button" class="link-button" id="forgotLink">Esqueci minha senha</button>
+        <a href="landing.html">Criar conta</a>
+      </div>
+    </section>
+
+    <section id="recoverySection" hidden>
+      <p class="sub">Informe o e-mail da sua conta. Enviaremos um link para redefinir sua senha.</p>
+      <form id="recoveryForm">
+        <label for="recoveryEmail">E-mail</label>
+        <input id="recoveryEmail" type="email" autocomplete="email" required placeholder="seu@email.com">
+        <button id="recoveryButton" type="submit">Enviar link de recuperação</button>
+      </form>
+      <div class="links"><button type="button" class="link-button" id="backToLogin">Voltar ao login</button></div>
+    </section>
+
+    <section id="newPasswordSection" hidden>
+      <p class="sub">Crie uma nova senha para sua conta.</p>
+      <form id="newPasswordForm">
+        <label for="newPassword">Nova senha</label>
+        <input id="newPassword" type="password" minlength="6" autocomplete="new-password" required placeholder="Mínimo de 6 caracteres">
+        <label for="confirmPassword">Confirme a nova senha</label>
+        <input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required placeholder="Digite novamente">
+        <button id="newPasswordButton" type="submit">Salvar nova senha</button>
+      </form>
+    </section>
+
     <div id="message" role="status" aria-live="polite"></div>
     <div class="foot">Acesso protegido pelo Supabase Auth</div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script>
-    const form = document.getElementById('loginForm');
-    const button = document.getElementById('submitButton');
+    const loginSection = document.getElementById('loginSection');
+    const recoverySection = document.getElementById('recoverySection');
+    const newPasswordSection = document.getElementById('newPasswordSection');
+    const loginForm = document.getElementById('loginForm');
+    const recoveryForm = document.getElementById('recoveryForm');
+    const newPasswordForm = document.getElementById('newPasswordForm');
+    const loginButton = document.getElementById('submitButton');
+    const recoveryButton = document.getElementById('recoveryButton');
+    const newPasswordButton = document.getElementById('newPasswordButton');
     const message = document.getElementById('message');
 
-    form.addEventListener('submit', async function(event) {
-      event.preventDefault();
-      message.className = '';
-      message.textContent = '';
-      button.disabled = true;
-      button.textContent = 'Entrando...';
+    function showMessage(text, type) {
+      message.className = type || '';
+      message.textContent = text || '';
+    }
 
+    function showSection(section) {
+      loginSection.hidden = section !== 'login';
+      recoverySection.hidden = section !== 'recovery';
+      newPasswordSection.hidden = section !== 'password';
+    }
+
+    document.getElementById('forgotLink').addEventListener('click', function() {
+      document.getElementById('recoveryEmail').value = document.getElementById('email').value.trim();
+      showSection('recovery');
+      showMessage('', '');
+    });
+
+    document.getElementById('backToLogin').addEventListener('click', function() {
+      showSection('login');
+      showMessage('', '');
+    });
+
+    loginForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      showMessage('', '');
+      loginButton.disabled = true;
+      loginButton.textContent = 'Entrando...';
       try {
         const result = await window.VortexAuth.signIn(
           document.getElementById('email').value,
           document.getElementById('password').value
         );
-
         if (result.error) throw result.error;
 
-        message.className = 'success';
-        message.textContent = 'Login realizado. Sua sessão foi iniciada.';
-        button.textContent = 'Acesso confirmado';
+        const registration = await window.VortexAuth.completeStoreRegistration();
+        if (registration.error) {
+          throw new Error('Sua conta entrou, mas não foi possível finalizar o cadastro do estabelecimento: ' + registration.error.message);
+        }
 
-        setTimeout(function() {
-          window.location.href = 'index.html';
-        }, 900);
+        showMessage('Login realizado. Abrindo o Vortex Food...', 'success');
+        loginButton.textContent = 'Acesso confirmado';
+        window.setTimeout(function() { window.location.href = 'index.html'; }, 700);
       } catch (error) {
-        message.className = 'error';
-        message.textContent = error && error.message
-          ? error.message
-          : 'Não foi possível entrar. Confira seus dados e tente novamente.';
-        button.disabled = false;
-        button.textContent = 'Entrar';
+        showMessage(error && error.message ? error.message : 'Não foi possível entrar. Confira seus dados e tente novamente.', 'error');
+        loginButton.disabled = false;
+        loginButton.textContent = 'Entrar';
       }
     });
+
+    recoveryForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      recoveryButton.disabled = true;
+      recoveryButton.textContent = 'Enviando...';
+      showMessage('', '');
+      try {
+        const result = await window.VortexAuth.resetPassword(document.getElementById('recoveryEmail').value);
+        if (result.error) throw result.error;
+        showMessage('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha. Confira também o spam.', 'success');
+      } catch (error) {
+        showMessage(error && error.message ? error.message : 'Não foi possível enviar o link. Tente novamente.', 'error');
+      } finally {
+        recoveryButton.disabled = false;
+        recoveryButton.textContent = 'Enviar link de recuperação';
+      }
+    });
+
+    newPasswordForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const password = document.getElementById('newPassword').value;
+      const confirmation = document.getElementById('confirmPassword').value;
+      if (password !== confirmation) {
+        showMessage('As senhas não são iguais. Confira e tente novamente.', 'error');
+        return;
+      }
+      newPasswordButton.disabled = true;
+      newPasswordButton.textContent = 'Salvando...';
+      try {
+        const result = await window.VortexAuth.updatePassword(password);
+        if (result.error) throw result.error;
+        await window.VortexAuth.signOut();
+        showSection('login');
+        document.getElementById('password').value = '';
+        showMessage('Senha alterada com sucesso. Entre usando sua nova senha.', 'success');
+      } catch (error) {
+        showMessage(error && error.message ? error.message : 'Não foi possível alterar a senha. Solicite um novo link.', 'error');
+      } finally {
+        newPasswordButton.disabled = false;
+        newPasswordButton.textContent = 'Salvar nova senha';
+      }
+    });
+
+    (async function initializeLogin() {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const isRecoveryLink = hashParams.get('type') === 'recovery';
+        const sessionResult = await window.VortexAuth.getSession();
+        if (sessionResult.error) throw sessionResult.error;
+
+        const supabaseClient = window.supabaseClient;
+        if (supabaseClient && supabaseClient.auth) {
+          supabaseClient.auth.onAuthStateChange(function(event) {
+            if (event === 'PASSWORD_RECOVERY') {
+              showSection('password');
+              showMessage('Link de recuperação confirmado. Defina sua nova senha.', 'success');
+            }
+          });
+        }
+
+        if (isRecoveryLink && sessionResult.session) {
+          showSection('password');
+          showMessage('Defina sua nova senha.', 'success');
+        }
+      } catch (error) {
+        showMessage('Não foi possível verificar a sessão. Atualize a página e tente novamente.', 'error');
+      }
+    })();
   </script>
 </body>
 </html>

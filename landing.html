@@ -739,38 +739,39 @@
                 <div class="modal-title">Crie sua conta no Vortex Food</div>
                 <div class="modal-sub">30 dias grátis + condições especiais de lançamento!</div>
 
-                <form onsubmit="concluirCadastro(event)">
+                <form id="signup-form" onsubmit="concluirCadastro(event)">
                     <div class="form-group">
                         <label>Nome do Restaurante / Estabelecimento *</label>
-                        <input type="text" required placeholder="Ex: Burger Gourmet da Vila">
+                        <input id="signup-store" name="store_name" type="text" required autocomplete="organization" placeholder="Ex: Burger Gourmet da Vila">
                     </div>
 
                     <div class="form-group">
                         <label>Nome Completo do Responsável *</label>
-                        <input type="text" required placeholder="Ex: João da Silva">
+                        <input id="signup-contact" name="contact_name" type="text" required autocomplete="name" placeholder="Ex: João da Silva">
                     </div>
 
                     <div class="form-group">
                         <label>CPF ou CNPJ *</label>
-                        <input type="text" required placeholder="000.000.000-00">
+                        <input id="signup-document" name="document" type="text" required placeholder="000.000.000-00">
                     </div>
 
                     <div class="form-group">
                         <label>WhatsApp / Telemóvel *</label>
-                        <input type="tel" required placeholder="(11) 99999-9999">
+                        <input id="signup-whatsapp" name="whatsapp" type="tel" required autocomplete="tel" placeholder="(11) 99999-9999">
                     </div>
 
                     <div class="form-group">
                         <label>E-mail (para login) *</label>
-                        <input type="email" required placeholder="seuemail@restaurante.com">
+                        <input id="signup-email" name="email" type="email" required autocomplete="email" placeholder="seuemail@restaurante.com">
                     </div>
 
                     <div class="form-group">
                         <label>Crie uma Palavra-passe *</label>
-                        <input type="password" required placeholder="••••••••">
+                        <input id="signup-password" name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
                     </div>
 
-                    <button type="submit" class="btn-submit">Concluir Cadastro & Iniciar Teste</button>
+                    <div id="signup-message" role="status" aria-live="polite" style="min-height:20px;margin-top:10px;color:var(--text-muted);font-size:13px;"></div>
+                    <button id="signup-submit" type="submit" class="btn-submit">Concluir Cadastro & Iniciar Teste</button>
                 </form>
                 <button class="btn-close" onclick="fecharModal()">Cancelar</button>
             </div>
@@ -778,11 +779,11 @@
             <!-- TELA DE SUCESSO -->
             <div id="success-container" class="success-box">
                 <div style="font-size: 50px; margin-bottom: 10px;">🎉</div>
-                <h3 style="margin: 0 0 10px 0; color: #fff;">Conta Criada com Sucesso!</h3>
-                <p style="font-size: 14px; color: var(--text-muted);">O seu período de <strong>30 dias grátis</strong> foi ativado com sucesso. O seu painel de gestão está pronto.</p>
+                <h3 id="success-title" style="margin: 0 0 10px 0; color: #fff;">Conta Criada com Sucesso!</h3>
+                <p id="success-message" style="font-size: 14px; color: var(--text-muted);">Seu cadastro foi concluído.</p>
                 
                 <button class="btn-access-system" onclick="irParaOSistema()">
-                    Acessar Sistema Vortex Food 🚀
+                    Ir para o Login Vortex Food 🚀
                 </button>
             </div>
 
@@ -793,6 +794,8 @@
         <p>&copy; 2026 Vortex Food. Todos os direitos reservados. Tecnologia de ponta para restaurantes.</p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
     <script>
         function toggleModulos() {
             const list = document.getElementById('modules-list');
@@ -809,15 +812,58 @@
             document.getElementById('modal-cadastro').classList.remove('active');
         }
 
-        function concluirCadastro(e) {
-            e.preventDefault();
+        function mostrarResultadoCadastro(title, message) {
             document.getElementById('form-container').style.display = 'none';
+            document.getElementById('success-title').textContent = title;
+            document.getElementById('success-message').textContent = message;
             document.getElementById('success-container').classList.add('active');
         }
 
+        async function concluirCadastro(e) {
+            e.preventDefault();
+            const form = document.getElementById('signup-form');
+            const button = document.getElementById('signup-submit');
+            const message = document.getElementById('signup-message');
+            message.textContent = '';
+            button.disabled = true;
+            button.textContent = 'Criando sua conta...';
+
+            const storeData = {
+                store_name: document.getElementById('signup-store').value.trim(),
+                contact_name: document.getElementById('signup-contact').value.trim(),
+                document: document.getElementById('signup-document').value.trim(),
+                whatsapp: document.getElementById('signup-whatsapp').value.trim()
+            };
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+
+            try {
+                if (!window.VortexAuth) throw new Error('O sistema de cadastro ainda não carregou. Atualize a página e tente novamente.');
+                const result = await window.VortexAuth.signUp(email, password, storeData);
+                if (result.error) throw result.error;
+
+                if (result.needsEmailConfirmation) {
+                    mostrarResultadoCadastro(
+                        'Confirme seu e-mail',
+                        'Enviamos uma mensagem de confirmação para ' + email + '. Abra o link recebido e depois entre no Vortex Food para concluir a ativação dos seus 30 dias grátis.'
+                    );
+                } else {
+                    mostrarResultadoCadastro(
+                        'Conta criada com sucesso!',
+                        'Seu estabelecimento foi cadastrado e o período de teste grátis de 30 dias foi ativado. Agora entre no sistema com seu e-mail e senha.'
+                    );
+                }
+            } catch (error) {
+                message.textContent = error && error.message
+                    ? error.message
+                    : 'Não foi possível concluir o cadastro. Confira os dados e tente novamente.';
+                button.disabled = false;
+                button.textContent = 'Tentar novamente';
+            }
+        }
+
         function irParaOSistema() {
-            alert('Redirecionando para o Painel Interno do Vortex Food...');
-            // window.location.href = 'index.html'; // Altere para o link do seu dashboard interno se necessário
+            window.location.href = 'login.html';
         }
     </script>
 

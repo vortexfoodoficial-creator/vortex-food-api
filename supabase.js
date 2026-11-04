@@ -474,8 +474,78 @@ async function vortexGetCurrentUser() {
   return { user: data ? data.user : null, error };
 }
 
+
+async function vortexSignUp(email, password, storeData) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const metadata = {
+    store_name: String(storeData.store_name || '').trim(),
+    contact_name: String(storeData.contact_name || '').trim(),
+    document: String(storeData.document || '').trim(),
+    whatsapp: String(storeData.whatsapp || '').trim(),
+    legal_name: String(storeData.legal_name || '').trim()
+  };
+
+  const { data, error } = await supabase.auth.signUp({
+    email: String(email || '').trim(),
+    password: String(password || ''),
+    options: { data: metadata }
+  });
+  if (error) return { data, error };
+
+  if (data && data.session) {
+    const registration = await vortexCompleteStoreRegistration();
+    if (registration.error) return { data, error: registration.error };
+    return { data, registration, needsEmailConfirmation: false, error: null };
+  }
+
+  return { data, registration: null, needsEmailConfirmation: true, error: null };
+}
+
+async function vortexCompleteStoreRegistration() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) return { data: null, error: sessionError };
+  if (!sessionData || !sessionData.session) {
+    return { data: null, error: new Error('Confirme seu e-mail e entre na sua conta para concluir o cadastro.') };
+  }
+  const { data, error } = await supabase.rpc('rpc_complete_store_registration');
+  return { data, error };
+}
+
+async function vortexGetSubscription(storeId) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  const { data, error } = await supabase
+    .from('vortex_subscriptions')
+    .select('id, store_id, plan_code, status, trial_started_at, trial_ends_at, current_period_start, current_period_end, grace_period_ends_at')
+    .eq('store_id', storeId)
+    .maybeSingle();
+  return { data, error };
+}
+
+async function vortexResetPassword(email) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
+  const redirectTo = window.location.origin + window.location.pathname;
+  return await supabase.auth.resetPasswordForEmail(String(email || '').trim(), { redirectTo });
+}
+
+async function vortexUpdatePassword(newPassword) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.auth.updateUser({ password: String(newPassword || '') });
+}
+
 window.VortexAuth = {
   signIn: vortexSignIn,
+  signUp: vortexSignUp,
+  completeStoreRegistration: vortexCompleteStoreRegistration,
+  getSubscription: vortexGetSubscription,
+  resetPassword: vortexResetPassword,
+  updatePassword: vortexUpdatePassword,
   signOut: vortexSignOut,
   getSession: vortexGetSession,
   getCurrentUser: vortexGetCurrentUser

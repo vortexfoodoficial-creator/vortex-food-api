@@ -7,7 +7,7 @@ function getSupabase() {
     return window.supabaseClient;
   }
   if (window.supabase && typeof window.supabase.createClient === 'function') {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     return window.supabaseClient;
   }
   console.warn('SDK do Supabase ainda não foi carregado pelo navegador.');
@@ -432,3 +432,51 @@ async function dbFetchCatalogResult() {
 async function dbFetchStoreSettingsResult() {
   try { return { data: await dbFetchStoreSettings(), error: null }; } catch (err) { return { data: null, error: err }; }
 }
+
+
+// ============================================================
+// AUTENTICAÇÃO CENTRAL — SUPABASE AUTH
+// Esta etapa disponibiliza login e sessão, sem bloquear módulos.
+// A autorização por restaurante será ativada após configurar RLS.
+// ============================================================
+
+async function vortexSignIn(email, password) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: String(email || '').trim(),
+    password: String(password || '')
+  });
+
+  return { data, error };
+}
+
+async function vortexSignOut() {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.auth.signOut();
+}
+
+async function vortexGetSession() {
+  const supabase = getSupabase();
+  if (!supabase) return { session: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const { data, error } = await supabase.auth.getSession();
+  return { session: data ? data.session : null, error };
+}
+
+async function vortexGetCurrentUser() {
+  const supabase = getSupabase();
+  if (!supabase) return { user: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const { data, error } = await supabase.auth.getUser();
+  return { user: data ? data.user : null, error };
+}
+
+window.VortexAuth = {
+  signIn: vortexSignIn,
+  signOut: vortexSignOut,
+  getSession: vortexGetSession,
+  getCurrentUser: vortexGetCurrentUser
+};

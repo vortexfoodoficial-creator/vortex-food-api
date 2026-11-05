@@ -1436,7 +1436,7 @@
       if (!o) return;
 
       const visibleNum = o.displayId || o.id;
-      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'BESTBURGUERS' };
+      const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       const itemsHtml = o.items ? o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('') : '';
 
       let trocoPrintHtml = '';

@@ -678,6 +678,7 @@
             localStorage.setItem('vortex_products_catalog', JSON.stringify(cloudCatalog.products));
             localStorage.setItem('vortex_groups_catalog', JSON.stringify(cloudCatalog.groups));
             if (Array.isArray(cloudCatalog.complements)) localStorage.setItem('vortex_complements_catalog', JSON.stringify(cloudCatalog.complements));
+            if (Array.isArray(cloudCatalog.complements)) localStorage.setItem('vortex_complements_catalog', JSON.stringify(cloudCatalog.complements));
           }
         }
       } catch (e) {}
@@ -799,7 +800,8 @@
         if (typeof dbSaveCatalog === 'function') {
           await dbSaveCatalog({
             products: getProducts(),
-            groups: getGroups()
+            groups: getGroups(),
+            complements: getComplements()
           });
         }
       } catch (e) {}

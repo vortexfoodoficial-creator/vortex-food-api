@@ -571,6 +571,7 @@
             .from('cash_shifts')
             .insert([{
               id: currentCashData.shiftId,
+              store_id: window.VORTEX_ACTIVE_STORE_ID,
               operator: op,
               initial_balance: bal,
               opened_at: openedTimeIso,
@@ -670,6 +671,7 @@
       }
 
       const financialPayload = {
+        store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: entryId,
         type: financialType,
         description: descriptiveText,

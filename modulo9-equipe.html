@@ -409,33 +409,28 @@
       localStorage.setItem('vortex_couriers', JSON.stringify(finalCouriers));
     }
 
-    // CARREGAR COLABORADORES DO SUPABASE OU LOCALSTORAGE
+    // CARREGA A EQUIPE DA LOJA ATIVA, COM CACHE LOCAL SEPARADO POR LOJA
     async function loadStaffData() {
       let loaded = false;
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+      if (typeof dbFetchStoreDocument === 'function') {
         try {
-          const { data, error } = await supabaseClient.from('vortex_staff').select('*');
-          if (data) {
-            staffMembers = data;
+          const cloudStaff = await dbFetchStoreDocument('staff');
+          if (Array.isArray(cloudStaff)) {
+            staffMembers = cloudStaff;
             loaded = true;
+            localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
           }
         } catch (e) {}
       }
-
       if (!loaded) {
         const local = localStorage.getItem('vortex_team_members');
         if (local) {
-          try { staffMembers = JSON.parse(local); } catch(e){}
+          try { staffMembers = JSON.parse(local); } catch(e) { staffMembers = []; }
         } else {
           staffMembers = [];
         }
       }
-
-      // Garante que todo colaborador carregado tenha status ativo por padrão se ausente
-      staffMembers.forEach(m => {
-        if (!m.status) m.status = 'ativo';
-      });
-
+      staffMembers.forEach(m => { if (!m.status) m.status = 'ativo'; });
       renderStaffTable();
       calculateStaffMetrics();
     }
@@ -567,13 +562,11 @@
       // Sincroniza com a tabela de entregadores do Módulo 21
       syncCouriersStorage(staffMembers);
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        try {
-          await supabaseClient.from('vortex_staff').upsert([newRecord]);
-        } catch(e){}
+      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+      if (typeof dbSaveStoreDocument === 'function') {
+        try { await dbSaveStoreDocument('staff', staffMembers); } catch(e) {}
       }
 
-      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
       closeStaffModal();
@@ -607,13 +600,11 @@
       couriers = couriers.filter(c => c.name.trim().toLowerCase() !== memberName);
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
 
-      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        try {
-          await supabaseClient.from('vortex_staff').delete().eq('id', id);
-        } catch(e){}
+      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+      if (typeof dbSaveStoreDocument === 'function') {
+        try { await dbSaveStoreDocument('staff', staffMembers); } catch(e) {}
       }
 
-      localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
       renderStaffTable();
       calculateStaffMetrics();
       showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');

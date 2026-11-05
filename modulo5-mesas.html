@@ -230,6 +230,7 @@
         <span>🍽️ Gestão do Atendimento de Mesas</span>
         <div style="display:flex; gap:8px;">
           <button onclick="addTable()" style="background:var(--success); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.8rem;">➕ Adicionar Mesa</button>
+          <button id="publicRequestsButton" onclick="openPublicRequestsModal()" style="background:var(--warning); color:#111; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.8rem;">🔔 Solicitações (0)</button>
           <button onclick="removeTable()" style="background:var(--danger); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.8rem;">➖ Remover Mesa</button>
         </div>
       </div>
@@ -329,6 +330,14 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="publicRequestsModal">
+    <div class="custom-modal-card" style="max-width:520px; text-align:left;">
+      <div style="font-size:1.15rem; font-weight:bold; margin-bottom:12px;">🔔 Solicitações das mesas</div>
+      <div id="publicRequestsList" style="display:flex; flex-direction:column; gap:10px; max-height:55vh; overflow:auto;"></div>
+      <button class="btn-modal-secondary" onclick="closePublicRequestsModal()" style="margin-top:14px;">Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL DE NOTIFICAÇÃO MODERNA -->
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
@@ -350,6 +359,9 @@
     let tempCart = [];
     let rawCashGiven = 0;
     let isQrEnabled = false;
+    let pendingPublicRequests = [];
+    let knownPublicRequestIds = new Set();
+    let publicRequestsInitialized = false;
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -449,13 +461,24 @@
       return { data, error };
     }
 
-    function toggleQrFeature(enabled) {
-      isQrEnabled = enabled;
-      localStorage.setItem('vortex_qr_enabled', enabled ? 'true' : 'false');
-      document.getElementById('qrStatusText').innerText = enabled ? 'Ativado' : 'Desativado';
-      document.getElementById('qrStatusText').style.color = enabled ? 'var(--success)' : 'var(--text-muted)';
-      renderMesas();
-      showNoticeModal('Recurso Atualizado', enabled ? 'Autoatendimento e Fechamento via QR Code ATIVADOS!' : 'Fechamento via QR Code DESATIVADO pelo estabelecimento.', enabled ? '📱' : '🔒');
+    async function toggleQrFeature(enabled) {
+      const toggle = document.getElementById('qrEnableToggle');
+      toggle.disabled = true;
+      try {
+        const result = await dbSavePublicQrEnabled(enabled);
+        if (result && result.error) throw result.error;
+        isQrEnabled = !!enabled;
+        localStorage.setItem('vortex_qr_enabled', isQrEnabled ? 'true' : 'false');
+        document.getElementById('qrStatusText').innerText = isQrEnabled ? 'Ativado' : 'Desativado';
+        document.getElementById('qrStatusText').style.color = isQrEnabled ? 'var(--success)' : 'var(--text-muted)';
+        renderMesas();
+        showNoticeModal('Recurso Atualizado', enabled ? 'Solicitações por QR Code ativadas.' : 'Solicitações por QR Code desativadas.', enabled ? '📱' : '🔒');
+      } catch (error) {
+        toggle.checked = isQrEnabled;
+        showNoticeModal('Não foi possível atualizar', error.message || 'Falha ao salvar a configuração na nuvem.', '⚠️');
+      } finally {
+        toggle.disabled = false;
+      }
     }
 
     function renderMesas() {
@@ -858,13 +881,84 @@
       showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
     }
 
+    function escapeRequestText(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
+
+    async function refreshPublicTableRequests() {
+      try {
+        const requests = await dbFetchPublicTableRequests();
+        pendingPublicRequests = Array.isArray(requests) ? requests : [];
+        const button = document.getElementById('publicRequestsButton');
+        if (button) button.innerText = '🔔 Solicitações (' + pendingPublicRequests.length + ')';
+        if (publicRequestsInitialized) {
+          const newRequests = pendingPublicRequests.filter(request => !knownPublicRequestIds.has(String(request.id)));
+          if (newRequests.length) {
+            showNoticeModal('Nova solicitação de mesa', newRequests.length + ' nova(s) solicitação(ões) aguardam atendimento.', '🔔');
+          }
+        }
+        pendingPublicRequests.forEach(request => knownPublicRequestIds.add(String(request.id)));
+        publicRequestsInitialized = true;
+        if (document.getElementById('publicRequestsModal').classList.contains('active')) renderPublicRequests();
+      } catch (error) {
+        console.warn('Não foi possível atualizar as solicitações das mesas:', error);
+      }
+    }
+
+    function renderPublicRequests() {
+      const list = document.getElementById('publicRequestsList');
+      if (!pendingPublicRequests.length) {
+        list.innerHTML = '<p style="color:var(--text-muted);">Nenhuma solicitação pendente.</p>';
+        return;
+      }
+      list.innerHTML = pendingPublicRequests.map(request => {
+        const label = request.request_type === 'request_bill' ? '🧾 Pediu a conta' : '🙋 Chamou o garçom';
+        const time = request.created_at ? new Date(request.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        return '<div style="border:1px solid var(--border); border-radius:10px; padding:12px;">' +
+          '<strong>Mesa ' + escapeRequestText(request.table_number) + ' — ' + label + '</strong>' +
+          '<div style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 8px;">' + escapeRequestText(time) + '</div>' +
+          '<button class="btn-modal-primary" onclick="resolvePublicTableRequest(\'' + escapeRequestText(request.id) + '\')">Marcar como atendida</button></div>';
+      }).join('');
+    }
+
+    function openPublicRequestsModal() {
+      renderPublicRequests();
+      document.getElementById('publicRequestsModal').classList.add('active');
+    }
+
+    function closePublicRequestsModal() {
+      document.getElementById('publicRequestsModal').classList.remove('active');
+    }
+
+    async function resolvePublicTableRequest(requestId) {
+      const result = await dbResolvePublicTableRequest(requestId);
+      if (result && result.error) {
+        showNoticeModal('Erro', result.error.message || 'Não foi possível atualizar a solicitação.', '⚠️');
+        return;
+      }
+      pendingPublicRequests = pendingPublicRequests.filter(request => String(request.id) !== String(requestId));
+      knownPublicRequestIds.delete(String(requestId));
+      renderPublicRequests();
+      const button = document.getElementById('publicRequestsButton');
+      if (button) button.innerText = '🔔 Solicitações (' + pendingPublicRequests.length + ')';
+    }
+
     function openQrModal(mesaNum) {
       if (!isQrEnabled) {
         showNoticeModal('Recurso Desativado', 'Ative a chave de fechamento via QR Code no topo da página para visualizar e imprimir as etiquetas.', '🔒');
         return;
       }
+      const storeId = window.VORTEX_ACTIVE_STORE_ID;
+      if (!storeId) {
+        showNoticeModal('Estabelecimento não identificado', 'Atualize a página e tente novamente.', '⚠️');
+        return;
+      }
+      const clientPage = window.location.origin + window.location.pathname.replace(/modulo5-mesas\.html$/, 'cliente-mesa.html');
+      const publicUrl = clientPage + '?store=' + encodeURIComponent(storeId) + '&mesa=' + encodeURIComponent(mesaNum);
       document.getElementById('qrModalTitle').innerText = `📱 QR Code Exclusivo - Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
-      document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://vortexfoodoficial-creator.github.io/vortex/cardapio.html?mesa=${mesaNum}`;
+      document.getElementById('qrCodeImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(publicUrl);
       document.getElementById('qrModal').classList.add('active');
     }
 
@@ -906,8 +1000,15 @@
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
+    window.onload = async function() {
+      loadStoreSettings();
+      isQrEnabled = await dbFetchPublicQrEnabled();
+      document.getElementById('qrEnableToggle').checked = isQrEnabled;
+      document.getElementById('qrStatusText').innerText = isQrEnabled ? 'Ativado' : 'Desativado';
+      document.getElementById('qrStatusText').style.color = isQrEnabled ? 'var(--success)' : 'var(--text-muted)';
       renderMesas();
+      await refreshPublicTableRequests();
+      setInterval(refreshPublicTableRequests, 10000);
     };
   </script>
 </body>

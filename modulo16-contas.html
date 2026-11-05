@@ -693,9 +693,10 @@
     }
 
     async function syncSupabaseContas() {
-      if (window.supabaseClient) {
+      if (typeof dbSaveStoreDocument === 'function') {
         try {
-          await window.supabaseClient.from('vortex_contas').upsert([{ id: 1, data: contasData }]);
+          const result = await dbSaveStoreDocument('accounts', contasData);
+          if (result && result.error) throw result.error;
         } catch (err) {
           console.warn('Aviso Supabase Contas:', err);
         }

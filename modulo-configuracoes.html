@@ -79,6 +79,10 @@
     header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; flex-wrap: wrap; }
     .header-left { display: flex; align-items: center; gap: 15px; }
     .toggle-btn { display: none; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+    .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+    .btn-logout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: rgba(239, 68, 68, 0.12); color: var(--danger); border: 1px solid var(--danger); border-radius: 9px; padding: 9px 14px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+    .btn-logout:hover { background: rgba(239, 68, 68, 0.2); transform: translateY(-1px); }
+    .btn-logout-bottom { width: 100%; max-width: 900px; margin: 12px 0 30px; padding: 13px 18px; }
 
     .config-container {
       display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin-bottom: 40px;
@@ -249,8 +253,11 @@
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
         <h1>Configurações do Estabelecimento</h1>
       </div>
-      <div style="font-size: 0.9rem; color: var(--text-muted);">
-        🕒 <span id="currentTimeHeader">--:--:--</span>
+      <div class="header-actions">
+        <div style="font-size: 0.9rem; color: var(--text-muted);">
+          🕒 <span id="currentTimeHeader">--:--:--</span>
+        </div>
+        <button type="button" class="btn-logout" onclick="logoutFromSettings()" aria-label="Sair da conta">🚪 Sair</button>
       </div>
     </header>
 
@@ -562,9 +569,10 @@
         </div>
       </div>
 
-      <button class="btn-save" onclick="saveAllSettings()">Salvar Todas as Configurações 💾</button>
+      <button type="button" class="btn-save" onclick="saveAllSettings()">Salvar Todas as Configurações 💾</button>
 
     </div>
+    <button type="button" class="btn-logout btn-logout-bottom" onclick="logoutFromSettings()">🚪 Sair da conta</button>
   </main>
 
   <!-- MODAL DE AVISO -->
@@ -702,6 +710,20 @@
       renderBairrosList();
       renderKmRangesList();
 
+      // Garante que o armazenamento local e as consultas usem a loja autenticada.
+      let activeStoreId = null;
+      try {
+        activeStoreId = typeof vortexGetCurrentStoreId === 'function'
+          ? await vortexGetCurrentStoreId()
+          : (window.VORTEX_ACTIVE_STORE_ID || null);
+      } catch (error) {
+        console.error('Não foi possível identificar a loja para carregar as configurações:', error);
+      }
+      if (!activeStoreId) {
+        showNoticeModal('Loja não identificada', 'Não foi possível confirmar o estabelecimento desta conta. Atualize a página e tente novamente.', '⚠️');
+        return;
+      }
+
       let settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
 
       // Recupera as configurações completas deste estabelecimento para outros dispositivos.
@@ -725,18 +747,24 @@
         }
       }
 
-      // Sincroniza também os campos principais na tabela de configurações.
+      // A tabela relacional serve como complemento. O documento completo é a
+      // fonte principal para o nome, evitando que um registro antigo o sobrescreva.
       if (window.supabaseClient) {
         try {
-          const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).limit(1);
+          const { data, error } = await window.supabaseClient.from('vortex_store_settings').select('*').eq('store_id', activeStoreId).limit(1);
+          if (error) throw error;
           if (data && data.length > 0) {
             const row = data[0];
-            settings.storeName = row.store_name || row.nome || settings.storeName || '';
-            settings.street = row.store_address || row.endereco || settings.street || '';
-            settings.phone = row.phone || row.tel || settings.phone || '';
-            settings.email = row.email || settings.email || '';
+            if (!String(settings.storeName || '').trim()) {
+              settings.storeName = row.store_name || row.nome || '';
+            }
+            settings.street = settings.street || row.store_address || row.endereco || '';
+            settings.phone = settings.phone || row.phone || row.tel || '';
+            settings.email = settings.email || row.email || '';
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Não foi possível complementar as configurações pela tabela principal:', e);
+        }
       }
 
       document.getElementById('storeNameInput').value = settings.storeName || '';
@@ -896,6 +924,19 @@
 
     /* SALVAR TODAS AS CONFIGURAÇÕES E UNIFICAR COM O SUPABASE E DELIVERY */
     async function saveAllSettings() {
+      let activeStoreId = null;
+      try {
+        activeStoreId = typeof vortexGetCurrentStoreId === 'function'
+          ? await vortexGetCurrentStoreId()
+          : (window.VORTEX_ACTIVE_STORE_ID || null);
+      } catch (error) {
+        console.error('Não foi possível identificar a loja para salvar as configurações:', error);
+      }
+      if (!activeStoreId) {
+        showNoticeModal('Loja não identificada', 'As configurações não foram enviadas. Atualize a página e entre novamente na sua conta.', '⚠️');
+        return;
+      }
+
       const storeName = document.getElementById('storeNameInput').value.trim();
       const legalName = document.getElementById('legalNameInput').value.trim();
       const storeType = document.getElementById('storeTypeSelect').value;
@@ -971,6 +1012,7 @@
 
       // 1. Grava no localStorage unificado para acesso imediato do Módulo 21
       localStorage.setItem('vortex_store_settings', JSON.stringify(payload));
+      document.getElementById('sidebarStoreName').innerText = storeName || 'MEU ESTABELECIMENTO';
       localStorage.setItem('vortex_store_address', fullAddress);
       localStorage.setItem('vortex_endereco', fullAddress);
 
@@ -999,7 +1041,7 @@
       if (window.supabaseClient) {
         try {
           const dbPayload = {
-            store_id: window.VORTEX_ACTIVE_STORE_ID,
+            store_id: activeStoreId,
             id: 1,
             store_name: storeName,
             store_address: fullAddress,
@@ -1024,11 +1066,26 @@
         cloudSyncMessage = cloudSyncMessage || 'Conexão com a nuvem indisponível.';
       }
 
-      loadStoreSettings();
+      await loadStoreSettings();
       if (cloudSyncSuccess) {
         showNoticeModal('Configurações Salvas!', 'As configurações foram salvas neste estabelecimento e sincronizadas com a nuvem.', '🎉');
       } else {
         showNoticeModal('Salvo neste aparelho', 'As alterações ficaram salvas localmente, mas a sincronização com a nuvem não foi confirmada. ' + cloudSyncMessage + ' Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+      }
+    }
+
+    async function logoutFromSettings() {
+      try {
+        if (!window.VortexAuth || typeof window.VortexAuth.signOut !== 'function') {
+          throw new Error('A função de encerramento da sessão não está disponível.');
+        }
+        const result = await window.VortexAuth.signOut();
+        if (result && result.error) throw result.error;
+        window.VORTEX_ACTIVE_STORE_ID = null;
+        window.location.replace('login.html');
+      } catch (error) {
+        console.error('Não foi possível encerrar a sessão:', error);
+        showNoticeModal('Não foi possível sair', error && error.message ? error.message : 'Tente novamente.', '⚠️');
       }
     }
 

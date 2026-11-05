@@ -409,7 +409,8 @@
     // CARREGA A EQUIPE DA LOJA ATIVA, COM CACHE LOCAL SEPARADO POR LOJA
     async function loadStaffData() {
       let loaded = false;
-      if (typeof dbFetchStoreDocument === 'function') {
+      const hasPendingLocalSync = localStorage.getItem('vortex_team_sync_pending') === 'true';
+      if (!hasPendingLocalSync && typeof dbFetchStoreDocument === 'function') {
         try {
           const cloudStaff = await dbFetchStoreDocument('staff');
           if (Array.isArray(cloudStaff)) {
@@ -427,7 +428,7 @@
           staffMembers = [];
         }
       }
-      if (typeof dbFetchStoreDocument === 'function') {
+      if (!hasPendingLocalSync && typeof dbFetchStoreDocument === 'function') {
         try {
           const cloudCouriers = await dbFetchStoreDocument('couriers');
           if (Array.isArray(cloudCouriers)) localStorage.setItem('vortex_couriers', JSON.stringify(cloudCouriers));
@@ -575,8 +576,13 @@
         console.warn('Colaborador salvo localmente; falha ao sincronizar equipe/entregadores:', e);
       }
       renderStaffTable(); calculateStaffMetrics(); closeStaffModal();
-      if (cloudError) showCustomAlert('Salvo no Dispositivo', 'O colaborador foi mantido neste dispositivo, mas a sincronização da equipe/entregadores não foi confirmada. Verifique a conexão e tente salvar novamente.', '⚠️');
-      else showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
+      if (cloudError) {
+        localStorage.setItem('vortex_team_sync_pending', 'true');
+        showCustomAlert('Salvo no Dispositivo', 'O colaborador foi mantido neste dispositivo, mas a sincronização da equipe/entregadores não foi confirmada. Verifique a conexão e tente salvar novamente.', '⚠️');
+      } else {
+        localStorage.removeItem('vortex_team_sync_pending');
+        showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
+      }
     }
 
     function confirmDeleteStaff(id) {
@@ -614,8 +620,13 @@
         if (!courierResult || courierResult.error) throw (courierResult && courierResult.error) || new Error('Os entregadores não foram confirmados na nuvem.');
       } catch (e) { cloudError = e; console.warn('Exclusão salva localmente; falha ao sincronizar equipe/entregadores:', e); }
       renderStaffTable(); calculateStaffMetrics();
-      if (cloudError) showCustomAlert('Removido no Dispositivo', 'A remoção foi mantida neste dispositivo, mas não foi confirmada na nuvem. Verifique a conexão e tente novamente.', '⚠️');
-      else showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
+      if (cloudError) {
+        localStorage.setItem('vortex_team_sync_pending', 'true');
+        showCustomAlert('Removido no Dispositivo', 'A remoção foi mantida neste dispositivo, mas não foi confirmada na nuvem. Verifique a conexão e tente novamente.', '⚠️');
+      } else {
+        localStorage.removeItem('vortex_team_sync_pending');
+        showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
+      }
     }
 
     setInterval(() => {

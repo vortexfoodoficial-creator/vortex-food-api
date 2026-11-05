@@ -721,9 +721,18 @@
       document.getElementById('currentTimeHeader').innerText = now.toLocaleTimeString('pt-BR');
     }, 1000);
 
-    window.onload = function() {
+    window.onload = async function() {
       applyTheme();
       loadStoreBrand();
+      if (typeof dbFetchStoreDocument === 'function') {
+        try {
+          const cloudData = await dbFetchStoreDocument('accounts');
+          if (Array.isArray(cloudData)) {
+            contasData = cloudData;
+            localStorage.setItem('vortex_contas_data', JSON.stringify(contasData));
+          }
+        } catch (e) {}
+      }
       renderContasTable();
     };
   </script>

@@ -368,7 +368,7 @@
       try {
         if (typeof dbFetchCoupons === 'function') {
           const cloudCoupons = await dbFetchCoupons();
-          if (cloudCoupons && cloudCoupons.length > 0) {
+          if (Array.isArray(cloudCoupons)) {
             localStorage.setItem('vortex_coupons_catalog', JSON.stringify(cloudCoupons));
           }
         }

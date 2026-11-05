@@ -164,6 +164,16 @@ BEGIN
 END;
 $;
 
+-- Armazenamento JSON por estabelecimento para módulos que ainda não possuem
+-- tabelas relacionais próprias (equipe, fichas, compras, contas, impressora etc.).
+CREATE TABLE IF NOT EXISTS public.vortex_store_documents (
+  store_id uuid NOT NULL REFERENCES public.vortex_stores(id) ON DELETE CASCADE,
+  document_key text NOT NULL,
+  data jsonb NOT NULL DEFAULT 'null'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT vortex_store_documents_pkey PRIMARY KEY (store_id, document_key)
+);
+
 -- Chaves que precisam ser únicas dentro de cada estabelecimento.
 ALTER TABLE public.vortex_integrations DROP CONSTRAINT IF EXISTS vortex_integrations_pkey;
 ALTER TABLE public.vortex_integrations
@@ -215,7 +225,8 @@ BEGIN
     'vortex_sales_history',
     'vortex_stock_items',
     'vortex_stock_movements',
-    'vortex_store_settings'
+    'vortex_store_settings',
+    'vortex_store_documents'
   ]
   LOOP
     FOR p IN

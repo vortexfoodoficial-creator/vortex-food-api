@@ -583,5 +583,74 @@ window.VortexAuth = {
   updatePassword: vortexUpdatePassword,
   signOut: vortexSignOut,
   getSession: vortexGetSession,
-  getCurrentUser: vortexGetCurrentUser
+  getCurrentUser: vortexGetCurrentUser,
+  requireAuthenticatedPage: vortexRequireAuthenticatedPage
 };
+
+function vortexRequireAuthenticatedPage() {
+  const protectedPages = new Set([
+    'index.html',
+    'modulo-mensalidade.html',
+    'modulo2-cardapio.html',
+    'modulo3-pdv.html',
+    'modulo5-mesas.html',
+    'modulo6-cardapio-online.html',
+    'modulo7-8-kds-pedidos.html',
+    'modulo9-equipe.html',
+    'modulo10-relatorios.html',
+    'modulo12-estoque.html',
+    'modulo13-fichas-tecnicas.html',
+    'modulo14-compras.html',
+    'modulo15-financeiro.html',
+    'modulo16-contas.html',
+    'modulo17-caixa-turno.html',
+    'modulo18-crm.html',
+    'modulo19-fiscal.html',
+    'modulo21-delivery.html',
+    'modulo-configuracoes.html',
+    'modulo-cupons.html',
+    'modulo-fidelidade.html',
+    'modulo-impressoras.html',
+    'modulo-integracoes.html',
+    'modulo-marketing.html',
+    'modulo-suporte.html'
+  ]);
+
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  if (!protectedPages.has(currentPage)) return;
+
+  // Evita exibir a página enquanto a sessão é validada.
+  document.documentElement.style.visibility = 'hidden';
+  const loginUrl = new URL('login.html', window.location.href).href;
+  const supabase = getSupabase();
+
+  if (!supabase) {
+    window.location.replace(loginUrl);
+    return;
+  }
+
+  let redirecting = false;
+  const redirectToLogin = function() {
+    if (redirecting) return;
+    redirecting = true;
+    window.location.replace(loginUrl);
+  };
+
+  supabase.auth.onAuthStateChange(function(event) {
+    if (event === 'SIGNED_OUT') redirectToLogin();
+  });
+
+  vortexGetSession()
+    .then(function(result) {
+      if (result.error || !result.session) {
+        redirectToLogin();
+        return;
+      }
+      document.documentElement.style.visibility = '';
+    })
+    .catch(redirectToLogin);
+}
+
+// Ativa a verificação somente nas páginas internas listadas acima.
+// Login, landing page e páginas públicas de clientes permanecem abertas.
+vortexRequireAuthenticatedPage();

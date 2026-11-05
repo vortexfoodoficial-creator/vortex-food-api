@@ -360,9 +360,9 @@
 
           localStorage.setItem('vortex_active_printer', JSON.stringify(printerInfo));
           
-          if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+          if (typeof dbSaveStoreDocument === 'function') {
             try {
-              await supabaseClient.from('vortex_printers').upsert([printerInfo]);
+              await dbSaveStoreDocument('printer', printerInfo);
             } catch(e){}
           }
 

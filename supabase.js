@@ -406,25 +406,8 @@ async function dbSaveStock(stockData) {
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const items = Array.isArray(stockData) ? stockData : [];
-  const { data: existing, error: fetchError } = await supabase
-    .from('vortex_stock_items')
-    .select('id')
-    .eq('store_id', storeId);
-  if (fetchError) return { error: fetchError };
+  if (!items.length) return { data: [], error: null };
 
-  const incomingIds = new Set(items.map(item => String(item.id)));
-  for (const oldItem of (existing || [])) {
-    if (!incomingIds.has(String(oldItem.id))) {
-      const { error: deleteError } = await supabase
-        .from('vortex_stock_items')
-        .delete()
-        .eq('store_id', storeId)
-        .eq('id', String(oldItem.id));
-      if (deleteError) return { error: deleteError };
-    }
-  }
-
-  if (items.length === 0) return { data: [], error: null };
   const records = items.map(i => ({
     store_id: storeId,
     id: String(i.id),
@@ -441,6 +424,18 @@ async function dbSaveStock(stockData) {
   return { data, error };
 }
 
+async function dbDeleteStockItem(itemId) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  return await supabase
+    .from('vortex_stock_items')
+    .delete()
+    .eq('store_id', storeId)
+    .eq('id', String(itemId));
+}
+
 async function dbSaveStockMovements(movements) {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Supabase não inicializado') };
@@ -448,6 +443,8 @@ async function dbSaveStockMovements(movements) {
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const entries = Array.isArray(movements) ? movements : [];
+  if (!entries.length) return { data: [], error: null };
+
   const normalized = entries.map((movement, index) => {
     const id = String(movement.id || ('mov_' + Date.now() + '_' + index));
     movement.id = id;
@@ -465,25 +462,7 @@ async function dbSaveStockMovements(movements) {
     };
   });
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('vortex_stock_movements')
-    .select('id')
-    .eq('store_id', storeId);
-  if (fetchError) return { error: fetchError };
-
-  const incomingIds = new Set(normalized.map(movement => movement.id));
-  for (const oldMovement of (existing || [])) {
-    if (!incomingIds.has(String(oldMovement.id))) {
-      const { error: deleteError } = await supabase
-        .from('vortex_stock_movements')
-        .delete()
-        .eq('store_id', storeId)
-        .eq('id', String(oldMovement.id));
-      if (deleteError) return { error: deleteError };
-    }
-  }
-
-  if (!normalized.length) return { data: [], error: null };
+  // Histórico append-only: não remove registros remotos a partir de um cache local.
   const { data, error } = await supabase.from('vortex_stock_movements').upsert(normalized);
   return { data, error };
 }

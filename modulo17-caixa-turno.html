@@ -478,6 +478,7 @@
           const { data } = await client
             .from('cash_shifts')
             .select('*')
+            .eq('store_id', window.VORTEX_ACTIVE_STORE_ID)
             .eq('status', 'open')
             .order('opened_at', { ascending: false })
             .limit(1);

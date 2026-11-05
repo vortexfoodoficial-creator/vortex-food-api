@@ -559,16 +559,9 @@
     let highlightFilterActive = false;
     let draftCompItems = [];
 
-    const defaultGroups = [
-      { id: 'g1', name: 'BEST BURGERS', desc: 'Nossos melhores lanches artesanais', active: true, isHighlight: true },
-      { id: 'g2', name: 'PASTÉIS TRADICIONAIS COM BORDA RECHEADA', desc: 'Crocantes e recheados', active: true, isHighlight: false },
-      { id: 'g3', name: 'BEBIDAS & SUCOS', desc: 'Geladas e refrescantes', active: true, isHighlight: false }
-    ];
+    const defaultGroups = [];
 
-    const defaultProducts = [
-      { id: 1, name: 'Best Cheeseburger', group: 'BEST BURGERS', price: 9.99, oldPrice: 14.99, isVariable: false, cost: 4.50, desc: 'Pão brioche selado na manteiga, hambúrguer 56g, queijo cheddar.', active: true, isHighlight: true, showDelivery: true, showTable: true, image: '' },
-      { id: 2, name: 'Best Salada', group: 'BEST BURGERS', price: 11.99, oldPrice: 16.00, isVariable: false, cost: 5.20, desc: 'Pão, hambúrguer 56g, queijo, alface e tomate fresco.', active: true, isHighlight: false, showDelivery: true, showTable: true, image: '' }
-    ];
+    const defaultProducts = [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -592,7 +585,7 @@
 
     function getGroups() {
       let saved = localStorage.getItem('vortex_groups_catalog');
-      let groups = saved ? JSON.parse(saved) : defaultGroups;
+      let groups = saved ? JSON.parse(saved) : [];
       groups = groups.filter(g => g && g.name && g.name.trim() !== '' && g.name.toUpperCase() !== 'UNDEFINED' && g.name !== 'undefined');
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
       return groups;
@@ -600,11 +593,7 @@
 
     function getProducts() {
       let saved = localStorage.getItem('vortex_products_catalog');
-      if (!saved) {
-        localStorage.setItem('vortex_products_catalog', JSON.stringify(defaultProducts));
-        syncWithOtherModules(defaultProducts);
-        return defaultProducts;
-      }
+      if (!saved) return [];
       return JSON.parse(saved);
     }
 

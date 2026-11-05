@@ -787,16 +787,19 @@ function vortexRequireAuthenticatedPage() {
         redirectToLogin();
         return;
       }
+
+      // Identifica a loja antes de liberar a página. Assim, o armazenamento
+      // local e as consultas dos módulos já começam no contexto correto.
       return vortexGetCurrentStoreContext().then(function(context) {
         if (context.error || !context.store) {
+          console.error('Não foi possível identificar o estabelecimento ativo:', context.error);
           redirectToLogin();
           return;
         }
-        if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(context.store.id);
         document.documentElement.style.visibility = '';
       });
     })
-    .catch(redirectToLogin);
+    .catch(redirectToLogin);in);
 }
 
 // Ativa a verificação somente nas páginas internas listadas acima.

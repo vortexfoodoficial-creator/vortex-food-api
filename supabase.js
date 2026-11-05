@@ -484,6 +484,58 @@ async function dbFetchRecipes() {
   return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
 }
 
+/* Documentos JSON separados por estabelecimento para módulos sem tabela própria. */
+async function dbSaveStoreDocument(documentKey, documentData) {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  return await supabase.from('vortex_store_documents').upsert([{
+    store_id: storeId,
+    document_key: String(documentKey),
+    data: documentData,
+    updated_at: new Date().toISOString()
+  }], { onConflict: 'store_id,document_key' });
+}
+
+async function dbFetchStoreDocument(documentKey) {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return null;
+  const { data, error } = await supabase
+    .from('vortex_store_documents')
+    .select('data')
+    .eq('store_id', storeId)
+    .eq('document_key', String(documentKey))
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.data;
+}
+
+async function dbSaveIntegration(platform, credentials) {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  return await supabase.from('vortex_integrations').upsert([{
+    store_id: storeId,
+    platform: String(platform),
+    connected: true,
+    credentials: credentials || {},
+    updated_at: new Date().toISOString()
+  }], { onConflict: 'store_id,platform' });
+}
+
+async function dbFetchIntegrations() {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return [];
+  const { data, error } = await supabase.from('vortex_integrations')
+    .select('platform, connected, credentials, updated_at')
+    .eq('store_id', storeId);
+  return error ? [] : (data || []);
+}
+
 async function dbDeleteRecord(tableName, id) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };

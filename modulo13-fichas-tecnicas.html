@@ -368,10 +368,9 @@
 
     async function syncRecipesToCloud() {
       try {
-        if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_recipes_catalog').upsert(getRecipes());
-        } else if (typeof dbSaveRecipes === 'function') {
-          await dbSaveRecipes(getRecipes());
+        if (typeof dbSaveStoreDocument === 'function') {
+          const result = await dbSaveStoreDocument('recipes', getRecipes());
+          if (result && result.error) throw result.error;
         }
       } catch (e) {
         console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);

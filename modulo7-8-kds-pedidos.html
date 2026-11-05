@@ -384,7 +384,7 @@
           const kdsRes = await dbFetchKdsOrdersResult();
           if (kdsRes && kdsRes.data) remoteKds = kdsRes.data;
         } else if (window.supabaseClient) {
-          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*');
+          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
           if (data) remoteKds = data;
         }
 
@@ -574,7 +574,7 @@
             await processStockConsumptionForOrder(order);
           }
           if (window.supabaseClient) {
-            await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id));
+            await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
           }
         } catch (e) {
           console.warn('Erro ao sincronizar status na nuvem:', e);

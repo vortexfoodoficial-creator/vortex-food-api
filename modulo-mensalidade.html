@@ -324,6 +324,27 @@
         if (result.error) throw result.error;
         const store = result.store;
         const subscription = result.subscription;
+        const statusText = document.getElementById('subscriptionStatusText');
+        const statusBadge = document.getElementById('subscriptionBadge');
+        if (subscription) {
+          if (subscription.status === 'trialing' && subscription.trial_ends_at && new Date(subscription.trial_ends_at).getTime() > Date.now()) {
+            statusText.textContent = 'Período de Teste Grátis (30 dias)';
+            statusBadge.className = 'badge-status badge-trial';
+            statusBadge.textContent = 'Teste Grátis';
+          } else if (subscription.status === 'trialing') {
+            statusText.textContent = 'Período de teste encerrado';
+            statusBadge.className = 'badge-status badge-overdue';
+            statusBadge.textContent = 'Teste encerrado';
+          } else if (subscription.status === 'active') {
+            statusText.textContent = 'Assinatura ativa';
+            statusBadge.className = 'badge-status badge-paid';
+            statusBadge.textContent = 'Ativa';
+          } else {
+            statusText.textContent = 'Situação da assinatura: ' + String(subscription.status || 'indisponível');
+            statusBadge.className = 'badge-status badge-pending';
+            statusBadge.textContent = 'Verificar';
+          }
+        }
         document.getElementById('billingStoreName').textContent = store.name || 'Estabelecimento';
         document.getElementById('billingCreatedAt').textContent = formatBillingDate(store.created_at);
         if (!subscription) {

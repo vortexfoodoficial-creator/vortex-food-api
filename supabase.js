@@ -10,34 +10,29 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   const proto = Storage.prototype;
   const nativeGet = proto.getItem;
   const nativeSet = proto.setItem;
-  const nativeRemove = proto.removeItem;
-  const pending = new Map();
   const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
   const scopedKey = key => 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + key;
 
+  // Antes da identificação da loja, dados operacionais não são lidos nem gravados.
+  // Isso impede que dados de demonstração ou de uma sessão sem login sejam
+  // transferidos acidentalmente para o primeiro estabelecimento conectado.
   proto.getItem = function(key) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) return pending.has(String(key)) ? pending.get(String(key)) : null;
+      if (!window.VORTEX_ACTIVE_STORE_ID) return null;
       return nativeGet.call(this, scopedKey(key));
     }
     return nativeGet.call(this, key);
   };
   proto.setItem = function(key, value) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) {
-        pending.set(String(key), String(value));
-        return;
-      }
+      if (!window.VORTEX_ACTIVE_STORE_ID) return;
       return nativeSet.call(this, scopedKey(key), value);
     }
     return nativeSet.call(this, key, value);
   };
   proto.removeItem = function(key) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) {
-        pending.set(String(key), null);
-        return;
-      }
+      if (!window.VORTEX_ACTIVE_STORE_ID) return;
       return nativeRemove.call(this, scopedKey(key));
     }
     return nativeRemove.call(this, key);
@@ -47,11 +42,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
     setStoreId(storeId) {
       if (!storeId) return;
       window.VORTEX_ACTIVE_STORE_ID = String(storeId);
-      for (const [key, value] of pending.entries()) {
-        if (value === null) nativeRemove.call(window.localStorage, scopedKey(key));
-        else nativeSet.call(window.localStorage, scopedKey(key), value);
-      }
-      pending.clear();
     },
     getStoreId() {
       return window.VORTEX_ACTIVE_STORE_ID || null;

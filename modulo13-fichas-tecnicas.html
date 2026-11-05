@@ -368,6 +368,25 @@
 
     async function syncRecipesToCloud() {
       try {
+        if (typeof dbSaveStoreDocument === 'function') {
+          const result = await dbSaveStoreDocument('recipes', getRecipes());
+          if (result && result.error) throw result.error;
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
+      }
+    } else if (typeof dbSaveRecipes === 'function') {
+          await dbSaveRecipes(getRecipes());
+        }
+      } catch (e) {
+        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
+      }
+    }
+
+    async function renderRecipes() {
+      loadStoreSettings();
+
+      try {
         if (typeof dbFetchStoreDocument === 'function') {
           const cloudRecipes = await dbFetchStoreDocument('recipes');
           if (Array.isArray(cloudRecipes)) {

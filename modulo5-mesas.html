@@ -431,6 +431,7 @@
       if (!client) return { data: null, error: new Error('Supabase não inicializado') };
 
       const record = {
+        store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: String(order.id),
         origin: order.origin || 'Balcão',
         client: order.client || 'Cliente Balcão',

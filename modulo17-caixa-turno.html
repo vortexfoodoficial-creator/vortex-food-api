@@ -475,7 +475,7 @@
 
       if (client) {
         try {
-          const { data } = await client
+          const { data, error } = await client
             .from('cash_shifts')
             .select('*')
             .eq('store_id', window.VORTEX_ACTIVE_STORE_ID)
@@ -483,6 +483,8 @@
             .order('opened_at', { ascending: false })
             .limit(1);
 
+          if (error) throw error;
+          loadedFromSupabase = true;
           if (data && data.length > 0) {
             const shift = data[0];
             currentCashData = {
@@ -504,7 +506,12 @@
               }
             });
             currentCashData.withdrawals = totalWithdrawn;
-            loadedFromSupabase = true;
+          } else {
+            currentCashData = {
+              shiftId: null, isOpen: false, operator: '', openedAt: null,
+              initialBalance: 0, salesCash: 0, salesDigital: 0, withdrawals: 0, movements: []
+            };
+            saveCurrentCashState();
           }
         } catch (err) {
           console.error('Erro ao buscar turno no Supabase:', err);
@@ -565,9 +572,12 @@
       };
 
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      let cloudSynced = false;
+      let cloudErrorMessage = '';
+
       if (client) {
         try {
-          const { data } = await client
+          const { data, error } = await client
             .from('cash_shifts')
             .insert([{
               id: currentCashData.shiftId,
@@ -580,18 +590,26 @@
             }])
             .select();
 
-          if (data && data.length > 0) {
-            currentCashData.shiftId = data[0].id;
-          }
-        } catch (e) {
-          console.error('Erro ao salvar abertura no Supabase:', e);
+          if (error) throw error;
+          if (!data || !data.length) throw new Error('O banco não confirmou a abertura do turno.');
+          currentCashData.shiftId = data[0].id;
+          cloudSynced = true;
+        } catch (error) {
+          cloudErrorMessage = error.message || 'Falha ao salvar o turno na nuvem.';
+          console.error('Erro ao salvar abertura no Supabase:', error);
         }
+      } else {
+        cloudErrorMessage = 'Conexão com a nuvem indisponível.';
       }
 
       saveCurrentCashState();
       renderCashState();
       closeOpenCashModal();
-      showCustomAlert('Caixa Aberto', `Turno iniciado com sucesso para ${op}!`, '🔓');
+      if (cloudSynced) {
+        showCustomAlert('Caixa Aberto', `Turno de ${op} aberto e sincronizado com a nuvem.`, '🔓');
+      } else {
+        showCustomAlert('Caixa aberto neste aparelho', 'O turno foi aberto localmente, mas a nuvem não confirmou a gravação. ' + cloudErrorMessage + ' Não utilize outro dispositivo até sincronizar.', '⚠️');
+      }
     }
 
     function openMovementModal(type) {
@@ -761,9 +779,12 @@
       const closeReasonText = document.getElementById('closeReason').value;
 
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      let cloudSynced = false;
+      let cloudErrorMessage = '';
+
       if (client && currentCashData.shiftId) {
         try {
-          await client
+          const { data, error } = await client
             .from('cash_shifts')
             .update({
               status: 'closed',
@@ -772,10 +793,19 @@
               close_reason: closeReasonText,
               movements: currentCashData.movements
             })
-            .eq('id', currentCashData.shiftId).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-        } catch (e) {
-          console.error('Erro ao fechar turno no Supabase:', e);
+            .eq('id', currentCashData.shiftId)
+            .eq('store_id', window.VORTEX_ACTIVE_STORE_ID)
+            .select('id');
+
+          if (error) throw error;
+          if (!data || !data.length) throw new Error('O banco não confirmou o fechamento deste turno.');
+          cloudSynced = true;
+        } catch (error) {
+          cloudErrorMessage = error.message || 'Falha ao fechar o turno na nuvem.';
+          console.error('Erro ao fechar turno no Supabase:', error);
         }
+      } else {
+        cloudErrorMessage = 'Turno ainda não identificado na nuvem.';
       }
 
       let closedShifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
@@ -795,7 +825,11 @@
       renderCashState();
       loadClosedShiftsHistory();
       closeCloseCashModal();
-      showCustomAlert('Caixa Fechado', 'O turno foi encerrado e auditado com sucesso no sistema!', '🔒');
+      if (cloudSynced) {
+        showCustomAlert('Caixa Fechado', 'O turno foi encerrado e o fechamento foi confirmado na nuvem.', '🔒');
+      } else {
+        showCustomAlert('Fechamento local pendente', 'O caixa foi fechado neste aparelho, mas a nuvem não confirmou a operação. ' + cloudErrorMessage + ' Confira a conexão antes de usar outro dispositivo.', '⚠️');
+      }
     }
 
     function saveCurrentCashState() {
@@ -813,15 +847,20 @@
 
     async function loadClosedShiftsHistory() {
       let shifts = [];
+      let loadedFromCloud = false;
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
       if (client) {
         try {
-          const { data } = await client.from('cash_shifts').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).eq('status', 'closed').order('closed_at', { ascending: false });
-          if (data && data.length > 0) shifts = data;
-        } catch(e) {}
+          const { data, error } = await client.from('cash_shifts').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).eq('status', 'closed').order('closed_at', { ascending: false });
+          if (error) throw error;
+          shifts = Array.isArray(data) ? data : [];
+          loadedFromCloud = true;
+          localStorage.setItem('vortex_closed_shifts', JSON.stringify(shifts));
+        } catch(error) {
+          console.warn('Não foi possível carregar o histórico de caixa da nuvem:', error);
+        }
       }
-
-      if (shifts.length === 0) {
+      if (!loadedFromCloud) {
         shifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
       }
 

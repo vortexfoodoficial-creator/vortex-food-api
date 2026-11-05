@@ -707,7 +707,7 @@
       // Sincroniza do Supabase se houver conexão
       if (window.supabaseClient) {
         try {
-          const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').limit(1);
+          const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).limit(1);
           if (data && data.length > 0) {
             const row = data[0];
             settings.storeName = row.store_name || row.nome || settings.storeName || '';
@@ -960,6 +960,7 @@
       if (window.supabaseClient) {
         try {
           const dbPayload = {
+            store_id: window.VORTEX_ACTIVE_STORE_ID,
             id: 1,
             store_name: storeName,
             store_address: fullAddress,
@@ -970,7 +971,7 @@
             taxa: serviceTax || '10,00',
             rodape: receiptFooter
           };
-          await window.supabaseClient.from('vortex_store_settings').upsert([dbPayload]);
+          await window.supabaseClient.from('vortex_store_settings').upsert([dbPayload], { onConflict: 'store_id,id' });
         } catch (err) {
           console.warn('Aviso Supabase Configurações:', err);
         }

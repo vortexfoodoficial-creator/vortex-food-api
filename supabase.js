@@ -487,10 +487,14 @@ async function vortexSignUp(email, password, storeData) {
     legal_name: String(storeData.legal_name || '').trim()
   };
 
+  const emailRedirectTo = new URL('login.html', window.location.href).href;
   const { data, error } = await supabase.auth.signUp({
     email: String(email || '').trim(),
     password: String(password || ''),
-    options: { data: metadata }
+    options: {
+      data: metadata,
+      emailRedirectTo
+    }
   });
   if (error) return { data, error };
 
@@ -526,6 +530,36 @@ async function vortexGetSubscription(storeId) {
   return { data, error };
 }
 
+async function vortexGetCurrentStoreContext() {
+  const supabase = getSupabase();
+  if (!supabase) return { store: null, subscription: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) return { store: null, subscription: null, error: userError };
+  if (!userData || !userData.user) return { store: null, subscription: null, error: new Error('Entre na sua conta para consultar a assinatura.') };
+
+  const { data: membership, error: membershipError } = await supabase
+    .from('vortex_store_members')
+    .select('store_id, role')
+    .eq('user_id', userData.user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (membershipError) return { store: null, subscription: null, error: membershipError };
+  if (!membership) return { store: null, subscription: null, error: new Error('Nenhum estabelecimento ativo foi encontrado para esta conta.') };
+
+  const { data: store, error: storeError } = await supabase
+    .from('vortex_stores')
+    .select('id, name, created_at')
+    .eq('id', membership.store_id)
+    .maybeSingle();
+  if (storeError) return { store: null, subscription: null, error: storeError };
+  if (!store) return { store: null, subscription: null, error: new Error('Não foi possível localizar os dados do estabelecimento.') };
+
+  const subscriptionResult = await vortexGetSubscription(store.id);
+  if (subscriptionResult.error) return { store, subscription: null, error: subscriptionResult.error };
+  return { store, subscription: subscriptionResult.data, error: null };
+}
+
 async function vortexResetPassword(email) {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
@@ -544,6 +578,7 @@ window.VortexAuth = {
   signUp: vortexSignUp,
   completeStoreRegistration: vortexCompleteStoreRegistration,
   getSubscription: vortexGetSubscription,
+  getCurrentStoreContext: vortexGetCurrentStoreContext,
   resetPassword: vortexResetPassword,
   updatePassword: vortexUpdatePassword,
   signOut: vortexSignOut,

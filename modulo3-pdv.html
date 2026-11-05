@@ -607,6 +607,7 @@
       }));
 
       const newSaleRecord = {
+        store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: cleanOrderId,
         client: clientName,
         channel: channelLabel,
@@ -684,6 +685,7 @@
         if (!client) return { error: new Error('Supabase não inicializado') };
 
         const saleRecord = {
+          store_id: window.VORTEX_ACTIVE_STORE_ID,
           id: String(newSaleRecord.id),
           client: newSaleRecord.client,
           channel: newSaleRecord.channel,

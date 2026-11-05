@@ -561,11 +561,20 @@ async function dbFetchFinancialEntries() {
 async function dbFetchCatalog() {
   const cloud = await dbFetchStoreDocument('catalog');
   if (cloud && typeof cloud === 'object') {
-    return {
+    const catalog = {
       products: Array.isArray(cloud.products) ? cloud.products : [],
       groups: Array.isArray(cloud.groups) ? cloud.groups : [],
       complements: Array.isArray(cloud.complements) ? cloud.complements : []
     };
+    // Mantém os caches locais alinhados à nuvem, inclusive quando o catálogo está vazio.
+    try {
+      localStorage.setItem('vortex_products_catalog', JSON.stringify(catalog.products));
+      localStorage.setItem('vortex_groups_catalog', JSON.stringify(catalog.groups));
+      localStorage.setItem('vortex_complements_catalog', JSON.stringify(catalog.complements));
+    } catch (error) {
+      console.warn('Não foi possível atualizar o cache local do catálogo:', error);
+    }
+    return catalog;
   }
   return {
     products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [],

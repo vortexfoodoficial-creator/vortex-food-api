@@ -878,12 +878,16 @@
       localStorage.setItem('vortex_stock_movements', JSON.stringify(movs));
 
       localStorage.setItem('vortex_stock_items', JSON.stringify(items));
-      await syncStockToCloud();
-      await syncStockMovementsToCloud();
+      const stockSynced = await syncStockToCloud();
+      const historySynced = await syncStockMovementsToCloud();
 
       closeMovementModal();
       renderStockTable();
-      showNoticeModal('Movimentação Concluída', `Estoque de ${item.name} atualizado com sucesso!`, '⚡');
+      if (stockSynced && historySynced) {
+        showNoticeModal('Movimentação Concluída', `Estoque de ${item.name} atualizado e sincronizado com a nuvem.`, '⚡');
+      } else {
+        showNoticeModal('Sincronização pendente', 'A movimentação foi registrada neste aparelho, mas não foi possível confirmar a sincronização com a nuvem. Verifique a conexão antes de usar outro dispositivo.', '⚠️');
+      }
     }
 
     function showNoticeModal(title, desc, icon) {

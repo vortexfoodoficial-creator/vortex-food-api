@@ -467,13 +467,55 @@ async function dbFetchFinancialEntries() {
 }
 
 async function dbFetchCatalog() {
-  // Catálogo e grupos ainda são mantidos no armazenamento local por loja.
-  // Não consultar tabelas que não existem no esquema auditado nem buscar
-  // catálogo sem filtro de estabelecimento.
+  const cloud = await dbFetchStoreDocument('catalog');
+  if (cloud && typeof cloud === 'object') {
+    return {
+      products: Array.isArray(cloud.products) ? cloud.products : [],
+      groups: Array.isArray(cloud.groups) ? cloud.groups : [],
+      complements: Array.isArray(cloud.complements) ? cloud.complements : []
+    };
+  }
   return {
     products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [],
-    groups: JSON.parse(localStorage.getItem('vortex_groups_catalog')) || []
+    groups: JSON.parse(localStorage.getItem('vortex_groups_catalog')) || [],
+    complements: JSON.parse(localStorage.getItem('vortex_complements_catalog')) || []
   };
+}
+
+async function dbSaveCatalog(catalogData) {
+  const payload = {
+    products: Array.isArray(catalogData && catalogData.products) ? catalogData.products : [],
+    groups: Array.isArray(catalogData && catalogData.groups) ? catalogData.groups : [],
+    complements: Array.isArray(catalogData && catalogData.complements) ? catalogData.complements : []
+  };
+  return await dbSaveStoreDocument('catalog', payload);
+}
+
+async function dbSaveCoupons(coupons) {
+  return await dbSaveStoreDocument('coupons', Array.isArray(coupons) ? coupons : []);
+}
+
+async function dbFetchCoupons() {
+  const data = await dbFetchStoreDocument('coupons');
+  return Array.isArray(data) ? data : [];
+}
+
+async function dbSaveLoyalty(data) {
+  return await dbSaveStoreDocument('loyalty', data && typeof data === 'object' ? data : {});
+}
+
+async function dbFetchLoyalty() {
+  const data = await dbFetchStoreDocument('loyalty');
+  return data && typeof data === 'object' ? data : null;
+}
+
+async function dbSaveCustomers(customers) {
+  return await dbSaveStoreDocument('customers', Array.isArray(customers) ? customers : []);
+}
+
+async function dbFetchCustomers() {
+  const data = await dbFetchStoreDocument('customers');
+  return Array.isArray(data) ? data : [];
 }
 
 async function dbFetchRecipes() {

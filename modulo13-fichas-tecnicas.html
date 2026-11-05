@@ -368,27 +368,9 @@
 
     async function syncRecipesToCloud() {
       try {
-        if (typeof dbSaveStoreDocument === 'function') {
-          const result = await dbSaveStoreDocument('recipes', getRecipes());
-          if (result && result.error) throw result.error;
-        }
-      } catch (e) {
-        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
-      }
-    }
-
-    async function renderRecipes() {
-      loadStoreSettings();
-
-      try {
-        if (window.supabaseClient) {
-          const { data, error } = await window.supabaseClient.from('vortex_recipes_catalog').select('*');
-          if (data && data.length > 0) {
-            localStorage.setItem('vortex_recipes_catalog', JSON.stringify(data));
-          }
-        } else if (typeof dbFetchRecipes === 'function') {
-          const cloudRecipes = await dbFetchRecipes();
-          if (cloudRecipes && cloudRecipes.length > 0) {
+        if (typeof dbFetchStoreDocument === 'function') {
+          const cloudRecipes = await dbFetchStoreDocument('recipes');
+          if (Array.isArray(cloudRecipes)) {
             localStorage.setItem('vortex_recipes_catalog', JSON.stringify(cloudRecipes));
           }
         }

@@ -224,14 +224,11 @@
   <div class="client-card" id="mainCard">
     <div class="logo">🌪️ VORTEX FOOD</div>
     <div class="table-title" id="tableTitleDisplay">Mesa --</div>
-    <p class="subtitle">Consumo parcial da sua mesa em tempo real:</p>
+    <p class="subtitle">Solicite atendimento diretamente pelo QR Code da sua mesa.</p>
 
     <!-- EXTRATO DA COMANDA DA MESA DO CLIENTE -->
     <div class="extrato-box">
-      <div class="extrato-title">
-        <span>Itens Pedidos</span>
-        <span>Subtotal</span>
-      </div>
+      <div class="extrato-title"><span>Informação da mesa</span></div>
       <div class="extrato-list" id="clientExtratoList">
         <!-- Injetado dinamicamente -->
       </div>
@@ -251,19 +248,8 @@
       </button>
 
       <!-- AVALIAÇÃO DE SATISFAÇÃO -->
-      <div class="rating-section">
-        <div class="rating-title">Como foi a sua experiência conosco hoje?</div>
-        <div class="stars-container">
-          <span class="star" onclick="setRating(1)">★</span>
-          <span class="star" onclick="setRating(2)">★</span>
-          <span class="star" onclick="setRating(3)">★</span>
-          <span class="star" onclick="setRating(4)">★</span>
-          <span class="star" onclick="setRating(5)">★</span>
-        </div>
-        <textarea class="rating-comment" id="ratingComment" placeholder="Deixe um comentário opcional..."></textarea>
-        <button class="btn-send-rating" onclick="submitRating()">Enviar Avaliação</button>
-      </div>
-    </div>
+      <div class="rating-section"><div class="rating-title">Acompanhe o atendimento com a equipe do estabelecimento.</div></div>
+   </div>
 
     <div id="disabledNotice" class="status-disabled" style="display: none;">
       ⚠️ O serviço de fechamento via QR Code está temporariamente desativado neste estabelecimento. Por favor, solicite ao garçom no balcão.
@@ -293,54 +279,42 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    const PUBLIC_SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
+    const PUBLIC_SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
+    const publicSupabase = window.supabase.createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
     const urlParams = new URLSearchParams(window.location.search);
-    const tableId = urlParams.get('mesa') || '1';
+    const storeId = urlParams.get('store') || '';
+    const tableId = urlParams.get('mesa') || '';
     let currentActionType = null;
     let selectedRating = 0;
 
-    document.getElementById('tableTitleDisplay').innerText = `Mesa 0${tableId}`;
+    document.getElementById('tableTitleDisplay').innerText = tableId ? ('Mesa ' + String(tableId).padStart(2, '0')) : 'Mesa inválida';
 
     function loadTableComanda() {
-      const tables = JSON.parse(localStorage.getItem('vortex_tables') || '[]');
-      const table = tables.find(t => t.id === parseInt(tableId));
-      const listContainer = document.getElementById('clientExtratoList');
-      const totalDisplay = document.getElementById('clientExtratoTotal');
-
-      if (!table || !table.items || table.items.length === 0) {
-        listContainer.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">Nenhum item consumido até o momento.</div>`;
-        totalDisplay.innerText = 'R$ 0,00';
-        return;
-      }
-
-      let html = '';
-      let total = 0;
-      table.items.forEach(item => {
-        const subtotal = item.price * item.qty;
-        total += subtotal;
-        html += `
-          <div class="extrato-item">
-            <span>${item.qty}x ${item.name}</span>
-            <strong>R$ ${subtotal.toFixed(2).replace('.', ',')}</strong>
-          </div>
-        `;
-      });
-
-      listContainer.innerHTML = html;
-      totalDisplay.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+      document.getElementById('clientExtratoList').innerHTML =
+        '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center;">O resumo da comanda será integrado ao cardápio digital. Para conferir o consumo, solicite a equipe.</div>';
+      document.getElementById('clientExtratoTotal').innerText = 'Consulte a equipe';
     }
 
-    function checkServiceEnabled() {
-      const savedConfig = localStorage.getItem('vortex_qr_closing_enabled');
-      const enabled = savedConfig === null ? true : savedConfig === 'true';
-
-      if (!enabled) {
+    async function checkServiceEnabled() {
+      const validTable = /^\\d+$/.test(tableId) && Number(tableId) >= 1 && Number(tableId) <= 200;
+      const validStore = /^[0-9a-f-]{36}$/i.test(storeId);
+      if (!validTable || !validStore) {
         document.getElementById('activeButtons').style.display = 'none';
         document.getElementById('disabledNotice').style.display = 'block';
-      } else {
-        document.getElementById('activeButtons').style.display = 'block';
-        document.getElementById('disabledNotice').style.display = 'none';
+        document.getElementById('disabledNotice').innerText = 'QR Code inválido. Solicite uma nova etiqueta à equipe.';
+        return false;
       }
+      const { data, error } = await publicSupabase.rpc('rpc_get_public_qr_enabled', { p_store_id: storeId });
+      const enabled = !error && data === true;
+      document.getElementById('activeButtons').style.display = enabled ? 'block' : 'none';
+      document.getElementById('disabledNotice').style.display = enabled ? 'none' : 'block';
+      if (!enabled) document.getElementById('disabledNotice').innerText = 'O atendimento por QR Code está desativado neste estabelecimento. Solicite ajuda à equipe.';
+      return enabled;
     }
 
     function setRating(stars) {
@@ -405,25 +379,34 @@
       document.getElementById('noticeModal').classList.remove('active');
     }
 
-    function sendSignal() {
-      localStorage.setItem('vortex_qr_signal', JSON.stringify({
-        tableId: tableId,
-        type: currentActionType,
-        timestamp: new Date().getTime()
-      }));
-
-      closeConfirmModal();
-
-      if (currentActionType === 'close') {
-        showNoticeModal('Conta Solicitada!', 'A sua solicitação foi enviada com sucesso para o caixa e garçons. Aguarde um momento.', '🧾', 'var(--warning)');
-      } else {
-        showNoticeModal('Garçom Chamado!', 'A sua chamada foi enviada com sucesso. Um atendente irá até a sua mesa em breve.', '🙋‍♂️', 'var(--primary)');
+    async function sendSignal() {
+      const requestType = currentActionType === 'close' ? 'request_bill' : 'call_waiter';
+      const buttons = document.querySelectorAll('#confirmModal button');
+      buttons.forEach(button => button.disabled = true);
+      try {
+        const { data, error } = await publicSupabase.rpc('rpc_create_public_table_request', {
+          p_store_id: storeId,
+          p_table_number: Number(tableId),
+          p_request_type: requestType
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) throw new Error('Não foi possível enviar a solicitação.');
+        closeConfirmModal();
+        if (currentActionType === 'close') {
+          showNoticeModal('Conta Solicitada!', 'Sua solicitação foi enviada à equipe. Aguarde um atendente para conferir a conta.', '🧾', 'var(--warning)');
+        } else {
+          showNoticeModal('Garçom Chamado!', 'Sua chamada foi enviada à equipe. Um atendente irá até sua mesa em breve.', '🙋‍♂️', 'var(--primary)');
+        }
+      } catch (error) {
+        showNoticeModal('Não foi possível enviar', error.message || 'Verifique a conexão e tente novamente.', '⚠️', '#eab308');
+      } finally {
+        buttons.forEach(button => button.disabled = false);
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      checkServiceEnabled();
       loadTableComanda();
+      checkServiceEnabled();
     });
   </script>
 </body>

@@ -59,6 +59,9 @@ BEGIN
   ) AS p(value)
   WHERE COALESCE((p.value->>'active')::boolean, true) = true
     AND COALESCE((p.value->>'showTable')::boolean, false) = true
+    -- Produtos por peso e com preço variável exigem um fluxo próprio de pesagem/precificação.
+    AND COALESCE((p.value->>'isKg')::boolean, false) = false
+    AND COALESCE((p.value->>'isVariable')::boolean, false) = false
     AND COALESCE(NULLIF(p.value->>'price', '')::numeric, 0) > 0;
 
   RETURN jsonb_build_object(
@@ -147,6 +150,8 @@ BEGIN
     WHERE p.value->>'id' = v_product_id
       AND COALESCE((p.value->>'active')::boolean, true) = true
       AND COALESCE((p.value->>'showTable')::boolean, false) = true
+      AND COALESCE((p.value->>'isKg')::boolean, false) = false
+      AND COALESCE((p.value->>'isVariable')::boolean, false) = false
     LIMIT 1;
 
     IF v_product IS NULL THEN

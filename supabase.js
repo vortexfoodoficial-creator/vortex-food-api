@@ -100,19 +100,31 @@ async function dbFetchStoreSettings() {
 async function vortexResolveStoreIdForWrite() {
   const supabase = getSupabase();
   if (!supabase) return { storeId: null, error: new Error('Supabase não inicializado.') };
+
+  // A fonte de verdade é a sessão autenticada + vínculo ativo retornado pelo banco.
+  // A política RLS continua sendo a autoridade final para permitir cada gravação.
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) return { storeId: null, error: userError };
-  if (!userData || !userData.user) return { storeId: null, error: new Error('Sessão autenticada não encontrada. Entre novamente.') };
-  const { data: membership, error: membershipError } = await supabase.from('vortex_store_members')
-    .select('store_id').eq('user_id', userData.user.id).eq('status', 'active').maybeSingle();
+  if (!userData || !userData.user) {
+    return { storeId: null, error: new Error('Sessão autenticada não encontrada. Entre novamente.') };
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from('vortex_store_members')
+    .select('store_id')
+    .eq('user_id', userData.user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
   if (membershipError) return { storeId: null, error: membershipError };
-  if (!membership || !membership.store_id) return { storeId: null, error: new Error('Nenhum vínculo ativo com estabelecimento foi encontrado para esta conta.') };
+  if (!membership || !membership.store_id) {
+    return { storeId: null, error: new Error('Nenhum vínculo ativo com estabelecimento foi encontrado para esta conta.') };
+  }
+
   const storeId = String(membership.store_id);
   if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(storeId);
   else window.VORTEX_ACTIVE_STORE_ID = storeId;
-  const { data: hasAccess, error: accessError } = await supabase.rpc('vortex_user_has_store_access', { p_store_id: storeId });
-  if (accessError) return { storeId: null, error: new Error('Falha ao validar o acesso à loja pela política de segurança: ' + accessError.message) };
-  if (hasAccess !== true) return { storeId: null, error: new Error('O Supabase não confirmou o vínculo ativo desta conta com a loja. A gravação foi bloqueada por segurança.') };
+
   return { storeId, error: null };
 }
 
@@ -902,10 +914,19 @@ async function vortexGetCurrentStoreContext() {
   if (storeError) return { store: null, subscription: null, error: storeError };
   if (!store) return { store: null, subscription: null, error: new Error('Não foi possível localizar os dados do estabelecimento.') };
 
-  const subscriptionResult = await vortexGetSubscription(store.id);
-  if (subscriptionResult.error) return { store, subscription: null, error: subscriptionResult.error };
+  // Define o contexto da loja assim que o vínculo e o estabelecimento forem
+  // confirmados. A consulta de assinatura é independente e não pode bloquear
+  // pedidos, vendas ou configurações.
   if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id);
-  return { store, subscription: subscriptionResult.data, error: null };
+  else window.VORTEX_ACTIVE_STORE_ID = String(store.id);
+
+  const subscriptionResult = await vortexGetSubscription(store.id);
+  return {
+    store,
+    subscription: subscriptionResult.error ? null : subscriptionResult.data,
+    subscriptionError: subscriptionResult.error || null,
+    error: null
+  };
 }
 
 async function vortexResetPassword(email) {

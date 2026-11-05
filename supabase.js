@@ -433,7 +433,8 @@ async function dbDeleteStockItem(itemId) {
     .from('vortex_stock_items')
     .delete()
     .eq('store_id', storeId)
-    .eq('id', String(itemId));
+    .eq('id', String(itemId))
+    .select('id');
 }
 
 async function dbSaveStockMovements(movements) {

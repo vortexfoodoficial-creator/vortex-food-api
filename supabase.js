@@ -436,8 +436,8 @@ async function dbFetchStoreSettingsResult() {
 
 // ============================================================
 // AUTENTICAÇÃO CENTRAL — SUPABASE AUTH
-// Esta etapa disponibiliza login e sessão, sem bloquear módulos.
-// A autorização por restaurante será ativada após configurar RLS.
+// Esta etapa disponibiliza login, sessão e proteção de acesso às páginas internas.
+// A autorização por restaurante e a segurança dos dados dependem das políticas RLS.
 // ============================================================
 
 async function vortexSignIn(email, password) {

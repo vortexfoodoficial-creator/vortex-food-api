@@ -96,12 +96,33 @@ async function dbFetchStoreSettings() {
   return data;
 }
 
+// Valida o vínculo ativo da conta e a mesma função de acesso usada pelas políticas RLS.
+async function vortexResolveStoreIdForWrite() {
+  const supabase = getSupabase();
+  if (!supabase) return { storeId: null, error: new Error('Supabase não inicializado.') };
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) return { storeId: null, error: userError };
+  if (!userData || !userData.user) return { storeId: null, error: new Error('Sessão autenticada não encontrada. Entre novamente.') };
+  const { data: membership, error: membershipError } = await supabase.from('vortex_store_members')
+    .select('store_id').eq('user_id', userData.user.id).eq('status', 'active').maybeSingle();
+  if (membershipError) return { storeId: null, error: membershipError };
+  if (!membership || !membership.store_id) return { storeId: null, error: new Error('Nenhum vínculo ativo com estabelecimento foi encontrado para esta conta.') };
+  const storeId = String(membership.store_id);
+  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(storeId);
+  else window.VORTEX_ACTIVE_STORE_ID = storeId;
+  const { data: hasAccess, error: accessError } = await supabase.rpc('vortex_user_has_store_access', { p_store_id: storeId });
+  if (accessError) return { storeId: null, error: new Error('Falha ao validar o acesso à loja pela política de segurança: ' + accessError.message) };
+  if (hasAccess !== true) return { storeId: null, error: new Error('O Supabase não confirmou o vínculo ativo desta conta com a loja. A gravação foi bloqueada por segurança.') };
+  return { storeId, error: null };
+}
+
 // Vendas
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  const resolvedStore = await vortexResolveStoreIdForWrite();
+  if (resolvedStore.error || !resolvedStore.storeId) return { error: resolvedStore.error || new Error('Estabelecimento ativo não identificado.') };
+  const storeId = resolvedStore.storeId;
 
   const record = {
     store_id: storeId,
@@ -169,8 +190,9 @@ async function dbFetchSales() {
 async function dbSaveKdsOrder(orderData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  const resolvedStore = await vortexResolveStoreIdForWrite();
+  if (resolvedStore.error || !resolvedStore.storeId) return { error: resolvedStore.error || new Error('Estabelecimento ativo não identificado.') };
+  const storeId = resolvedStore.storeId;
 
   const record = {
     store_id: storeId,

@@ -131,7 +131,7 @@ $$;
 
 -- IDs operacionais podem se repetir em lojas diferentes (por exemplo, pedido #1).
 -- A chave primária passa a considerar a loja em todas as tabelas com id.
-DO $
+DO $pk$
 DECLARE
   t text;
   old_pk text;
@@ -162,7 +162,7 @@ BEGIN
     );
   END LOOP;
 END;
-$;
+$pk$;
 
 -- Armazenamento JSON por estabelecimento para módulos que ainda não possuem
 -- tabelas relacionais próprias (equipe, fichas, compras, contas, impressora etc.).

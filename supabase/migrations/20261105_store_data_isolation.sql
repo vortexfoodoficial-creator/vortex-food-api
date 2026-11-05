@@ -183,6 +183,10 @@ ALTER TABLE public.vortex_store_settings DROP CONSTRAINT IF EXISTS vortex_store_
 ALTER TABLE public.vortex_store_settings
   ADD CONSTRAINT vortex_store_settings_pkey PRIMARY KEY (store_id, id);
 
+-- A chave de idempotência é usada para impedir descontos duplicados no estoque.
+ALTER TABLE public.vortex_stock_movements
+  ADD COLUMN IF NOT EXISTS idempotency_key text;
+
 ALTER TABLE public.vortex_stock_movements
   DROP CONSTRAINT IF EXISTS vortex_stock_movements_idempotency_key_key;
 ALTER TABLE public.vortex_stock_movements

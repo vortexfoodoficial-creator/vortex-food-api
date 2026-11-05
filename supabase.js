@@ -273,6 +273,21 @@ async function processStockConsumptionForOrder(order) {
     let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
     let recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
     let movements = JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
+
+    // Atualiza as chaves de idempotência com o histórico remoto antes de calcular
+    // novos descontos, reduzindo o risco de repetir o consumo em outro aparelho.
+    if (typeof dbFetchStockMovements === 'function') {
+      const cloudMovements = await dbFetchStockMovements();
+      if (Array.isArray(cloudMovements)) {
+        const byKey = new Map();
+        [...movements, ...cloudMovements].forEach(m => {
+          const key = m.idempotency_key || m.id;
+          if (key) byKey.set(String(key), m);
+        });
+        movements = Array.from(byKey.values());
+      }
+    }
+
     let stockChanged = false;
 
     order.items.forEach((item, itemIndex) => {
@@ -332,7 +347,7 @@ async function processStockConsumptionForOrder(order) {
       // Sincroniza com o Supabase de forma assíncrona
       const supabase = getSupabase();
       if (supabase) {
-        await supabase.from('vortex_stock_items').upsert(stockItems.map(i => ({
+        const { error: stockError } = await supabase.from('vortex_stock_items').upsert(stockItems.map(i => ({
           store_id: storeId,
           id: String(i.id),
           name: i.name,
@@ -344,6 +359,13 @@ async function processStockConsumptionForOrder(order) {
           barcode: i.barcode || '',
           updated_at: new Date().toISOString()
         })));
+        if (stockError) throw stockError;
+
+        // Persiste também as chaves de idempotência do consumo automático.
+        if (typeof dbSaveStockMovements === 'function') {
+          const movementResult = await dbSaveStockMovements(movements);
+          if (movementResult && movementResult.error) throw movementResult.error;
+        }
       }
     }
   } catch (e) {

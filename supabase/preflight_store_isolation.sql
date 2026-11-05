@@ -62,7 +62,7 @@ WHERE c.contype = 'f'
     'public.vortex_stock_movements'::regclass,
     'public.vortex_store_settings'::regclass
   )
-ORDER BY referenced_table::text, referencing_table::text, foreign_key_name;
+ORDER BY c.confrelid::regclass::text, c.conrelid::regclass::text, c.conname;
 
 -- 4) Mostra as chaves primárias e restrições UNIQUE atuais das tabelas-alvo.
 SELECT

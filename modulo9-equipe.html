@@ -384,29 +384,26 @@
     }
 
     // SINCRONIZAÇÃO COMPLETA COM ENTREGADORES (MÓDULO 21)
-    function syncCouriersStorage(staffList) {
-      let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
-      
-      let teamCouriers = staffList.filter(m => String(m.role || '').toLowerCase().includes('entregador'));
-      
-      let map = new Map();
-      couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
-      
+    async function syncCouriersStorage(staffList, persistToCloud = false) {
+      const couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+      const teamCouriers = staffList.filter(m => String(m.role || '').toLowerCase().includes('entregador'));
+      const map = new Map();
+      couriers.forEach(c => map.set(String(c.name || '').trim().toLowerCase(), c));
       teamCouriers.forEach(t => {
-        if ((t.status || 'ativo') === 'ativo') {
-          map.set(t.name.trim().toLowerCase(), {
-            id: t.id,
-            name: t.name,
-            phone: t.phone || t.telefone || '',
-            type: t.courierType || t.type || 'Próprio'
-          });
-        } else {
-          map.delete(t.name.trim().toLowerCase());
-        }
+        const key = String(t.name || '').trim().toLowerCase();
+        if ((t.status || 'ativo') === 'ativo') map.set(key, {
+          id: t.id, name: t.name, phone: t.phone || t.telefone || '', type: t.courierType || t.type || 'Próprio'
+        });
+        else map.delete(key);
       });
-
-      let finalCouriers = Array.from(map.values());
+      const finalCouriers = Array.from(map.values());
       localStorage.setItem('vortex_couriers', JSON.stringify(finalCouriers));
+      if (persistToCloud) {
+        if (typeof dbSaveStoreDocument !== 'function') throw new Error('Sincronização de entregadores indisponível.');
+        const result = await dbSaveStoreDocument('couriers', finalCouriers);
+        if (!result || result.error) throw (result && result.error) || new Error('A nuvem não confirmou os entregadores.');
+      }
+      return finalCouriers;
     }
 
     // CARREGA A EQUIPE DA LOJA ATIVA, COM CACHE LOCAL SEPARADO POR LOJA
@@ -430,7 +427,14 @@
           staffMembers = [];
         }
       }
+      if (typeof dbFetchStoreDocument === 'function') {
+        try {
+          const cloudCouriers = await dbFetchStoreDocument('couriers');
+          if (Array.isArray(cloudCouriers)) localStorage.setItem('vortex_couriers', JSON.stringify(cloudCouriers));
+        } catch (e) {}
+      }
       staffMembers.forEach(m => { if (!m.status) m.status = 'ativo'; });
+      await syncCouriersStorage(staffMembers, false);
       renderStaffTable();
       calculateStaffMetrics();
     }
@@ -559,18 +563,20 @@
         staffMembers.push(newRecord);
       }
 
-      // Sincroniza com a tabela de entregadores do Módulo 21
-      syncCouriersStorage(staffMembers);
-
       localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
-      if (typeof dbSaveStoreDocument === 'function') {
-        try { await dbSaveStoreDocument('staff', staffMembers); } catch(e) {}
+      let cloudError = null;
+      try {
+        if (typeof dbSaveStoreDocument !== 'function') throw new Error('Sincronização com a nuvem indisponível.');
+        const staffResult = await dbSaveStoreDocument('staff', staffMembers);
+        if (!staffResult || staffResult.error) throw (staffResult && staffResult.error) || new Error('A equipe não foi confirmada na nuvem.');
+        await syncCouriersStorage(staffMembers, true);
+      } catch (e) {
+        cloudError = e;
+        console.warn('Colaborador salvo localmente; falha ao sincronizar equipe/entregadores:', e);
       }
-
-      renderStaffTable();
-      calculateStaffMetrics();
-      closeStaffModal();
-      showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
+      renderStaffTable(); calculateStaffMetrics(); closeStaffModal();
+      if (cloudError) showCustomAlert('Salvo no Dispositivo', 'O colaborador foi mantido neste dispositivo, mas a sincronização da equipe/entregadores não foi confirmada. Verifique a conexão e tente salvar novamente.', '⚠️');
+      else showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
     }
 
     function confirmDeleteStaff(id) {
@@ -595,19 +601,21 @@
       // Remove da equipe local
       staffMembers = staffMembers.filter(m => String(m.id) !== String(id));
 
-      // REMOVE TAMBÉM DO MÓDULO DE ENTREGADORES (MÓDULO 21)
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
-      couriers = couriers.filter(c => c.name.trim().toLowerCase() !== memberName);
+      couriers = couriers.filter(c => String(c.name || '').trim().toLowerCase() !== memberName);
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
-
       localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
-      if (typeof dbSaveStoreDocument === 'function') {
-        try { await dbSaveStoreDocument('staff', staffMembers); } catch(e) {}
-      }
-
-      renderStaffTable();
-      calculateStaffMetrics();
-      showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
+      let cloudError = null;
+      try {
+        if (typeof dbSaveStoreDocument !== 'function') throw new Error('Sincronização com a nuvem indisponível.');
+        const staffResult = await dbSaveStoreDocument('staff', staffMembers);
+        if (!staffResult || staffResult.error) throw (staffResult && staffResult.error) || new Error('A equipe não foi confirmada na nuvem.');
+        const courierResult = await dbSaveStoreDocument('couriers', couriers);
+        if (!courierResult || courierResult.error) throw (courierResult && courierResult.error) || new Error('Os entregadores não foram confirmados na nuvem.');
+      } catch (e) { cloudError = e; console.warn('Exclusão salva localmente; falha ao sincronizar equipe/entregadores:', e); }
+      renderStaffTable(); calculateStaffMetrics();
+      if (cloudError) showCustomAlert('Removido no Dispositivo', 'A remoção foi mantida neste dispositivo, mas não foi confirmada na nuvem. Verifique a conexão e tente novamente.', '⚠️');
+      else showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
     }
 
     setInterval(() => {

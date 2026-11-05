@@ -645,7 +645,7 @@
         if (typeof dbCancelOrder === 'function') {
           await dbCancelOrder(id, reason);
         } else if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_kds_orders').update({ status: 'cancelled', cancellation_reason: reason }).eq('id', String(id));
+          await window.supabaseClient.from('vortex_kds_orders').update({ status: 'cancelled', cancellation_reason: reason }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         }
       } catch (e) {}
 

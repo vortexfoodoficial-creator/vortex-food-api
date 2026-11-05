@@ -509,6 +509,7 @@ async function dbFetchStockMovements() {
     type: movement.type,
     qty: Number(movement.qty) || 0,
     reason: movement.reason || '',
+    idempotency_key: movement.idempotency_key || '',
     created_at: movement.created_at,
     date: movement.created_at ? new Date(movement.created_at).toLocaleString('pt-BR') : ''
   }));

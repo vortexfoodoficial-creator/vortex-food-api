@@ -391,19 +391,19 @@
 
     function getCatalogProducts() {
       const saved = localStorage.getItem('vortex_products_catalog');
-      if (saved) {
-        let products = JSON.parse(saved);
-        return products.filter(p => p.active !== false).map(p => ({
+      if (!saved) return [];
+      try {
+        const products = JSON.parse(saved);
+        if (!Array.isArray(products)) return [];
+        return products.filter(p => p && p.active !== false).map(p => ({
           id: p.id,
           name: p.name,
           price: parseFloat(p.price) || 0,
           category: p.category
         }));
+      } catch (e) {
+        return [];
       }
-      return [
-        { id: 1, name: 'X-Burger Especial', price: 28.50 },
-        { id: 2, name: 'X-Salada Duplo', price: 32.00 }
-      ];
     }
 
     function readLocalKdsOrders() {

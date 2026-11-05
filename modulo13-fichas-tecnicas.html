@@ -368,12 +368,15 @@
 
     async function syncRecipesToCloud() {
       try {
-        if (typeof dbSaveStoreDocument === 'function') {
-          const result = await dbSaveStoreDocument('recipes', getRecipes());
-          if (result && result.error) throw result.error;
+        if (typeof dbSaveStoreDocument !== 'function') {
+          throw new Error('Sincronização de fichas técnicas indisponível.');
         }
-      } catch (e) {
-        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
+        const result = await dbSaveStoreDocument('recipes', getRecipes());
+        if (result && result.error) throw result.error;
+        return true;
+      } catch (error) {
+        console.error('Erro ao sincronizar fichas técnicas no Supabase:', error);
+        return false;
       }
     }
 
@@ -629,16 +632,23 @@
       p.totalCost = totalCalculatedCost;
       p.unitCost = totalCalculatedCost;
 
-      // Salva o cardápio atualizado localmente e na nuvem
+      // Salva o catálogo completo no documento isolado deste estabelecimento.
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       localStorage.setItem('vortex_cardapio_produtos', JSON.stringify(products));
-      
+      let catalogSynced = false;
       try {
-        if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_cardapio_produtos').upsert([p]);
+        if (typeof dbSaveCatalog !== 'function') {
+          throw new Error('Sincronização do catálogo indisponível.');
         }
-      } catch (err) {
-        console.warn('Erro ao atualizar custo do produto na nuvem:', err);
+        const catalogResult = await dbSaveCatalog({
+          products,
+          groups: JSON.parse(localStorage.getItem('vortex_groups_catalog') || '[]'),
+          complements: JSON.parse(localStorage.getItem('vortex_complements_catalog') || '[]')
+        });
+        if (catalogResult && catalogResult.error) throw catalogResult.error;
+        catalogSynced = true;
+      } catch (error) {
+        console.warn('Erro ao atualizar custo do produto na nuvem:', error);
       }
 
       const recipeData = {
@@ -659,12 +669,15 @@
       }
 
       localStorage.setItem('vortex_recipes_catalog', JSON.stringify(recipes));
-      await syncRecipesToCloud();
-      
+      const recipesSynced = await syncRecipesToCloud();
+
       closeRecipeModal();
       renderRecipes();
-      showNoticeModal('Ficha Técnica Salva!', 'Ficha atualizada e Custo Base sincronizado perfeitamente com Relatórios e DRE!', '📖');
-    }
+      if (catalogSynced && recipesSynced) {
+        showNoticeModal('Ficha Técnica Salva!', 'Ficha e custo do produto sincronizados com a nuvem deste estabelecimento.', '📖');
+      } else {
+        showNoticeModal('Salvo neste aparelho', 'A ficha técnica e o custo foram atualizados localmente, mas a sincronização completa com a nuvem não foi confirmada. Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+      }
 
     function editRecipe(id) {
       let recipes = getRecipes();

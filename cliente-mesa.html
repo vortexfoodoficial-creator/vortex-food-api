@@ -301,7 +301,7 @@
     }
 
     async function checkServiceEnabled() {
-      const validTable = /^\\d+$/.test(tableId) && Number(tableId) >= 1 && Number(tableId) <= 200;
+      const validTable = /^\d+$/.test(tableId) && Number(tableId) >= 1 && Number(tableId) <= 200;
       const validStore = /^[0-9a-f-]{36}$/i.test(storeId);
       if (!validTable || !validStore) {
         document.getElementById('activeButtons').style.display = 'none';

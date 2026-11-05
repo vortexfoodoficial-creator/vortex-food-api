@@ -93,6 +93,13 @@
     .shortcut-icon { font-size: 1.6rem; }
     .shortcut-label { font-size: 0.82rem; font-weight: bold; }
 
+    .subscription-summary { background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--info); border-radius: 14px; padding: 15px 18px; margin: 0 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .subscription-summary-title { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
+    .subscription-summary-main { font-size: 1.05rem; font-weight: 700; }
+    .subscription-summary-meta { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; }
+    .subscription-summary a { color: var(--primary); font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .subscription-summary a:hover { text-decoration: underline; }
+
     .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
     .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
     .metric-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
@@ -189,6 +196,16 @@
         🕒 <span id="currentTimeHeader">--:--:--</span>
       </div>
     </header>
+
+    <!-- RESUMO DA ASSINATURA -->
+    <section class="subscription-summary" id="subscriptionSummary" aria-live="polite">
+      <div>
+        <div class="subscription-summary-title">💳 Plano e assinatura</div>
+        <div class="subscription-summary-main" id="dashboardSubscriptionStatus">Consultando sua assinatura...</div>
+        <div class="subscription-summary-meta" id="dashboardSubscriptionRemaining">As informações serão atualizadas automaticamente.</div>
+      </div>
+      <a href="modulo-mensalidade.html">Ver detalhes da mensalidade →</a>
+    </section>
 
     <!-- BARRA DE FILTRO DE PERÍODO -->
     <div class="filter-bar">
@@ -425,6 +442,49 @@
       products: [],
       lastFetched: 0
     };
+
+    function formatSubscriptionDate(value) {
+      if (!value) return 'Não informado';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Não informado';
+      return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    async function loadSubscriptionSummary() {
+      const statusEl = document.getElementById('dashboardSubscriptionStatus');
+      const remainingEl = document.getElementById('dashboardSubscriptionRemaining');
+      if (!statusEl || !remainingEl || !window.VortexAuth || !window.VortexAuth.getCurrentStoreContext) return;
+      try {
+        const result = await window.VortexAuth.getCurrentStoreContext();
+        if (result.error) throw result.error;
+        const subscription = result.subscription;
+        if (!subscription) {
+          statusEl.textContent = 'Assinatura não localizada';
+          remainingEl.textContent = 'Acesse Pagamento Mensalidade para verificar os dados.';
+          return;
+        }
+        if (subscription.status === 'trialing' && subscription.trial_ends_at) {
+          const ms = new Date(subscription.trial_ends_at).getTime() - Date.now();
+          if (ms > 0) {
+            const days = Math.ceil(ms / 86400000);
+            statusEl.textContent = 'Teste grátis ativo — ' + days + (days === 1 ? ' dia restante' : ' dias restantes');
+            remainingEl.textContent = 'Término: ' + formatSubscriptionDate(subscription.trial_ends_at);
+          } else {
+            statusEl.textContent = 'Período de teste encerrado';
+            remainingEl.textContent = 'Consulte Pagamento Mensalidade para ver as próximas orientações.';
+          }
+        } else if (subscription.status === 'active') {
+          statusEl.textContent = 'Assinatura ativa';
+          remainingEl.textContent = subscription.current_period_end ? 'Próximo vencimento: ' + formatSubscriptionDate(subscription.current_period_end) : 'Seu plano está ativo.';
+        } else {
+          statusEl.textContent = 'Situação: ' + String(subscription.status || 'indisponível');
+          remainingEl.textContent = 'Consulte Pagamento Mensalidade para ver os detalhes.';
+        }
+      } catch (error) {
+        statusEl.textContent = 'Não foi possível consultar a assinatura';
+        remainingEl.textContent = error && error.message ? error.message : 'Tente novamente mais tarde.';
+      }
+    }
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -768,6 +828,7 @@
 
     window.onload = function() {
       loadDashboardData();
+      loadSubscriptionSummary();
     };
   </script>
 </body>

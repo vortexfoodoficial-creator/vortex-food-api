@@ -462,6 +462,32 @@
       }
     }
 
+    async function syncStockMovementsToCloud() {
+      if (typeof dbSaveStockMovements !== 'function') return false;
+      try {
+        const result = await dbSaveStockMovements(getStockMovements());
+        if (result && result.error) throw result.error;
+        return true;
+      } catch (error) {
+        console.error('Erro ao sincronizar movimentações do estoque:', error);
+        return false;
+      }
+    }
+
+    async function refreshStockMovementsFromCloud() {
+      if (typeof dbFetchStockMovements !== 'function') return false;
+      try {
+        const cloudMovements = await dbFetchStockMovements();
+        if (Array.isArray(cloudMovements)) {
+          localStorage.setItem('vortex_stock_movements', JSON.stringify(cloudMovements));
+          return true;
+        }
+      } catch (error) {
+        console.warn('Não foi possível carregar o histórico de estoque:', error);
+      }
+      return false;
+    }
+
     function escapeStockHtml(value) {
       return String(value ?? '').replace(/[&<>\"']/g, character => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;'
@@ -838,7 +864,10 @@
       }
 
       let movs = getStockMovements();
+      const movementId = 'mov_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       movs.unshift({
+        id: movementId,
+        created_at: new Date().toISOString(),
         date: new Date().toLocaleString('pt-BR'),
         item_id: item.id,
         item_name: item.name,
@@ -850,6 +879,7 @@
 
       localStorage.setItem('vortex_stock_items', JSON.stringify(items));
       await syncStockToCloud();
+      await syncStockMovementsToCloud();
 
       closeMovementModal();
       renderStockTable();
@@ -875,6 +905,7 @@
       loadStoreSettings();
       renderStockTable();
       const refreshed = await refreshStockFromCloud();
+      await refreshStockMovementsFromCloud();
       if (refreshed) renderStockTable();
     });
   </script>

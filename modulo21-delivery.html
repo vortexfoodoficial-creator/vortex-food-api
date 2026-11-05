@@ -1278,7 +1278,7 @@
       try {
         const supabase = getDeliverySupabaseClient();
         if (!supabase) return { error: new Error('Supabase não inicializado') };
-        return await supabase.from('vortex_kds_orders').update(patch).eq('id', String(orderId));
+        return await supabase.from('vortex_kds_orders').update(patch).eq('id', String(orderId)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
       } catch (error) {
         return { error };
       }
@@ -1347,7 +1347,7 @@
 
       deliveryOrdersFetchInFlight = true;
       try {
-        const { data, error } = await supabase.from('vortex_kds_orders').select('*');
+        const { data, error } = await supabase.from('vortex_kds_orders').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         if (error) throw error;
         if (!Array.isArray(data)) return;
 

@@ -587,7 +587,7 @@
 
       if (window.supabaseClient) {
         try {
-          await window.supabaseClient.from('vortex_sales_history').delete().eq('id', saleIdToDelete);
+          await window.supabaseClient.from('vortex_sales_history').delete().eq('id', saleIdToDelete).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         } catch (e) {
           console.warn('Erro ao deletar do Supabase:', e);
         }
@@ -615,7 +615,7 @@
       if (window.supabaseClient) {
         try {
           const [resSales, resFichas, resCardapio, resExpenses, resRecipes] = await Promise.all([
-            window.supabaseClient.from('vortex_sales_history').select('*'),
+            window.supabaseClient.from('vortex_sales_history').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID),
             window.supabaseClient.from('vortex_fichas_tecnicas').select('*'),
             window.supabaseClient.from('vortex_cardapio_produtos').select('*'),
             window.supabaseClient.from('vortex_expenses_history').select('*'),

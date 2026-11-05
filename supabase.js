@@ -78,8 +78,7 @@ async function dbSaveStoreSettings(settingsData) {
     phone: settingsData.phone || settingsData.tel || '',
     email: settingsData.email || '',
     taxa: settingsData.taxa || '10,00',
-    rodape: settingsData.rodape || '',
-    updated_at: new Date().toISOString()
+    rodape: settingsData.rodape || ''
   };
 
   const { data, error } = await supabase.from('vortex_store_settings').upsert([record], { onConflict: 'store_id,id' });
@@ -452,8 +451,7 @@ async function dbSaveFinancialEntry(entryData) {
     type: entryData.type,
     description: entryData.description,
     value: parseFloat(entryData.value) || 0,
-    date: entryData.date || new Date().toISOString().split('T')[0],
-    updated_at: new Date().toISOString()
+    date: entryData.date || new Date().toISOString().split('T')[0]
   }]);
   return { data, error };
 }

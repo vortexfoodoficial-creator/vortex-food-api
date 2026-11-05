@@ -427,7 +427,7 @@
         allSales = await dbFetchSales();
       } else if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient) {
         try {
-          const { data } = await window.supabaseClient.from('vortex_sales_history').select('*');
+          const { data } = await window.supabaseClient.from('vortex_sales_history').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
           if (data) allSales = data;
         } catch(e) {}
       }
@@ -710,7 +710,7 @@
           await client
             .from('cash_shifts')
             .update({ movements: currentCashData.movements })
-            .eq('id', currentCashData.shiftId);
+            .eq('id', currentCashData.shiftId).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         } catch (e) {
           console.error('Erro ao atualizar movimentações no Supabase:', e);
         }
@@ -769,7 +769,7 @@
               close_reason: closeReasonText,
               movements: currentCashData.movements
             })
-            .eq('id', currentCashData.shiftId);
+            .eq('id', currentCashData.shiftId).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         } catch (e) {
           console.error('Erro ao fechar turno no Supabase:', e);
         }
@@ -813,7 +813,7 @@
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
       if (client) {
         try {
-          const { data } = await client.from('cash_shifts').select('*').eq('status', 'closed').order('closed_at', { ascending: false });
+          const { data } = await client.from('cash_shifts').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).eq('status', 'closed').order('closed_at', { ascending: false });
           if (data && data.length > 0) shifts = data;
         } catch(e) {}
       }

@@ -404,7 +404,7 @@
                 ...localItem,
                 ...r, 
                 displayId: finalDisplayId, 
-                status: localItem.status || r.status 
+                status: r.status || localItem.status 
               });
             } else {
               const finalDisplayId = r.displayId || r.displayid;

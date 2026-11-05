@@ -793,94 +793,68 @@
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       let currentData = tableCarts[activeTableId];
       if (!currentData) return;
-
       const total = currentData.totalAccumulated;
       const payment = document.getElementById('tablePaymentMethod').value;
-
       if (payment === 'Dinheiro' && rawCashGiven < total) {
         showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total.', '⚠️');
         return;
       }
-
       const now = new Date();
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      const primaryOrderId = currentData.orderIds && currentData.orderIds.length > 0 ? currentData.orderIds[0] : '1';
-
-      let changeVal = 0;
-      if (payment === 'Dinheiro' && rawCashGiven > total) {
-        changeVal = rawCashGiven - total;
-      }
-
-      let currentSalesRaw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
-      let cleanedSalesStr = currentSalesRaw.replace(/\./g, '').replace(',', '.');
-      let currentSales = parseFloat(cleanedSalesStr) || 0;
-      currentSales += total;
-      localStorage.setItem('vortex_vendas_hoje', currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : '1';
+      const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
       const newSaleRecord = {
-        store_id: window.VORTEX_ACTIVE_STORE_ID,
-        id: primaryOrderId,
+        store_id: window.VORTEX_ACTIVE_STORE_ID, id: primaryOrderId,
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
-        channel: `Mesa ${activeTableId}`,
-        total: total,
-        subtotal: total,
-        discount: 0,
-        pay_method: payment,
-        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total,
-        changeValue: changeVal,
-        status: 'finished',
-        date: dateStr,
-        time: timeStr,
-        items: currentData.sentItems
+        channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
+        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,
+        status: 'finished', date: dateStr, time: timeStr, items: currentData.sentItems
       };
-      salesHistory.unshift(newSaleRecord);
-      localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
-
       try {
-        if (typeof dbSaveSale !== 'function') {
-          throw new Error('Rotina segura de gravação de vendas não disponível.');
-        }
-        const saleResult = await dbSaveSale(newSaleRecord);
-        if (!saleResult || saleResult.error) {
-          throw (saleResult && saleResult.error) || new Error('A venda não foi confirmada na nuvem.');
-        }
+        if (typeof dbSaveSale !== 'function') throw new Error('Rotina segura de gravação de vendas não disponível.');
+        const result = await dbSaveSale(newSaleRecord);
+        if (!result || result.error) throw (result && result.error) || new Error('A venda não foi confirmada na nuvem.');
       } catch (err) {
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
+        let history = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+        const pending = { ...newSaleRecord, cloudSyncPending: true };
+        const idx = history.findIndex(s => String(s.id) === String(pending.id));
+        if (idx >= 0) history[idx] = { ...history[idx], ...pending }; else history.unshift(pending);
+        localStorage.setItem('vortex_sales_history', JSON.stringify(history));
+        const detail = err && err.message ? err.message : String(err);
+        showNoticeModal('Venda salva no dispositivo', `Não foi possível confirmar a venda da Mesa ${activeTableId} na nuvem. A mesa continua aberta e os itens foram preservados. Tente fechar novamente quando a conexão voltar. Motivo: ${detail}`, '⚠️');
+        return;
       }
-
+      let history = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+      const confirmed = { ...newSaleRecord, cloudSyncPending: false };
+      const idx = history.findIndex(s => String(s.id) === String(confirmed.id));
+      if (idx >= 0) history[idx] = { ...history[idx], ...confirmed }; else history.unshift(confirmed);
+      localStorage.setItem('vortex_sales_history', JSON.stringify(history));
+      let raw = localStorage.getItem('vortex_vendas_hoje') || '0,00';
+      let sales = parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
+      sales += total;
+      localStorage.setItem('vortex_vendas_hoje', sales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       let kdsOrders = readLocalKdsOrders();
       kdsOrders.forEach(o => {
         if (currentData.orderIds && currentData.orderIds.includes(String(o.id))) {
-          o.status = 'finished';
-          o.payMethod = payment;
-          o.amountPaid = payment === 'Dinheiro' ? rawCashGiven : total;
-          o.changeValue = changeVal;
+          o.status = 'finished'; o.payMethod = payment;
+          o.amountPaid = payment === 'Dinheiro' ? rawCashGiven : total; o.changeValue = changeVal;
         }
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
       try {
-        let client = null;
-        if (typeof getSupabase === 'function') client = getSupabase();
-        if (!client && window.supabaseClient) client = window.supabaseClient;
-        if (client) {
-          for (let id of (currentData.orderIds || [])) {
-            await client.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-          }
+        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+        if (client) for (const id of (currentData.orderIds || [])) {
+          const { error } = await client.from('vortex_kds_orders').update({ status: 'finished' })
+            .eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
+          if (error) console.warn('Venda salva, mas não foi possível atualizar o pedido KDS:', error);
         }
-      } catch (err) {}
-
+      } catch (err) { console.warn('Venda salva, mas houve falha ao atualizar os pedidos KDS:', err); }
       delete tableCarts[activeTableId];
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
-
-      closePaymentModal();
-      closeMesaModal();
-      renderMesas();
-
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, sincronizada na nuvem e liberada com sucesso!`, '✅');
+      closePaymentModal(); closeMesaModal(); renderMesas();
+      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, salva e confirmada na nuvem. A mesa foi liberada com sucesso!`, '✅');
     }
 
     function escapeRequestText(value) {

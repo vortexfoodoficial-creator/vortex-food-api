@@ -75,6 +75,19 @@ BEGIN
     RAISE EXCEPTION 'Estabelecimento não encontrado ou inativo.';
   END IF;
 
+  -- Limita envios independentes em sequência na mesma mesa.
+  -- Repetições do mesmo token já retornaram o pedido original acima.
+  PERFORM pg_advisory_xact_lock(hashtext(p_store_id::text), p_table_number);
+  IF EXISTS (
+    SELECT 1
+    FROM public.vortex_kds_orders
+    WHERE store_id = p_store_id
+      AND origin = 'Mesa ' || lpad(p_table_number::text, 2, '0')
+      AND created_at > v_now - interval '2 seconds'
+  ) THEN
+    RAISE EXCEPTION 'Aguarde alguns segundos antes de enviar outro pedido desta mesa.';
+  END IF;
+
   IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'O pedido precisa ser enviado em formato de lista.';
   END IF;
@@ -242,7 +255,8 @@ BEGIN
     v_reason := COALESCE(v_entry->>'reason', '');
     v_key := NULLIF(v_entry->>'idempotency_key', '');
 
-    IF v_item_id IS NULL OR v_key IS NULL OR v_qty IS NULL OR v_qty <= 0 THEN
+    IF v_item_id IS NULL OR v_key IS NULL OR v_qty IS NULL OR v_qty <= 0
+       OR v_type <> 'consumption' THEN
       RAISE EXCEPTION 'Movimentação de estoque inválida.';
     END IF;
 

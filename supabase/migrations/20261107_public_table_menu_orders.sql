@@ -114,9 +114,11 @@ BEGIN
     RAISE EXCEPTION 'Estabelecimento não encontrado ou inativo.';
   END IF;
 
-  IF jsonb_typeof(p_items) <> 'array'
-     OR jsonb_array_length(p_items) < 1
-     OR jsonb_array_length(p_items) > 30 THEN
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'O pedido precisa ser enviado em formato de lista.';
+  END IF;
+
+  IF jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 30 THEN
     RAISE EXCEPTION 'O pedido precisa conter entre 1 e 30 itens.';
   END IF;
 

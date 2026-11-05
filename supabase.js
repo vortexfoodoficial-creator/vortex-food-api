@@ -799,7 +799,7 @@ function vortexRequireAuthenticatedPage() {
         document.documentElement.style.visibility = '';
       });
     })
-    .catch(redirectToLogin);in);
+    .catch(redirectToLogin);
 }
 
 // Ativa a verificação somente nas páginas internas listadas acima.

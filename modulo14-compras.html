@@ -593,9 +593,10 @@
     }
 
     async function syncSupabaseCompras() {
-      if (window.supabaseClient) {
+      if (typeof dbSaveStoreDocument === 'function') {
         try {
-          await window.supabaseClient.from('vortex_compras').upsert([{ id: 1, data: comprasData }]);
+          const result = await dbSaveStoreDocument('purchases', comprasData);
+          if (result && result.error) throw result.error;
         } catch (err) {
           console.warn('Aviso Supabase Compras:', err);
         }

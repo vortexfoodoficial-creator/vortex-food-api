@@ -265,108 +265,81 @@ async function dbFetchKdsOrders() {
  * REGRA CENTRAL DE CONSUMO DE ESTOQUE AO ENTRAR EM PREPARO (IDEMPOTENTE)
  */
 async function processStockConsumptionForOrder(order) {
-  if (!order || !order.items || order.items.length === 0) return;
+  if (!order || !Array.isArray(order.items) || order.items.length === 0) return;
+
+  const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return;
+  if (!supabase || !storeId) {
+    console.warn('Consumo automático aguardando conexão e identificação do estabelecimento.');
+    return;
+  }
 
   try {
-    let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
-    let recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-    let movements = JSON.parse(localStorage.getItem('vortex_stock_movements')) || [];
-
-    // Atualiza as chaves de idempotência com o histórico remoto antes de calcular
-    // novos descontos, reduzindo o risco de repetir o consumo em outro aparelho.
-    if (typeof dbFetchStockMovements === 'function') {
-      const cloudMovements = await dbFetchStockMovements();
-      if (Array.isArray(cloudMovements)) {
-        const byKey = new Map();
-        [...movements, ...cloudMovements].forEach(m => {
-          const key = m.idempotency_key || m.id;
-          if (key) byKey.set(String(key), m);
-        });
-        movements = Array.from(byKey.values());
-      }
-    }
-
-    let stockChanged = false;
+    const stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
+    const recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+    const movements = [];
 
     order.items.forEach((item, itemIndex) => {
-      // Localiza a ficha técnica pelo productId ou nome do produto
-      const rec = recipes.find(r => 
-        String(r.productId) === String(item.id || item.productId) || 
+      const rec = recipes.find(r =>
+        String(r.productId) === String(item.id || item.productId) ||
         (r.productName && r.productName.trim().toLowerCase() === (item.name || item.title || '').trim().toLowerCase())
       );
 
-      if (rec && rec.ingredients && Array.isArray(rec.ingredients)) {
-        rec.ingredients.forEach(ing => {
-          let ingredientQtyPerUnit = parseFloat(ing.qty || 0);
-          // Conversão de unidades se necessário (ex: gramas/ml para kg/l base do estoque se o insumo estiver em kg e receita em g)
-          let itemQty = parseFloat(item.qty || item.quantity || 1);
-          let totalReqQty = ingredientQtyPerUnit * itemQty;
+      if (!rec || !Array.isArray(rec.ingredients)) return;
 
-          // Se a ficha técnica estiver em gramas/ml e o estoque em kg/l, converte adequadamente
-          let stockItem = stockItems.find(si => String(si.id) === String(ing.insumoId || ing.ingredientId) || (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase()));
+      rec.ingredients.forEach(ing => {
+        const ingredientQtyPerUnit = parseFloat(ing.qty || 0);
+        const itemQty = parseFloat(item.qty || item.quantity || 1);
+        const totalReqQty = ingredientQtyPerUnit * itemQty;
+        const stockItem = stockItems.find(si =>
+          String(si.id) === String(ing.insumoId || ing.ingredientId) ||
+          (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase())
+        );
 
-          if (stockItem) {
-            let unitToUse = ing.unit || 'g';
-            let calculatedQty = totalReqQty;
-            if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) {
-              calculatedQty = totalReqQty / 1000;
-            }
+        if (!stockItem || !Number.isFinite(totalReqQty) || totalReqQty <= 0) return;
 
-            const idempotencyKey = `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}`;
+        let calculatedQty = totalReqQty;
+        const unitToUse = ing.unit || 'g';
+        if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) {
+          calculatedQty = totalReqQty / 1000;
+        }
 
-            // Verifica se a movimentação já foi registrada (Idempotência rigorosa)
-            const alreadyProcessed = movements.some(m => m.idempotency_key === idempotencyKey);
-            if (!alreadyProcessed) {
-              stockItem.qty = Math.max(0, parseFloat(stockItem.qty || 0) - calculatedQty);
-              stockChanged = true;
+        if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) return;
 
-              const newMov = {
-                id: 'mov_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                order_id: String(order.id),
-                item_id: String(stockItem.id),
-                item_name: String(stockItem.name),
-                type: 'consumption',
-                qty: calculatedQty,
-                reason: `Consumo automático - Pedido #${order.id} (${item.name || 'Produto'})`,
-                idempotency_key: idempotencyKey,
-                date: new Date().toLocaleString('pt-BR')
-              };
-              movements.unshift(newMov);
-            }
-          }
+        movements.push({
+          id: 'mov_' + Date.now() + '_' + itemIndex + '_' + String(stockItem.id),
+          item_id: String(stockItem.id),
+          item_name: String(stockItem.name || ''),
+          type: 'consumption',
+          qty: calculatedQty,
+          reason: `Consumo automático - Pedido #${order.id} (${item.name || 'Produto'})`,
+          idempotency_key: `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}`
         });
-      }
+      });
     });
 
-    if (stockChanged) {
-      localStorage.setItem('vortex_stock_items', JSON.stringify(stockItems));
-      localStorage.setItem('vortex_stock_movements', JSON.stringify(movements));
+    if (!movements.length) return;
 
-      // Sincroniza com o Supabase de forma assíncrona
-      const supabase = getSupabase();
-      if (supabase) {
-        const { error: stockError } = await supabase.from('vortex_stock_items').upsert(stockItems.map(i => ({
-          store_id: storeId,
-          id: String(i.id),
-          name: i.name,
-          category: i.category,
-          unit: i.unit,
-          qty: parseFloat(i.qty) || 0,
-          cost: parseFloat(i.cost) || 0,
-          min_stock: parseFloat(i.minStock) || 0,
-          barcode: i.barcode || '',
-          updated_at: new Date().toISOString()
-        })));
-        if (stockError) throw stockError;
+    // O banco grava a movimentação e desconta o saldo na mesma transação.
+    // Se o mesmo pedido for processado novamente, a chave única impede novo desconto.
+    const { data, error } = await supabase.rpc('rpc_consume_stock_for_order', {
+      p_store_id: storeId,
+      p_order_id: String(order.id),
+      p_movements: movements
+    });
+    if (error) throw error;
+    if (!data || data.success !== true) throw new Error('O banco não confirmou o consumo do estoque.');
 
-        // Persiste também as chaves de idempotência do consumo automático.
-        if (typeof dbSaveStockMovements === 'function') {
-          const movementResult = await dbSaveStockMovements(movements);
-          if (movementResult && movementResult.error) throw movementResult.error;
-        }
-      }
+    const [cloudStock, cloudMovements] = await Promise.all([
+      typeof dbFetchStock === 'function' ? dbFetchStock() : Promise.resolve(null),
+      typeof dbFetchStockMovements === 'function' ? dbFetchStockMovements() : Promise.resolve(null)
+    ]);
+
+    if (Array.isArray(cloudStock)) {
+      localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
+    }
+    if (Array.isArray(cloudMovements)) {
+      localStorage.setItem('vortex_stock_movements', JSON.stringify(cloudMovements));
     }
   } catch (e) {
     console.error('Erro ao processar consumo automático de estoque:', e);

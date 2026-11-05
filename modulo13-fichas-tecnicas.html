@@ -375,12 +375,6 @@
       } catch (e) {
         console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
       }
-    } else if (typeof dbSaveRecipes === 'function') {
-          await dbSaveRecipes(getRecipes());
-        }
-      } catch (e) {
-        console.error('Erro ao sincronizar fichas técnicas no Supabase:', e);
-      }
     }
 
     async function renderRecipes() {

@@ -1239,8 +1239,12 @@
       let cloudSuccess = true;
       let cloudErrorMsg = '';
       try {
-        if (typeof dbSaveSale === 'function') {
-          await dbSaveSale(newSaleRecord);
+        if (typeof dbSaveSale !== 'function') {
+          throw new Error('Rotina segura de gravação de vendas não disponível.');
+        }
+        const saleRes = await dbSaveSale(newSaleRecord);
+        if (!saleRes || saleRes.error) {
+          throw (saleRes && saleRes.error) || new Error('A venda não foi confirmada na nuvem.');
         }
         const cloudRes = await saveDeliveryKdsOrderToCloud(newOrder);
         if (cloudRes && cloudRes.error) {

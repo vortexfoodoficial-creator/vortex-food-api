@@ -704,7 +704,28 @@
 
       let settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
 
-      // Sincroniza do Supabase se houver conexão
+      // Recupera as configurações completas deste estabelecimento para outros dispositivos.
+      if (typeof dbFetchStoreDocument === 'function') {
+        try {
+          const cloudSettings = await dbFetchStoreDocument('settings');
+          if (cloudSettings && typeof cloudSettings === 'object') {
+            settings = { ...settings, ...cloudSettings };
+            localStorage.setItem('vortex_store_settings', JSON.stringify(settings));
+            if (settings.storeAddress) {
+              localStorage.setItem('vortex_store_address', settings.storeAddress);
+              localStorage.setItem('vortex_endereco', settings.storeAddress);
+            }
+            if (Object.prototype.hasOwnProperty.call(settings, 'logoBase64')) {
+              if (settings.logoBase64) localStorage.setItem('vortex_store_logo', settings.logoBase64);
+              else localStorage.removeItem('vortex_store_logo');
+            }
+          }
+        } catch (error) {
+          console.warn('Não foi possível carregar as configurações completas da nuvem:', error);
+        }
+      }
+
+      // Sincroniza também os campos principais na tabela de configurações.
       if (window.supabaseClient) {
         try {
           const { data } = await window.supabaseClient.from('vortex_store_settings').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID).limit(1);
@@ -944,7 +965,8 @@
         fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
         requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
         scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
-        paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification
+        paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification,
+        logoBase64: tempLogoBase64 || localStorage.getItem('vortex_store_logo') || null
       };
 
       // 1. Grava no localStorage unificado para acesso imediato do Módulo 21
@@ -956,7 +978,24 @@
         localStorage.setItem('vortex_store_logo', tempLogoBase64);
       }
 
-      // 2. Envia para o Supabase (tabela vortex_store_settings id = 1)
+      // 2. Sincroniza as configurações completas e os campos principais na nuvem.
+      let cloudSyncSuccess = true;
+      let cloudSyncMessage = '';
+
+      if (typeof dbSaveStoreDocument === 'function') {
+        try {
+          const documentResult = await dbSaveStoreDocument('settings', payload);
+          if (documentResult && documentResult.error) throw documentResult.error;
+        } catch (error) {
+          cloudSyncSuccess = false;
+          cloudSyncMessage = error.message || 'Falha ao salvar as configurações completas.';
+          console.warn('Aviso ao sincronizar configurações completas:', error);
+        }
+      } else {
+        cloudSyncSuccess = false;
+        cloudSyncMessage = 'Conexão com a nuvem indisponível.';
+      }
+
       if (window.supabaseClient) {
         try {
           const dbPayload = {
@@ -971,14 +1010,26 @@
             taxa: serviceTax || '10,00',
             rodape: receiptFooter
           };
-          await window.supabaseClient.from('vortex_store_settings').upsert([dbPayload], { onConflict: 'store_id,id' });
-        } catch (err) {
-          console.warn('Aviso Supabase Configurações:', err);
+          const { error } = await window.supabaseClient
+            .from('vortex_store_settings')
+            .upsert([dbPayload], { onConflict: 'store_id,id' });
+          if (error) throw error;
+        } catch (error) {
+          cloudSyncSuccess = false;
+          cloudSyncMessage = cloudSyncMessage || error.message || 'Falha ao salvar os dados principais.';
+          console.warn('Aviso Supabase Configurações:', error);
         }
+      } else {
+        cloudSyncSuccess = false;
+        cloudSyncMessage = cloudSyncMessage || 'Conexão com a nuvem indisponível.';
       }
 
       loadStoreSettings();
-      showNoticeModal('Configurações Salvas!', 'As informações e o endereço do estabelecimento foram sincronizados com sucesso!', '🎉');
+      if (cloudSyncSuccess) {
+        showNoticeModal('Configurações Salvas!', 'As configurações foram salvas neste estabelecimento e sincronizadas com a nuvem.', '🎉');
+      } else {
+        showNoticeModal('Salvo neste aparelho', 'As alterações ficaram salvas localmente, mas a sincronização com a nuvem não foi confirmada. ' + cloudSyncMessage + ' Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+      }
     }
 
     function showNoticeModal(title, desc, icon) {

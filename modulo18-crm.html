@@ -777,9 +777,9 @@
             // Uma lista vazia na nuvem também é válida: não ressuscita clientes locais antigos.
             customers = cloudCustomers;
             localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
-          } else if (customers.length > 0) {
-            await syncCustomersToCloud(customers);
           }
+          // Se a leitura falhar ou o documento ainda não existir, preserva o cache local
+          // sem enviá-lo automaticamente para a nuvem. Novos cadastros sincronizam ao salvar.
         } catch (error) {
           console.warn('Não foi possível carregar clientes da nuvem:', error);
         }

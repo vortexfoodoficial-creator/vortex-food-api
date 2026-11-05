@@ -110,6 +110,60 @@
     .btn-close-account { background: var(--warning); color: #000; }
     .btn-call-waiter { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); }
 
+    /* Módulo de Avaliação do Cliente */
+    .rating-section {
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+
+    .rating-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .stars-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .star {
+      font-size: 1.8rem;
+      color: var(--border);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .star.active { color: var(--warning); }
+
+    .rating-comment {
+      width: 100%;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      resize: none;
+      height: 60px;
+      margin-bottom: 10px;
+    }
+
+    .btn-send-rating {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border: 1px solid var(--success);
+      padding: 8px 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+    }
+
     /* Modais Profissionais do Cliente */
     .modal-overlay {
       display: none;
@@ -193,8 +247,18 @@
         <span>🙋‍♂️</span> Chamar Garçom
       </button>
 
-      <!-- AVALIAÇÃO DE SATISFAÇÃO -->
-      <div style="font-size:0.85rem; color:var(--text-muted); margin-top:14px;">A equipe receberá sua solicitação diretamente no painel do estabelecimento.</div>
+      <div class="rating-section">
+        <div class="rating-title">Como foi a sua experiência conosco hoje?</div>
+        <div class="stars-container">
+          <span class="star" onclick="setRating(1)">★</span>
+          <span class="star" onclick="setRating(2)">★</span>
+          <span class="star" onclick="setRating(3)">★</span>
+          <span class="star" onclick="setRating(4)">★</span>
+          <span class="star" onclick="setRating(5)">★</span>
+        </div>
+        <textarea class="rating-comment" id="ratingComment" placeholder="Deixe um comentário opcional..."></textarea>
+        <button class="btn-send-rating" onclick="submitRating()">Enviar Avaliação</button>
+      </div>
    </div>
 
     <div id="disabledNotice" class="status-disabled" style="display: none;">
@@ -236,6 +300,7 @@
     const storeId = urlParams.get('store') || '';
     const tableId = urlParams.get('mesa') || '';
     let currentActionType = null;
+    let selectedRating = 0;
 
     document.getElementById('tableTitleDisplay').innerText = tableId ? ('Mesa ' + String(tableId).padStart(2, '0')) : 'Mesa inválida';
 
@@ -260,6 +325,38 @@
       document.getElementById('disabledNotice').style.display = enabled ? 'none' : 'block';
       if (!enabled) document.getElementById('disabledNotice').innerText = 'O atendimento por QR Code está desativado neste estabelecimento. Solicite ajuda à equipe.';
       return enabled;
+    }
+
+    function setRating(stars) {
+      selectedRating = stars;
+      const starElements = document.querySelectorAll('.star');
+      starElements.forEach((el, index) => {
+        if (index < stars) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    }
+
+    function submitRating() {
+      if (selectedRating === 0) {
+        showNoticeModal('Atenção', 'Por favor, selecione pelo menos 1 estrela para registrar a sua avaliação.', '⚠️', '#eab308');
+        return;
+      }
+      const comment = document.getElementById('ratingComment').value;
+      
+      let reviews = JSON.parse(localStorage.getItem('vortex_reviews') || '[]');
+      reviews.push({
+        table: tableId,
+        stars: selectedRating,
+        comment: comment,
+        date: new Date().toLocaleDateString('pt-BR')
+      });
+      localStorage.setItem('vortex_reviews', JSON.stringify(reviews));
+
+      showNoticeModal('Avaliação Enviada', 'Agradecemos pelo seu feedback! O seu comentário nos ajuda a melhorar cada vez mais.', '⭐', 'var(--success)');
+      document.getElementById('ratingComment').value = '';
     }
 
     function askConfirmation(type) {

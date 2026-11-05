@@ -798,9 +798,24 @@
       let items = getStockItems();
       items = items.filter(i => String(i.id) !== String(id));
       localStorage.setItem('vortex_stock_items', JSON.stringify(items));
-      await syncStockToCloud();
+
+      let cloudDeleted = false;
+      try {
+        if (typeof dbDeleteStockItem === 'function') {
+          const result = await dbDeleteStockItem(id);
+          if (result && result.error) throw result.error;
+          cloudDeleted = true;
+        }
+      } catch (error) {
+        console.error('Erro ao excluir item do estoque na nuvem:', error);
+      }
+
       renderStockTable();
-      showNoticeModal('Removido', 'Item excluído do estoque com sucesso.', '🗑️');
+      if (cloudDeleted) {
+        showNoticeModal('Removido', 'Item de estoque excluído deste estabelecimento e sincronizado com a nuvem.', '🗑️');
+      } else {
+        showNoticeModal('Exclusão local pendente', 'O item foi removido deste aparelho, mas a exclusão na nuvem não foi confirmada. Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+      }
     }
 
     function toggleCostInput(type) {

@@ -265,84 +265,47 @@ async function dbFetchKdsOrders() {
  * REGRA CENTRAL DE CONSUMO DE ESTOQUE AO ENTRAR EM PREPARO (IDEMPOTENTE)
  */
 async function processStockConsumptionForOrder(order) {
-  if (!order || !Array.isArray(order.items) || order.items.length === 0) return;
-
+  if (!order || !Array.isArray(order.items) || !order.items.length) return { success: true, skipped: true, reason: 'no_items' };
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
-  if (!supabase || !storeId) {
-    console.warn('Consumo automático aguardando conexão e identificação do estabelecimento.');
-    return;
-  }
-
+  if (!supabase || !storeId) return { success: false, skipped: false, error: new Error('Conexão ou estabelecimento não disponível para sincronizar o estoque.') };
   try {
     const stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
     const recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
     const movements = [];
-
     order.items.forEach((item, itemIndex) => {
-      const rec = recipes.find(r =>
-        String(r.productId) === String(item.id || item.productId) ||
-        (r.productName && r.productName.trim().toLowerCase() === (item.name || item.title || '').trim().toLowerCase())
-      );
-
+      const rec = recipes.find(r => String(r.productId) === String(item.id || item.productId) ||
+        (r.productName && r.productName.trim().toLowerCase() === (item.name || item.title || '').trim().toLowerCase()));
       if (!rec || !Array.isArray(rec.ingredients)) return;
-
       rec.ingredients.forEach(ing => {
-        const ingredientQtyPerUnit = parseFloat(ing.qty || 0);
-        const itemQty = parseFloat(item.qty || item.quantity || 1);
-        const totalReqQty = ingredientQtyPerUnit * itemQty;
-        const stockItem = stockItems.find(si =>
-          String(si.id) === String(ing.insumoId || ing.ingredientId) ||
-          (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase())
-        );
-
+        const totalReqQty = parseFloat(ing.qty || 0) * parseFloat(item.qty || item.quantity || 1);
+        const stockItem = stockItems.find(si => String(si.id) === String(ing.insumoId || ing.ingredientId) ||
+          (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase()));
         if (!stockItem || !Number.isFinite(totalReqQty) || totalReqQty <= 0) return;
-
         let calculatedQty = totalReqQty;
         const unitToUse = ing.unit || 'g';
-        if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) {
-          calculatedQty = totalReqQty / 1000;
-        }
-
+        if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) calculatedQty = totalReqQty / 1000;
         if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) return;
-
-        movements.push({
-          id: 'mov_' + Date.now() + '_' + itemIndex + '_' + String(stockItem.id),
-          item_id: String(stockItem.id),
-          item_name: String(stockItem.name || ''),
-          type: 'consumption',
-          qty: calculatedQty,
+        movements.push({ id: 'mov_' + Date.now() + '_' + itemIndex + '_' + String(stockItem.id),
+          item_id: String(stockItem.id), item_name: String(stockItem.name || ''), type: 'consumption', qty: calculatedQty,
           reason: `Consumo automático - Pedido #${order.id} (${item.name || 'Produto'})`,
-          idempotency_key: `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}`
-        });
+          idempotency_key: `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}` });
       });
     });
-
-    if (!movements.length) return;
-
-    // O banco grava a movimentação e desconta o saldo na mesma transação.
-    // Se o mesmo pedido for processado novamente, a chave única impede novo desconto.
-    const { data, error } = await supabase.rpc('rpc_consume_stock_for_order', {
-      p_store_id: storeId,
-      p_order_id: String(order.id),
-      p_movements: movements
-    });
+    if (!movements.length) return { success: true, skipped: true, reason: 'no_recipe_or_stock_items' };
+    const { data, error } = await supabase.rpc('rpc_consume_stock_for_order', { p_store_id: storeId, p_order_id: String(order.id), p_movements: movements });
     if (error) throw error;
-    if (!data || data.success !== true) throw new Error('O banco não confirmou o consumo do estoque.');
-
+    if (!data || data.success !== true) throw new Error((data && data.message) || 'O banco não confirmou o consumo do estoque.');
     const [cloudStock, cloudMovements] = await Promise.all([
       typeof dbFetchStock === 'function' ? dbFetchStock() : Promise.resolve(null),
       typeof dbFetchStockMovements === 'function' ? dbFetchStockMovements() : Promise.resolve(null)
     ]);
-
-    if (Array.isArray(cloudStock)) {
-      localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
-    }
-    if (Array.isArray(cloudMovements)) {
-      localStorage.setItem('vortex_stock_movements', JSON.stringify(cloudMovements));
-    }
+    if (Array.isArray(cloudStock)) localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
+    if (Array.isArray(cloudMovements)) localStorage.setItem('vortex_stock_movements', JSON.stringify(cloudMovements));
+    return { success: true, skipped: false, movements: movements.length, data };
   } catch (e) {
     console.error('Erro ao processar consumo automático de estoque:', e);
+    return { success: false, skipped: false, error: e };
   }
 }
 

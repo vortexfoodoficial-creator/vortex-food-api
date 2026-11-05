@@ -441,6 +441,77 @@ async function dbSaveStock(stockData) {
   return { data, error };
 }
 
+async function dbSaveStockMovements(movements) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+
+  const entries = Array.isArray(movements) ? movements : [];
+  const normalized = entries.map((movement, index) => {
+    const id = String(movement.id || ('mov_' + Date.now() + '_' + index));
+    movement.id = id;
+    return {
+      store_id: storeId,
+      id,
+      order_id: movement.order_id ? String(movement.order_id) : null,
+      item_id: String(movement.item_id || ''),
+      item_name: String(movement.item_name || movement.itemName || ''),
+      type: String(movement.type || 'adjustment'),
+      qty: Number(movement.qty) || 0,
+      reason: String(movement.reason || ''),
+      idempotency_key: String(movement.idempotency_key || ('stock_' + id)),
+      created_at: movement.created_at || movement.createdAt || new Date().toISOString()
+    };
+  });
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('vortex_stock_movements')
+    .select('id')
+    .eq('store_id', storeId);
+  if (fetchError) return { error: fetchError };
+
+  const incomingIds = new Set(normalized.map(movement => movement.id));
+  for (const oldMovement of (existing || [])) {
+    if (!incomingIds.has(String(oldMovement.id))) {
+      const { error: deleteError } = await supabase
+        .from('vortex_stock_movements')
+        .delete()
+        .eq('store_id', storeId)
+        .eq('id', String(oldMovement.id));
+      if (deleteError) return { error: deleteError };
+    }
+  }
+
+  if (!normalized.length) return { data: [], error: null };
+  const { data, error } = await supabase.from('vortex_stock_movements').upsert(normalized);
+  return { data, error };
+}
+
+async function dbFetchStockMovements() {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return [];
+  const { data, error } = await supabase
+    .from('vortex_stock_movements')
+    .select('*')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return null;
+  return data.map(movement => ({
+    id: movement.id,
+    order_id: movement.order_id,
+    item_id: movement.item_id,
+    item_name: movement.item_name,
+    type: movement.type,
+    qty: Number(movement.qty) || 0,
+    reason: movement.reason || '',
+    created_at: movement.created_at,
+    date: movement.created_at ? new Date(movement.created_at).toLocaleString('pt-BR') : ''
+  }));
+}
+
 async function dbFetchStock() {
   const supabase = getSupabase();
   if (!supabase) return null;

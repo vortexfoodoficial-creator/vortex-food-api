@@ -697,21 +697,30 @@
         date: entryDate
       };
 
-      // Grava no Supabase utilizando a função oficial de `supabase.js` com suporte a getSupabase()
-      if (typeof dbSaveFinancialEntry === 'function') {
-        await dbSaveFinancialEntry(financialPayload);
-      } else {
-        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-        if (client) {
-          try {
-            await client.from('vortex_financial').upsert([financialPayload]);
-          } catch (e) {
-            console.warn('Erro ao salvar no Supabase:', e);
-          }
+      let financialSynced = false;
+      let shiftSynced = false;
+      let syncErrorMessage = '';
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+
+      // Registra o lançamento financeiro e confere o retorno real do Supabase.
+      try {
+        if (typeof dbSaveFinancialEntry === 'function') {
+          const result = await dbSaveFinancialEntry(financialPayload);
+          if (result && result.error) throw result.error;
+          financialSynced = true;
+        } else if (client) {
+          const { error } = await client.from('vortex_financial').upsert([financialPayload]);
+          if (error) throw error;
+          financialSynced = true;
+        } else {
+          throw new Error('Conexão com a nuvem indisponível.');
         }
+      } catch (error) {
+        syncErrorMessage = error.message || 'Falha ao sincronizar o lançamento financeiro.';
+        console.error('Erro ao salvar no Supabase:', error);
       }
 
-      // Salva também localmente para suporte imediato e offline
+      // Mantém o registro local para não perder a operação durante uma queda de conexão.
       try {
         let localList = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
         localList.unshift({
@@ -725,22 +734,31 @@
         localStorage.setItem('vortex_financial_entries', JSON.stringify(localList));
       } catch(e) {}
 
-      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
       if (client && currentCashData.shiftId) {
         try {
-          await client
+          const { error } = await client
             .from('cash_shifts')
             .update({ movements: currentCashData.movements })
-            .eq('id', currentCashData.shiftId).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-        } catch (e) {
-          console.error('Erro ao atualizar movimentações no Supabase:', e);
+            .eq('id', currentCashData.shiftId)
+            .eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
+          if (error) throw error;
+          shiftSynced = true;
+        } catch (error) {
+          syncErrorMessage = syncErrorMessage || error.message || 'Falha ao atualizar o turno na nuvem.';
+          console.error('Erro ao atualizar movimentações no Supabase:', error);
         }
+      } else {
+        syncErrorMessage = syncErrorMessage || 'Turno ainda não identificado na nuvem.';
       }
 
       saveCurrentCashState();
       renderCashState();
       closeMovementModal();
-      showCustomAlert('Sucesso', 'Movimentação registrada e integrada ao financeiro via Supabase!', '✅');
+      if (financialSynced && shiftSynced) {
+        showCustomAlert('Movimentação Sincronizada', 'A movimentação foi registrada no caixa e no financeiro, com confirmação da nuvem.', '✅');
+      } else {
+        showCustomAlert('Sincronização pendente', 'A movimentação ficou registrada neste aparelho, mas não foi possível confirmar todas as gravações na nuvem. ' + syncErrorMessage + ' Verifique antes de utilizar outro dispositivo.', '⚠️');
+      }
     }
 
     function openCloseCashModal() {

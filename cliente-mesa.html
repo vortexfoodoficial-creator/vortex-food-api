@@ -44,6 +44,24 @@
     .table-title { font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 5px 0 2px 0; }
     .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
 
+    .public-menu { margin: 16px 0 20px; text-align: left; }
+    .public-menu h2 { font-size: 1.05rem; margin-bottom: 10px; }
+    .public-menu-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .public-product { display: flex; gap: 10px; align-items: center; background: rgba(15,23,42,.55); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+    .public-product img { width: 76px; height: 76px; object-fit: cover; border-radius: 9px; background: var(--bg-main); }
+    .public-product-info { flex: 1; min-width: 0; }
+    .public-product-name { font-size: .92rem; font-weight: 700; }
+    .public-product-desc { font-size: .75rem; color: var(--text-muted); margin-top: 3px; }
+    .public-product-price { color: var(--success); font-weight: 800; margin-top: 5px; }
+    .public-product button, .public-cart button { border: 0; border-radius: 8px; padding: 9px 12px; background: var(--primary); color: white; font-weight: 700; cursor: pointer; }
+    .public-cart { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .public-cart-row { display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:.83rem; padding:7px 0; border-bottom:1px solid var(--border); }
+    .public-cart-actions { display:flex; align-items:center; gap:6px; }
+    .public-cart-actions button { padding:5px 9px; }
+    .public-checkout { display:grid; gap:8px; margin-top:12px; }
+    .public-checkout input, .public-checkout textarea { width:100%; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main); border-radius:8px; padding:10px; }
+    .public-order-submit { width:100%; margin-top:10px; background:var(--success); color:#052e16; border:0; border-radius:9px; padding:12px; font-weight:800; cursor:pointer; }
+    .public-order-submit:disabled { opacity:.55; cursor:wait; }
     /* Caixa do Extrato da Comanda da Mesa */
     .extrato-box {
       background: rgba(15, 23, 42, 0.6);
@@ -238,6 +256,24 @@
       </div>
     </div>
 
+    <section class="public-menu" id="publicMenuSection" style="display:none;">
+      <h2 id="publicMenuTitle">🍽️ Cardápio da casa</h2>
+      <div id="publicMenuStatus" style="font-size:.82rem;color:var(--text-muted);padding:8px 0;">Carregando cardápio...</div>
+      <div class="public-menu-grid" id="publicMenuGrid"></div>
+      <div class="public-cart" id="publicCart">
+        <strong>Seu pedido</strong>
+        <div id="publicCartItems" style="font-size:.82rem;color:var(--text-muted);padding:8px 0;">Nenhum produto selecionado.</div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;padding-top:8px;border-top:1px solid var(--border);">
+          <span>Total</span><span id="publicCartTotal">R$ 0,00</span>
+        </div>
+        <div class="public-checkout">
+          <input id="publicClientName" maxlength="80" placeholder="Seu nome (opcional)">
+          <textarea id="publicOrderObservation" maxlength="500" rows="2" placeholder="Observações do pedido (opcional)"></textarea>
+        </div>
+        <button class="public-order-submit" id="publicOrderSubmit" onclick="submitPublicTableOrder()">Enviar pedido para a cozinha</button>
+      </div>
+    </section>
+
     <div id="activeButtons">
       <button class="btn-action-client btn-close-account" onclick="askConfirmation('close')">
         <span>🧾</span> Pedir a Conta
@@ -301,6 +337,10 @@
     const tableId = urlParams.get('mesa') || '';
     let currentActionType = null;
     let selectedRating = 0;
+    let publicMenuProducts = [];
+    let publicCart = [];
+    let publicOrderSending = false;
+
 
     document.getElementById('tableTitleDisplay').innerText = tableId ? ('Mesa ' + String(tableId).padStart(2, '0')) : 'Mesa inválida';
 
@@ -325,6 +365,121 @@
       document.getElementById('disabledNotice').style.display = enabled ? 'none' : 'block';
       if (!enabled) document.getElementById('disabledNotice').innerText = 'O atendimento por QR Code está desativado neste estabelecimento. Solicite ajuda à equipe.';
       return enabled;
+    }
+
+    function escapePublicText(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
+
+    function formatPublicMoney(value) {
+      return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    async function loadPublicTableMenu() {
+      const section = document.getElementById('publicMenuSection');
+      section.style.display = 'block';
+      const status = document.getElementById('publicMenuStatus');
+      status.innerText = 'Carregando cardápio...';
+      try {
+        const { data, error } = await publicSupabase.rpc('rpc_get_public_table_menu', { p_store_id: storeId });
+        if (error) throw error;
+        if (!data || !Array.isArray(data.products)) throw new Error('Cardápio indisponível.');
+        publicMenuProducts = data.products;
+        document.getElementById('publicMenuTitle').innerText = '🍽️ ' + (data.store_name || 'Cardápio da casa');
+        renderPublicMenu();
+      } catch (error) {
+        status.innerText = error.message || 'Não foi possível carregar o cardápio. Tente novamente.';
+        document.getElementById('publicMenuGrid').innerHTML = '';
+      }
+    }
+
+    function renderPublicMenu() {
+      const grid = document.getElementById('publicMenuGrid');
+      const status = document.getElementById('publicMenuStatus');
+      if (!publicMenuProducts.length) {
+        status.innerText = 'Este estabelecimento ainda não publicou produtos para pedidos por mesa.';
+        grid.innerHTML = '';
+        return;
+      }
+      status.innerText = 'Escolha os produtos e envie seu pedido para a cozinha.';
+      grid.innerHTML = publicMenuProducts.map((product, index) => {
+        const image = String(product.image || '');
+        const safeImage = /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=]+$/i.test(image) ? image : '';
+        return '<article class="public-product">' +
+          (safeImage ? '<img src="' + safeImage + '" alt="' + escapePublicText(product.name) + '">' : '<div style="width:76px;height:76px;border-radius:9px;background:var(--bg-main);display:grid;place-items:center;">🍽️</div>') +
+          '<div class="public-product-info"><div class="public-product-name">' + escapePublicText(product.name) + '</div>' +
+          (product.description ? '<div class="public-product-desc">' + escapePublicText(product.description) + '</div>' : '') +
+          '<div class="public-product-price">' + formatPublicMoney(product.price) + (product.isKg ? ' / kg' : '') + '</div></div>' +
+          '<button type="button" onclick="addPublicProduct(' + index + ')">Adicionar</button></article>';
+      }).join('');
+      renderPublicCart();
+    }
+
+    function addPublicProduct(index) {
+      const product = publicMenuProducts[index];
+      if (!product) return;
+      const id = String(product.id);
+      const existing = publicCart.find(item => item.id === id);
+      if (existing) existing.qty = Math.min(30, existing.qty + 1);
+      else publicCart.push({ id, name: product.name, price: Number(product.price) || 0, qty: 1 });
+      renderPublicCart();
+    }
+
+    function changePublicCartQty(index, delta) {
+      const item = publicCart[index];
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) publicCart.splice(index, 1);
+      if (item.qty > 30) item.qty = 30;
+      renderPublicCart();
+    }
+
+    function renderPublicCart() {
+      const list = document.getElementById('publicCartItems');
+      const total = publicCart.reduce((sum, item) => sum + item.price * item.qty, 0);
+      if (!publicCart.length) {
+        list.innerText = 'Nenhum produto selecionado.';
+      } else {
+        list.innerHTML = publicCart.map((item, index) =>
+          '<div class="public-cart-row"><span>' + item.qty + 'x ' + escapePublicText(item.name) +
+          '<br><small>' + formatPublicMoney(item.price * item.qty) + '</small></span>' +
+          '<span class="public-cart-actions"><button type="button" aria-label="Diminuir" onclick="changePublicCartQty(' + index + ',-1)">−</button>' +
+          '<button type="button" aria-label="Aumentar" onclick="changePublicCartQty(' + index + ',1)">+</button></span></div>'
+        ).join('');
+      }
+      document.getElementById('publicCartTotal').innerText = formatPublicMoney(total);
+      document.getElementById('publicOrderSubmit').disabled = !publicCart.length || publicOrderSending;
+    }
+
+    async function submitPublicTableOrder() {
+      if (publicOrderSending || !publicCart.length) return;
+      const button = document.getElementById('publicOrderSubmit');
+      publicOrderSending = true;
+      button.disabled = true;
+      button.innerText = 'Enviando pedido...';
+      try {
+        const { data, error } = await publicSupabase.rpc('rpc_create_public_table_order', {
+          p_store_id: storeId,
+          p_table_number: Number(tableId),
+          p_client_name: document.getElementById('publicClientName').value.trim(),
+          p_observation: document.getElementById('publicOrderObservation').value.trim(),
+          p_items: publicCart.map(item => ({ id: item.id, qty: item.qty }))
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) throw new Error('O pedido não foi confirmado.');
+        publicCart = [];
+        renderPublicCart();
+        document.getElementById('publicOrderObservation').value = '';
+        showNoticeModal('Pedido enviado!', 'Pedido #' + data.display_id + ' enviado para a cozinha. Total: ' + formatPublicMoney(data.total) + '. Aguarde o atendimento.', '🍽️', 'var(--success)');
+      } catch (error) {
+        showNoticeModal('Não foi possível enviar', error.message || 'Verifique a conexão e tente novamente.', '⚠️', '#eab308');
+      } finally {
+        publicOrderSending = false;
+        button.innerText = 'Enviar pedido para a cozinha';
+        renderPublicCart();
+      }
     }
 
     function setRating(stars) {
@@ -414,9 +569,10 @@
       }
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       loadTableComanda();
-      checkServiceEnabled();
+      const enabled = await checkServiceEnabled();
+      if (enabled) await loadPublicTableMenu();
     });
   </script>
 </body>

@@ -644,6 +644,48 @@ async function dbFetchStoreDocument(documentKey) {
   return data.data;
 }
 
+async function dbSavePublicQrEnabled(enabled) {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
+  return await supabase.rpc('rpc_set_public_qr_enabled', { p_enabled: !!enabled });
+}
+
+async function dbFetchPublicQrEnabled() {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return false;
+  const { data, error } = await supabase
+    .from('vortex_public_store_settings')
+    .select('qr_enabled')
+    .eq('store_id', storeId)
+    .maybeSingle();
+  return !error && !!(data && data.qr_enabled);
+}
+
+async function dbFetchPublicTableRequests() {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return [];
+  const { data, error } = await supabase
+    .from('vortex_public_table_requests')
+    .select('*')
+    .eq('store_id', storeId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  return error ? [] : (data || []);
+}
+
+async function dbResolvePublicTableRequest(requestId) {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  return await supabase
+    .from('vortex_public_table_requests')
+    .update({ status: 'attended', handled_at: new Date().toISOString() })
+    .eq('store_id', storeId)
+    .eq('id', String(requestId));
+}
+
 async function dbSaveIntegration(platform, credentials) {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();

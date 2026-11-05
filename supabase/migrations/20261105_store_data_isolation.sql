@@ -129,6 +129,41 @@ BEGIN
 END;
 $$;
 
+-- IDs operacionais podem se repetir em lojas diferentes (por exemplo, pedido #1).
+-- A chave primária passa a considerar a loja em todas as tabelas com id.
+DO $
+DECLARE
+  t text;
+  old_pk text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'cash_shifts',
+    'vortex_financial',
+    'vortex_kds',
+    'vortex_kds_orders',
+    'vortex_sales',
+    'vortex_sales_history',
+    'vortex_stock_items',
+    'vortex_stock_movements'
+  ]
+  LOOP
+    SELECT conname INTO old_pk
+    FROM pg_constraint
+    WHERE conrelid = format('public.%I', t)::regclass
+      AND contype = 'p';
+
+    IF old_pk IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', t, old_pk);
+    END IF;
+
+    EXECUTE format(
+      'ALTER TABLE public.%I ADD CONSTRAINT %I PRIMARY KEY (store_id, id)',
+      t, t || '_pkey'
+    );
+  END LOOP;
+END;
+$;
+
 -- Chaves que precisam ser únicas dentro de cada estabelecimento.
 ALTER TABLE public.vortex_integrations DROP CONSTRAINT IF EXISTS vortex_integrations_pkey;
 ALTER TABLE public.vortex_integrations

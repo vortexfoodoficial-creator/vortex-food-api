@@ -841,7 +841,7 @@
         if (!client && window.supabaseClient) client = window.supabaseClient;
         if (client) {
           for (let id of (currentData.orderIds || [])) {
-            await client.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id));
+            await client.from('vortex_kds_orders').update({ status: 'finished' }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
           }
         }
       } catch (err) {}

@@ -773,7 +773,8 @@
       if (typeof dbFetchCustomers === 'function') {
         try {
           const cloudCustomers = await dbFetchCustomers();
-          if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+          if (Array.isArray(cloudCustomers)) {
+            // Uma lista vazia na nuvem também é válida: não ressuscita clientes locais antigos.
             customers = cloudCustomers;
             localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
           } else if (customers.length > 0) {

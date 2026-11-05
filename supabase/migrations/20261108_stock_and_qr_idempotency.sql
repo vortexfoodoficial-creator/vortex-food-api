@@ -78,6 +78,23 @@ BEGIN
   -- Limita envios independentes em sequência na mesma mesa.
   -- Repetições do mesmo token já retornaram o pedido original acima.
   PERFORM pg_advisory_xact_lock(hashtext(p_store_id::text), p_table_number);
+
+  -- Reconfere o token depois do bloqueio: duas requisições simultâneas idênticas
+  -- devem receber o mesmo pedido, e não uma mensagem de intervalo.
+  SELECT * INTO v_existing
+  FROM public.vortex_kds_orders
+  WHERE store_id = p_store_id AND public_request_id = p_request_id;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object(
+      'success', true,
+      'duplicate', true,
+      'order_id', v_existing.id,
+      'display_id', COALESCE(v_existing."displayId", v_existing.code),
+      'total', v_existing.total
+    );
+  END IF;
+
   IF EXISTS (
     SELECT 1
     FROM public.vortex_kds_orders

@@ -435,30 +435,8 @@
     }
 
     async function saveTableKdsOrderToCloud(order) {
-      let client = null;
-      try {
-        if (typeof getSupabase === 'function') client = getSupabase();
-        if (!client && window.supabaseClient) client = window.supabaseClient;
-      } catch (e) {}
-      if (!client) return { data: null, error: new Error('Supabase não inicializado') };
-
-      const record = {
-        store_id: window.VORTEX_ACTIVE_STORE_ID,
-        id: String(order.id),
-        origin: order.origin || 'Balcão',
-        client: order.client || 'Cliente Balcão',
-        address: order.address || '',
-        payment: order.payment || 'Dinheiro',
-        time: order.time || '',
-        date: order.date || new Date().toISOString().slice(0, 10),
-        items: Array.isArray(order.items) ? order.items : [],
-        total: Number(order.total) || 0,
-        observation: order.observation || '',
-        status: order.status || 'new',
-        code: order.code || String(order.id)
-      };
-      const { data, error } = await client.from('vortex_kds_orders').upsert([record]);
-      return { data, error };
+      if (typeof dbSaveKdsOrderMinimal !== 'function') return { data: null, error: new Error('Rotina central de sincronização do KDS não disponível.') };
+      return await dbSaveKdsOrderMinimal(order);
     }
 
     async function toggleQrFeature(enabled) {
@@ -843,18 +821,21 @@
         }
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
+      let kdsUpdateWarning = '';
       try {
-        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-        if (client) for (const id of (currentData.orderIds || [])) {
-          const { error } = await client.from('vortex_kds_orders').update({ status: 'finished' })
-            .eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-          if (error) console.warn('Venda salva, mas não foi possível atualizar o pedido KDS:', error);
+        if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
+        for (const id of (currentData.orderIds || [])) {
+          const result = await dbUpdateKdsOrder(id, { status: 'finished' });
+          if (result && result.error) throw result.error;
         }
-      } catch (err) { console.warn('Venda salva, mas houve falha ao atualizar os pedidos KDS:', err); }
+      } catch (err) {
+        console.warn('Venda salva, mas não foi possível atualizar todos os pedidos KDS:', err);
+        kdsUpdateWarning = ' A venda foi salva, mas a atualização de um ou mais pedidos na cozinha ficou pendente: ' + (err.message || String(err));
+      }
       delete tableCarts[activeTableId];
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       closePaymentModal(); closeMesaModal(); renderMesas();
-      showNoticeModal('Conta Fechada!', `A Mesa ${activeTableId} foi paga, salva e confirmada na nuvem. A mesa foi liberada com sucesso!`, '✅');
+      showNoticeModal(kdsUpdateWarning ? 'Conta Fechada com Aviso' : 'Conta Fechada!', `A Mesa ${activeTableId} foi paga e salva na nuvem. A mesa foi liberada com sucesso!${kdsUpdateWarning}`, kdsUpdateWarning ? '⚠️' : '✅');
     }
 
     function escapeRequestText(value) {

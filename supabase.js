@@ -145,10 +145,11 @@ async function dbSaveSale(saleData) {
   if (error) console.error('Erro ao salvar venda:', error);
 
   try {
+    const localRecord = { ...record, cloudSyncPending: !!error };
     let localHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
     const idx = localHistory.findIndex(s => String(s.id) === String(record.id));
-    if (idx >= 0) localHistory[idx] = { ...localHistory[idx], ...record };
-    else localHistory.unshift(record);
+    if (idx >= 0) localHistory[idx] = { ...localHistory[idx], ...localRecord };
+    else localHistory.unshift(localRecord);
     localStorage.setItem('vortex_sales_history', JSON.stringify(localHistory));
   } catch(e) {}
 
@@ -182,8 +183,16 @@ async function dbFetchSales() {
     items: item.items || []
   }));
 
-  try { localStorage.setItem('vortex_sales_history', JSON.stringify(mapped)); } catch(e) {}
-  return mapped;
+  let localPending = [];
+  try {
+    const cached = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+    localPending = Array.isArray(cached) ? cached.filter(sale => sale && sale.cloudSyncPending === true) : [];
+  } catch(e) {}
+  const mergedSales = new Map(mapped.map(sale => [String(sale.id), sale]));
+  localPending.forEach(sale => mergedSales.set(String(sale.id), sale));
+  const finalSales = Array.from(mergedSales.values());
+  try { localStorage.setItem('vortex_sales_history', JSON.stringify(finalSales)); } catch(e) {}
+  return finalSales;
 }
 
 // KDS Orders
@@ -228,6 +237,37 @@ async function dbSaveKdsOrder(orderData) {
   } catch(e) {}
 
   return { data, error };
+}
+
+// Grava pedidos KDS com as colunas mínimas já utilizadas por PDV e Mesas.
+async function dbSaveKdsOrderMinimal(orderData) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  const record = {
+    store_id: resolved.storeId, id: String(orderData.id), origin: orderData.origin || 'Balcão',
+    client: orderData.client || 'Cliente Balcão', address: orderData.address || '',
+    payment: orderData.payment || 'Dinheiro', time: orderData.time || '',
+    date: orderData.date || new Date().toISOString().slice(0, 10),
+    items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
+    observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.id)
+  };
+  return await supabase.from('vortex_kds_orders').upsert([record]);
+}
+
+async function dbUpdateKdsOrder(orderId, updates) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  const safeUpdates = { ...(updates || {}) };
+  delete safeUpdates.id; delete safeUpdates.store_id;
+  const { data, error } = await supabase.from('vortex_kds_orders').update(safeUpdates)
+    .eq('id', String(orderId)).eq('store_id', resolved.storeId).select('id').maybeSingle();
+  if (error) return { data: null, error };
+  if (!data) return { data: null, error: new Error('O pedido não foi encontrado na nuvem para esta loja.') };
+  return { data, error: null };
 }
 
 async function dbFetchKdsOrders() {
@@ -334,8 +374,8 @@ async function processStockConsumptionForOrder(order) {
 // Cancelamento Idempotente Central
 async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   const supabase = getSupabase();
-  const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return { success: false, error: new Error('Estabelecimento ativo não identificado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { success: false, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
   const cancelTimestamp = new Date().toISOString();
 
   if (supabase) {

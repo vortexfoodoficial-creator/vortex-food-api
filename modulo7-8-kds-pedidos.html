@@ -575,12 +575,9 @@
         }
       }
       try {
-        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-        if (!client) throw new Error('Supabase não inicializado.');
-        const { data, error } = await client.from('vortex_kds_orders').update({ status: newStatus })
-          .eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID).select('id').maybeSingle();
-        if (error) throw error;
-        if (!data) throw new Error('O pedido não foi encontrado na nuvem para esta loja.');
+        if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
+        const result = await dbUpdateKdsOrder(id, { status: newStatus });
+        if (result && result.error) throw result.error;
       } catch (e) {
         console.warn('Erro ao sincronizar status na nuvem:', e);
         cloudWarning = ' A alteração ficou salva neste dispositivo, mas não foi confirmada na nuvem.';
@@ -648,16 +645,17 @@
         localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
       }
 
+      let cloudCancelError = null;
       try {
-        if (typeof dbCancelOrder === 'function') {
-          await dbCancelOrder(id, reason);
-        } else if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_kds_orders').update({ status: 'cancelled', cancellation_reason: reason }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-        }
-      } catch (e) {}
+        if (typeof dbCancelOrder !== 'function') throw new Error('Rotina central de cancelamento não disponível.');
+        const result = await dbCancelOrder(id, reason);
+        if (!result || result.success !== true) throw (result && result.error) || new Error('O Supabase não confirmou o cancelamento.');
+      } catch (e) { cloudCancelError = e; }
 
       renderKds();
-      showNoticeModal('Pedido Cancelado', `Pedido #${visibleDisplayId} foi cancelado com sucesso.`, '🔴');
+      showNoticeModal(cloudCancelError ? 'Cancelamento pendente na nuvem' : 'Pedido Cancelado',
+        cloudCancelError ? `Pedido #${visibleDisplayId} foi marcado como cancelado neste dispositivo, mas a nuvem não confirmou a alteração: ${cloudCancelError.message || String(cloudCancelError)}` : `Pedido #${visibleDisplayId} foi cancelado e confirmado na nuvem.`,
+        cloudCancelError ? '⚠️' : '🔴');
       refreshKdsData();
     }
 

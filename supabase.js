@@ -180,11 +180,11 @@ async function dbSaveKdsOrder(orderData) {
     client: orderData.client || 'Cliente Balcão',
     address: orderData.address || '',
     payment: orderData.payment || orderData.payMethod || 'Dinheiro',
-    cashGiven: parseFloat(orderData.cashGiven || 0),
+    cashgiven: parseFloat(orderData.cashGiven || orderData.cashgiven || 0),
     change: parseFloat(orderData.change || 0),
     time: orderData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     date: orderData.date || new Date().toISOString().split('T')[0],
-    dateFormatted: orderData.dateFormatted || new Date().toLocaleDateString('pt-BR'),
+    dateformatted: orderData.dateFormatted || orderData.dateformatted || new Date().toLocaleDateString('pt-BR'),
     items: orderData.items || [],
     total: parseFloat(orderData.total) || 0,
     observation: orderData.observation || '',
@@ -225,11 +225,11 @@ async function dbFetchKdsOrders() {
     client: item.client,
     address: item.address,
     payment: item.payment,
-    cashGiven: item.cashGiven,
+    cashGiven: item.cashgiven,
     change: item.change,
     time: item.time,
     date: item.date,
-    dateFormatted: item.dateFormatted,
+    dateFormatted: item.dateformatted,
     items: item.items || [],
     total: parseFloat(item.total) || 0,
     observation: item.observation,
@@ -469,19 +469,19 @@ async function dbFetchFinancialEntries() {
 }
 
 async function dbFetchCatalog() {
-  const supabase = getSupabase();
-  if (!supabase) return { products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [] };
-  const { data, error } = await supabase.from('vortex_products_catalog').select('*');
-  if (error) return { products: [] };
-  return { products: data || [] };
+  // Catálogo e grupos ainda são mantidos no armazenamento local por loja.
+  // Não consultar tabelas que não existem no esquema auditado nem buscar
+  // catálogo sem filtro de estabelecimento.
+  return {
+    products: JSON.parse(localStorage.getItem('vortex_products_catalog')) || [],
+    groups: JSON.parse(localStorage.getItem('vortex_groups_catalog')) || []
+  };
 }
 
 async function dbFetchRecipes() {
-  const supabase = getSupabase();
-  if (!supabase) return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-  const { data, error } = await supabase.from('vortex_recipes_catalog').select('*');
-  if (error) return [];
-  return data || [];
+  // As fichas técnicas ainda não possuem tabela própria no banco auditado.
+  // O armazenamento local já está separado por estabelecimento.
+  return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
 }
 
 async function dbDeleteRecord(tableName, id) {

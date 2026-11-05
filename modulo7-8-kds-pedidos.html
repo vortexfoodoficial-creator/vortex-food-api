@@ -562,28 +562,35 @@
     async function updateOrderStatus(id, newStatus) {
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
-
-      if (order) {
-        order.status = newStatus;
-        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-
-        renderKds();
-
-        try {
-          if (typeof processStockConsumptionForOrder === 'function' && newStatus === 'preparing') {
-            await processStockConsumptionForOrder(order);
-          }
-          if (window.supabaseClient) {
-            await window.supabaseClient.from('vortex_kds_orders').update({ status: newStatus }).eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-          }
-        } catch (e) {
-          console.warn('Erro ao sincronizar status na nuvem:', e);
+      if (!order) return;
+      order.status = newStatus;
+      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+      renderKds();
+      let stockWarning = '', cloudWarning = '';
+      if (typeof processStockConsumptionForOrder === 'function' && newStatus === 'preparing') {
+        const result = await processStockConsumptionForOrder(order);
+        if (result && result.success === false && !result.skipped) {
+          stockWarning = ' A baixa automática do estoque não foi confirmada: ' +
+            (result.error && result.error.message ? result.error.message : 'Falha não identificada');
         }
-
-        let visibleDisplayId = order.displayId || id;
-        let noticeMsg = `Pedido #${visibleDisplayId} atualizado com sucesso.`;
-        showNoticeModal('Atualização do Pedido', noticeMsg, '👨‍🍳');
       }
+      try {
+        const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+        if (!client) throw new Error('Supabase não inicializado.');
+        const { data, error } = await client.from('vortex_kds_orders').update({ status: newStatus })
+          .eq('id', String(id)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID).select('id').maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('O pedido não foi encontrado na nuvem para esta loja.');
+      } catch (e) {
+        console.warn('Erro ao sincronizar status na nuvem:', e);
+        cloudWarning = ' A alteração ficou salva neste dispositivo, mas não foi confirmada na nuvem.';
+      }
+      const visibleDisplayId = order.displayId || id;
+      let noticeMsg = cloudWarning ? `Pedido #${visibleDisplayId} atualizado localmente.${cloudWarning}` :
+        `Pedido #${visibleDisplayId} atualizado e confirmado na nuvem.`;
+      noticeMsg += stockWarning;
+      showNoticeModal(stockWarning || cloudWarning ? 'Atenção na Sincronização' : 'Atualização do Pedido',
+        noticeMsg, stockWarning || cloudWarning ? '⚠️' : '👨‍🍳');
     }
 
     function askCancelOrder(id) {

@@ -475,7 +475,8 @@
       const snapshot = getStockItems();
       stockSyncPromise = (async () => {
         try {
-          await dbSaveStock(snapshot);
+          const result = await dbSaveStock(snapshot);
+          if (result && result.error) throw result.error;
           return true;
         } catch (error) {
           console.error('Erro ao sincronizar estoque no Supabase:', error);

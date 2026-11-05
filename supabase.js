@@ -355,30 +355,27 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
 
   if (supabase) {
     try {
-      await supabase.from('vortex_sales_history').update({
-        status: 'cancelled',
-        financial_status: 'reversed',
-        cancellation_reason: reason,
-        cancelled_at: cancelTimestamp,
-        updated_at: cancelTimestamp
-      }).eq('id', String(orderId)).eq('store_id', storeId);
+      // A RPC identifica a loja pelo vínculo autenticado e atualiza somente
+      // os registros correspondentes dentro dessa loja.
+      const { data, error } = await supabase.rpc('rpc_cancel_order', {
+        p_order_id: String(orderId),
+        p_reason: reason
+      });
 
-      await supabase.from('vortex_kds_orders').update({
-        status: 'cancelled',
-        cancellation_reason: reason,
-        cancelled_at: cancelTimestamp,
-        updated_at: cancelTimestamp
-      }).eq('id', String(orderId)).eq('store_id', storeId);
+      if (error) throw error;
+      if (!data || data.success !== true) {
+        return { success: false, error: new Error((data && data.message) || 'O banco não confirmou o cancelamento.') };
+      }
 
       updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
-      return { success: true };
+      return { success: true, data };
     } catch (clientErr) {
       return { success: false, error: clientErr };
     }
-  } else {
-    updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
-    return { success: true, offline: true };
   }
+
+  updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
+  return { success: true, offline: true };
 }
 
 function updateLocalCachesAfterCancel(orderId, reason, timestamp) {

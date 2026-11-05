@@ -453,9 +453,39 @@
       document.getElementById('publicOrderSubmit').disabled = !publicCart.length || publicOrderSending;
     }
 
+    function createPublicRequestUuid() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, character => {
+        const random = Math.random() * 16 | 0;
+        return (character === 'x' ? random : (random & 3 | 8)).toString(16);
+      });
+    }
+
+    function getPublicOrderRequestId(clientName, observation, items) {
+      const storageKey = 'vortex_qr_pending_' + storeId + '_' + tableId;
+      const fingerprint = JSON.stringify({ clientName, observation, items });
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+        if (saved && saved.fingerprint === fingerprint && saved.requestId) return saved.requestId;
+        const requestId = createPublicRequestUuid();
+        sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, requestId }));
+        return requestId;
+      } catch (error) {
+        return createPublicRequestUuid();
+      }
+    }
+
     async function submitPublicTableOrder() {
       if (publicOrderSending || !publicCart.length) return;
       const button = document.getElementById('publicOrderSubmit');
+      const clientName = document.getElementById('publicClientName').value.trim();
+      const observation = document.getElementById('publicOrderObservation').value.trim();
+      const items = publicCart.map(item => ({ id: item.id, qty: item.qty }));
+      const requestId = getPublicOrderRequestId(clientName, observation, items);
+      const storageKey = 'vortex_qr_pending_' + storeId + '_' + tableId;
+
       publicOrderSending = true;
       button.disabled = true;
       button.innerText = 'Enviando pedido...';
@@ -463,12 +493,14 @@
         const { data, error } = await publicSupabase.rpc('rpc_create_public_table_order', {
           p_store_id: storeId,
           p_table_number: Number(tableId),
-          p_client_name: document.getElementById('publicClientName').value.trim(),
-          p_observation: document.getElementById('publicOrderObservation').value.trim(),
-          p_items: publicCart.map(item => ({ id: item.id, qty: item.qty }))
+          p_client_name: clientName,
+          p_observation: observation,
+          p_items: items,
+          p_request_id: requestId
         });
         if (error) throw error;
         if (!data || data.success !== true) throw new Error('O pedido não foi confirmado.');
+        try { sessionStorage.removeItem(storageKey); } catch (storageError) {}
         publicCart = [];
         renderPublicCart();
         document.getElementById('publicOrderObservation').value = '';

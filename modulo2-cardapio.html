@@ -1220,7 +1220,7 @@
       });
     }
 
-    function saveComplementGroup() {
+    async function saveComplementGroup() {
       const groupName = document.getElementById('compGroupName').value.trim().toUpperCase();
       if (!groupName || draftCompItems.length === 0) {
         showNoticeModal('Atenção', 'Dê um nome ao grupo e adicione pelo menos um item.', '⚠️');
@@ -1245,6 +1245,7 @@
           }
         });
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+        await syncCatalogToCloud();
       }
 
       draftCompItems = [];

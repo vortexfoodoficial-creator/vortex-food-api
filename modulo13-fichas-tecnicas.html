@@ -381,6 +381,17 @@
       loadStoreSettings();
 
       try {
+        if (typeof dbFetchCatalog === 'function') {
+          const cloudCatalog = await dbFetchCatalog();
+          if (cloudCatalog && typeof cloudCatalog === 'object') {
+            localStorage.setItem('vortex_products_catalog', JSON.stringify(Array.isArray(cloudCatalog.products) ? cloudCatalog.products : []));
+            localStorage.setItem('vortex_groups_catalog', JSON.stringify(Array.isArray(cloudCatalog.groups) ? cloudCatalog.groups : []));
+          }
+        }
+        if (typeof dbFetchStock === 'function') {
+          const cloudStock = await dbFetchStock();
+          if (Array.isArray(cloudStock)) localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
+        }
         if (typeof dbFetchStoreDocument === 'function') {
           const cloudRecipes = await dbFetchStoreDocument('recipes');
           if (Array.isArray(cloudRecipes)) {

@@ -840,10 +840,12 @@
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
       try {
-        if (typeof dbSaveSale === 'function') {
-          await dbSaveSale(newSaleRecord);
-        } else if (window.supabaseClient) {
-          await window.supabaseClient.from('vortex_sales_history').upsert([newSaleRecord]);
+        if (typeof dbSaveSale !== 'function') {
+          throw new Error('Rotina segura de gravação de vendas não disponível.');
+        }
+        const saleResult = await dbSaveSale(newSaleRecord);
+        if (!saleResult || saleResult.error) {
+          throw (saleResult && saleResult.error) || new Error('A venda não foi confirmada na nuvem.');
         }
       } catch (err) {
         console.error('Erro ao salvar venda da mesa no Supabase:', err);

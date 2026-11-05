@@ -453,7 +453,7 @@
       }
     }
 
-    function loadStoreSettings() {
+    async function loadStoreSettings() {
       applyTheme();
       let storeName = 'MEU ESTABELECIMENTO';
       try {
@@ -470,7 +470,7 @@
       } else {
         sidebarLogo.style.display = 'none';
       }
-      loadCouriers();
+      await loadCouriers();
     }
 
     async function getCatalogProducts() {
@@ -528,31 +528,24 @@
       return Array.from(map.values());
     }
 
-    function saveUnifiedCouriers(couriersList) {
-      localStorage.setItem('vortex_couriers', JSON.stringify(couriersList));
-      
+    async function saveUnifiedCouriers(couriersList) {
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: true }))));
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
       couriersList.forEach(c => {
         let found = team.find(t => String(t.name).trim().toLowerCase() === String(c.name).trim().toLowerCase());
-        if (found) {
-          found.phone = c.phone;
-          found.role = 'Entregador';
-          found.courierType = c.type;
-          found.type = c.type;
-          found.status = 'ativo';
-        } else {
-          team.push({
-            id: c.id,
-            name: c.name,
-            phone: c.phone,
-            role: 'Entregador',
-            courierType: c.type,
-            type: c.type,
-            status: 'ativo'
-          });
-        }
+        if (found) { found.phone = c.phone; found.role = 'Entregador'; found.courierType = c.type; found.type = c.type; found.status = 'ativo'; }
+        else team.push({ id: c.id, name: c.name, phone: c.phone, role: 'Entregador', courierType: c.type, type: c.type, status: 'ativo' });
       });
       localStorage.setItem('vortex_team_members', JSON.stringify(team));
+      if (typeof dbSaveStoreDocument !== 'function') return { success: false, error: new Error('Sincronização com a nuvem indisponível.') };
+      try {
+        const cr = await dbSaveStoreDocument('couriers', couriersList);
+        if (!cr || cr.error) throw (cr && cr.error) || new Error('A nuvem não confirmou os entregadores.');
+        const tr = await dbSaveStoreDocument('staff', team);
+        if (!tr || tr.error) throw (tr && tr.error) || new Error('A nuvem não confirmou a equipe.');
+        localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: false }))));
+        return { success: true };
+      } catch (error) { console.warn('Entregadores mantidos localmente; falha na sincronização:', error); return { success: false, error }; }
     }
 
     function openCourierModal(courierId = null) {
@@ -582,7 +575,7 @@
       document.getElementById('courierModal').classList.remove('active');
     }
 
-    function saveCourier() {
+    async function saveCourier() {
       const editId = document.getElementById('courierEditId').value;
       const name = document.getElementById('courierNameInput').value.trim();
       const phone = document.getElementById('courierPhoneInput').value.trim();
@@ -606,11 +599,11 @@
         couriers.push({ id: 'cour_' + Date.now(), name, phone, type, status: 'disponivel' });
       }
 
-      saveUnifiedCouriers(couriers);
-
+      const syncResult = await saveUnifiedCouriers(couriers);
       closeCourierModal();
-      loadCouriers();
-      showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado com sucesso!` : `Entregador ${name} cadastrado com sucesso e sincronizado com a Equipe!`, '✅');
+      await loadCouriers();
+      if (!syncResult.success) showNoticeModal('Salvo no Dispositivo', `O entregador ${name} foi mantido neste dispositivo, mas não foi confirmado na nuvem. Verifique a conexão e tente novamente.`, '⚠️');
+      else showNoticeModal('Sucesso', editId ? `Entregador ${name} atualizado com sucesso!` : `Entregador ${name} cadastrado com sucesso e sincronizado com a Equipe!`, '✅');
     }
 
     function deleteCourier(courierId) {
@@ -622,7 +615,7 @@
       document.getElementById('confirmDeleteCourierModal').classList.remove('active');
     }
 
-    function executeDeleteCourier() {
+    async function executeDeleteCourier() {
       const courierId = document.getElementById('deleteCourierTargetId').value;
       
       let couriers = getUnifiedCouriers();
@@ -630,32 +623,41 @@
       const courierName = courierToRemove ? courierToRemove.name.trim().toLowerCase() : '';
 
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
-      localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
-
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
-      team = team.filter(t => t.name.trim().toLowerCase() !== courierName);
+      team = team.filter(t => String(t.name || '').trim().toLowerCase() !== courierName);
+      localStorage.setItem('vortex_couriers', JSON.stringify(couriers.map(c => ({ ...c, syncPending: true }))));
       localStorage.setItem('vortex_team_members', JSON.stringify(team));
-
+      const syncResult = await saveUnifiedCouriers(couriers);
       closeConfirmDeleteCourierModal();
-      loadCouriers();
-      showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');
+      await loadCouriers();
+      if (!syncResult.success) showNoticeModal('Removido no Dispositivo', 'A remoção foi mantida neste dispositivo, mas não foi confirmada na nuvem. Verifique a conexão e tente novamente.', '⚠️');
+      else showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');
     }
 
-    function loadCouriers() {
+    async function loadCouriers() {
+      if (typeof dbFetchStoreDocument === 'function') {
+        try {
+          const cloud = await dbFetchStoreDocument('couriers');
+          if (Array.isArray(cloud)) {
+            const local = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
+            const pending = local.filter(c => c && c.syncPending === true);
+            const merged = new Map(cloud.map(c => [String(c.id), c]));
+            pending.forEach(c => { if (!merged.has(String(c.id))) merged.set(String(c.id), c); });
+            localStorage.setItem('vortex_couriers', JSON.stringify(Array.from(merged.values())));
+          }
+        } catch (error) { console.warn('Não foi possível carregar os entregadores da nuvem; mantendo os dados locais.', error); }
+      }
       let couriers = getUnifiedCouriers();
       const select = document.getElementById('selectCourierForRoute');
       const editSelect = document.getElementById('modalEditCourierSelect');
       const summary = document.getElementById('couriersListSummary');
-      
       select.innerHTML = '<option value="">Selecione o motoboy...</option>';
       editSelect.innerHTML = '<option value="">Nenhum (Deixar sem motoboy)</option>';
-
-      if (couriers.length === 0) {
+      if (!couriers.length) {
         select.innerHTML = `<option value="">Nenhum entregador cadastrado</option>`;
         summary.innerHTML = `Nenhum entregador cadastrado. Clique em "Cadastrar Entregador".`;
         return;
       }
-
       let summaryHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
       couriers.forEach(c => {
         select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
@@ -1503,8 +1505,8 @@
       loadActiveOrders();
     }, 6000);
 
-    window.onload = function() {
-      loadStoreSettings();
+    window.onload = async function() {
+      await loadStoreSettings();
       renderCatalog();
       loadActiveOrders();
     };

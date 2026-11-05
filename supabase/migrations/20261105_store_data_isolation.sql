@@ -32,6 +32,25 @@ BEGIN
       )
   ) = 10 THEN
     RAISE EXCEPTION 'A migração de isolamento já parece ter sido aplicada. Nenhum dado foi apagado.';
+  ELSIF (
+    SELECT COUNT(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND column_name = 'store_id'
+      AND table_name IN (
+        'cash_shifts',
+        'vortex_financial',
+        'vortex_integrations',
+        'vortex_kds',
+        'vortex_kds_orders',
+        'vortex_sales',
+        'vortex_sales_history',
+        'vortex_stock_items',
+        'vortex_stock_movements',
+        'vortex_store_settings'
+      )
+  ) <> 0 THEN
+    RAISE EXCEPTION 'Isolamento parcialmente aplicado. Migração cancelada sem apagar dados; é necessária uma análise manual.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM public.vortex_stores LIMIT 1) THEN

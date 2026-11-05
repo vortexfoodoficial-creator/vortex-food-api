@@ -804,6 +804,9 @@
         if (typeof dbDeleteStockItem === 'function') {
           const result = await dbDeleteStockItem(id);
           if (result && result.error) throw result.error;
+          if (!result || !Array.isArray(result.data) || !result.data.length) {
+            throw new Error('O banco não confirmou a exclusão do item.');
+          }
           cloudDeleted = true;
         }
       } catch (error) {

@@ -489,13 +489,14 @@
       document.getElementById('confirmDeleteModal').classList.remove('active');
     }
 
-    function executeDeleteCustomer() {
+    async function executeDeleteCustomer() {
       const id = document.getElementById('deleteTargetId').value;
       closeConfirmDelete();
       let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
       customers = customers.filter(c => String(c.id) !== String(id));
       localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
-      loadCRMData();
+      await syncCustomersToCloud(customers);
+      await loadCRMData();
       showCustomAlert('Removido', 'Cadastro do cliente removido com sucesso.', '🗑️');
     }
 
@@ -534,7 +535,13 @@
       document.getElementById('customerModal').classList.remove('active');
     }
 
-    function saveCustomer() {
+    async function syncCustomersToCloud(customers) {
+      if (typeof dbSaveCustomers !== 'function') return;
+      const result = await dbSaveCustomers(customers);
+      if (result && result.error) console.error('Erro ao sincronizar clientes:', result.error);
+    }
+
+    async function saveCustomer() {
       const editId = document.getElementById('editCustomerId').value;
       const name = document.getElementById('custName').value.trim();
       const phone = document.getElementById('custPhone').value.trim();
@@ -574,6 +581,7 @@
       }
 
       localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+      await syncCustomersToCloud(customers);
       closeCustomerModal();
       loadCRMData();
       showCustomAlert('Sucesso!', editId ? 'Cadastro do cliente atualizado!' : 'Cliente cadastrado com sucesso!', '👤');
@@ -633,7 +641,7 @@
       document.getElementById('noteModal').classList.remove('active');
     }
 
-    function saveCustomerNote() {
+    async function saveCustomerNote() {
       const text = document.getElementById('noteTextInput').value.trim();
       if (!text) {
         showCustomAlert('Atenção', 'Escreva a observação ou reclamação antes de salvar.', '⚠️');
@@ -649,6 +657,7 @@
           text: text
         });
         localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+        await syncCustomersToCloud(customers);
         closeNoteModal();
         openCustomerDetail(selectedDetailCustomerId);
         showCustomAlert('Sucesso', 'Nota de atendimento adicionada com sucesso.', '✅');
@@ -761,6 +770,19 @@
       }
 
       let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      if (typeof dbFetchCustomers === 'function') {
+        try {
+          const cloudCustomers = await dbFetchCustomers();
+          if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+            customers = cloudCustomers;
+            localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
+          } else if (customers.length > 0) {
+            await syncCustomersToCloud(customers);
+          }
+        } catch (error) {
+          console.warn('Não foi possível carregar clientes da nuvem:', error);
+        }
+      }
       let sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
 
       sales.forEach(s => {

@@ -690,9 +690,11 @@
       showNoticeModal('Pedido Adicional Enviado!', `Novo lote de pedidos #${newOrderId} enviado para a Cozinha com sucesso!`, '👨‍🍳');
 
       try {
-        await saveTableKdsOrderToCloud(targetOrder);
+        const syncResult = await saveTableKdsOrderToCloud(targetOrder);
+        if (syncResult && syncResult.error) throw syncResult.error;
       } catch (err) {
         console.error('Erro ao salvar KDS mesa no Supabase:', err);
+        showNoticeModal('Sincronização pendente', `O pedido #${newOrderId} continua salvo nesta mesa, mas não foi confirmado na nuvem. Motivo: ${err.message || String(err)}`, '⚠️');
       }
     }
 
@@ -783,7 +785,7 @@
       const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : '1';
       const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
       const newSaleRecord = {
-        store_id: window.VORTEX_ACTIVE_STORE_ID, id: primaryOrderId,
+        id: primaryOrderId,
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
         channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,

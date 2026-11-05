@@ -253,7 +253,16 @@ async function dbSaveKdsOrderMinimal(orderData) {
     items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
     observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.id)
   };
-  return await supabase.from('vortex_kds_orders').upsert([record]);
+  const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
+  try {
+    const localRecord = { ...record, cloudSyncPending: !!error };
+    let localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+    const index = localOrders.findIndex(order => String(order.id) === String(record.id));
+    if (index >= 0) localOrders[index] = { ...localOrders[index], ...localRecord };
+    else localOrders.unshift(localRecord);
+    localStorage.setItem('vortex_kds_orders', JSON.stringify(localOrders));
+  } catch(e) {}
+  return { data, error };
 }
 
 async function dbUpdateKdsOrder(orderId, updates) {

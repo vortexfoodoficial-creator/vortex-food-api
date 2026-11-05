@@ -2,6 +2,63 @@
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
 
+// Armazenamento local separado por estabelecimento. A preferência visual
+// vortex_theme permanece no dispositivo; os demais dados vortex_* são isolados.
+(function installVortexStoreStorage() {
+  if (window.__VORTEX_STORE_STORAGE_INSTALLED) return;
+  window.__VORTEX_STORE_STORAGE_INSTALLED = true;
+  const proto = Storage.prototype;
+  const nativeGet = proto.getItem;
+  const nativeSet = proto.setItem;
+  const nativeRemove = proto.removeItem;
+  const pending = new Map();
+  const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
+  const scopedKey = key => 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + key;
+
+  proto.getItem = function(key) {
+    if (this === window.localStorage && isTenantKey(key)) {
+      if (!window.VORTEX_ACTIVE_STORE_ID) return pending.has(String(key)) ? pending.get(String(key)) : null;
+      return nativeGet.call(this, scopedKey(key));
+    }
+    return nativeGet.call(this, key);
+  };
+  proto.setItem = function(key, value) {
+    if (this === window.localStorage && isTenantKey(key)) {
+      if (!window.VORTEX_ACTIVE_STORE_ID) {
+        pending.set(String(key), String(value));
+        return;
+      }
+      return nativeSet.call(this, scopedKey(key), value);
+    }
+    return nativeSet.call(this, key, value);
+  };
+  proto.removeItem = function(key) {
+    if (this === window.localStorage && isTenantKey(key)) {
+      if (!window.VORTEX_ACTIVE_STORE_ID) {
+        pending.set(String(key), null);
+        return;
+      }
+      return nativeRemove.call(this, scopedKey(key));
+    }
+    return nativeRemove.call(this, key);
+  };
+
+  window.VortexStoreStorage = {
+    setStoreId(storeId) {
+      if (!storeId) return;
+      window.VORTEX_ACTIVE_STORE_ID = String(storeId);
+      for (const [key, value] of pending.entries()) {
+        if (value === null) nativeRemove.call(window.localStorage, scopedKey(key));
+        else nativeSet.call(window.localStorage, scopedKey(key), value);
+      }
+      pending.clear();
+    },
+    getStoreId() {
+      return window.VORTEX_ACTIVE_STORE_ID || null;
+    }
+  };
+})();
+
 function getSupabase() {
   if (window.supabaseClient) {
     return window.supabaseClient;
@@ -18,8 +75,11 @@ function getSupabase() {
 async function dbSaveStoreSettings(settingsData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const record = {
+    store_id: storeId,
     id: 1,
     store_name: settingsData.store_name || settingsData.nome || 'Vortex Food',
     store_address: settingsData.store_address || settingsData.endereco || '',
@@ -31,7 +91,7 @@ async function dbSaveStoreSettings(settingsData) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase.from('vortex_store_settings').upsert([record]);
+  const { data, error } = await supabase.from('vortex_store_settings').upsert([record], { onConflict: 'store_id,id' });
   if (error) console.error('Erro ao salvar configurações no Supabase:', error);
   return { data, error };
 }
@@ -39,7 +99,9 @@ async function dbSaveStoreSettings(settingsData) {
 async function dbFetchStoreSettings() {
   const supabase = getSupabase();
   if (!supabase) return null;
-  const { data, error } = await supabase.from('vortex_store_settings').select('*').limit(1).maybeSingle();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return null;
+  const { data, error } = await supabase.from('vortex_store_settings').select('*').eq('store_id', storeId).limit(1).maybeSingle();
   if (error) return null;
   return data;
 }
@@ -48,8 +110,11 @@ async function dbFetchStoreSettings() {
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const record = {
+    store_id: storeId,
     id: String(saleData.id),
     client: saleData.client || 'Cliente Balcão',
     channel: saleData.channel || 'pdv',
@@ -81,9 +146,11 @@ async function dbSaveSale(saleData) {
 
 async function dbFetchSales() {
   const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return [];
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
 
-  const { data, error } = await supabase.from('vortex_sales_history').select('*');
+  const { data, error } = await supabase.from('vortex_sales_history').select('*').eq('store_id', storeId);
   if (error) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
   if (!data) return [];
 
@@ -112,8 +179,11 @@ async function dbFetchSales() {
 async function dbSaveKdsOrder(orderData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const record = {
+    store_id: storeId,
     id: String(orderData.id),
     origin: orderData.origin || 'Balcão',
     client: orderData.client || 'Cliente Balcão',
@@ -150,9 +220,11 @@ async function dbSaveKdsOrder(orderData) {
 
 async function dbFetchKdsOrders() {
   const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return [];
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
-  const { data, error } = await supabase.from('vortex_kds_orders').select('*');
+  const { data, error } = await supabase.from('vortex_kds_orders').select('*').eq('store_id', storeId);
   if (error) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
   if (!data) return [];
 
@@ -204,6 +276,8 @@ async function dbFetchKdsOrders() {
  */
 async function processStockConsumptionForOrder(order) {
   if (!order || !order.items || order.items.length === 0) return;
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return;
 
   try {
     let stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
@@ -269,6 +343,7 @@ async function processStockConsumptionForOrder(order) {
       const supabase = getSupabase();
       if (supabase) {
         await supabase.from('vortex_stock_items').upsert(stockItems.map(i => ({
+          store_id: storeId,
           id: String(i.id),
           name: i.name,
           category: i.category,
@@ -289,6 +364,8 @@ async function processStockConsumptionForOrder(order) {
 // Cancelamento Idempotente Central
 async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
   const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { success: false, error: new Error('Estabelecimento ativo não identificado.') };
   const cancelTimestamp = new Date().toISOString();
 
   if (supabase) {
@@ -299,14 +376,14 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
         cancellation_reason: reason,
         cancelled_at: cancelTimestamp,
         updated_at: cancelTimestamp
-      }).eq('id', String(orderId));
+      }).eq('id', String(orderId)).eq('store_id', storeId);
 
       await supabase.from('vortex_kds_orders').update({
         status: 'cancelled',
         cancellation_reason: reason,
         cancelled_at: cancelTimestamp,
         updated_at: cancelTimestamp
-      }).eq('id', String(orderId));
+      }).eq('id', String(orderId)).eq('store_id', storeId);
 
       updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
       return { success: true };
@@ -335,7 +412,10 @@ function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
 async function dbSaveStock(stockData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
   const records = stockData.map(i => ({
+    store_id: storeId,
     id: String(i.id),
     name: i.name,
     category: i.category,
@@ -353,7 +433,9 @@ async function dbSaveStock(stockData) {
 async function dbFetchStock() {
   const supabase = getSupabase();
   if (!supabase) return null;
-  const { data, error } = await supabase.from('vortex_stock_items').select('*');
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return [];
+  const { data, error } = await supabase.from('vortex_stock_items').select('*').eq('store_id', storeId);
   if (error || !data) return null;
   return data.map(i => ({
     id: i.id,
@@ -371,7 +453,10 @@ async function dbFetchStock() {
 async function dbSaveFinancialEntry(entryData) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
   const { data, error } = await supabase.from('vortex_financial').upsert([{
+    store_id: storeId,
     id: String(entryData.id),
     type: entryData.type,
     description: entryData.description,
@@ -384,8 +469,10 @@ async function dbSaveFinancialEntry(entryData) {
 
 async function dbFetchFinancialEntries() {
   const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return [];
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  const { data, error } = await supabase.from('vortex_financial').select('*');
+  const { data, error } = await supabase.from('vortex_financial').select('*').eq('store_id', storeId);
   if (error) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
   return data || [];
 }
@@ -409,7 +496,9 @@ async function dbFetchRecipes() {
 async function dbDeleteRecord(tableName, id) {
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado' };
-  const { data, error } = await supabase.from(tableName).delete().eq('id', String(id));
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
+  const { data, error } = await supabase.from(tableName).delete().eq('id', String(id)).eq('store_id', storeId);
   return { data, error };
 }
 
@@ -530,6 +619,13 @@ async function vortexGetSubscription(storeId) {
   return { data, error };
 }
 
+async function vortexGetCurrentStoreId() {
+  if (window.VORTEX_ACTIVE_STORE_ID) return String(window.VORTEX_ACTIVE_STORE_ID);
+  const context = await vortexGetCurrentStoreContext();
+  if (context.error || !context.store) return null;
+  return String(context.store.id);
+}
+
 async function vortexGetCurrentStoreContext() {
   const supabase = getSupabase();
   if (!supabase) return { store: null, subscription: null, error: new Error('Conexão com Supabase indisponível.') };
@@ -557,6 +653,7 @@ async function vortexGetCurrentStoreContext() {
 
   const subscriptionResult = await vortexGetSubscription(store.id);
   if (subscriptionResult.error) return { store, subscription: null, error: subscriptionResult.error };
+  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id);
   return { store, subscription: subscriptionResult.data, error: null };
 }
 
@@ -579,6 +676,7 @@ window.VortexAuth = {
   completeStoreRegistration: vortexCompleteStoreRegistration,
   getSubscription: vortexGetSubscription,
   getCurrentStoreContext: vortexGetCurrentStoreContext,
+  getCurrentStoreId: vortexGetCurrentStoreId,
   resetPassword: vortexResetPassword,
   updatePassword: vortexUpdatePassword,
   signOut: vortexSignOut,
@@ -646,7 +744,14 @@ function vortexRequireAuthenticatedPage() {
         redirectToLogin();
         return;
       }
-      document.documentElement.style.visibility = '';
+      return vortexGetCurrentStoreContext().then(function(context) {
+        if (context.error || !context.store) {
+          redirectToLogin();
+          return;
+        }
+        if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(context.store.id);
+        document.documentElement.style.visibility = '';
+      });
     })
     .catch(redirectToLogin);
 }

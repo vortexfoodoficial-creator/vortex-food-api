@@ -113,13 +113,19 @@ BEGIN
     RAISE EXCEPTION 'Tipo de solicitação inválido.';
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM public.vortex_stores WHERE id = p_store_id) THEN
-    RAISE EXCEPTION 'Estabelecimento não encontrado.';
+  IF NOT EXISTS (
+    SELECT 1 FROM public.vortex_stores
+    WHERE id = p_store_id AND status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Estabelecimento não encontrado ou inativo.';
   END IF;
 
   IF NOT public.rpc_get_public_qr_enabled(p_store_id) THEN
     RAISE EXCEPTION 'O atendimento por QR Code está desativado neste estabelecimento.';
   END IF;
+
+  -- Serializa solicitações simultâneas da mesma mesa para evitar duplicação por corrida.
+  PERFORM pg_advisory_xact_lock(hashtext(p_store_id::text), p_table_number);
 
   -- Evita duplicar toques acidentais no mesmo botão em uma janela curta.
   SELECT r.id INTO v_request_id

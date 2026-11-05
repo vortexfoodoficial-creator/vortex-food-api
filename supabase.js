@@ -401,10 +401,31 @@ function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
 // Estoque Helpers
 async function dbSaveStock(stockData) {
   const supabase = getSupabase();
-  if (!supabase) return { error: 'Supabase não inicializado' };
+  if (!supabase) return { error: new Error('Supabase não inicializado') };
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
-  const records = stockData.map(i => ({
+
+  const items = Array.isArray(stockData) ? stockData : [];
+  const { data: existing, error: fetchError } = await supabase
+    .from('vortex_stock_items')
+    .select('id')
+    .eq('store_id', storeId);
+  if (fetchError) return { error: fetchError };
+
+  const incomingIds = new Set(items.map(item => String(item.id)));
+  for (const oldItem of (existing || [])) {
+    if (!incomingIds.has(String(oldItem.id))) {
+      const { error: deleteError } = await supabase
+        .from('vortex_stock_items')
+        .delete()
+        .eq('store_id', storeId)
+        .eq('id', String(oldItem.id));
+      if (deleteError) return { error: deleteError };
+    }
+  }
+
+  if (items.length === 0) return { data: [], error: null };
+  const records = items.map(i => ({
     store_id: storeId,
     id: String(i.id),
     name: i.name,

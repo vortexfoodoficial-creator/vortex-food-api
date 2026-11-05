@@ -103,6 +103,14 @@
     .btn-action-sm:hover { background: var(--primary-hover); }
 
     .status-banner { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .subscription-details { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+    .subscription-details h2 { font-size: 1rem; margin-bottom: 14px; }
+    .subscription-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .subscription-detail { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-width: 0; }
+    .subscription-detail-label { display: block; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin-bottom: 6px; }
+    .subscription-detail-value { display: block; font-size: 0.95rem; font-weight: 700; overflow-wrap: anywhere; }
+    .subscription-countdown { margin-top: 14px; padding: 13px; border-radius: 10px; background: rgba(56, 189, 248, 0.10); border: 1px solid var(--info); color: var(--text-main); font-weight: 700; }
+
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
@@ -200,6 +208,17 @@
       </div>
     </div>
 
+    <section class="subscription-details" aria-live="polite">
+      <h2>📅 Dados do cadastro e período de teste</h2>
+      <div class="subscription-details-grid">
+        <div class="subscription-detail"><span class="subscription-detail-label">Estabelecimento</span><span class="subscription-detail-value" id="billingStoreName">Consultando...</span></div>
+        <div class="subscription-detail"><span class="subscription-detail-label">Cadastro do estabelecimento</span><span class="subscription-detail-value" id="billingCreatedAt">Consultando...</span></div>
+        <div class="subscription-detail"><span class="subscription-detail-label">Início do teste grátis</span><span class="subscription-detail-value" id="billingTrialStart">Consultando...</span></div>
+        <div class="subscription-detail"><span class="subscription-detail-label">Fim do teste grátis</span><span class="subscription-detail-value" id="billingTrialEnd">Consultando...</span></div>
+      </div>
+      <div class="subscription-countdown" id="billingCountdown">Carregando situação do período de teste...</div>
+    </section>
+
     <div class="card-box">
       <div class="card-title">💳 Atendimento Financeiro & Renovação</div>
       <a href="https://wa.me/5511953365177?text=Olá,%20eu%20gostaria%20de%20realizar%20o%20pagamento%20da%20minha%20mensalidade%20e%20continuar%20usando%20o%20sistema%20Vortex%20Food." target="_blank" class="btn-wa">
@@ -285,6 +304,61 @@
         sidebarLogo.style.display = 'block';
       } else {
         sidebarLogo.style.display = 'none';
+      }
+    }
+
+    let subscriptionCountdownTimer = null;
+
+    function formatBillingDate(value) {
+      if (!value) return 'Não informado';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Não informado';
+      return date.toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium' });
+    }
+
+    async function loadSubscriptionDetails() {
+      const countdown = document.getElementById('billingCountdown');
+      try {
+        if (!window.VortexAuth || !window.VortexAuth.getCurrentStoreContext) throw new Error('Conexão de assinatura indisponível. Atualize a página.');
+        const result = await window.VortexAuth.getCurrentStoreContext();
+        if (result.error) throw result.error;
+        const store = result.store;
+        const subscription = result.subscription;
+        document.getElementById('billingStoreName').textContent = store.name || 'Estabelecimento';
+        document.getElementById('billingCreatedAt').textContent = formatBillingDate(store.created_at);
+        if (!subscription) {
+          document.getElementById('billingTrialStart').textContent = 'Não localizado';
+          document.getElementById('billingTrialEnd').textContent = 'Não localizado';
+          countdown.textContent = 'Não foi encontrada uma assinatura vinculada a este estabelecimento.';
+          return;
+        }
+        document.getElementById('billingTrialStart').textContent = formatBillingDate(subscription.trial_started_at);
+        document.getElementById('billingTrialEnd').textContent = formatBillingDate(subscription.trial_ends_at);
+        if (subscription.status === 'trialing' && subscription.trial_ends_at) {
+          const endTime = new Date(subscription.trial_ends_at).getTime();
+          const updateCountdown = function() {
+            const remaining = endTime - Date.now();
+            if (remaining <= 0) {
+              countdown.textContent = 'Seu período de teste grátis de 30 dias foi encerrado.';
+              if (subscriptionCountdownTimer) clearInterval(subscriptionCountdownTimer);
+              return;
+            }
+            const days = Math.floor(remaining / 86400000);
+            const hours = Math.floor((remaining % 86400000) / 3600000);
+            const minutes = Math.floor((remaining % 3600000) / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            countdown.textContent = 'Teste grátis ativo: faltam ' + days + ' dias, ' + hours + ' horas, ' + minutes + ' minutos e ' + seconds + ' segundos.';
+          };
+          updateCountdown();
+          if (subscriptionCountdownTimer) clearInterval(subscriptionCountdownTimer);
+          subscriptionCountdownTimer = setInterval(updateCountdown, 1000);
+        } else if (subscription.status === 'active') {
+          countdown.textContent = 'Sua assinatura está ativa.';
+        } else {
+          countdown.textContent = 'Situação atual da assinatura: ' + String(subscription.status || 'indisponível') + '.';
+        }
+      } catch (error) {
+        countdown.textContent = error && error.message ? error.message : 'Não foi possível carregar os dados da assinatura.';
       }
     }
 
@@ -406,7 +480,7 @@
 
     window.onload = function() {
       loadStoreSettings();
-      loadInvoices();
+      loadInvoices().then(loadSubscriptionDetails);
     };
   </script>
 </body>

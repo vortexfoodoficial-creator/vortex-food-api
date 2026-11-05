@@ -612,24 +612,17 @@
         sidebarLogo.style.display = 'none';
       }
 
-      if (window.supabaseClient) {
-        try {
-          const [resSales, resFichas, resCardapio, resExpenses, resRecipes] = await Promise.all([
-            window.supabaseClient.from('vortex_sales_history').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID),
-            window.supabaseClient.from('vortex_fichas_tecnicas').select('*'),
-            window.supabaseClient.from('vortex_cardapio_produtos').select('*'),
-            window.supabaseClient.from('vortex_expenses_history').select('*'),
-            window.supabaseClient.from('vortex_recipes_catalog').select('*')
-          ]);
-
-          if (resSales.data && resSales.data.length > 0) cloudSales = resSales.data;
-          if (resFichas.data && resFichas.data.length > 0) cloudFichas = resFichas.data;
-          if (resCardapio.data && resCardapio.data.length > 0) cloudCardapio = resCardapio.data;
-          if (resExpenses.data && resExpenses.data.length > 0) cloudExpenses = resExpenses.data;
-          if (resRecipes.data && resRecipes.data.length > 0) cloudRecipes = resRecipes.data;
-        } catch (err) {
-          console.warn('Aviso: Utilizando fallback local devido a falha na nuvem Supabase:', err);
-        }
+      try {
+        const [salesData, recipesData] = await Promise.all([
+          typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]),
+          typeof dbFetchStoreDocument === 'function' ? dbFetchStoreDocument('recipes') : Promise.resolve(null)
+        ]);
+        if (Array.isArray(salesData)) cloudSales = salesData;
+        if (Array.isArray(recipesData)) cloudRecipes = recipesData;
+        // Produtos, fichas legadas e despesas permanecem no cache local por loja
+        // até possuírem tabelas próprias com políticas de isolamento.
+      } catch (err) {
+        console.warn('Aviso: Utilizando dados locais da loja devido a falha na nuvem:', err);
       }
 
       loadReportsData();

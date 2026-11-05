@@ -529,6 +529,7 @@
     }
 
     async function saveUnifiedCouriers(couriersList) {
+      localStorage.setItem('vortex_team_sync_pending', 'true');
       localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: true }))));
       let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
       couriersList.forEach(c => {
@@ -544,6 +545,7 @@
         const tr = await dbSaveStoreDocument('staff', team);
         if (!tr || tr.error) throw (tr && tr.error) || new Error('A nuvem não confirmou a equipe.');
         localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: false }))));
+        localStorage.removeItem('vortex_team_sync_pending');
         return { success: true };
       } catch (error) { console.warn('Entregadores mantidos localmente; falha na sincronização:', error); return { success: false, error }; }
     }
@@ -635,7 +637,7 @@
     }
 
     async function loadCouriers() {
-      if (typeof dbFetchStoreDocument === 'function') {
+      if (localStorage.getItem('vortex_team_sync_pending') !== 'true' && typeof dbFetchStoreDocument === 'function') {
         try {
           const cloud = await dbFetchStoreDocument('couriers');
           if (Array.isArray(cloud)) {

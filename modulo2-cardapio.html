@@ -677,6 +677,7 @@
           if (cloudCatalog && cloudCatalog.products && cloudCatalog.groups) {
             localStorage.setItem('vortex_products_catalog', JSON.stringify(cloudCatalog.products));
             localStorage.setItem('vortex_groups_catalog', JSON.stringify(cloudCatalog.groups));
+            if (Array.isArray(cloudCatalog.complements)) localStorage.setItem('vortex_complements_catalog', JSON.stringify(cloudCatalog.complements));
           }
         }
       } catch (e) {}
@@ -1228,6 +1229,7 @@
       let comps = getComplements();
       comps.push({ id: newCompId, name: groupName, items: [...draftCompItems] });
       localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
+      await syncCatalogToCloud();
 
       let targetProductIds = [];
       document.querySelectorAll('.comp-apply-prod-check:checked').forEach(cb => targetProductIds.push(parseInt(cb.value)));
@@ -1269,7 +1271,7 @@
       });
     }
 
-    function deleteComplementGroup(idx) {
+    async function deleteComplementGroup(idx) {
       let comps = getComplements();
       comps.splice(idx, 1);
       localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));

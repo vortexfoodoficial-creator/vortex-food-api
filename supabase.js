@@ -10,6 +10,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   const proto = Storage.prototype;
   const nativeGet = proto.getItem;
   const nativeSet = proto.setItem;
+  const nativeRemove = proto.removeItem;
   const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
   const scopedKey = key => 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + key;
 

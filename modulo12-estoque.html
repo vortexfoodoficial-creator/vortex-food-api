@@ -494,7 +494,7 @@
       stockRefreshPromise = (async () => {
         try {
           const cloudStock = await dbFetchStock();
-          if (Array.isArray(cloudStock) && cloudStock.length > 0) {
+          if (Array.isArray(cloudStock)) {
             localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
             return true;
           }

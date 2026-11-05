@@ -798,6 +798,7 @@
 
       let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
+        store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: primaryOrderId,
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
         channel: `Mesa ${activeTableId}`,

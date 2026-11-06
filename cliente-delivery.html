@@ -12,8 +12,19 @@
 const supabaseClient=window.supabase.createClient('https://oasxlmfwkkubabyvqama.supabase.co','sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk',{auth:{persistSession:false,autoRefreshToken:false}});
 const storeId=new URLSearchParams(window.location.search).get('loja');
 function makeRequestId(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,ch=>{const n=Math.random()*16|0;return(ch==='x'?n:(n&3|8)).toString(16);});}
-let products=[],cart=[],storeWhatsapp='',requestId=makeRequestId();
+const requestStorageKey='vortex_delivery_pending_'+storeId;
+let products=[],cart=[],storeWhatsapp='',requestId='';
 const el=id=>document.getElementById(id);
+function getDeliveryRequestId(payload){
+ const fingerprint=JSON.stringify(payload);
+ try{
+  const saved=JSON.parse(sessionStorage.getItem(requestStorageKey)||'null');
+  if(saved&&saved.fingerprint===fingerprint&&/^[0-9a-f-]{36}$/i.test(saved.requestId||''))return saved.requestId;
+  requestId=makeRequestId();
+  sessionStorage.setItem(requestStorageKey,JSON.stringify({fingerprint,requestId}));
+  return requestId;
+ }catch(e){requestId=makeRequestId();return requestId;}
+}
 const money=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 el('payment').addEventListener('change',()=>{el('cashlabel').style.display=el('payment').value==='Dinheiro'?'block':'none';});
@@ -44,18 +55,23 @@ async function sendOrder(){
  if(!name||!phone||!street||!number||!neighborhood){alert('Preencha nome, WhatsApp, rua, número e bairro.');return;}
  if(payment==='Dinheiro'&&cash<total){alert('Informe um valor para troco igual ou maior que o total.');return;}
  const address=street+', Nº '+number+' - '+neighborhood+(el('complement').value.trim()?' - '+el('complement').value.trim():'');
+ const requestItems=cart.map(p=>({id:p.id,qty:p.qty}));
+ requestId=getDeliveryRequestId({name,phone,address,payment,cash,observation:el('obs').value.trim(),items:requestItems});
  el('send').disabled=true;el('send').textContent='Enviando pedido...';
  try{
   const result=await supabaseClient.rpc('rpc_create_public_delivery_order',{
    p_store_id:storeId,p_client_name:name,p_client_phone:phone,p_address:address,p_payment:payment,
    p_cash_given:cash,p_observation:el('obs').value.trim(),
-   p_items:cart.map(p=>({id:p.id,qty:p.qty})),p_request_id:requestId
+   p_items:requestItems,p_request_id:requestId
   });
   if(result.error)throw result.error;
   const data=result.data;
   if(!data||data.success!==true||!/^\d{6}$/.test(String(data.code||'')))throw new Error(data?.message||'Não foi possível confirmar o código. Entre em contato com a loja antes de repetir o pedido.');
   showConfirmation({code:String(data.code),displayId:data.display_id,total:data.total});
-  try{sessionStorage.setItem('vortex_delivery_result_'+storeId,JSON.stringify({code:String(data.code),display_id:data.display_id,total:data.total}));}catch(e){}
+  try{
+   sessionStorage.setItem('vortex_delivery_result_'+storeId,JSON.stringify({code:String(data.code),display_id:data.display_id,total:data.total}));
+   sessionStorage.removeItem(requestStorageKey);
+  }catch(e){}
  }catch(error){alert(error.message||'Não foi possível enviar o pedido. Tente novamente.');}
  finally{el('send').textContent='Confirmar pedido';if(el('app').style.display!=='none')render();}
 }

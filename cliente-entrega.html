@@ -38,12 +38,34 @@
       const storeId = params.get('store') || '';
       const orderId = params.get('pedido') || '';
       const accessToken = params.get('token') || '';
+      const cachedCodeKey = 'vortex_delivery_code_' + storeId + '_' + orderId;
       const status = document.getElementById('status');
       const display = document.getElementById('codeDisplay');
       const copyButton = document.getElementById('copyButton');
 
-      if (!/^[0-9a-f-]{36}$/i.test(storeId) || !orderId || !/^[a-f0-9]{64}$/.test(accessToken)) {
+      if (!/^[0-9a-f-]{36}$/i.test(storeId) || !orderId) {
         status.textContent = 'Link inválido. Solicite um novo link ao estabelecimento.';
+        return;
+      }
+
+      // Permite atualizar a página sem manter o token secreto na barra de endereço.
+      try {
+        const cachedCode = sessionStorage.getItem(cachedCodeKey) || '';
+        if (!accessToken && /^\\d{6}$/.test(cachedCode)) {
+          display.textContent = cachedCode;
+          display.classList.remove('hidden');
+          copyButton.classList.remove('hidden');
+          status.textContent = 'Guarde este código e informe ao entregador quando receber o pedido.';
+          copyButton.addEventListener('click', async function() {
+            try { await navigator.clipboard.writeText(cachedCode); copyButton.textContent = 'Código copiado!'; }
+            catch (copyError) { status.textContent = 'Selecione e copie o código exibido acima.'; }
+          });
+          return;
+        }
+      } catch (storageError) {}
+
+      if (!/^[a-f0-9]{64}$/.test(accessToken)) {
+        status.textContent = 'Link inválido ou expirado. Solicite um novo link ao estabelecimento.';
         return;
       }
 
@@ -61,8 +83,10 @@
           throw new Error(data && data.message ? data.message : 'Não foi possível localizar o código. Solicite um novo link ao estabelecimento.');
         }
 
-        // Remove o token da barra de endereço e do histórico após validar o link.
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Guarda o código somente nesta aba e remove o token da barra de endereço.
+        try { sessionStorage.setItem(cachedCodeKey, String(data.code)); } catch (storageError) {}
+        const cleanUrl = window.location.pathname + '?store=' + encodeURIComponent(storeId) + '&pedido=' + encodeURIComponent(orderId);
+        window.history.replaceState({}, document.title, cleanUrl);
         display.textContent = String(data.code);
         display.classList.remove('hidden');
         copyButton.classList.remove('hidden');

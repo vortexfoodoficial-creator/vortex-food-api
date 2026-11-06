@@ -252,10 +252,10 @@
                 
                 <div class="link-box">
                     <span id="publicDeliveryLinkText">Carregando link do seu cardápio...</span>
+                    <button class="btn-copy" id="openDeliveryLink" type="button" disabled onclick="openPublicDeliveryLink()" style="background:var(--primary);">Abrir Cardápio do Cliente</button>
                     <button class="btn-copy" id="copyDeliveryLink" type="button" disabled onclick="copyPublicDeliveryLink()">Copiar Link</button>
                 </div>
                 <p id="deliveryLinkStatus" style="font-size:12px;color:var(--text-muted);margin-top:10px;">Ative o cardápio para começar a receber pedidos online.</p>
-            </div>
             </div>
 
             <div class="online-config-card">
@@ -299,6 +299,7 @@
                 const enabled = result.data === true;
                 document.getElementById('enablePublicDelivery').checked = enabled;
                 document.getElementById('copyDeliveryLink').disabled = !enabled;
+                document.getElementById('openDeliveryLink').disabled = !enabled;
                 statusEl.textContent = enabled ? 'Cardápio ativo. Seus clientes já podem acessar o link e realizar pedidos.' : 'Cardápio pausado. Ative a opção acima para liberar pedidos online.';
             } catch (error) { statusEl.textContent = error.message || 'Não foi possível carregar as configurações do cardápio.'; }
         }
@@ -313,11 +314,16 @@
                 if (result.error) throw result.error;
                 if (!result.data || result.data.success !== true) throw new Error('O banco não confirmou a alteração.');
                 document.getElementById('copyDeliveryLink').disabled = !enabled;
+                document.getElementById('openDeliveryLink').disabled = !enabled;
                 statusEl.textContent = enabled ? 'Cardápio ativado! Copie o link e compartilhe com seus clientes.' : 'Cardápio pausado. Novos pedidos online estão desativados.';
             } catch (error) {
                 checkbox.checked = !enabled;
                 statusEl.textContent = error.message || 'Não foi possível alterar o status do cardápio.';
             } finally { checkbox.disabled = false; }
+        }
+        function openPublicDeliveryLink() {
+            if (!publicDeliveryUrl) return;
+            window.open(publicDeliveryUrl, '_blank', 'noopener,noreferrer');
         }
         async function copyPublicDeliveryLink() {
             if (!publicDeliveryUrl) return;

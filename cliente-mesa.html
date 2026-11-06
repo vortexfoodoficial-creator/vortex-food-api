@@ -363,11 +363,15 @@
       let enabled = !error && data === true;
       if (enabled) {
         const tableResult = await publicSupabase.rpc('rpc_get_public_table_count', { p_store_id: storeId });
-        enabled = !tableResult.error
-          && Number.isInteger(Number(tableResult.data))
-          && Number(tableId) <= Number(tableResult.data);
-        if (!enabled) {
-          document.getElementById('disabledNotice').innerText = 'Este QR Code não corresponde a uma mesa cadastrada. Solicite uma nova etiqueta à equipe.';
+        if (tableResult.error) {
+          enabled = false;
+          document.getElementById('disabledNotice').innerText = 'Não foi possível validar este QR Code agora. Verifique sua conexão e tente novamente.';
+        } else {
+          enabled = Number.isInteger(Number(tableResult.data))
+            && Number(tableId) <= Number(tableResult.data);
+          if (!enabled) {
+            document.getElementById('disabledNotice').innerText = 'Este QR Code não corresponde a uma mesa cadastrada. Solicite uma nova etiqueta à equipe.';
+          }
         }
       }
       document.getElementById('activeButtons').style.display = enabled ? 'block' : 'none';

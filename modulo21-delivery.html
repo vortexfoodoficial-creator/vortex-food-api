@@ -1049,20 +1049,27 @@
       return '';
     }
 
-    async function sendDeliveryVerificationLink(orderId, reservedWindow = null) {
+    async function sendDeliveryVerificationLink(orderId, reservedWindow = null, showFeedback = true) {
       const orders = readLocalKdsOrders();
       const order = typeof orderId === 'object' ? orderId : orders.find(item => String(item.id) === String(orderId));
-      if (!order) return { success: false, message: 'Pedido não encontrado neste aparelho.' };
+      if (!order) {
+        if (showFeedback) showNoticeModal('Pedido não encontrado', 'Não foi possível localizar este pedido neste aparelho.', '⚠️');
+        return { success: false, message: 'Pedido não encontrado neste aparelho.' };
+      }
 
       const phoneMatch = String(order.client || '').match(/\(([^)]+)\)\s*$/);
       const whatsappPhone = normalizeBrazilWhatsappPhone(phoneMatch ? phoneMatch[1] : '');
-      const whatsappWindow = reservedWindow || window.open('about:blank', '_blank');
+      const whatsappWindow = reservedWindow || (whatsappPhone ? window.open('about:blank', '_blank') : null);
       if (!whatsappPhone) {
         if (whatsappWindow) whatsappWindow.close();
-        return { success: false, message: 'O telefone do cliente não está em um formato válido. Confira o cadastro do pedido.' };
+        const message = 'O telefone do cliente não está em um formato válido. Confira o cadastro do pedido.';
+        if (showFeedback) showNoticeModal('Telefone inválido', message, '⚠️');
+        return { success: false, message };
       }
       if (!whatsappWindow) {
-        return { success: false, message: 'O navegador bloqueou a abertura do WhatsApp. Use o botão de envio novamente e permita a abertura da nova aba.' };
+        const message = 'O navegador bloqueou a abertura do WhatsApp. Permita a abertura de uma nova aba e tente novamente.';
+        if (showFeedback) showNoticeModal('WhatsApp bloqueado', message, '⚠️');
+        return { success: false, message };
       }
 
       try {
@@ -1083,10 +1090,12 @@
         const visibleNumber = order.displayId || order.id;
         const message = 'Olá, ' + customerName + '! Para consultar seu código de confirmação da entrega do pedido #' + visibleNumber + ', acesse este link privado: ' + customerUrl.href + '. Mostre o código ao entregador somente quando receber o pedido.';
         whatsappWindow.location.href = 'https://wa.me/' + whatsappPhone + '?text=' + encodeURIComponent(message);
+        if (showFeedback) showNoticeModal('WhatsApp aberto', 'A mensagem com o link privado está pronta. Confirme o envio no WhatsApp para o cliente.', '📲');
         return { success: true };
       } catch (error) {
         try { whatsappWindow.close(); } catch (closeError) {}
         console.warn('Não foi possível gerar/enviar o link privado de entrega:', error);
+        if (showFeedback) showNoticeModal('Não foi possível gerar o link', error.message || 'Tente novamente.', '⚠️');
         return { success: false, message: error.message || 'Não foi possível gerar o link privado.' };
       }
     }
@@ -1306,7 +1315,7 @@
           cloudSuccess = false;
           cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
         } else {
-          const sendResult = await sendDeliveryVerificationLink(technicalId, deliveryWhatsappWindow);
+          const sendResult = await sendDeliveryVerificationLink(technicalId, deliveryWhatsappWindow, false);
           verificationSent = !!sendResult.success;
           if (!verificationSent) cloudErrorMsg = sendResult.message || 'Não foi possível enviar o link privado ao cliente.';
         }
@@ -1317,7 +1326,7 @@
       }
 
       if (cloudSuccess && verificationSent) {
-        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado. O link privado do código foi aberto no WhatsApp do cliente.`, '🛵');
+        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado. O WhatsApp foi aberto com a mensagem pronta. Confirme o envio para o cliente.`, '🛵');
       } else if (cloudSuccess) {
         showNoticeModal('Pedido registrado', `Pedido #${displaySeqNumber} foi sincronizado, mas o link do código não foi enviado: ${cloudErrorMsg} Use o botão "Enviar código ao cliente" no pedido para tentar novamente.`, '⚠️');
       } else {

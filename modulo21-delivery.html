@@ -1042,64 +1042,6 @@
       }
     }
 
-    function normalizeBrazilWhatsappPhone(phone) {
-      const digits = String(phone || '').replace(/\D/g, '');
-      if (digits.length === 10 || digits.length === 11) return '55' + digits;
-      if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return digits;
-      return '';
-    }
-
-    async function sendDeliveryVerificationLink(orderId, reservedWindow = null, showFeedback = true) {
-      const orders = readLocalKdsOrders();
-      const order = typeof orderId === 'object' ? orderId : orders.find(item => String(item.id) === String(orderId));
-      if (!order) {
-        if (showFeedback) showNoticeModal('Pedido não encontrado', 'Não foi possível localizar este pedido neste aparelho.', '⚠️');
-        return { success: false, message: 'Pedido não encontrado neste aparelho.' };
-      }
-
-      const phoneMatch = String(order.client || '').match(/\(([^)]+)\)\s*$/);
-      const whatsappPhone = normalizeBrazilWhatsappPhone(phoneMatch ? phoneMatch[1] : '');
-      const whatsappWindow = reservedWindow || (whatsappPhone ? window.open('about:blank', '_blank') : null);
-      if (!whatsappPhone) {
-        if (whatsappWindow) whatsappWindow.close();
-        const message = 'O telefone do cliente não está em um formato válido. Confira o cadastro do pedido.';
-        if (showFeedback) showNoticeModal('Telefone inválido', message, '⚠️');
-        return { success: false, message };
-      }
-      if (!whatsappWindow) {
-        const message = 'O navegador bloqueou a abertura do WhatsApp. Permita a abertura de uma nova aba e tente novamente.';
-        if (showFeedback) showNoticeModal('WhatsApp bloqueado', message, '⚠️');
-        return { success: false, message };
-      }
-
-      try {
-        const client = getDeliverySupabaseClient();
-        if (!client || !window.VORTEX_ACTIVE_STORE_ID) throw new Error('Conexão ou estabelecimento ativo indisponível.');
-        const { data, error } = await client.rpc('rpc_issue_delivery_verification', {
-          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
-          p_order_id: String(order.id)
-        });
-        if (error) throw error;
-        if (!data || data.success !== true || !data.access_token) throw new Error('O servidor não confirmou a geração do link privado.');
-
-        const customerUrl = new URL('cliente-entrega.html', window.location.href);
-        customerUrl.searchParams.set('store', window.VORTEX_ACTIVE_STORE_ID);
-        customerUrl.searchParams.set('pedido', String(order.id));
-        customerUrl.searchParams.set('token', String(data.access_token));
-        const customerName = String(order.client || 'cliente').replace(/\s*\([^)]*\)\s*$/, '').trim();
-        const visibleNumber = order.displayId || order.id;
-        const message = 'Olá, ' + customerName + '! Para consultar seu código de confirmação da entrega do pedido #' + visibleNumber + ', acesse este link privado: ' + customerUrl.href + '. Mostre o código ao entregador somente quando receber o pedido.';
-        whatsappWindow.location.href = 'https://wa.me/' + whatsappPhone + '?text=' + encodeURIComponent(message);
-        if (showFeedback) showNoticeModal('WhatsApp aberto', 'A mensagem com o link privado está pronta. Confirme o envio no WhatsApp para o cliente.', '📲');
-        return { success: true };
-      } catch (error) {
-        try { whatsappWindow.close(); } catch (closeError) {}
-        console.warn('Não foi possível gerar/enviar o link privado de entrega:', error);
-        if (showFeedback) showNoticeModal('Não foi possível gerar o link', error.message || 'Tente novamente.', '⚠️');
-        return { success: false, message: error.message || 'Não foi possível gerar o link privado.' };
-      }
-    }
-
     function getLocalDateStr(dateObj) {
       const d = dateObj || new Date();
       const year = d.getFullYear();
@@ -1402,15 +1344,12 @@
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
         }
-        const sendCodeButtonHtml = o.status !== 'finished' && o.status !== 'cancelled'
-          ? `<button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="sendDeliveryVerificationLink('${o.id}')">📲 Enviar / Reenviar código ao cliente</button>`
-          : '';
         const itemsText = o.items ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '';
         const cashGiven = Number(o.cashGiven || o.cashgiven) || 0;
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${sendCodeButtonHtml}${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }

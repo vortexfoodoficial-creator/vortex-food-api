@@ -51,7 +51,7 @@
       // Permite atualizar a página sem manter o token secreto na barra de endereço.
       try {
         const cachedCode = sessionStorage.getItem(cachedCodeKey) || '';
-        if (!accessToken && /^\\d{6}$/.test(cachedCode)) {
+        if (!accessToken && /^[0-9]{6}$/.test(cachedCode)) {
           display.textContent = cachedCode;
           display.classList.remove('hidden');
           copyButton.classList.remove('hidden');

@@ -112,6 +112,10 @@ BEGIN
      OR p_table_number < 1 OR p_table_number > v_table_count THEN
     RAISE EXCEPTION 'Esta mesa não está cadastrada neste estabelecimento.';
   END IF;
+  IF p_request_type NOT IN ('call_waiter', 'request_bill')
+     OR NOT public.rpc_get_public_qr_enabled(p_store_id) THEN
+    RAISE EXCEPTION 'Solicitação pública inválida ou desativada.';
+  END IF;
 
   IF NOT public.vortex_public_rate_limit_allow(
     p_store_id, 'table-request:store', 300, 60
@@ -157,6 +161,9 @@ BEGIN
   IF v_table_count IS NULL OR p_table_number IS NULL
      OR p_table_number < 1 OR p_table_number > v_table_count THEN
     RAISE EXCEPTION 'Esta mesa não está cadastrada neste estabelecimento.';
+  END IF;
+  IF p_request_id IS NULL OR NOT public.rpc_get_public_qr_enabled(p_store_id) THEN
+    RAISE EXCEPTION 'Pedido público inválido ou atendimento desativado.';
   END IF;
 
   IF NOT public.vortex_public_rate_limit_allow(
@@ -204,7 +211,11 @@ AS $function$
 DECLARE
   v_phone_bucket text;
 BEGIN
-  v_phone_bucket := md5(regexp_replace(COALESCE(p_client_phone, ''), '\D', '', 'g'));
+  IF NOT public.rpc_get_public_delivery_enabled(p_store_id) THEN
+    RAISE EXCEPTION 'Este estabelecimento não está aceitando pedidos online no momento.';
+  END IF;
+
+  v_phone_bucket := md5(regexp_replace(left(COALESCE(p_client_phone, ''), 30), '\D', '', 'g'));
 
   IF NOT public.vortex_public_rate_limit_allow(
     p_store_id, 'delivery-order:store', 300, 60

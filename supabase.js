@@ -920,6 +920,27 @@ async function vortexGetCurrentStoreContext() {
   if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id);
   else window.VORTEX_ACTIVE_STORE_ID = String(store.id);
 
+  // Remove códigos antigos de Delivery do cache local de todos os módulos.
+  // Identificadores de pedidos de mesa permanecem intactos.
+  try {
+    const cachedOrders = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
+    if (Array.isArray(cachedOrders)) {
+      let changed = false;
+      const safeOrders = cachedOrders.map(order => {
+        if (String(order.origin || '').toLowerCase().includes('delivery') && Object.prototype.hasOwnProperty.call(order, 'code')) {
+          const safeOrder = { ...order };
+          delete safeOrder.code;
+          changed = true;
+          return safeOrder;
+        }
+        return order;
+      });
+      if (changed) localStorage.setItem('vortex_kds_orders', JSON.stringify(safeOrders));
+    }
+  } catch (error) {
+    console.warn('Não foi possível limpar códigos antigos do cache local de Delivery:', error);
+  }
+
   const subscriptionResult = await vortexGetSubscription(store.id);
   return {
     store,

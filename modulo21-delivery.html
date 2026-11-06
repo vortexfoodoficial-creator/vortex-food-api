@@ -1143,18 +1143,15 @@
         showNoticeModal('Campos Obrigatórios', 'Preencha o Nome, Telefone, Rua e Número do cliente.', '⚠️');
         return;
       }
-
       if (deliveryCart.length === 0) {
         showNoticeModal('Carrinho Vazio', 'Adicione pelo menos um item ao pedido.', '⚠️');
         return;
       }
 
-      const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const total = deliveryCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
       const payment = document.getElementById('paymentMethodSelect').value;
-
       let cashGivenVal = 0;
       let changeVal = 0;
-
       if (payment === 'Dinheiro') {
         if (rawCashGiven < total) {
           showNoticeModal('Valor Insuficiente', 'O valor informado para o troco é menor que o total.', '⚠️');
@@ -1164,29 +1161,25 @@
         changeVal = rawCashGiven - total;
       }
 
-      const deliveryWhatsappWindow = normalizeBrazilWhatsappPhone(clientPhone) ? window.open('about:blank', '_blank') : null;
-      let fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
-      if (city && state) fullAddress += `, ${city} - ${state}`;
-      else if (city) fullAddress += `, ${city}`;
-      if (cep) fullAddress += ` | CEP: ${cep}`;
-      if (complement) fullAddress += ` | ${complement}`;
-      if (ref) fullAddress += ` | Ref: ${ref}`;
+      let fullAddress = street + ', Nº ' + number + ' - ' + neighborhood;
+      if (city && state) fullAddress += ', ' + city + ' - ' + state;
+      else if (city) fullAddress += ', ' + city;
+      if (cep) fullAddress += ' | CEP: ' + cep;
+      if (complement) fullAddress += ' | ' + complement;
+      if (ref) fullAddress += ' | Ref: ' + ref;
 
       const now = new Date();
       const todayDateStr = getLocalDateStr(now);
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      // ID técnico único preservado inalterado + Número de exibição limpo (#1, #2, #3...)
       const technicalId = 'deliv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
       const displaySeqNumber = getNextGlobalOrderNumber();
 
-      let salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
       const newSaleRecord = {
         store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: technicalId,
         displayId: displaySeqNumber,
-        client: `${clientName} (${clientPhone})`,
+        client: clientName + ' (' + clientPhone + ')',
         channel: 'Delivery 🛵',
         total: total,
         subtotal: total,
@@ -1197,6 +1190,7 @@
         time: timeStr,
         items: [...deliveryCart]
       };
+      const salesHistory = JSON.parse(localStorage.getItem('vortex_sales_history') || '[]');
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
@@ -1204,7 +1198,7 @@
         id: technicalId,
         displayId: displaySeqNumber,
         origin: 'Delivery 🛵',
-        client: `${clientName} (${clientPhone})`,
+        client: clientName + ' (' + clientPhone + ')',
         address: fullAddress,
         payment: payment,
         payMethod: payment,
@@ -1220,60 +1214,36 @@
         courier: ''
       };
 
-      let kdsOrders = readLocalKdsOrders();
+      const kdsOrders = readLocalKdsOrders();
       kdsOrders.unshift(newOrder);
       saveLocalKdsOrders(kdsOrders);
 
+      let cloudSuccess = true;
+      let cloudErrorMsg = '';
+      try {
+        if (typeof dbSaveSale !== 'function') throw new Error('Rotina segura de gravação de vendas não disponível.');
+        const saleResult = await dbSaveSale(newSaleRecord);
+        if (!saleResult || saleResult.error) throw (saleResult && saleResult.error) || new Error('A venda não foi confirmada na nuvem.');
+        const orderResult = await saveDeliveryKdsOrderToCloud(newOrder);
+        if (orderResult && orderResult.error) throw orderResult.error;
+      } catch (error) {
+        cloudSuccess = false;
+        cloudErrorMsg = error.message || String(error);
+      }
+
       deliveryCart = [];
       rawCashGiven = 0;
-      document.getElementById('clientNameInput').value = '';
-      document.getElementById('clientPhoneInput').value = '';
-      document.getElementById('cepInput').value = '';
-      document.getElementById('streetNumberInput').value = '';
-      document.getElementById('streetInput').value = '';
-      document.getElementById('neighborhoodInput').value = '';
-      document.getElementById('cityInput').value = '';
-      document.getElementById('stateInput').value = '';
-      document.getElementById('complementInput').value = '';
-      document.getElementById('refInput').value = '';
-      document.getElementById('deliveryObsInput').value = '';
-      document.getElementById('cashGivenInput').value = '';
+      ['clientNameInput','clientPhoneInput','cepInput','streetNumberInput','streetInput','neighborhoodInput','cityInput','stateInput','complementInput','refInput','deliveryObsInput','cashGivenInput'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.value = '';
+      });
       renderDeliveryCart();
       loadActiveOrders();
 
-      let cloudSuccess = true;
-      let cloudErrorMsg = '';
-      let verificationSent = false;
-      try {
-        if (typeof dbSaveSale !== 'function') {
-          throw new Error('Rotina segura de gravação de vendas não disponível.');
-        }
-        const saleRes = await dbSaveSale(newSaleRecord);
-        if (!saleRes || saleRes.error) {
-          throw (saleRes && saleRes.error) || new Error('A venda não foi confirmada na nuvem.');
-        }
-        const cloudRes = await saveDeliveryKdsOrderToCloud(newOrder);
-        if (cloudRes && cloudRes.error) {
-          cloudSuccess = false;
-          cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
-          try { if (deliveryWhatsappWindow) deliveryWhatsappWindow.close(); } catch (closeError) {}
-        } else {
-          const sendResult = await sendDeliveryVerificationLink(technicalId, deliveryWhatsappWindow, false);
-          verificationSent = !!sendResult.success;
-          if (!verificationSent) cloudErrorMsg = sendResult.message || 'Não foi possível enviar o link privado ao cliente.';
-        }
-      } catch (e) {
-        cloudSuccess = false;
-        cloudErrorMsg = e.message || String(e);
-        try { if (deliveryWhatsappWindow) deliveryWhatsappWindow.close(); } catch (closeError) {}
-      }
-
-      if (cloudSuccess && verificationSent) {
-        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado. O WhatsApp foi aberto com a mensagem pronta. Confirme o envio para o cliente.`, '🛵');
-      } else if (cloudSuccess) {
-        showNoticeModal('Pedido registrado', `Pedido #${displaySeqNumber} foi sincronizado, mas o link do código não foi enviado: ${cloudErrorMsg} Use o botão "Enviar código ao cliente" no pedido para tentar novamente.`, '⚠️');
+      if (cloudSuccess) {
+        showNoticeModal('Pedido Cadastrado!', 'Pedido #' + displaySeqNumber + ' registrado. Como foi lançado manualmente pela equipe, ele poderá ser concluído pela baixa manual no painel.', '🛵');
       } else {
-        showNoticeModal('Aviso de sincronização', `O pedido #${displaySeqNumber} ficou salvo neste aparelho, mas a sincronização não foi confirmada: ${cloudErrorMsg}`, '⚠️');
+        showNoticeModal('Aviso de sincronização', 'O pedido #' + displaySeqNumber + ' ficou salvo neste aparelho, mas a sincronização na nuvem não foi confirmada: ' + cloudErrorMsg, '⚠️');
       }
     }
 

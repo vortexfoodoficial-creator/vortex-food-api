@@ -1,24 +1,24 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Cardápio digital</title>
 <style>
-*{box-sizing:border-box;font-family:Arial,sans-serif}body{margin:0;background:#0f172a;color:#f8fafc}header{text-align:center;padding:22px;background:#1e293b}main{max-width:1000px;margin:auto;padding:16px;display:grid;grid-template-columns:1.3fr 1fr;gap:16px}.panel{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:16px}#products{display:grid;gap:10px}.item,.cartrow{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #334155}button{background:#f97316;color:white;border:0;border-radius:8px;padding:10px;font-weight:bold}input,textarea,select{width:100%;padding:10px;margin-top:5px;background:#0f172a;color:white;border:1px solid #475569;border-radius:8px}label{display:block;margin-top:10px;color:#cbd5e1;font-size:13px}.green{background:#22c55e;color:#052e16;width:100%;margin-top:15px}#done{display:none;max-width:460px;margin:25px auto;text-align:center}.code{font-size:40px;letter-spacing:8px;color:#22c55e;padding:18px;border:1px dashed #22c55e;border-radius:12px}@media(max-width:700px){main{grid-template-columns:1fr}}
+*{box-sizing:border-box;font-family:Arial,sans-serif}body{margin:0;background:#0f172a;color:#f8fafc}header{text-align:center;padding:22px;background:#1e293b}main{max-width:1000px;margin:auto;padding:16px;display:grid;grid-template-columns:1.3fr 1fr;gap:16px}.panel{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:16px}#products{display:grid;gap:10px}.item,.cartrow{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #334155}.item img{width:76px;height:76px;object-fit:cover;border-radius:9px;background:#0f172a}.item-info{flex:1;min-width:0}.item-desc{font-size:12px;color:#94a3b8;margin-top:4px}button{background:#f97316;color:white;border:0;border-radius:8px;padding:10px;font-weight:bold}input,textarea,select{width:100%;padding:10px;margin-top:5px;background:#0f172a;color:white;border:1px solid #475569;border-radius:8px}label{display:block;margin-top:10px;color:#cbd5e1;font-size:13px}.green{background:#22c55e;color:#052e16;width:100%;margin-top:15px}#done{display:none;max-width:460px;margin:25px auto;text-align:center}.code{font-size:40px;letter-spacing:8px;color:#22c55e;padding:18px;border:1px dashed #22c55e;border-radius:12px}@media(max-width:700px){main{grid-template-columns:1fr}}
 </style></head><body>
 <header><h2 id="store">Cardápio Digital</h2><p>Faça seu pedido para entrega</p></header><p id="status" style="text-align:center;padding:20px">Carregando cardápio...</p>
 <main id="app" style="display:none"><section class="panel"><h3>Produtos</h3><div id="products"></div></section><section class="panel"><h3>Seu pedido</h3><div id="cart"></div><h3 id="total">R$ 0,00</h3><h3>Entrega</h3>
 <label>Nome *<input id="name" maxlength="80"></label><label>WhatsApp *<input id="phone" maxlength="20"></label><label>Rua *<input id="street" maxlength="120"></label><label>Número *<input id="number" maxlength="15"></label><label>Bairro *<input id="neighborhood" maxlength="80"></label><label>Complemento<input id="complement" maxlength="100"></label><label>Observação<textarea id="obs" maxlength="500"></textarea></label>
 <label>Pagamento<select id="payment"><option>Pix</option><option>Cartão de Débito</option><option>Cartão de Crédito</option><option>Dinheiro</option></select></label><label id="cashlabel" style="display:none">Troco para<input id="cash" type="number" min="0" step=".01"></label><button id="send" class="green" onclick="sendOrder()">Confirmar pedido</button></section></main>
-<section id="done" class="panel"><h2>Pedido realizado!</h2><p id="order"></p><p>Seu código de confirmação da entrega:</p><div id="code" class="code"></div><p>Guarde este código e informe ao entregador somente quando ele estiver entregando seu pedido. Não compartilhe antes.</p><button onclick="copyCode()">Copiar código</button><p id="copymsg"></p></section>
+<section id="done" class="panel"><h2>Pedido realizado!</h2><p id="order"></p><p>Seu código de confirmação da entrega:</p><div id="code" class="code"></div><p>Guarde este código e informe ao entregador somente quando ele estiver entregando seu pedido. Não compartilhe antes.</p><button onclick="copyCode()">Copiar código</button><p id="copymsg"></p><p id="storeContact" style="margin-top:16px"></p></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const supabaseClient=window.supabase.createClient('https://oasxlmfwkkubabyvqama.supabase.co','sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk',{auth:{persistSession:false,autoRefreshToken:false}});
 const storeId=new URLSearchParams(window.location.search).get('loja');
 function makeRequestId(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,ch=>{const n=Math.random()*16|0;return(ch==='x'?n:(n&3|8)).toString(16);});}
-let products=[],cart=[],requestId=makeRequestId();
+let products=[],cart=[],storeWhatsapp='',requestId=makeRequestId();
 const el=id=>document.getElementById(id);
 const money=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 el('payment').addEventListener('change',()=>{el('cashlabel').style.display=el('payment').value==='Dinheiro'?'block':'none';});
 function render(){
- el('products').innerHTML=products.map((p,i)=>'<div class="item"><span><b>'+safe(p.name)+'</b><br>'+money(p.price)+'</span><button type="button" onclick="addProduct('+i+')">Adicionar</button></div>').join('');
+ el('products').innerHTML=products.map((p,i)=>'<div class="item">'+(p.image&&(/^https?:/i.test(p.image)||/^data:image\\//i.test(p.image))?'<img src="'+safe(p.image)+'" alt="'+safe(p.name)+'">':'')+'<div class="item-info"><b>'+safe(p.name)+'</b>'+(p.description?'<div class="item-desc">'+safe(p.description)+'</div>':'')+'<div style="margin-top:6px;color:#22c55e;font-weight:bold">'+money(p.price)+'</div></div><button type="button" onclick="addProduct('+i+')">Adicionar</button></div>').join('');
  el('cart').innerHTML=cart.map((p,i)=>'<div class="cartrow"><span>'+p.qty+'x '+safe(p.name)+' — '+money(p.price*p.qty)+'</span><span><button type="button" onclick="changeQuantity('+i+',-1)">−</button> <button type="button" onclick="changeQuantity('+i+',1)">+</button></span></div>').join('')||'Carrinho vazio';
  el('total').textContent=money(cart.reduce((sum,p)=>sum+p.qty*p.price,0));
  el('send').disabled=!cart.length;
@@ -31,6 +31,7 @@ async function loadMenu(){
   const result=await supabaseClient.rpc('rpc_get_public_delivery_menu',{p_store_id:storeId});
   if(result.error)throw result.error;
   products=Array.isArray(result.data?.products)?result.data.products:[];
+  storeWhatsapp=String(result.data?.store_phone||'').replace(/\\D/g,'');
   el('store').textContent=result.data?.store_name||'Cardápio Digital';
   if(!products.length){el('status').textContent='Este estabelecimento ainda não publicou produtos para delivery.';return;}
   el('status').style.display='none';el('app').style.display='grid';render();
@@ -62,6 +63,7 @@ function showConfirmation(data){
  el('app').style.display='none';el('status').style.display='none';el('done').style.display='block';
  el('order').textContent='Pedido #'+data.displayId+' confirmado. Total: '+money(data.total);
  el('code').textContent=data.code;
+ if(storeWhatsapp.length>=10){const digits=storeWhatsapp.startsWith('55')?storeWhatsapp:'55'+storeWhatsapp;el('storeContact').innerHTML='Precisa falar com a loja? <a style="color:#f97316" target="_blank" rel="noopener" href="https://wa.me/'+digits+'">Abrir WhatsApp do estabelecimento</a>.';}
 }
 async function copyCode(){
  const code=el('code').textContent;

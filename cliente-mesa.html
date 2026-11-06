@@ -360,10 +360,21 @@
         return false;
       }
       const { data, error } = await publicSupabase.rpc('rpc_get_public_qr_enabled', { p_store_id: storeId });
-      const enabled = !error && data === true;
+      let enabled = !error && data === true;
+      if (enabled) {
+        const tableResult = await publicSupabase.rpc('rpc_get_public_table_count', { p_store_id: storeId });
+        enabled = !tableResult.error
+          && Number.isInteger(Number(tableResult.data))
+          && Number(tableId) <= Number(tableResult.data);
+        if (!enabled) {
+          document.getElementById('disabledNotice').innerText = 'Este QR Code não corresponde a uma mesa cadastrada. Solicite uma nova etiqueta à equipe.';
+        }
+      }
       document.getElementById('activeButtons').style.display = enabled ? 'block' : 'none';
       document.getElementById('disabledNotice').style.display = enabled ? 'none' : 'block';
-      if (!enabled) document.getElementById('disabledNotice').innerText = 'O atendimento por QR Code está desativado neste estabelecimento. Solicite ajuda à equipe.';
+      if (!enabled && !document.getElementById('disabledNotice').innerText) {
+        document.getElementById('disabledNotice').innerText = 'O atendimento por QR Code está desativado neste estabelecimento. Solicite ajuda à equipe.';
+      }
       return enabled;
     }
 

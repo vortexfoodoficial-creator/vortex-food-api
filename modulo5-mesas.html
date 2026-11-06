@@ -977,6 +977,7 @@
 
     window.onload = async function() {
       loadStoreSettings();
+      await vortexGetCurrentStoreId();
       const localTableCount = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
       const tableCountResult = await dbSyncPublicTableCount(localTableCount);
       if (tableCountResult && !tableCountResult.error && Number.isInteger(tableCountResult.data)) {

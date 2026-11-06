@@ -251,19 +251,19 @@
                 <p style="font-size: 13px; color: var(--text-muted);">Envie este link aos seus clientes pelo WhatsApp ou redes sociais para receberem pedidos diretamente no painel.</p>
                 
                 <div class="link-box">
-                    <span>O link público será disponibilizado após a configuração do cardápio deste estabelecimento.</span>
-                    <button class="btn-copy" type="button" disabled title="Link ainda não configurado">Copiar Link</button>
+                    <span id="publicDeliveryLinkText">Carregando link do seu cardápio...</span>
+                    <button class="btn-copy" id="copyDeliveryLink" type="button" disabled onclick="copyPublicDeliveryLink()">Copiar Link</button>
                 </div>
+                <p id="deliveryLinkStatus" style="font-size:12px;color:var(--text-muted);margin-top:10px;">Ative o cardápio para começar a receber pedidos online.</p>
+            </div>
             </div>
 
             <div class="online-config-card">
                 <h3 style="margin-bottom: 12px; font-weight: 800;">⚙️ Configurações de Atendimento Online</h3>
                 <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
-                    <label><input type="checkbox" disabled> Aceitar Pedidos de Delivery Automáticos</label>
-                    <label><input type="checkbox" disabled> Exigir Cadastro de Telefone/WhatsApp no Checkout</label>
-                    <label><input type="checkbox" disabled> Pausar novos pedidos automaticamente caso a cozinha atinja o limite</label>
+                    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="enablePublicDelivery" onchange="togglePublicDelivery(this.checked)" style="width:auto;"> Aceitar pedidos de Delivery pelo cardápio digital</label>
                 </div>
-                <p style="font-size: 11px; color: var(--text-muted);">Estas opções ainda não estão conectadas ao sistema e não alteram o atendimento.</p>
+                <p style="font-size: 11px; color: var(--text-muted);">Ao ativar, seus clientes poderão acessar o link público, montar o pedido e receber o código de confirmação na tela após concluir a compra.</p>
             </div>
         </div>
     </main>
@@ -272,6 +272,7 @@
     <script src="supabase.js"></script>
 
     <script>
+        let publicDeliveryUrl = '';
         function toggleSidebar() {
             const sidebar = document.getElementById('mainSidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -282,6 +283,50 @@
                 sidebar.classList.toggle('collapsed');
             }
         }
+        async function loadPublicDeliverySettings() {
+            const statusEl = document.getElementById('deliveryLinkStatus');
+            try {
+                const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+                if (!client || typeof vortexGetCurrentStoreId !== 'function') throw new Error('Conexão com o estabelecimento indisponível. Atualize a página e entre novamente.');
+                const storeId = await vortexGetCurrentStoreId();
+                if (!storeId) throw new Error('Não foi possível identificar o estabelecimento ativo.');
+                const url = new URL('cliente-delivery.html', window.location.href);
+                url.searchParams.set('loja', storeId);
+                publicDeliveryUrl = url.href;
+                document.getElementById('publicDeliveryLinkText').textContent = publicDeliveryUrl;
+                const result = await client.rpc('rpc_get_public_delivery_enabled', { p_store_id: storeId });
+                if (result.error) throw result.error;
+                const enabled = result.data === true;
+                document.getElementById('enablePublicDelivery').checked = enabled;
+                document.getElementById('copyDeliveryLink').disabled = !enabled;
+                statusEl.textContent = enabled ? 'Cardápio ativo. Seus clientes já podem acessar o link e realizar pedidos.' : 'Cardápio pausado. Ative a opção acima para liberar pedidos online.';
+            } catch (error) { statusEl.textContent = error.message || 'Não foi possível carregar as configurações do cardápio.'; }
+        }
+        async function togglePublicDelivery(enabled) {
+            const checkbox = document.getElementById('enablePublicDelivery');
+            const statusEl = document.getElementById('deliveryLinkStatus');
+            checkbox.disabled = true;
+            try {
+                const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+                if (!client) throw new Error('Conexão com a nuvem indisponível.');
+                const result = await client.rpc('rpc_set_public_delivery_enabled', { p_enabled: enabled });
+                if (result.error) throw result.error;
+                if (!result.data || result.data.success !== true) throw new Error('O banco não confirmou a alteração.');
+                document.getElementById('copyDeliveryLink').disabled = !enabled;
+                statusEl.textContent = enabled ? 'Cardápio ativado! Copie o link e compartilhe com seus clientes.' : 'Cardápio pausado. Novos pedidos online estão desativados.';
+            } catch (error) {
+                checkbox.checked = !enabled;
+                statusEl.textContent = error.message || 'Não foi possível alterar o status do cardápio.';
+            } finally { checkbox.disabled = false; }
+        }
+        async function copyPublicDeliveryLink() {
+            if (!publicDeliveryUrl) return;
+            try {
+                await navigator.clipboard.writeText(publicDeliveryUrl);
+                document.getElementById('deliveryLinkStatus').textContent = 'Link copiado! Agora você pode compartilhar com seus clientes.';
+            } catch (error) { document.getElementById('deliveryLinkStatus').textContent = publicDeliveryUrl; }
+        }
+        window.addEventListener('DOMContentLoaded', loadPublicDeliverySettings);
     </script>
 </body>
 </html>

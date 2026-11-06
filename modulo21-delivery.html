@@ -1042,8 +1042,53 @@
       }
     }
 
-    function generateDeliveryCode() {
-      return Math.floor(1000 + Math.random() * 9000).toString();
+    function normalizeBrazilWhatsappPhone(phone) {
+      const digits = String(phone || '').replace(/\D/g, '');
+      if (digits.length === 10 || digits.length === 11) return '55' + digits;
+      if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return digits;
+      return '';
+    }
+
+    async function sendDeliveryVerificationLink(orderId, reservedWindow = null) {
+      const orders = readLocalKdsOrders();
+      const order = typeof orderId === 'object' ? orderId : orders.find(item => String(item.id) === String(orderId));
+      if (!order) return { success: false, message: 'Pedido não encontrado neste aparelho.' };
+
+      const phoneMatch = String(order.client || '').match(/\(([^)]+)\)\s*$/);
+      const whatsappPhone = normalizeBrazilWhatsappPhone(phoneMatch ? phoneMatch[1] : '');
+      const whatsappWindow = reservedWindow || window.open('about:blank', '_blank');
+      if (!whatsappPhone) {
+        if (whatsappWindow) whatsappWindow.close();
+        return { success: false, message: 'O telefone do cliente não está em um formato válido. Confira o cadastro do pedido.' };
+      }
+      if (!whatsappWindow) {
+        return { success: false, message: 'O navegador bloqueou a abertura do WhatsApp. Use o botão de envio novamente e permita a abertura da nova aba.' };
+      }
+
+      try {
+        const client = getDeliverySupabaseClient();
+        if (!client || !window.VORTEX_ACTIVE_STORE_ID) throw new Error('Conexão ou estabelecimento ativo indisponível.');
+        const { data, error } = await client.rpc('rpc_issue_delivery_verification', {
+          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+          p_order_id: String(order.id)
+        });
+        if (error) throw error;
+        if (!data || data.success !== true || !data.access_token) throw new Error('O servidor não confirmou a geração do link privado.');
+
+        const customerUrl = new URL('cliente-entrega.html', window.location.href);
+        customerUrl.searchParams.set('store', window.VORTEX_ACTIVE_STORE_ID);
+        customerUrl.searchParams.set('pedido', String(order.id));
+        customerUrl.searchParams.set('token', String(data.access_token));
+        const customerName = String(order.client || 'cliente').replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const visibleNumber = order.displayId || order.id;
+        const message = 'Olá, ' + customerName + '! Para consultar seu código de confirmação da entrega do pedido #' + visibleNumber + ', acesse este link privado: ' + customerUrl.href + '. Mostre o código ao entregador somente quando receber o pedido.';
+        whatsappWindow.location.href = 'https://wa.me/' + whatsappPhone + '?text=' + encodeURIComponent(message);
+        return { success: true };
+      } catch (error) {
+        try { whatsappWindow.close(); } catch (closeError) {}
+        console.warn('Não foi possível gerar/enviar o link privado de entrega:', error);
+        return { success: false, message: error.message || 'Não foi possível gerar o link privado.' };
+      }
     }
 
     function getLocalDateStr(dateObj) {
@@ -1057,7 +1102,14 @@
     function readLocalKdsOrders() {
       try {
         const parsed = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed) ? parsed.map(order => {
+          if (String(order.origin || '').toLowerCase().includes('delivery')) {
+            const safeOrder = { ...order };
+            delete safeOrder.code;
+            return safeOrder;
+          }
+          return order;
+        }) : [];
       } catch (error) {
         return [];
       }
@@ -1100,7 +1152,7 @@
         total: Number(order.total) || 0,
         observation: order.observation || '',
         status: order.status || 'new',
-        code: order.code || String(order.id),
+        code: '',
         courier: order.courier || ''
       };
       const { data, error } = await client.from('vortex_kds_orders').upsert([record]);
@@ -1146,6 +1198,7 @@
         return;
       }
 
+      const deliveryWhatsappWindow = normalizeBrazilWhatsappPhone(clientPhone) ? window.open('about:blank', '_blank') : null;
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('paymentMethodSelect').value;
 
@@ -1196,8 +1249,6 @@
       salesHistory.unshift(newSaleRecord);
       localStorage.setItem('vortex_sales_history', JSON.stringify(salesHistory));
 
-      const deliveryCode = generateDeliveryCode();
-
       const newOrder = {
         id: technicalId,
         displayId: displaySeqNumber,
@@ -1215,7 +1266,6 @@
         date: todayDateStr,
         dateFormatted: dateFormatted,
         time: timeStr,
-        code: deliveryCode,
         courier: ''
       };
 
@@ -1242,6 +1292,7 @@
 
       let cloudSuccess = true;
       let cloudErrorMsg = '';
+      let verificationSent = false;
       try {
         if (typeof dbSaveSale !== 'function') {
           throw new Error('Rotina segura de gravação de vendas não disponível.');
@@ -1254,16 +1305,23 @@
         if (cloudRes && cloudRes.error) {
           cloudSuccess = false;
           cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
+        } else {
+          const sendResult = await sendDeliveryVerificationLink(technicalId, deliveryWhatsappWindow);
+          verificationSent = !!sendResult.success;
+          if (!verificationSent) cloudErrorMsg = sendResult.message || 'Não foi possível enviar o link privado ao cliente.';
         }
       } catch (e) {
         cloudSuccess = false;
         cloudErrorMsg = e.message || String(e);
+        try { if (deliveryWhatsappWindow) deliveryWhatsappWindow.close(); } catch (closeError) {}
       }
 
-      if (cloudSuccess) {
-        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado e encaminhado para o KDS com sucesso!`, '🛵');
+      if (cloudSuccess && verificationSent) {
+        showNoticeModal('Pedido Cadastrado!', `Pedido #${displaySeqNumber} registrado. O link privado do código foi aberto no WhatsApp do cliente.`, '🛵');
+      } else if (cloudSuccess) {
+        showNoticeModal('Pedido registrado', `Pedido #${displaySeqNumber} foi sincronizado, mas o link do código não foi enviado: ${cloudErrorMsg} Use o botão "Enviar código ao cliente" no pedido para tentar novamente.`, '⚠️');
       } else {
-        showNoticeModal('Salvo Localmente (Aviso de Nuvem)', `Pedido #${displaySeqNumber} salvo no dispositivo, mas a nuvem retornou aviso: ${cloudErrorMsg}`, '⚠️');
+        showNoticeModal('Aviso de sincronização', `O pedido #${displaySeqNumber} ficou salvo neste aparelho, mas a sincronização não foi confirmada: ${cloudErrorMsg}`, '⚠️');
       }
     }
 
@@ -1329,17 +1387,20 @@
           actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
-          actionAreaHtml = `<div style="margin-top:6px;"><div class="code-input-row"><input type="text" class="code-input" id="codeInput_${o.id}" placeholder="Digitar Código" maxlength="4"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div><button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue ✅</button></div>`;
+          actionAreaHtml = `<div style="margin-top:6px;"><div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div><button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button></div>`;
         } else if (o.status === 'finished') {
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
         }
+        const sendCodeButtonHtml = o.status !== 'finished' && o.status !== 'cancelled'
+          ? `<button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="sendDeliveryVerificationLink('${o.id}')">📲 Enviar / Reenviar código ao cliente</button>`
+          : '';
         const itemsText = o.items ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '';
         const cashGiven = Number(o.cashGiven || o.cashgiven) || 0;
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}🔒 Código de Validação: <strong style="color:var(--info);">${o.code || '----'}</strong><br>💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${sendCodeButtonHtml}${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }
@@ -1406,34 +1467,60 @@
     }
 
     async function finishDeliveryOrder(orderId) {
-      const kdsOrders = readLocalKdsOrders();
-      const order = kdsOrders.find(item => String(item.id) === String(orderId));
+      const order = readLocalKdsOrders().find(item => String(item.id) === String(orderId));
       if (!order) return;
-      order.status = 'finished';
-      saveLocalKdsOrders(kdsOrders);
-      recordCourierHistory(order);
-      renderActiveDeliveryOrders(kdsOrders, true);
-      const visibleNum = order.displayId || orderId;
-      showNoticeModal('Pedido Entregue!', `O pedido #${visibleNum} foi concluído.`, '✅');
-      await syncKdsPatch(orderId, { status: 'finished' });
+      try {
+        const client = getDeliverySupabaseClient();
+        if (!client) throw new Error('Conexão com a nuvem indisponível.');
+        const { data, error } = await client.rpc('rpc_mark_delivery_manual', {
+          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+          p_order_id: String(orderId)
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) throw new Error(data && data.message ? data.message : 'A nuvem não confirmou a entrega manual.');
+        const kdsOrders = readLocalKdsOrders();
+        const current = kdsOrders.find(item => String(item.id) === String(orderId));
+        if (current) current.status = 'finished';
+        saveLocalKdsOrders(kdsOrders);
+        recordCourierHistory(current || order);
+        renderActiveDeliveryOrders(kdsOrders, true);
+        showNoticeModal('Pedido Entregue!', 'O pedido #' + (order.displayId || orderId) + ' foi concluído manualmente.', '✅');
+      } catch (error) {
+        showNoticeModal('Não foi possível concluir', error.message || 'A nuvem não confirmou a entrega.', '⚠️');
+      }
     }
 
     async function confirmDeliveryWithCode(orderId) {
-      const kdsOrders = readLocalKdsOrders();
-      const order = kdsOrders.find(item => String(item.id) === String(orderId));
-      if (!order) return;
-      const inputVal = document.getElementById(`codeInput_${orderId}`)?.value.trim();
-      const visibleNum = order.displayId || orderId;
-      if (inputVal !== order.code) {
-        showNoticeModal('Código Incorreto', `O código digitado não confere com o código do cliente.`, '⚠️');
+      const inputVal = document.getElementById('codeInput_' + orderId)?.value.trim() || '';
+      if (!/^\d{6}$/.test(inputVal)) {
+        showNoticeModal('Código inválido', 'Digite os seis números informados pelo cliente.', '⚠️');
         return;
       }
-      order.status = 'finished';
-      saveLocalKdsOrders(kdsOrders);
-      recordCourierHistory(order);
-      renderActiveDeliveryOrders(kdsOrders, true);
-      showNoticeModal('Código Confirmado!', `Entrega do pedido #${visibleNum} validada.`, '🎉');
-      await syncKdsPatch(orderId, { status: 'finished' });
+      try {
+        const client = getDeliverySupabaseClient();
+        if (!client) throw new Error('Conexão com a nuvem indisponível.');
+        const { data, error } = await client.rpc('rpc_confirm_delivery_code', {
+          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+          p_order_id: String(orderId),
+          p_code: inputVal
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) {
+          showNoticeModal('Não foi possível validar', data && data.message ? data.message : 'Código incorreto ou indisponível.', '⚠️');
+          return;
+        }
+        const kdsOrders = readLocalKdsOrders();
+        const order = kdsOrders.find(item => String(item.id) === String(orderId));
+        if (order) {
+          order.status = 'finished';
+          saveLocalKdsOrders(kdsOrders);
+          recordCourierHistory(order);
+        }
+        renderActiveDeliveryOrders(kdsOrders, true);
+        showNoticeModal('Código Confirmado!', 'Entrega do pedido #' + ((order && order.displayId) || orderId) + ' validada.', '🎉');
+      } catch (error) {
+        showNoticeModal('Falha na validação', error.message || 'Não foi possível validar o código na nuvem.', '⚠️');
+      }
     }
 
     function printDeliveryTicket(orderId) {

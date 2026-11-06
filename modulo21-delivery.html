@@ -1314,6 +1314,7 @@
         if (cloudRes && cloudRes.error) {
           cloudSuccess = false;
           cloudErrorMsg = cloudRes.error.message || JSON.stringify(cloudRes.error);
+          try { if (deliveryWhatsappWindow) deliveryWhatsappWindow.close(); } catch (closeError) {}
         } else {
           const sendResult = await sendDeliveryVerificationLink(technicalId, deliveryWhatsappWindow, false);
           verificationSent = !!sendResult.success;

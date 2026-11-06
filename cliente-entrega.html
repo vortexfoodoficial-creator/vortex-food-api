@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
   <title>Código de entrega - Vortex Food</title>
   <style>
     :root { color-scheme: dark; --bg:#0f172a; --card:#1e293b; --text:#f8fafc; --muted:#94a3b8; --orange:#f97316; --green:#22c55e; --border:#334155; }
@@ -60,6 +61,8 @@
           throw new Error(data && data.message ? data.message : 'Não foi possível localizar o código. Solicite um novo link ao estabelecimento.');
         }
 
+        // Remove o token da barra de endereço e do histórico após validar o link.
+        window.history.replaceState({}, document.title, window.location.pathname);
         display.textContent = String(data.code);
         display.classList.remove('hidden');
         copyButton.classList.remove('hidden');

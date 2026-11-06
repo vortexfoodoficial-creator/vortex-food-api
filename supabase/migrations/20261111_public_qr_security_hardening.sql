@@ -129,7 +129,7 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_create_public_table_request(uuid, integer, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rpc_create_public_table_request(uuid, integer, text)
-  TO anon, authenticated;
+  TO anon, authenticated, service_role;
 
 ALTER FUNCTION public.rpc_create_public_table_order(uuid, integer, text, text, jsonb, uuid)
   RENAME TO _vortex_rpc_create_public_table_order_unchecked_20261111;
@@ -175,7 +175,7 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_create_public_table_order(uuid, integer, text, text, jsonb, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rpc_create_public_table_order(uuid, integer, text, text, jsonb, uuid)
-  TO anon, authenticated;
+  TO anon, authenticated, service_role;
 
 ALTER FUNCTION public.rpc_create_public_delivery_order(
   uuid, text, text, text, text, numeric, text, jsonb, uuid
@@ -226,6 +226,6 @@ REVOKE ALL ON FUNCTION public.rpc_create_public_delivery_order(
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rpc_create_public_delivery_order(
   uuid, text, text, text, text, numeric, text, jsonb, uuid
-) TO anon, authenticated;
+) TO anon, authenticated, service_role;
 
 COMMIT;

@@ -498,22 +498,38 @@
       }
     }
 
-    function addTable() {
-      totalTablesCount += 1;
+    async function addTable() {
+      if (totalTablesCount >= 200) {
+        showNoticeModal('Limite atingido', 'O sistema permite cadastrar até 200 mesas.', '⚠️');
+        return;
+      }
+      const nextCount = totalTablesCount + 1;
+      const result = await dbSavePublicTableCount(nextCount);
+      if (result && result.error) {
+        showNoticeModal('Não foi possível adicionar', result.error.message || 'Falha ao salvar a quantidade de mesas na nuvem.', '⚠️');
+        return;
+      }
+      totalTablesCount = nextCount;
       localStorage.setItem('vortex_total_tables', totalTablesCount);
       renderMesas();
-      showNoticeModal('Mesa Adicionada!', `Mesa ${totalTablesCount} criada com sucesso e sincronizada com o Dashboard.`, '➕');
+      showNoticeModal('Mesa Adicionada!', `Mesa ${totalTablesCount} criada e sincronizada com o estabelecimento.`, '➕');
     }
 
-    function removeTable() {
+    async function removeTable() {
       if (totalTablesCount <= 1) {
         showNoticeModal('Aviso', 'Você precisa ter pelo menos 1 mesa cadastrada.', '⚠️');
         return;
       }
-      totalTablesCount -= 1;
+      const nextCount = totalTablesCount - 1;
+      const result = await dbSavePublicTableCount(nextCount);
+      if (result && result.error) {
+        showNoticeModal('Não foi possível remover', result.error.message || 'Falha ao salvar a quantidade de mesas na nuvem.', '⚠️');
+        return;
+      }
+      totalTablesCount = nextCount;
       localStorage.setItem('vortex_total_tables', totalTablesCount);
       renderMesas();
-      showNoticeModal('Mesa Removida!', `Mesa ${totalTablesCount + 1} removida do sistema e do Dashboard.`, '➖');
+      showNoticeModal('Mesa Removida!', `Mesa ${totalTablesCount + 1} removida do estabelecimento.`, '➖');
     }
 
     function openMesaModal(mesaNum) {
@@ -961,6 +977,14 @@
 
     window.onload = async function() {
       loadStoreSettings();
+      const localTableCount = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
+      const tableCountResult = await dbSyncPublicTableCount(localTableCount);
+      if (tableCountResult && !tableCountResult.error && Number.isInteger(tableCountResult.data)) {
+        totalTablesCount = tableCountResult.data;
+        localStorage.setItem('vortex_total_tables', totalTablesCount);
+      } else {
+        showNoticeModal('Sincronização de mesas pendente', 'Não foi possível confirmar a quantidade de mesas na nuvem. Os QR Codes públicos podem ficar indisponíveis até restabelecer a conexão.', '⚠️');
+      }
       isQrEnabled = await dbFetchPublicQrEnabled();
       document.getElementById('qrEnableToggle').checked = isQrEnabled;
       document.getElementById('qrStatusText').innerText = isQrEnabled ? 'Ativado' : 'Desativado';

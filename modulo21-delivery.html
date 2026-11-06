@@ -1198,7 +1198,6 @@
         return;
       }
 
-      const deliveryWhatsappWindow = normalizeBrazilWhatsappPhone(clientPhone) ? window.open('about:blank', '_blank') : null;
       const total = deliveryCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
       const payment = document.getElementById('paymentMethodSelect').value;
 
@@ -1214,6 +1213,7 @@
         changeVal = rawCashGiven - total;
       }
 
+      const deliveryWhatsappWindow = normalizeBrazilWhatsappPhone(clientPhone) ? window.open('about:blank', '_blank') : null;
       let fullAddress = `${street}, Nº ${number} - ${neighborhood}`;
       if (city && state) fullAddress += `, ${city} - ${state}`;
       else if (city) fullAddress += `, ${city}`;

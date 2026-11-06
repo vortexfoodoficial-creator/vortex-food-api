@@ -1309,7 +1309,8 @@
           actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
-          actionAreaHtml = `<div style="margin-top:6px;"><div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div><button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button></div>`;
+          const isOnlineDelivery = String(o.origin || '').toLowerCase().includes('online');
+          actionAreaHtml = `<div style="margin-top:6px;">${isOnlineDelivery ? `<div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div>` : ''}<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button></div>`;
         } else if (o.status === 'finished') {
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;

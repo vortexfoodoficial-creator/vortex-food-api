@@ -84,6 +84,7 @@ SET search_path = pg_catalog, public
 AS $function$
 DECLARE
   v_store_name text;
+  v_setting_name text;
   v_phone text;
   v_address text;
   v_catalog jsonb;
@@ -102,7 +103,7 @@ BEGIN
   END IF;
 
   SELECT store_name, phone, store_address
-  INTO v_store_name, v_phone, v_address
+  INTO v_setting_name, v_phone, v_address
   FROM public.vortex_store_settings
   WHERE store_id = p_store_id
   ORDER BY id
@@ -137,7 +138,7 @@ BEGIN
     AND COALESCE(NULLIF(p.value->>'price', '')::numeric, 0) > 0;
 
   RETURN jsonb_build_object(
-    'store_name', COALESCE(v_store_name, 'Estabelecimento'),
+    'store_name', COALESCE(NULLIF(v_setting_name, ''), v_store_name, 'Estabelecimento'),
     'store_phone', COALESCE(v_phone, ''),
     'store_address', COALESCE(v_address, ''),
     'products', v_products

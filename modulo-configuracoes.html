@@ -1013,6 +1013,7 @@
       // 1. Grava no localStorage unificado para acesso imediato do Módulo 21
       localStorage.setItem('vortex_store_settings', JSON.stringify(payload));
       document.getElementById('sidebarStoreName').innerText = storeName || 'MEU ESTABELECIMENTO';
+      if (typeof vortexSetSidebarStoreName === 'function') vortexSetSidebarStoreName(storeName);
       localStorage.setItem('vortex_store_address', fullAddress);
       localStorage.setItem('vortex_endereco', fullAddress);
 

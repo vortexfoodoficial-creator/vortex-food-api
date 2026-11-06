@@ -239,7 +239,7 @@ BEGIN
     SELECT 1 FROM public.vortex_kds_orders
     WHERE store_id = p_store_id
       AND origin ILIKE '%Delivery%'
-      AND regexp_replace(client, '^.*\\(([^()]*)\\)$', '\\1') = regexp_replace(COALESCE(p_client_phone, ''), '\\D', '', 'g')
+      AND regexp_replace(client, '^.*\(([^()]*)\)$', '\1') = regexp_replace(COALESCE(p_client_phone, ''), '\D', '', 'g')
       AND created_at > v_now - interval '3 seconds'
   ) THEN
     RAISE EXCEPTION 'Aguarde alguns segundos antes de enviar outro pedido.';
@@ -256,7 +256,7 @@ BEGIN
   v_payment := left(trim(COALESCE(p_payment, '')), 60);
   v_observation := left(trim(COALESCE(p_observation, '')), 500);
 
-  IF v_client_name = '' OR length(regexp_replace(v_client_phone, '\\D', '', 'g')) < 10
+  IF v_client_name = '' OR length(regexp_replace(v_client_phone, '\D', '', 'g')) < 10
      OR v_address = '' OR v_payment NOT IN ('Pix', 'Cartão de Débito', 'Cartão de Crédito', 'Dinheiro') THEN
     RAISE EXCEPTION 'Confira nome, telefone, endereço e forma de pagamento.';
   END IF;
@@ -319,7 +319,7 @@ BEGIN
     to_char(v_local_now, 'HH24:MI'), v_local_now::date,
     to_char(v_local_now, 'DD/MM/YYYY'), v_order_items, round(v_total, 2),
     v_observation, 'new', '',
-    'paid', v_now, v_display_id, p_request_id
+    'pending', v_now, v_display_id, p_request_id
   );
 
   INSERT INTO public.vortex_sales_history (
@@ -328,7 +328,7 @@ BEGIN
   ) VALUES (
     p_store_id, v_order_id, v_client_name || ' (' || v_client_phone || ')',
     'Delivery Online', round(v_total, 2), round(v_total, 2), 0,
-    v_payment, 'completed', 'paid', v_local_now::date, to_char(v_local_now, 'HH24:MI'),
+    v_payment, 'completed', 'pending', v_local_now::date, to_char(v_local_now, 'HH24:MI'),
     v_order_items, v_now
   );
 

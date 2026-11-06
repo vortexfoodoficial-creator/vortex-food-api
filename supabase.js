@@ -1031,6 +1031,60 @@ function vortexRequireAuthenticatedPage() {
     .catch(redirectToLogin);
 }
 
+// Identidade central do estabelecimento: o mesmo nome é aplicado em todos os módulos.
+let vortexSidebarCanonicalStoreName = '';
+let vortexSidebarNameObserver = null;
+
+function vortexSetSidebarStoreName(name) {
+  const normalized = String(name || '').trim() || 'MEU ESTABELECIMENTO';
+  vortexSidebarCanonicalStoreName = normalized;
+  document.querySelectorAll('#sidebarStoreName').forEach(element => {
+    if (element.textContent !== normalized) element.textContent = normalized;
+  });
+  return normalized;
+}
+
+async function vortexRefreshSidebarStoreName() {
+  if (!document.getElementById('sidebarStoreName')) return;
+  let localSettings = {};
+  try { localSettings = JSON.parse(localStorage.getItem('vortex_store_settings') || '{}') || {}; } catch (error) {}
+
+  let cloudSettings = null;
+  let relationalSettings = null;
+  try {
+    await vortexGetCurrentStoreId();
+    cloudSettings = await dbFetchStoreDocument('settings');
+    relationalSettings = await dbFetchStoreSettings();
+  } catch (error) {
+    console.warn('Não foi possível atualizar o nome do estabelecimento pela nuvem:', error);
+  }
+
+  const savedName = cloudSettings && (cloudSettings.storeName || cloudSettings.store_name || cloudSettings.nome)
+    || relationalSettings && relationalSettings.store_name
+    || localSettings.storeName || localSettings.store_name || localSettings.nome;
+  const normalized = vortexSetSidebarStoreName(savedName);
+
+  try {
+    localSettings.storeName = normalized;
+    localStorage.setItem('vortex_store_settings', JSON.stringify(localSettings));
+  } catch (error) {}
+
+  const element = document.getElementById('sidebarStoreName');
+  if (element && !vortexSidebarNameObserver && typeof MutationObserver !== 'undefined') {
+    vortexSidebarNameObserver = new MutationObserver(() => {
+      if (vortexSidebarCanonicalStoreName && element.textContent !== vortexSidebarCanonicalStoreName) {
+        element.textContent = vortexSidebarCanonicalStoreName;
+      }
+    });
+    vortexSidebarNameObserver.observe(element, { childList: true, characterData: true, subtree: true });
+  }
+}
+
+// Aguarda o carregamento da tela e corrige nomes locais antigos ou desatualizados.
+window.addEventListener('load', function() {
+  setTimeout(function() { vortexRefreshSidebarStoreName(); }, 400);
+});
+
 // Ativa a verificação somente nas páginas internas listadas acima.
 // Login, landing page e páginas públicas de clientes permanecem abertas.
 vortexRequireAuthenticatedPage();

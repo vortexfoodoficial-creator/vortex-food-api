@@ -162,6 +162,17 @@ BEGIN
     RAISE EXCEPTION 'Acesso não autorizado a este estabelecimento.';
   END IF;
 
+  -- A ordem de bloqueio é sempre pedido -> verificação, inclusive nas rotinas
+  -- de emissão e baixa manual, evitando deadlocks entre confirmações simultâneas.
+  SELECT origin, status INTO v_origin, v_status
+  FROM public.vortex_kds_orders
+  WHERE store_id = p_store_id AND id = p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR COALESCE(v_origin, '') NOT ILIKE '%Delivery%' OR v_status <> 'delivering' THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Este pedido não está em rota de entrega.');
+  END IF;
+
   SELECT * INTO v_verification
   FROM public.vortex_delivery_verifications
   WHERE store_id = p_store_id AND order_id = p_order_id
@@ -182,15 +193,6 @@ BEGIN
     SET attempt_count = 0, locked_until = NULL
     WHERE store_id = p_store_id AND order_id = p_order_id;
     v_verification.attempt_count := 0;
-  END IF;
-
-  SELECT origin, status INTO v_origin, v_status
-  FROM public.vortex_kds_orders
-  WHERE store_id = p_store_id AND id = p_order_id
-  FOR UPDATE;
-
-  IF NOT FOUND OR COALESCE(v_origin, '') NOT ILIKE '%Delivery%' OR v_status <> 'delivering' THEN
-    RETURN jsonb_build_object('success', false, 'message', 'Este pedido não está em rota de entrega.');
   END IF;
 
   IF COALESCE(p_code, '') !~ '^[0-9]{6}$' OR p_code <> v_verification.code THEN

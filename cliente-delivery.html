@@ -11,7 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const supabaseClient=window.supabase.createClient('https://oasxlmfwkkubabyvqama.supabase.co','sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk',{auth:{persistSession:false,autoRefreshToken:false}});
 const storeId=new URLSearchParams(window.location.search).get('loja');
-let products=[],cart=[],requestId=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'vortex-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+function makeRequestId(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,ch=>{const n=Math.random()*16|0;return(ch==='x'?n:(n&3|8)).toString(16);});}
+let products=[],cart=[],requestId=makeRequestId();
 const el=id=>document.getElementById(id);
 const money=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -708,6 +708,42 @@ async function dbFetchPublicQrEnabled() {
   return !error && !!(data && data.qr_enabled);
 }
 
+/* Quantidade de mesas sincronizada por estabelecimento e validada também no banco. */
+async function dbSyncPublicTableCount(localCount) {
+  const supabase = getSupabase();
+  const storeId = await vortexGetCurrentStoreId();
+  if (!supabase || !storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+
+  const { data, error } = await supabase
+    .from('vortex_store_documents')
+    .select('data')
+    .eq('store_id', storeId)
+    .eq('document_key', 'table_settings')
+    .maybeSingle();
+
+  if (error) return { data: null, error };
+
+  const cloudCount = Number(data && data.data && data.data.totalTablesCount);
+  if (Number.isInteger(cloudCount) && cloudCount >= 1 && cloudCount <= 200) {
+    return { data: cloudCount, error: null };
+  }
+
+  const initialCount = Number.isInteger(Number(localCount))
+    ? Math.max(1, Math.min(200, Number(localCount)))
+    : 10;
+  const saved = await dbSaveStoreDocument('table_settings', { totalTablesCount: initialCount });
+  if (saved && saved.error) return { data: null, error: saved.error };
+  return { data: initialCount, error: null };
+}
+
+async function dbSavePublicTableCount(count) {
+  const safeCount = Number(count);
+  if (!Number.isInteger(safeCount) || safeCount < 1 || safeCount > 200) {
+    return { error: new Error('A quantidade de mesas deve ficar entre 1 e 200.') };
+  }
+  return await dbSaveStoreDocument('table_settings', { totalTablesCount: safeCount });
+}
+
 async function dbFetchPublicTableRequests() {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();

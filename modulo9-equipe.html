@@ -114,6 +114,14 @@
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+    .permission-groups { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; max-height:42vh; overflow:auto; margin:14px 0; }
+    .permission-group { border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--bg-main); }
+    .permission-group h4 { font-size:.85rem; margin-bottom:9px; color:var(--primary); }
+    .permission-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; font-size:.78rem; color:var(--text-main); white-space:normal; }
+    .permission-item input { margin-top:2px; accent-color:var(--primary); }
+    .permission-item small { display:block; color:var(--text-muted); margin-top:2px; line-height:1.35; }
+    .account-status { font-size:.72rem; font-weight:800; color:var(--text-muted); }
+    .account-status.pending { color:var(--warning); } .account-status.active { color:var(--success); }
 
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -229,12 +237,13 @@
               <th>Telefone</th>
               <th>Comissão (%)</th>
               <th>Status</th>
+              <th>Acesso ao sistema</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="staffTableBody">
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">
                 Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.
               </td>
             </tr>
@@ -261,6 +270,12 @@
       </div>
 
       <div class="form-group">
+        <label>E-mail para acesso individual (opcional):</label>
+        <input type="email" class="form-input" id="staffEmail" placeholder="funcionario@email.com" autocomplete="email">
+        <small style="display:block;color:var(--text-muted);margin-top:5px;">Se informar um e-mail, será possível enviar um convite para o funcionário criar a própria senha.</small>
+      </div>
+
+      <div class="form-group">
         <label>Função / Cargo:*</label>
         <select class="form-input" id="staffRole" onchange="toggleCourierTypeField()">
           <option value="Gerente">Gerente</option>
@@ -269,6 +284,18 @@
           <option value="Cozinha / KDS">Cozinha / KDS</option>
           <option value="Entregador">Entregador</option>
         </select>
+      </div>
+
+      <div class="form-group" id="staffProfileGroup">
+        <label>Perfil inicial de acesso ao Vortex:</label>
+        <select class="form-input" id="staffProfile">
+          <option value="administrator">Administrador</option>
+          <option value="manager">Gerente</option>
+          <option value="attendant" selected>Atendente</option>
+          <option value="kitchen">Equipe de cozinha</option>
+          <option value="delivery">Entregador</option>
+        </select>
+        <small style="display:block;color:var(--text-muted);margin-top:5px;">Este perfil é o ponto de partida. O proprietário pode personalizar cada permissão individualmente.</small>
       </div>
 
       <!-- CAMPO DE TIPO DE VÍNCULO (EXCLUSIVO PARA ENTREGADORES) -->
@@ -300,6 +327,36 @@
     </div>
   </div>
 
+  <!-- MODAL DE PERMISSÕES INDIVIDUAIS -->
+  <div class="modal-overlay" id="permissionModal">
+    <div class="custom-modal-card" style="max-width:900px;">
+      <div class="card-title">🔐 Configurar permissões do funcionário</div>
+      <p style="font-size:.82rem;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">
+        Escolha um perfil inicial e ajuste cada módulo e ação. As alterações serão verificadas pelo servidor e registradas no histórico de segurança.
+      </p>
+      <div class="form-group">
+        <label>Perfil inicial</label>
+        <select class="form-input" id="permissionProfile">
+          <option value="administrator">Administrador</option>
+          <option value="manager">Gerente</option>
+          <option value="attendant">Atendente</option>
+          <option value="kitchen">Equipe de cozinha</option>
+          <option value="delivery">Entregador</option>
+        </select>
+      </div>
+      <div id="permissionList" class="permission-groups"><p>Carregando permissões...</p></div>
+      <div class="form-group">
+        <label>Confirmação de segurança — senha atual do proprietário</label>
+        <input type="password" class="form-input" id="permissionCurrentPassword" autocomplete="current-password" placeholder="Digite sua senha atual">
+        <small style="display:block;color:var(--text-muted);margin-top:5px;">Sua senha será verificada pelo Supabase Auth apenas durante esta confirmação. Ela não será armazenada.</small>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closePermissionsModal()">Cancelar</button>
+        <button class="btn-action" style="flex:1;" id="savePermissionsButton" onclick="saveMemberPermissions()">Salvar permissões</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL ALERTA / CONFIRMAÇÃO -->
   <div class="modal-overlay" id="customAlertModal">
     <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
@@ -314,6 +371,9 @@
 
   <script>
     let staffMembers = [];
+    let permissionCatalog = [];
+    let permissionTargetId = null;
+    let permissionTargetOverrides = [];
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -440,12 +500,29 @@
       calculateStaffMetrics();
     }
 
+    function staffEscape(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[char]));
+    }
+
+    function currentStaffPermissions() {
+      return window.VORTEX_AUTH_CONTEXT && Array.isArray(window.VORTEX_AUTH_CONTEXT.permissions)
+        ? window.VORTEX_AUTH_CONTEXT.permissions : [];
+    }
+
     function renderStaffTable() {
       const tbody = document.getElementById('staffTableBody');
       tbody.innerHTML = '';
+      const permissions = currentStaffPermissions();
+      const canManage = permissions.includes('team.manage');
+      const canInvite = permissions.includes('team.invite');
+      const canConfigure = permissions.includes('team.manage_permissions');
+      const newButton = document.querySelector('.card-title button[onclick="openStaffModal()"]');
+      if (newButton) newButton.style.display = canManage ? '' : 'none';
 
       if (staffMembers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum colaborador cadastrado. Clique em "Novo Colaborador" para começar.</td></tr>`;
         return;
       }
 
@@ -453,21 +530,33 @@
         const isAtivo = (m.status || 'ativo') === 'ativo';
         let typeBadge = '';
         if (String(m.role || '').toLowerCase().includes('entregador')) {
-          let cType = m.courierType || m.type || 'Próprio';
-          typeBadge = `<span class="badge-type">${cType}</span>`;
+          const cType = m.courierType || m.type || 'Próprio';
+          typeBadge = `<span class="badge-type">${staffEscape(cType)}</span>`;
+        }
+        const accountText = m.authUserId
+          ? (m.invitationStatus === 'pending' ? 'CONVITE PENDENTE' : (isAtivo ? 'CONTA ATIVA' : 'CONTA BLOQUEADA'))
+          : (m.email ? 'CONVITE NÃO ENVIADO' : 'SEM CONTA');
+        const accountClass = m.invitationStatus === 'pending' ? 'pending' : (m.authUserId && isAtivo ? 'active' : '');
+        const actions = [];
+        if (canManage) actions.push(`<button class="btn-secondary" onclick="editStaff('${staffEscape(m.id)}')">✏️ Editar</button>`);
+        if (canConfigure && m.authUserId) actions.push(`<button class="btn-secondary" onclick="openPermissionsModal('${staffEscape(m.authUserId)}')">🔐 Permissões</button>`);
+        if (canInvite && !m.authUserId && m.email && isAtivo) actions.push(`<button class="btn-action" onclick="sendStaffInvite('${staffEscape(m.id)}')">✉️ Convidar</button>`);
+        if (canManage && m.authUserId) {
+          const actionLabel = isAtivo ? 'Desativar' : 'Reativar';
+          actions.push(`<button class="btn-danger" onclick="confirmDeleteStaff('${staffEscape(m.id)}')">${actionLabel}</button>`);
+        } else if (canManage && !m.authUserId) {
+          actions.push(`<button class="btn-danger" onclick="confirmDeleteStaff('${staffEscape(m.id)}')">🗑️ Excluir</button>`);
         }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${m.name}</strong></td>
-          <td><span class="badge-role">${m.role}</span>${typeBadge}</td>
-          <td>${m.phone || m.telefone || '<span style="color:var(--text-muted);">-</span>'}</td>
-          <td>${m.commission ? m.commission + '%' : '0%'}</td>
+          <td><strong>${staffEscape(m.name)}</strong></td>
+          <td><span class="badge-role">${staffEscape(m.role)}</span>${typeBadge}</td>
+          <td>${staffEscape(m.phone || m.telefone || '-')}</td>
+          <td>${staffEscape(m.commission || 0)}%</td>
           <td><span class="badge-status ${isAtivo ? 'badge-active' : 'badge-inactive'}">${isAtivo ? 'ATIVO' : 'INATIVO'}</span></td>
-          <td>
-            <button class="btn-secondary" onclick="editStaff('${m.id}')">✏️ Editar</button>
-            <button class="btn-danger" onclick="confirmDeleteStaff('${m.id}')">🗑️ Excluir</button>
-          </td>
+          <td><span class="account-status ${accountClass}">${accountText}</span>${m.email ? '<br><small>' + staffEscape(m.email) + '</small>' : ''}</td>
+          <td>${actions.join(' ') || '<span style="color:var(--text-muted);font-size:.75rem;">Somente consulta</span>'}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -505,11 +594,23 @@
     }
 
     // MODAL DE ADIÇÃO/EDIÇÃO
+    function profileForJobRole(role) {
+      if (role === 'Gerente') return 'manager';
+      if (role === 'Cozinha / KDS') return 'kitchen';
+      if (role === 'Entregador') return 'delivery';
+      return 'attendant';
+    }
+
     function openStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffName').value = '';
       document.getElementById('staffPhone').value = '';
+      document.getElementById('staffEmail').value = '';
+      document.getElementById('staffEmail').disabled = false;
       document.getElementById('staffRole').value = 'Gerente';
+      document.getElementById('staffProfile').value = 'manager';
+      document.getElementById('staffProfile').disabled = false;
+      document.getElementById('staffProfileGroup').style.display = currentStaffPermissions().includes('team.invite') ? '' : 'none';
       document.getElementById('staffCourierType').value = 'Próprio';
       document.getElementById('staffCommission').value = '';
       document.getElementById('staffStatus').value = 'ativo';
@@ -529,7 +630,12 @@
       document.getElementById('staffEditId').value = member.id;
       document.getElementById('staffName').value = member.name;
       document.getElementById('staffPhone').value = member.phone || member.telefone || '';
+      document.getElementById('staffEmail').value = member.email || '';
+      document.getElementById('staffEmail').disabled = !!member.authUserId;
       document.getElementById('staffRole').value = member.role;
+      document.getElementById('staffProfile').value = member.profileKey || profileForJobRole(member.role);
+      document.getElementById('staffProfile').disabled = !!member.authUserId;
+      document.getElementById('staffProfileGroup').style.display = currentStaffPermissions().includes('team.invite') && !member.authUserId ? '' : 'none';
       document.getElementById('staffCourierType').value = member.courierType || member.type || 'Próprio';
       document.getElementById('staffCommission').value = member.commission || '';
       document.getElementById('staffStatus').value = member.status || 'ativo';
@@ -540,21 +646,34 @@
 
     async function saveStaffMember() {
       const editId = document.getElementById('staffEditId').value;
+      const existing = staffMembers.find(m => String(m.id) === String(editId));
       const name = document.getElementById('staffName').value.trim();
       const phone = document.getElementById('staffPhone').value.trim();
       const role = document.getElementById('staffRole').value;
       const courierType = role === 'Entregador' ? document.getElementById('staffCourierType').value : 'Próprio';
       const commission = parseFloat(document.getElementById('staffCommission').value) || 0;
       const status = document.getElementById('staffStatus').value;
+      const emailInput = document.getElementById('staffEmail');
+      const email = existing && existing.authUserId ? existing.email : emailInput.value.trim().toLowerCase();
+      const profileKey = existing && existing.authUserId
+        ? existing.profileKey
+        : (document.getElementById('staffProfile').value || profileForJobRole(role));
 
       if (!name) {
         showCustomAlert('Campo Obrigatório', 'Informe o nome completo do colaborador.', '⚠️');
         return;
       }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showCustomAlert('E-mail inválido', 'Confira o endereço de e-mail informado.', '⚠️');
+        return;
+      }
 
       const newRecord = {
+        ...(existing || {}),
         id: editId || 'staff_' + Date.now(),
-        name, phone, role, courierType, type: courierType, commission, status
+        name, phone, role, courierType, type: courierType, commission, status,
+        email: email || '',
+        profileKey: profileKey || 'attendant'
       };
 
       if (editId) {
@@ -575,38 +694,91 @@
         cloudError = e;
         console.warn('Colaborador salvo localmente; falha ao sincronizar equipe/entregadores:', e);
       }
-      renderStaffTable(); calculateStaffMetrics(); closeStaffModal();
+
+      renderStaffTable();
+      calculateStaffMetrics();
+      closeStaffModal();
+
       if (cloudError) {
         localStorage.setItem('vortex_team_sync_pending', 'true');
         showCustomAlert('Salvo no Dispositivo', 'O colaborador foi mantido neste dispositivo, mas a sincronização da equipe/entregadores não foi confirmada. Verifique a conexão e tente salvar novamente.', '⚠️');
+        return;
+      }
+
+      localStorage.removeItem('vortex_team_sync_pending');
+      if (email && !newRecord.authUserId && currentStaffPermissions().includes('team.invite')) {
+        await sendStaffInvite(newRecord.id);
+      } else if (email && !newRecord.authUserId) {
+        showCustomAlert('Cadastro salvo', 'O colaborador foi cadastrado. O envio do convite exige permissão de Proprietário ou Administrador.', 'ℹ️');
       } else {
-        localStorage.removeItem('vortex_team_sync_pending');
         showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
       }
     }
 
+    async function sendStaffInvite(id) {
+      const member = staffMembers.find(m => String(m.id) === String(id));
+      if (!member || !member.email || member.authUserId) return;
+      if (!currentStaffPermissions().includes('team.invite')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode enviar convites para contas individuais.', '🔒');
+        return;
+      }
+      try {
+        const result = await window.VortexAuth.inviteStaff(member.id, member.email, member.profileKey || profileForJobRole(member.role));
+        if (result.error) throw result.error;
+        if (!result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'O servidor não confirmou o convite.');
+        member.authUserId = result.data.user_id;
+        member.invitationStatus = 'pending';
+        member.invitedAt = new Date().toISOString();
+        localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+        renderStaffTable();
+        showCustomAlert('Convite enviado', 'O funcionário receberá um e-mail para aceitar o convite e criar a própria senha. O acesso ficará bloqueado até a ativação.', '✅');
+      } catch (error) {
+        showCustomAlert('Não foi possível convidar', error.message || 'Verifique o e-mail e tente novamente.', '⚠️');
+      }
+    }
+
+
     function confirmDeleteStaff(id) {
       const member = staffMembers.find(m => String(m.id) === String(id));
       const memberName = member ? member.name : 'este colaborador';
-
+      const isAccount = !!(member && member.authUserId);
+      const isActive = (member && (member.status || 'ativo') === 'ativo');
+      const actionLabel = isAccount ? (isActive ? 'Desativar acesso' : 'Reativar acesso') : 'Excluir';
+      const title = isAccount ? (isActive ? 'Desativar funcionário' : 'Reativar funcionário') : 'Excluir colaborador';
+      const message = isAccount
+        ? (isActive ? `Deseja bloquear o acesso de "${memberName}"? O histórico e a conta serão preservados.` : `Deseja reativar o acesso de "${memberName}"?`)
+        : `Deseja realmente remover "${memberName}" da equipe?`;
       const buttonsHtml = `
-        <button class="btn-secondary" style="flex: 1;" onclick="closeCustomAlert()">Cancelar</button>
-        <button class="btn-danger" style="flex: 1;" onclick="executeDeleteStaff('${id}')">Excluir</button>
+        <button class="btn-secondary" style="flex:1;" onclick="closeCustomAlert()">Cancelar</button>
+        <button class="btn-danger" style="flex:1;" onclick="executeDeleteStaff('${id}')">${actionLabel}</button>
       `;
-
-      showCustomAlert('Excluir Colaborador', `Deseja realmente remover "${memberName}" da equipe?`, '🗑️', buttonsHtml);
+      showCustomAlert(title, message, isAccount ? '🔐' : '🗑️', buttonsHtml);
     }
 
     async function executeDeleteStaff(id) {
       closeCustomAlert();
-      
-      // Localiza o colaborador antes de apagar para capturar o nome
       const member = staffMembers.find(m => String(m.id) === String(id));
-      const memberName = member ? member.name.trim().toLowerCase() : '';
+      if (!member) return;
 
-      // Remove da equipe local
+      if (member.authUserId) {
+        const action = (member.status || 'ativo') === 'ativo' ? 'deactivate' : 'reactivate';
+        try {
+          const result = await window.VortexAuth.manageStaffAccount(member.id, action);
+          if (result.error) throw result.error;
+          if (!result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'O servidor não confirmou a alteração.');
+          member.status = result.data.status;
+          localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+          renderStaffTable();
+          calculateStaffMetrics();
+          showCustomAlert(action === 'deactivate' ? 'Acesso bloqueado' : 'Acesso reativado', result.data.message, '✅');
+        } catch (error) {
+          showCustomAlert('Não foi possível atualizar', error.message || 'Tente novamente.', '⚠️');
+        }
+        return;
+      }
+
+      const memberName = String(member.name || '').trim().toLowerCase();
       staffMembers = staffMembers.filter(m => String(m.id) !== String(id));
-
       let couriers = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
       couriers = couriers.filter(c => String(c.name || '').trim().toLowerCase() !== memberName);
       localStorage.setItem('vortex_couriers', JSON.stringify(couriers));
@@ -628,6 +800,103 @@
         showCustomAlert('Removido', 'O colaborador foi removido com sucesso de todos os módulos.', '✅');
       }
     }
+
+    function closePermissionsModal() {
+      document.getElementById('permissionModal').classList.remove('active');
+      document.getElementById('permissionCurrentPassword').value = '';
+      permissionTargetId = null;
+    }
+
+    function permissionModuleLabel(moduleKey) {
+      const labels = {
+        dashboard:'Painel', pdv:'PDV', tables:'Mesas e comandas', delivery:'Delivery',
+        kds:'KDS e cozinha', catalog:'Cardápio e produtos', recipes:'Fichas técnicas',
+        stock:'Estoque', purchases:'Compras', cash:'Caixa', finance:'Financeiro',
+        accounts:'Contas', team:'Equipe', reports:'Relatórios', crm:'Clientes / CRM',
+        coupons:'Cupons', loyalty:'Fidelidade', marketing:'Marketing',
+        integrations:'Integrações', settings:'Configurações', printers:'Impressoras',
+        subscription:'Assinatura', fiscal:'Fiscal'
+      };
+      return labels[moduleKey] || moduleKey;
+    }
+
+    function renderPermissionEditor() {
+      const profileKey = document.getElementById('permissionProfile').value;
+      const overrides = new Map(permissionTargetOverrides.map(item => [item.permission_key, item.allowed]));
+      const groups = {};
+      permissionCatalog.forEach(item => {
+        const defaultAllowed = Array.isArray(item.profiles) && item.profiles.some(profile => profile.profile_key === profileKey);
+        const checked = overrides.has(item.permission_key) ? overrides.get(item.permission_key) : defaultAllowed;
+        if (!groups[item.module_key]) groups[item.module_key] = [];
+        groups[item.module_key].push(`
+          <label class="permission-item">
+            <input type="checkbox" data-permission-key="${staffEscape(item.permission_key)}" ${checked ? 'checked' : ''}>
+            <span><strong>${staffEscape(item.label)}</strong><small>${staffEscape(item.description)}</small></span>
+          </label>`);
+      });
+      document.getElementById('permissionList').innerHTML = Object.keys(groups).sort().map(key => `
+        <section class="permission-group"><h4>${staffEscape(permissionModuleLabel(key))}</h4>${groups[key].join('')}</section>
+      `).join('');
+    }
+
+    async function openPermissionsModal(userId) {
+      if (!currentStaffPermissions().includes('team.manage_permissions')) {
+        showCustomAlert('Acesso restrito', 'Somente o proprietário pode configurar permissões individuais.', '🔒');
+        return;
+      }
+      try {
+        const results = await Promise.all([
+          window.VortexAuth.getPermissionCatalog(),
+          window.VortexAuth.getMemberPermissionSettings(userId)
+        ]);
+        if (results[0].error) throw results[0].error;
+        if (results[1].error) throw results[1].error;
+        permissionCatalog = Array.isArray(results[0].data) ? results[0].data : [];
+        permissionTargetId = userId;
+        permissionTargetOverrides = Array.isArray(results[1].data.overrides) ? results[1].data.overrides : [];
+        document.getElementById('permissionProfile').value = results[1].data.profile_key || 'attendant';
+        document.getElementById('permissionCurrentPassword').value = '';
+        renderPermissionEditor();
+        document.getElementById('permissionModal').classList.add('active');
+      } catch (error) {
+        showCustomAlert('Não foi possível carregar', error.message || 'Não foi possível consultar as permissões.', '⚠️');
+      }
+    }
+
+    async function saveMemberPermissions() {
+      if (!permissionTargetId) return;
+      const password = document.getElementById('permissionCurrentPassword').value;
+      if (!password) {
+        showCustomAlert('Confirmação necessária', 'Digite sua senha atual para confirmar esta alteração de segurança.', '🔐');
+        return;
+      }
+      const profileKey = document.getElementById('permissionProfile').value;
+      const overrides = [];
+      document.querySelectorAll('#permissionList input[data-permission-key]').forEach(input => {
+        const key = input.getAttribute('data-permission-key');
+        const permission = permissionCatalog.find(item => item.permission_key === key);
+        const defaultAllowed = !!(permission && Array.isArray(permission.profiles) && permission.profiles.some(profile => profile.profile_key === profileKey));
+        if (input.checked !== defaultAllowed) overrides.push({ permission_key: key, allowed: input.checked });
+      });
+
+      const button = document.getElementById('savePermissionsButton');
+      button.disabled = true;
+      button.textContent = 'Verificando e salvando...';
+      try {
+        const result = await window.VortexAuth.manageStaffPermissions(permissionTargetId, profileKey, overrides, password);
+        if (result.error) throw result.error;
+        if (!result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'O servidor não confirmou as alterações.');
+        closePermissionsModal();
+        renderStaffTable();
+        showCustomAlert('Permissões atualizadas', 'As permissões foram salvas, verificadas pelo servidor e registradas no histórico de segurança.', '✅');
+      } catch (error) {
+        showCustomAlert('Não foi possível salvar', error.message || 'Confira sua senha e tente novamente.', '⚠️');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Salvar permissões';
+      }
+    }
+
 
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');

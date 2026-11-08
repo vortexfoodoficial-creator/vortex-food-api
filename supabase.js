@@ -1087,6 +1087,14 @@ async function vortexInviteStaff(staffRecordId, email, profileKey) {
   });
 }
 
+async function vortexManageStaffAccount(staffRecordId, action) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.functions.invoke('manage-staff-account', {
+    body: { staff_record_id: String(staffRecordId), action: String(action || '') }
+  });
+}
+
 async function vortexManageStaffPermissions(targetUserId, profileKey, overrides, currentPassword) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
@@ -1132,7 +1140,8 @@ window.VortexAuth = {
   getPermissionCatalog: vortexGetPermissionCatalog,
   getMemberPermissionSettings: vortexGetMemberPermissionSettings,
   inviteStaff: vortexInviteStaff,
-  manageStaffPermissions: vortexManageStaffPermissions
+  manageStaffPermissions: vortexManageStaffPermissions,
+  manageStaffAccount: vortexManageStaffAccount
 };
 
 const VORTEX_PAGE_PERMISSION_MAP = {

@@ -753,4 +753,59 @@ ON public.vortex_store_members
 FOR EACH ROW
 EXECUTE FUNCTION public.vortex_sync_member_profile_key();
 
+
+-- O backend confiável usa a chave service_role; ela não é enviada ao navegador.
+GRANT SELECT ON TABLE public.vortex_permission_catalog,
+  public.vortex_permission_profiles,
+  public.vortex_profile_permissions
+TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_member_permissions
+TO service_role;
+GRANT SELECT, INSERT ON TABLE public.vortex_permission_audit_log
+TO service_role;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_store_operational_settings()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_result jsonb;
+BEGIN
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+
+  IF v_store_id IS NULL THEN
+    RAISE EXCEPTION 'Estabelecimento ativo não identificado.';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'store_name',COALESCE(s.store_name,st.name,''),
+    'store_address',COALESCE(s.store_address,''),
+    'phone',COALESCE(s.phone,''),
+    'taxa',COALESCE(s.taxa,'10,00'),
+    'rodape',COALESCE(s.rodape,'')
+  ) INTO v_result
+  FROM public.vortex_stores AS st
+  LEFT JOIN LATERAL (
+    SELECT store_name,store_address,phone,taxa,rodape
+    FROM public.vortex_store_settings
+    WHERE store_id=v_store_id
+    ORDER BY id
+    LIMIT 1
+  ) AS s ON true
+  WHERE st.id=v_store_id;
+
+  RETURN COALESCE(v_result,'{}'::jsonb);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_store_operational_settings() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_store_operational_settings() TO authenticated;
+
 COMMIT;

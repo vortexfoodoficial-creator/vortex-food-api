@@ -136,61 +136,23 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { error: profileUpdateError } = await admin
-      .from("vortex_store_members")
-      .update({ profile_key: profileKey })
-      .eq("store_id", storeId)
-      .eq("user_id", targetUserId);
-    if (profileUpdateError) return response(500, { error: "Não foi possível atualizar o perfil do funcionário." });
-
-    const { error: clearError } = await admin
-      .from("vortex_member_permissions")
-      .delete()
-      .eq("store_id", storeId)
-      .eq("user_id", targetUserId);
-    if (clearError) return response(500, { error: "O perfil foi atualizado, mas não foi possível substituir as permissões individuais. Revise a configuração antes de sair." });
-
-    if (normalizedOverrides.length) {
-      const rows = normalizedOverrides.map((item) => ({
-        store_id: storeId,
-        user_id: targetUserId,
-        permission_key: item.permission_key,
-        allowed: item.allowed,
-        granted_by: actor.id,
-        updated_at: new Date().toISOString(),
-      }));
-      const { error: insertError } = await admin.from("vortex_member_permissions").insert(rows);
-      if (insertError) return response(500, { error: "O perfil foi atualizado, mas as exceções individuais não foram salvas. Revise a configuração." });
-    }
-
-    const auditRows = normalizedOverrides.map((item) => ({
-      store_id: storeId,
-      actor_user_id: actor.id,
-      target_user_id: targetUserId,
-      permission_key: item.permission_key,
-      new_allowed: item.allowed,
-      event_type: "member_permission_changed",
-      details: { profile_key: profileKey },
-    }));
-    auditRows.push({
-      store_id: storeId,
-      actor_user_id: actor.id,
-      target_user_id: targetUserId,
-      permission_key: null,
-      new_allowed: null,
-      event_type: "member_profile_changed",
-      details: { previous_profile_key: target.profile_key, new_profile_key: profileKey },
+    // A gravação do perfil, das exceções e da auditoria ocorre em uma única
+    // transação no banco; não há janela com permissões parcialmente aplicadas.
+    const { data: saved, error: saveError } = await admin.rpc("rpc_admin_replace_member_permissions", {
+      p_store_id: storeId,
+      p_target_user_id: targetUserId,
+      p_actor_user_id: actor.id,
+      p_profile_key: profileKey,
+      p_overrides: normalizedOverrides,
     });
-
-    const { error: auditError } = await admin.from("vortex_permission_audit_log").insert(auditRows);
-    if (auditError) {
-      return response(500, { error: "As permissões foram aplicadas, mas o registro de auditoria falhou. Contate o suporte antes de novas alterações." });
+    if (saveError || !saved?.success) {
+      return response(500, { error: saveError?.message || "Não foi possível aplicar as permissões." });
     }
 
     return response(200, {
       success: true,
       profile_key: profileKey,
-      overrides_saved: normalizedOverrides.length,
+      overrides_saved: saved.overrides_saved,
       message: "Permissões atualizadas e registradas no histórico de segurança.",
     });
   } catch (error) {

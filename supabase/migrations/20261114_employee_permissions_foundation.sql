@@ -197,7 +197,12 @@ ON CONFLICT (profile_key,permission_key) DO UPDATE SET allowed=true;
 -- Compatibilidade: o papel técnico existente permanece owner/admin/manager/employee.
 ALTER TABLE public.vortex_store_members
   ADD COLUMN IF NOT EXISTS profile_key text,
-  ADD COLUMN IF NOT EXISTS display_name text;
+  ADD COLUMN IF NOT EXISTS display_name text,
+  ADD COLUMN IF NOT EXISTS staff_record_id text,
+  ADD COLUMN IF NOT EXISTS invitation_status text NOT NULL DEFAULT 'accepted',
+  ADD COLUMN IF NOT EXISTS invited_at timestamptz,
+  ADD COLUMN IF NOT EXISTS invited_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS invitation_accepted_at timestamptz;
 
 UPDATE public.vortex_store_members
 SET profile_key = CASE
@@ -212,6 +217,20 @@ WHERE profile_key IS NULL OR profile_key NOT IN
 ALTER TABLE public.vortex_store_members
   ALTER COLUMN profile_key SET DEFAULT 'attendant',
   ALTER COLUMN profile_key SET NOT NULL;
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.vortex_store_members'::regclass
+      AND conname = 'vortex_store_members_invitation_status_check'
+  ) THEN
+    ALTER TABLE public.vortex_store_members
+      ADD CONSTRAINT vortex_store_members_invitation_status_check
+      CHECK (invitation_status IN ('pending','accepted','revoked'));
+  END IF;
+END;
+$;
 
 DO $$
 BEGIN
@@ -353,6 +372,7 @@ BEGIN
     'email', v_email,
     'role', v_membership.role,
     'profile_key', v_membership.profile_key,
+    'staff_record_id', v_membership.staff_record_id,
     'permissions', v_permissions
   );
 END;
@@ -360,5 +380,70 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_get_my_permissions() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_my_permissions() TO authenticated;
+
+
+-- Ativação segura: somente a própria conta autenticada pode aceitar o convite
+-- que foi previamente criado pelo backend confiável.
+CREATE OR REPLACE FUNCTION public.rpc_accept_staff_invitation()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_user_id uuid;
+  v_email_confirmed_at timestamptz;
+  v_store_id uuid;
+  v_count integer;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Autenticação necessária para aceitar o convite.';
+  END IF;
+
+  SELECT email_confirmed_at INTO v_email_confirmed_at
+  FROM auth.users
+  WHERE id = v_user_id;
+
+  IF v_email_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Confirme o convite recebido por e-mail antes de ativar o acesso.';
+  END IF;
+
+  UPDATE public.vortex_store_members
+  SET status = 'active',
+      invitation_status = 'accepted',
+      invitation_accepted_at = now()
+  WHERE user_id = v_user_id
+    AND status = 'inactive'
+    AND invitation_status = 'pending'
+  RETURNING store_id INTO v_store_id;
+
+  IF v_store_id IS NULL THEN
+    SELECT COUNT(*) INTO v_count
+    FROM public.vortex_store_members
+    WHERE user_id = v_user_id
+      AND status = 'active'
+      AND invitation_status = 'accepted';
+
+    IF v_count = 1 THEN
+      RETURN jsonb_build_object('success', true, 'already_accepted', true);
+    END IF;
+
+    RAISE EXCEPTION 'Não existe convite pendente válido para esta conta.';
+  END IF;
+
+  INSERT INTO public.vortex_permission_audit_log(
+    store_id, actor_user_id, target_user_id, event_type, details
+  ) VALUES (
+    v_store_id, v_user_id, v_user_id, 'staff_invitation_accepted',
+    jsonb_build_object('accepted_at', now())
+  );
+
+  RETURN jsonb_build_object('success', true, 'store_id', v_store_id);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_accept_staff_invitation() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_accept_staff_invitation() TO authenticated;
 
 COMMIT;

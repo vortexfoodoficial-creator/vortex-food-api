@@ -498,7 +498,7 @@ BEGIN
   FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_overrides,'[]'::jsonb))
   LOOP
     v_key := NULLIF(BTRIM(v_item->>'permission_key'),'');
-    IF v_key IS NULL OR jsonb_typeof(v_item->'allowed') <> 'boolean'
+    IF v_key IS NULL OR jsonb_typeof(v_item->'allowed') IS DISTINCT FROM 'boolean'
        OR NOT EXISTS (
          SELECT 1 FROM public.vortex_permission_catalog
          WHERE permission_key = v_key
@@ -663,5 +663,60 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_get_member_permission_settings(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_member_permission_settings(uuid) TO authenticated;
+
+
+-- Estado de conta limitado ao próprio usuário, para separar cadastro de loja
+-- de convite de funcionário no fluxo de login.
+CREATE OR REPLACE FUNCTION public.rpc_get_my_account_state()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_user_id uuid;
+  v_count integer;
+  v_member public.vortex_store_members%ROWTYPE;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Autenticação necessária.';
+  END IF;
+
+  SELECT COUNT(*) INTO v_count
+  FROM public.vortex_store_members
+  WHERE user_id=v_user_id;
+
+  IF v_count = 0 THEN
+    RETURN jsonb_build_object('state','unregistered');
+  END IF;
+  IF v_count <> 1 THEN
+    RETURN jsonb_build_object('state','review_required');
+  END IF;
+
+  SELECT * INTO v_member
+  FROM public.vortex_store_members
+  WHERE user_id=v_user_id
+  LIMIT 1;
+
+  IF v_member.invitation_status='pending' AND v_member.status='inactive' THEN
+    RETURN jsonb_build_object(
+      'state','invitation_pending',
+      'store_id',v_member.store_id,
+      'invitation_status',v_member.invitation_status
+    );
+  END IF;
+
+  IF v_member.status='active' AND v_member.invitation_status='accepted' THEN
+    RETURN jsonb_build_object('state','active','store_id',v_member.store_id);
+  END IF;
+
+  RETURN jsonb_build_object('state','inactive');
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_my_account_state() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_my_account_state() TO authenticated;
 
 COMMIT;

@@ -11,38 +11,71 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   const nativeGet = proto.getItem;
   const nativeSet = proto.setItem;
   const nativeRemove = proto.removeItem;
+  const nativeKey = proto.key;
   const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
-  const scopedKey = key => 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + key;
+  const scopedKey = key => {
+    if (!window.VORTEX_ACTIVE_STORE_ID || !window.VORTEX_ACTIVE_USER_ID) return null;
+    return 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + window.VORTEX_ACTIVE_USER_ID + '::' + key;
+  };
 
   // Antes da identificação da loja, dados operacionais não são lidos nem gravados.
   // Isso impede que dados de demonstração ou de uma sessão sem login sejam
   // transferidos acidentalmente para o primeiro estabelecimento conectado.
   proto.getItem = function(key) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) return null;
-      return nativeGet.call(this, scopedKey(key));
+      const targetKey = scopedKey(key);
+      if (!targetKey) return null;
+      return nativeGet.call(this, targetKey);
     }
     return nativeGet.call(this, key);
   };
   proto.setItem = function(key, value) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) return;
-      return nativeSet.call(this, scopedKey(key), value);
+      const targetKey = scopedKey(key);
+      if (!targetKey) return;
+      return nativeSet.call(this, targetKey, value);
     }
     return nativeSet.call(this, key, value);
   };
   proto.removeItem = function(key) {
     if (this === window.localStorage && isTenantKey(key)) {
-      if (!window.VORTEX_ACTIVE_STORE_ID) return;
-      return nativeRemove.call(this, scopedKey(key));
+      const targetKey = scopedKey(key);
+      if (!targetKey) return;
+      return nativeRemove.call(this, targetKey);
     }
     return nativeRemove.call(this, key);
   };
 
   window.VortexStoreStorage = {
-    setStoreId(storeId) {
-      if (!storeId) return;
-      window.VORTEX_ACTIVE_STORE_ID = String(storeId);
+    setStoreId(storeId, userId, role) {
+      if (!storeId || !userId) return;
+      const normalizedStore = String(storeId);
+      const normalizedUser = String(userId);
+      const changedUser = window.VORTEX_ACTIVE_USER_ID !== normalizedUser;
+      window.VORTEX_ACTIVE_STORE_ID = normalizedStore;
+      window.VORTEX_ACTIVE_USER_ID = normalizedUser;
+
+      // Migra o cache antigo (somente loja) para a conta do proprietário.
+      // Funcionários nunca herdam caches deixados por outra conta no dispositivo.
+      if (role === 'owner' && changedUser) {
+        const legacyPrefix = 'vortex_store_' + normalizedStore + '::';
+        const userPrefix = legacyPrefix + normalizedUser + '::';
+        const storage = window.localStorage;
+        for (let i = storage.length - 1; i >= 0; i--) {
+          const oldKey = nativeKey.call(storage, i);
+          if (!oldKey || !oldKey.startsWith(legacyPrefix) || oldKey.startsWith(userPrefix)) continue;
+          const suffix = oldKey.slice(legacyPrefix.length);
+          const newKey = userPrefix + suffix;
+          if (nativeGet.call(storage, newKey) === null) {
+            nativeSet.call(storage, newKey, nativeGet.call(storage, oldKey));
+          }
+        }
+      }
+    },
+    clearSession() {
+      window.VORTEX_ACTIVE_STORE_ID = null;
+      window.VORTEX_ACTIVE_USER_ID = null;
+      window.VORTEX_AUTH_CONTEXT = null;
     },
     getStoreId() {
       return window.VORTEX_ACTIVE_STORE_ID || null;
@@ -111,7 +144,7 @@ async function vortexResolveStoreIdForWrite() {
 
   const { data: membership, error: membershipError } = await supabase
     .from('vortex_store_members')
-    .select('store_id')
+    .select('store_id, role')
     .eq('user_id', userData.user.id)
     .eq('status', 'active')
     .maybeSingle();
@@ -122,8 +155,8 @@ async function vortexResolveStoreIdForWrite() {
   }
 
   const storeId = String(membership.store_id);
-  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(storeId);
-  else window.VORTEX_ACTIVE_STORE_ID = storeId;
+  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(storeId, userData.user.id, membership.role);
+  else { window.VORTEX_ACTIVE_STORE_ID = storeId; window.VORTEX_ACTIVE_USER_ID = userData.user.id; }
 
   return { storeId, error: null };
 }
@@ -843,7 +876,9 @@ async function vortexSignIn(email, password) {
 async function vortexSignOut() {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
-  return await supabase.auth.signOut();
+  const result = await supabase.auth.signOut();
+  if (!result.error && window.VortexStoreStorage) window.VortexStoreStorage.clearSession();
+  return result;
 }
 
 async function vortexGetSession() {
@@ -931,33 +966,35 @@ async function vortexGetCurrentStoreContext() {
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) return { store: null, subscription: null, error: userError };
-  if (!userData || !userData.user) return { store: null, subscription: null, error: new Error('Entre na sua conta para consultar a assinatura.') };
+  if (!userData || !userData.user) return { store: null, subscription: null, error: new Error('Entre na sua conta para consultar o estabelecimento.') };
 
-  const { data: membership, error: membershipError } = await supabase
-    .from('vortex_store_members')
-    .select('store_id, role')
-    .eq('user_id', userData.user.id)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (membershipError) return { store: null, subscription: null, error: membershipError };
-  if (!membership) return { store: null, subscription: null, error: new Error('Nenhum estabelecimento ativo foi encontrado para esta conta.') };
+  const { data: permissionContext, error: permissionError } = await supabase.rpc('rpc_get_my_permissions');
+  if (permissionError || !permissionContext || !permissionContext.store_id) {
+    return { store: null, subscription: null, error: permissionError || new Error('As permissões desta conta não foram encontradas.') };
+  }
 
   const { data: store, error: storeError } = await supabase
     .from('vortex_stores')
     .select('id, name, created_at')
-    .eq('id', membership.store_id)
+    .eq('id', permissionContext.store_id)
     .maybeSingle();
   if (storeError) return { store: null, subscription: null, error: storeError };
   if (!store) return { store: null, subscription: null, error: new Error('Não foi possível localizar os dados do estabelecimento.') };
 
-  // Define o contexto da loja assim que o vínculo e o estabelecimento forem
-  // confirmados. A consulta de assinatura é independente e não pode bloquear
-  // pedidos, vendas ou configurações.
-  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id);
-  else window.VORTEX_ACTIVE_STORE_ID = String(store.id);
+  if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id, userData.user.id, permissionContext.role);
+  else {
+    window.VORTEX_ACTIVE_STORE_ID = String(store.id);
+    window.VORTEX_ACTIVE_USER_ID = userData.user.id;
+  }
 
-  // Remove códigos antigos de Delivery do cache local de todos os módulos.
-  // Identificadores de pedidos de mesa permanecem intactos.
+  window.VORTEX_AUTH_CONTEXT = {
+    ...permissionContext,
+    user_id: userData.user.id,
+    email: userData.user.email || permissionContext.email || '',
+    store_name: store.name || ''
+  };
+
+  // Remove códigos antigos de Delivery do cache da conta atual.
   try {
     const cachedOrders = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
     if (Array.isArray(cachedOrders)) {
@@ -977,13 +1014,90 @@ async function vortexGetCurrentStoreContext() {
     console.warn('Não foi possível limpar códigos antigos do cache local de Delivery:', error);
   }
 
-  const subscriptionResult = await vortexGetSubscription(store.id);
+  const canViewSubscription = Array.isArray(permissionContext.permissions)
+    && permissionContext.permissions.includes('subscription.view');
+  const subscriptionResult = canViewSubscription
+    ? await vortexGetSubscription(store.id)
+    : { data: null, error: null };
+
   return {
     store,
     subscription: subscriptionResult.error ? null : subscriptionResult.data,
     subscriptionError: subscriptionResult.error || null,
+    member: permissionContext,
+    permissions: permissionContext.permissions || [],
     error: null
   };
+}
+async function vortexGetMyPermissions() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  const { data, error } = await supabase.rpc('rpc_get_my_permissions');
+  if (!error && data) window.VORTEX_AUTH_CONTEXT = data;
+  return { data, error };
+}
+
+async function vortexAcceptStaffInvitation() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.rpc('rpc_accept_staff_invitation');
+}
+
+async function vortexResolveLoginAccount() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+
+  const { data: state, error: stateError } = await supabase.rpc('rpc_get_my_account_state');
+  if (stateError || !state) return { data: null, error: stateError || new Error('Não foi possível verificar o tipo da conta.') };
+
+  if (state.state === 'unregistered') {
+    const registration = await vortexCompleteStoreRegistration();
+    if (registration.error) return registration;
+  } else if (state.state === 'invitation_pending') {
+    const accepted = await vortexAcceptStaffInvitation();
+    if (accepted.error) return accepted;
+  } else if (state.state !== 'active') {
+    return { data: null, error: new Error('Esta conta está inativa ou precisa de revisão. Entre em contato com o proprietário da loja.') };
+  }
+
+  return await vortexGetMyPermissions();
+}
+
+async function vortexGetPermissionCatalog() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.rpc('rpc_get_permission_catalog');
+}
+
+async function vortexGetMemberPermissionSettings(targetUserId) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.rpc('rpc_get_member_permission_settings', { p_target_user_id: String(targetUserId) });
+}
+
+async function vortexInviteStaff(staffRecordId, email, profileKey) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.functions.invoke('invite-staff', {
+    body: {
+      staff_record_id: String(staffRecordId),
+      email: String(email || '').trim(),
+      profile_key: String(profileKey || 'attendant')
+    }
+  });
+}
+
+async function vortexManageStaffPermissions(targetUserId, profileKey, overrides, currentPassword) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.functions.invoke('manage-staff-permissions', {
+    body: {
+      target_user_id: String(targetUserId),
+      profile_key: String(profileKey || ''),
+      overrides: Array.isArray(overrides) ? overrides : [],
+      current_password: String(currentPassword || '')
+    }
+  });
 }
 
 async function vortexResetPassword(email) {
@@ -1011,7 +1125,14 @@ window.VortexAuth = {
   signOut: vortexSignOut,
   getSession: vortexGetSession,
   getCurrentUser: vortexGetCurrentUser,
-  requireAuthenticatedPage: vortexRequireAuthenticatedPage
+  requireAuthenticatedPage: vortexRequireAuthenticatedPage,
+  resolveLoginAccount: vortexResolveLoginAccount,
+  getMyPermissions: vortexGetMyPermissions,
+  acceptStaffInvitation: vortexAcceptStaffInvitation,
+  getPermissionCatalog: vortexGetPermissionCatalog,
+  getMemberPermissionSettings: vortexGetMemberPermissionSettings,
+  inviteStaff: vortexInviteStaff,
+  manageStaffPermissions: vortexManageStaffPermissions
 };
 
 function vortexRequireAuthenticatedPage() {

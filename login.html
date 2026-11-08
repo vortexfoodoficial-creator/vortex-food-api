@@ -68,6 +68,17 @@
       </form>
     </section>
 
+    <section id="invitePasswordSection" hidden>
+      <p class="sub">Seu convite foi confirmado. Crie uma senha pessoal para acessar o Vortex Food com seu próprio usuário.</p>
+      <form id="invitePasswordForm">
+        <label for="invitePassword">Crie sua senha</label>
+        <input id="invitePassword" type="password" minlength="6" autocomplete="new-password" required placeholder="Mínimo de 6 caracteres">
+        <label for="invitePasswordConfirm">Confirme sua senha</label>
+        <input id="invitePasswordConfirm" type="password" minlength="6" autocomplete="new-password" required placeholder="Digite novamente">
+        <button id="invitePasswordButton" type="submit">Ativar meu acesso</button>
+      </form>
+    </section>
+
     <div id="message" role="status" aria-live="polite"></div>
     <div class="foot">Acesso protegido pelo Supabase Auth</div>
   </main>
@@ -77,6 +88,9 @@
     const loginSection = document.getElementById('loginSection');
     const recoverySection = document.getElementById('recoverySection');
     const newPasswordSection = document.getElementById('newPasswordSection');
+    const invitePasswordSection = document.getElementById('invitePasswordSection');
+    const invitePasswordForm = document.getElementById('invitePasswordForm');
+    const invitePasswordButton = document.getElementById('invitePasswordButton');
     const loginForm = document.getElementById('loginForm');
     const recoveryForm = document.getElementById('recoveryForm');
     const newPasswordForm = document.getElementById('newPasswordForm');
@@ -94,6 +108,7 @@
       loginSection.hidden = section !== 'login';
       recoverySection.hidden = section !== 'recovery';
       newPasswordSection.hidden = section !== 'password';
+      invitePasswordSection.hidden = section !== 'invite';
     }
 
     document.getElementById('forgotLink').addEventListener('click', function() {
@@ -119,9 +134,9 @@
         );
         if (result.error) throw result.error;
 
-        const registration = await window.VortexAuth.completeStoreRegistration();
-        if (registration.error) {
-          throw new Error('Sua conta entrou, mas não foi possível finalizar o cadastro do estabelecimento: ' + registration.error.message);
+        const account = await window.VortexAuth.resolveLoginAccount();
+        if (account.error) {
+          throw new Error('Não foi possível validar seu acesso: ' + account.error.message);
         }
 
         showMessage('Login realizado. Abrindo o Vortex Food...', 'success');
@@ -175,11 +190,40 @@
         newPasswordButton.textContent = 'Salvar nova senha';
       }
     });
+    invitePasswordForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const password = document.getElementById('invitePassword').value;
+      const confirmation = document.getElementById('invitePasswordConfirm').value;
+      if (password !== confirmation) {
+        showMessage('As senhas não são iguais. Confira e tente novamente.', 'error');
+        return;
+      }
+      invitePasswordButton.disabled = true;
+      invitePasswordButton.textContent = 'Ativando acesso...';
+      showMessage('', '');
+      try {
+        const updated = await window.VortexAuth.updatePassword(password);
+        if (updated.error) throw updated.error;
+        const accepted = await window.VortexAuth.acceptStaffInvitation();
+        if (accepted.error) throw accepted.error;
+        const permissions = await window.VortexAuth.getMyPermissions();
+        if (permissions.error) throw permissions.error;
+        showMessage('Acesso ativado com sucesso. Abrindo sua área de trabalho...', 'success');
+        invitePasswordButton.textContent = 'Acesso ativado';
+        window.setTimeout(function() { window.location.href = 'index.html'; }, 700);
+      } catch (error) {
+        showMessage(error && error.message ? error.message : 'Não foi possível ativar o convite. Solicite um novo convite ao proprietário.', 'error');
+        invitePasswordButton.disabled = false;
+        invitePasswordButton.textContent = 'Ativar meu acesso';
+      }
+    });
+
 
     (async function initializeLogin() {
       try {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
         const isRecoveryLink = hashParams.get('type') === 'recovery';
+        const isInviteLink = hashParams.get('type') === 'invite' || new URLSearchParams(window.location.search).get('type') === 'invite';
         const sessionResult = await window.VortexAuth.getSession();
         if (sessionResult.error) throw sessionResult.error;
 
@@ -193,7 +237,10 @@
           });
         }
 
-        if (isRecoveryLink && sessionResult.session) {
+        if (isInviteLink && sessionResult.session) {
+          showSection('invite');
+          showMessage('Convite confirmado. Agora crie sua senha pessoal.', 'success');
+        } else if (isRecoveryLink && sessionResult.session) {
           showSection('password');
           showMessage('Defina sua nova senha.', 'success');
         }

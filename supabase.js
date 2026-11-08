@@ -124,9 +124,9 @@ async function dbFetchStoreSettings() {
   if (!supabase) return null;
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return null;
-  const { data, error } = await supabase.from('vortex_store_settings').select('*').eq('store_id', storeId).limit(1).maybeSingle();
+  const { data, error } = await supabase.rpc('rpc_get_store_operational_settings');
   if (error) return null;
-  return data;
+  return data || null;
 }
 
 // Valida o vínculo ativo da conta e a mesma função de acesso usada pelas políticas RLS.

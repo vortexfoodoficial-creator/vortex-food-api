@@ -565,4 +565,103 @@ REVOKE ALL ON FUNCTION public.rpc_admin_replace_member_permissions(uuid,uuid,uui
 GRANT EXECUTE ON FUNCTION public.rpc_admin_replace_member_permissions(uuid,uuid,uuid,text,jsonb)
   TO service_role;
 
+
+-- Catálogo e estado individual só podem ser consultados por quem administra permissões.
+CREATE OR REPLACE FUNCTION public.rpc_get_permission_catalog()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_result jsonb;
+BEGIN
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id = auth.uid() AND status = 'active'
+  LIMIT 1;
+
+  IF v_store_id IS NULL
+     OR NOT public.vortex_user_has_permission(v_store_id,'team.manage_permissions') THEN
+    RAISE EXCEPTION 'Você não tem permissão para consultar a configuração de permissões.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'permission_key',c.permission_key,
+      'module_key',c.module_key,
+      'action_key',c.action_key,
+      'label',c.label,
+      'description',c.description,
+      'profiles',COALESCE((
+        SELECT jsonb_agg(jsonb_build_object('profile_key',p.profile_key,'label',p.label))
+        FROM public.vortex_profile_permissions AS pp
+        JOIN public.vortex_permission_profiles AS p ON p.profile_key=pp.profile_key
+        WHERE pp.permission_key=c.permission_key AND pp.allowed=true
+      ),'[]'::jsonb)
+    ) ORDER BY c.module_key,c.action_key
+  ),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_permission_catalog AS c;
+
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_permission_catalog() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_permission_catalog() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_member_permission_settings(p_target_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_target public.vortex_store_members%ROWTYPE;
+  v_overrides jsonb;
+BEGIN
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id = auth.uid() AND status = 'active'
+  LIMIT 1;
+
+  IF v_store_id IS NULL
+     OR NOT public.vortex_user_has_permission(v_store_id,'team.manage_permissions') THEN
+    RAISE EXCEPTION 'Você não tem permissão para configurar funcionários.';
+  END IF;
+
+  SELECT * INTO v_target
+  FROM public.vortex_store_members
+  WHERE store_id=v_store_id AND user_id=p_target_user_id
+  LIMIT 1;
+
+  IF NOT FOUND OR v_target.role='owner' OR v_target.profile_key='owner' THEN
+    RAISE EXCEPTION 'Funcionário não encontrado ou conta protegida.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'permission_key',mp.permission_key,'allowed',mp.allowed
+  ) ORDER BY mp.permission_key),'[]'::jsonb)
+  INTO v_overrides
+  FROM public.vortex_member_permissions AS mp
+  WHERE mp.store_id=v_store_id AND mp.user_id=p_target_user_id;
+
+  RETURN jsonb_build_object(
+    'user_id',v_target.user_id,
+    'display_name',v_target.display_name,
+    'profile_key',v_target.profile_key,
+    'status',v_target.status,
+    'overrides',v_overrides
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_member_permission_settings(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_member_permission_settings(uuid) TO authenticated;
+
 COMMIT;

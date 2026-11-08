@@ -719,4 +719,38 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_get_my_account_state() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_my_account_state() TO authenticated;
 
+
+-- Mantém o perfil de Proprietário coerente também nos cadastros criados no futuro.
+CREATE OR REPLACE FUNCTION public.vortex_sync_member_profile_key()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $function$
+BEGIN
+  IF NEW.role='owner' THEN
+    NEW.profile_key := 'owner';
+  ELSIF NEW.role='admin' AND COALESCE(NEW.profile_key,'attendant')='attendant' THEN
+    NEW.profile_key := 'administrator';
+  ELSIF NEW.role='manager' AND COALESCE(NEW.profile_key,'attendant')='attendant' THEN
+    NEW.profile_key := 'manager';
+  ELSIF NEW.role='employee' AND NEW.profile_key IS NULL THEN
+    NEW.profile_key := 'attendant';
+  END IF;
+
+  IF NEW.profile_key='owner' AND NEW.role<>'owner' THEN
+    RAISE EXCEPTION 'O perfil Proprietário não pode ser atribuído a um funcionário.';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS vortex_store_members_profile_key_sync
+  ON public.vortex_store_members;
+CREATE TRIGGER vortex_store_members_profile_key_sync
+BEFORE INSERT OR UPDATE OF role, profile_key
+ON public.vortex_store_members
+FOR EACH ROW
+EXECUTE FUNCTION public.vortex_sync_member_profile_key();
+
 COMMIT;

@@ -446,4 +446,123 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_accept_staff_invitation() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_accept_staff_invitation() TO authenticated;
 
+
+-- Operação atômica chamada exclusivamente pelo backend confiável após
+-- validar sessão, autorização do ator e senha atual.
+CREATE OR REPLACE FUNCTION public.rpc_admin_replace_member_permissions(
+  p_store_id uuid,
+  p_target_user_id uuid,
+  p_actor_user_id uuid,
+  p_profile_key text,
+  p_overrides jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_target public.vortex_store_members%ROWTYPE;
+  v_item jsonb;
+  v_key text;
+  v_allowed boolean;
+  v_count integer := 0;
+BEGIN
+  IF p_store_id IS NULL OR p_target_user_id IS NULL OR p_actor_user_id IS NULL
+     OR p_profile_key NOT IN ('administrator','manager','attendant','kitchen','delivery')
+     OR jsonb_typeof(COALESCE(p_overrides,'[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'Dados de permissões inválidos.';
+  END IF;
+
+  SELECT * INTO v_target
+  FROM public.vortex_store_members
+  WHERE store_id = p_store_id
+    AND user_id = p_target_user_id
+    AND status = 'active'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Funcionário ativo não encontrado.';
+  END IF;
+
+  IF v_target.role = 'owner' OR v_target.profile_key = 'owner'
+     OR p_target_user_id = p_actor_user_id THEN
+    RAISE EXCEPTION 'A conta do proprietário ou a própria conta não pode ser alterada por esta operação.';
+  END IF;
+
+  IF jsonb_array_length(COALESCE(p_overrides,'[]'::jsonb)) > 100 THEN
+    RAISE EXCEPTION 'Quantidade de permissões inválida.';
+  END IF;
+
+  -- Valida todos os itens antes de modificar qualquer registro.
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_overrides,'[]'::jsonb))
+  LOOP
+    v_key := NULLIF(BTRIM(v_item->>'permission_key'),'');
+    IF v_key IS NULL OR jsonb_typeof(v_item->'allowed') <> 'boolean'
+       OR NOT EXISTS (
+         SELECT 1 FROM public.vortex_permission_catalog
+         WHERE permission_key = v_key
+       ) THEN
+      RAISE EXCEPTION 'Uma das permissões informadas é inválida.';
+    END IF;
+    v_count := v_count + 1;
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(COALESCE(p_overrides,'[]'::jsonb)) AS x(value)
+    GROUP BY x.value->>'permission_key'
+    HAVING COUNT(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'A lista contém permissões duplicadas.';
+  END IF;
+
+  UPDATE public.vortex_store_members
+  SET profile_key = p_profile_key
+  WHERE store_id = p_store_id AND user_id = p_target_user_id;
+
+  DELETE FROM public.vortex_member_permissions
+  WHERE store_id = p_store_id AND user_id = p_target_user_id;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_overrides,'[]'::jsonb))
+  LOOP
+    v_key := BTRIM(v_item->>'permission_key');
+    v_allowed := (v_item->>'allowed')::boolean;
+
+    INSERT INTO public.vortex_member_permissions(
+      store_id,user_id,permission_key,allowed,granted_by,updated_at
+    ) VALUES (
+      p_store_id,p_target_user_id,v_key,v_allowed,p_actor_user_id,now()
+    );
+
+    INSERT INTO public.vortex_permission_audit_log(
+      store_id,actor_user_id,target_user_id,permission_key,
+      previous_allowed,new_allowed,event_type,details
+    ) VALUES (
+      p_store_id,p_actor_user_id,p_target_user_id,v_key,
+      NULL,v_allowed,'member_permission_changed',
+      jsonb_build_object('profile_key',p_profile_key)
+    );
+  END LOOP;
+
+  INSERT INTO public.vortex_permission_audit_log(
+    store_id,actor_user_id,target_user_id,event_type,details
+  ) VALUES (
+    p_store_id,p_actor_user_id,p_target_user_id,'member_profile_changed',
+    jsonb_build_object('previous_profile_key',v_target.profile_key,'new_profile_key',p_profile_key)
+  );
+
+  RETURN jsonb_build_object(
+    'success',true,
+    'profile_key',p_profile_key,
+    'overrides_saved',v_count
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_admin_replace_member_permissions(uuid,uuid,uuid,text,jsonb)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_replace_member_permissions(uuid,uuid,uuid,text,jsonb)
+  TO service_role;
+
 COMMIT;

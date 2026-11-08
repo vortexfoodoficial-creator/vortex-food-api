@@ -1135,6 +1135,200 @@ window.VortexAuth = {
   manageStaffPermissions: vortexManageStaffPermissions
 };
 
+const VORTEX_PAGE_PERMISSION_MAP = {
+  'index.html': 'dashboard.view',
+  'modulo-mensalidade.html': 'subscription.view',
+  'modulo2-cardapio.html': 'catalog.view',
+  'modulo3-pdv.html': 'pdv.view',
+  'modulo5-mesas.html': 'tables.view',
+  'modulo6-cardapio-online.html': 'catalog.view',
+  'modulo7-8-kds-pedidos.html': 'kds.view',
+  'modulo9-equipe.html': 'team.view',
+  'modulo10-relatorios.html': 'reports.view',
+  'modulo12-estoque.html': 'stock.view',
+  'modulo13-fichas-tecnicas.html': 'recipes.view',
+  'modulo14-compras.html': 'purchases.view',
+  'modulo15-financeiro.html': 'finance.view',
+  'modulo16-contas.html': 'accounts.view',
+  'modulo17-caixa-turno.html': 'cash.view',
+  'modulo18-crm.html': 'crm.view',
+  'modulo19-fiscal.html': 'fiscal.view',
+  'modulo21-delivery.html': 'delivery.view',
+  'modulo-configuracoes.html': 'settings.view',
+  'modulo-cupons.html': 'coupons.manage',
+  'modulo-fidelidade.html': 'loyalty.manage',
+  'modulo-impressoras.html': 'printers.manage',
+  'modulo-integracoes.html': 'integrations.view',
+  'modulo-marketing.html': 'marketing.manage'
+};
+
+const VORTEX_PERMISSION_LABELS = {
+  'dashboard.view': 'Proprietário, Administrador, Gerente, Atendente, Cozinha e Entregador',
+  'pdv.view': 'Proprietário, Administrador, Gerente e Atendente',
+  'tables.view': 'Proprietário, Administrador, Gerente e Atendente',
+  'delivery.view': 'Proprietário, Administrador, Gerente, Atendente e Entregador',
+  'kds.view': 'Proprietário, Administrador, Gerente, Atendente e Cozinha',
+  'team.view': 'Proprietário, Administrador e Gerente',
+  'catalog.view': 'Proprietário, Administrador e Gerente',
+  'recipes.view': 'Proprietário, Administrador e Gerente',
+  'stock.view': 'Proprietário, Administrador e Gerente',
+  'purchases.view': 'Proprietário, Administrador e Gerente',
+  'finance.view': 'Proprietário, Administrador e Gerente',
+  'accounts.view': 'Proprietário, Administrador e Gerente',
+  'cash.view': 'Proprietário, Administrador, Gerente e Atendente',
+  'reports.view': 'Proprietário, Administrador e Gerente',
+  'crm.view': 'Proprietário, Administrador e Gerente',
+  'coupons.manage': 'Proprietário, Administrador e Gerente',
+  'loyalty.manage': 'Proprietário, Administrador e Gerente',
+  'marketing.manage': 'Proprietário, Administrador e Gerente',
+  'integrations.view': 'Proprietário e Administrador',
+  'settings.view': 'Proprietário e Administrador',
+  'printers.manage': 'Proprietário, Administrador e Gerente',
+  'fiscal.view': 'Proprietário, Administrador e Gerente',
+  'subscription.view': 'Proprietário e Administrador'
+};
+
+function vortexPermissionHas(permissionKey) {
+  const permissions = window.VORTEX_AUTH_CONTEXT && window.VORTEX_AUTH_CONTEXT.permissions;
+  return Array.isArray(permissions) && permissions.includes(permissionKey);
+}
+
+function vortexRenderEmployeeChrome(context) {
+  if (!context || !document.body) return;
+  if (document.readyState === 'loading') {
+    if (!window.__VORTEX_CHROME_WAITING) {
+      window.__VORTEX_CHROME_WAITING = true;
+      document.addEventListener('DOMContentLoaded', function() {
+        window.__VORTEX_CHROME_WAITING = false;
+        vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
+      }, { once: true });
+    }
+    return;
+  }
+
+  const profileLabels = {
+    owner: 'Proprietário',
+    administrator: 'Administrador',
+    manager: 'Gerente',
+    attendant: 'Atendente',
+    kitchen: 'Equipe de cozinha',
+    delivery: 'Entregador'
+  };
+  const profileLabel = profileLabels[context.profile_key] || 'Equipe';
+  const displayName = context.display_name || context.email || 'Usuário';
+  const header = document.querySelector('header');
+
+  if (header && !document.getElementById('vortexEmployeeIdentity')) {
+    const identity = document.createElement('div');
+    identity.id = 'vortexEmployeeIdentity';
+    identity.innerHTML = `
+      <div class="vortex-identity-copy">
+        <strong>${displayName.replace(/[<>]/g, '')}</strong>
+        <span>${profileLabel} · <span class="vortex-connected">Conectado</span></span>
+      </div>
+      <div class="vortex-identity-actions">
+        <button type="button" id="vortexLockButton">🔒 Bloquear tela</button>
+        <button type="button" id="vortexSwitchButton">⇄ Trocar usuário</button>
+      </div>`;
+    header.appendChild(identity);
+    document.getElementById('vortexLockButton').addEventListener('click', vortexShowLockScreen);
+    document.getElementById('vortexSwitchButton').addEventListener('click', vortexSwitchUser);
+  }
+
+  document.querySelectorAll('.nav-link[href]').forEach(link => {
+    if (link.dataset.vortexPermissionApplied === 'true') return;
+    const href = link.getAttribute('href') || '';
+    const page = href.split('/').pop().split('?')[0];
+    const permission = VORTEX_PAGE_PERMISSION_MAP[page];
+    if (!permission) return;
+    link.dataset.vortexPermissionApplied = 'true';
+    const allowed = vortexPermissionHas(permission);
+    const state = document.createElement('span');
+    state.className = 'vortex-permission-state ' + (allowed ? 'is-allowed' : 'is-blocked');
+    state.textContent = allowed ? '✓ Liberado' : '🔒 Bloqueado';
+    link.appendChild(state);
+    if (!allowed) {
+      link.classList.add('vortex-nav-blocked');
+      link.setAttribute('aria-disabled', 'true');
+      link.addEventListener('click', function(event) {
+        event.preventDefault();
+        const profiles = VORTEX_PERMISSION_LABELS[permission] || 'Proprietário e Administrador';
+        window.alert('Seu perfil atual não tem permissão para acessar este módulo. Perfis autorizados: ' + profiles + '. Solicite ao proprietário uma revisão das suas permissões.');
+      });
+    }
+  });
+
+  if (!document.getElementById('vortexEmployeeChromeStyles')) {
+    const style = document.createElement('style');
+    style.id = 'vortexEmployeeChromeStyles';
+    style.textContent = `
+      #vortexEmployeeIdentity{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;padding:10px 12px;margin-top:10px;border:1px solid var(--border,#334155);border-radius:10px;background:var(--bg-card,#1e293b);font-size:12px}
+      .vortex-identity-copy{display:flex;flex-direction:column;gap:3px;color:var(--text-muted,#94a3b8)}
+      .vortex-identity-copy strong{font-size:13px;color:var(--text-main,#f8fafc)}
+      .vortex-connected{color:#22c55e;font-weight:700}
+      .vortex-identity-actions{display:flex;gap:7px;flex-wrap:wrap}
+      .vortex-identity-actions button{border:1px solid var(--border,#334155);border-radius:7px;background:transparent;color:var(--text-main,#f8fafc);padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer}
+      .vortex-permission-state{margin-left:auto;font-size:10px;font-weight:700;white-space:nowrap}
+      .vortex-permission-state.is-allowed{color:#22c55e}
+      .vortex-permission-state.is-blocked{color:#f87171}
+      .vortex-nav-blocked{opacity:.65}
+      #vortexLockOverlay{position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.97);display:flex;align-items:center;justify-content:center;padding:20px}
+      #vortexLockCard{width:min(100%,390px);background:#1e293b;color:#f8fafc;border:1px solid #475569;border-radius:16px;padding:24px}
+      #vortexLockCard input{width:100%;padding:12px;margin:12px 0;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:8px}
+      #vortexLockCard button{padding:11px 14px;border:0;border-radius:8px;background:#f97316;color:#fff;font-weight:700;cursor:pointer}
+      #vortexLockError{color:#fca5a5;font-size:12px;min-height:18px}
+      @media(max-width:600px){#vortexEmployeeIdentity{align-items:flex-start}.vortex-identity-actions{width:100%}.vortex-identity-actions button{flex:1}}
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+function vortexShowLockScreen() {
+  if (document.getElementById('vortexLockOverlay')) return;
+  const context = window.VORTEX_AUTH_CONTEXT || {};
+  const overlay = document.createElement('div');
+  overlay.id = 'vortexLockOverlay';
+  overlay.innerHTML = `
+    <div id="vortexLockCard">
+      <div style="font-size:28px;margin-bottom:8px">🔒</div>
+      <h2 style="font-size:20px;margin-bottom:8px">Tela bloqueada</h2>
+      <p style="font-size:13px;line-height:1.5;color:#cbd5e1">Esta sessão pertence a <strong>${String(context.display_name || context.email || 'este usuário').replace(/[<>]/g, '')}</strong>. Informe sua senha para continuar.</p>
+      <input id="vortexUnlockPassword" type="password" autocomplete="current-password" placeholder="Sua senha">
+      <div id="vortexLockError"></div>
+      <button type="button" id="vortexUnlockButton">Desbloquear</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const unlock = async function() {
+    const button = document.getElementById('vortexUnlockButton');
+    const errorBox = document.getElementById('vortexLockError');
+    const password = document.getElementById('vortexUnlockPassword').value;
+    button.disabled = true;
+    button.textContent = 'Verificando...';
+    const result = await vortexSignIn(context.email, password);
+    if (result.error || !result.data?.user || result.data.user.id !== context.user_id) {
+      errorBox.textContent = 'Senha incorreta. A tela continua bloqueada.';
+      button.disabled = false;
+      button.textContent = 'Desbloquear';
+      return;
+    }
+    overlay.remove();
+  };
+  document.getElementById('vortexUnlockButton').addEventListener('click', unlock);
+  document.getElementById('vortexUnlockPassword').addEventListener('keydown', event => {
+    if (event.key === 'Enter') unlock();
+  });
+  document.getElementById('vortexUnlockPassword').focus();
+}
+
+async function vortexSwitchUser() {
+  const result = await vortexSignOut();
+  if (result.error) {
+    window.alert('Não foi possível encerrar a sessão. Tente novamente.');
+    return;
+  }
+  window.location.href = 'login.html?switch=1';
+}
+
 function vortexRequireAuthenticatedPage() {
   const protectedPages = new Set([
     'index.html',
@@ -1203,7 +1397,14 @@ function vortexRequireAuthenticatedPage() {
           redirectToLogin();
           return;
         }
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        const requiredPermission = VORTEX_PAGE_PERMISSION_MAP[currentPage];
+        if (requiredPermission && !vortexPermissionHas(requiredPermission)) {
+          window.location.replace('index.html?blocked=' + encodeURIComponent(requiredPermission));
+          return;
+        }
         document.documentElement.style.visibility = '';
+        vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
       });
     })
     .catch(redirectToLogin);

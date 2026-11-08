@@ -205,6 +205,7 @@ Deno.serve(async (req: Request) => {
     return response(200, {
       success: true,
       invitation_status: "pending",
+      user_id: invitedUserId,
       message: "Convite enviado. O funcionário precisa aceitar o e-mail e criar a própria senha antes de acessar o Vortex Food.",
     });
   } catch (error) {

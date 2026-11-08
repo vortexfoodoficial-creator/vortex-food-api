@@ -184,14 +184,14 @@ ON CONFLICT (profile_key,permission_key) DO UPDATE SET allowed=true;
 INSERT INTO public.vortex_profile_permissions(profile_key,permission_key,allowed)
 SELECT 'kitchen', permission_key, true
 FROM public.vortex_permission_catalog
-WHERE permission_key IN ('kds.view','kds.update_status')
+WHERE permission_key IN ('dashboard.view','kds.view','kds.update_status')
 ON CONFLICT (profile_key,permission_key) DO UPDATE SET allowed=true;
 
 -- Entregador: consulta e confirmação de entregas atribuídas (escopo por pedido será aplicado no módulo/RPC).
 INSERT INTO public.vortex_profile_permissions(profile_key,permission_key,allowed)
 SELECT 'delivery', permission_key, true
 FROM public.vortex_permission_catalog
-WHERE permission_key IN ('delivery.view','delivery.confirm')
+WHERE permission_key IN ('dashboard.view','delivery.view','delivery.confirm')
 ON CONFLICT (profile_key,permission_key) DO UPDATE SET allowed=true;
 
 -- Compatibilidade: o papel técnico existente permanece owner/admin/manager/employee.

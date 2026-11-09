@@ -69,6 +69,9 @@ Deno.serve(async (req: Request) => {
 
     const staff = staffList[index];
     const targetUserId = String(staff.authUserId || "");
+    if (targetUserId && targetUserId === actorId) {
+      return response(403, { error: "Você não pode bloquear ou reativar a própria conta por este recurso." });
+    }
     if (targetUserId) {
       const { data: member, error: memberError } = await admin
         .from("vortex_store_members")

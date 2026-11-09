@@ -959,7 +959,7 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_save_stock_movements(uuid,jsonb) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.rpc_save_stock_movements(uuid,jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.rpc_save_stock_movements(uuid,jsonb) FROM PUBLIC, anon, authenticated;
 
 -- Consumo automático calculado no servidor a partir do pedido, da ficha técnica
 -- e dos itens de estoque da própria loja. O navegador não envia quantidades.
@@ -1724,7 +1724,8 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) TO authenticated;
 
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_movements FROM authenticated;
 
 
 
@@ -2012,6 +2013,37 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_save_store_document(text,jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_save_store_document(text,jsonb) TO authenticated;
+
+
+
+CREATE OR REPLACE FUNCTION public.rpc_get_stock_movements(p_store_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'stock.view') THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar as movimentações de estoque.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(
+    (to_jsonb(m)-ARRAY['unit_cost','cost','average_cost'])
+    ORDER BY m.created_at DESC
+  ),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_stock_movements AS m
+  WHERE m.store_id=p_store_id;
+
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_stock_movements(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_stock_movements(uuid) TO authenticated;
 
 
 COMMIT;

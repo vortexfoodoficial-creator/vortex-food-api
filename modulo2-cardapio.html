@@ -849,6 +849,10 @@
     }
 
     function openGroupModal() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar grupos.', '🔒');
+        return;
+      }
       document.getElementById('editGroupId').value = '';
       document.getElementById('groupModalTitle').innerText = 'Criar Novo Grupo';
       document.getElementById('groupNameInput').value = '';
@@ -862,6 +866,10 @@
     }
 
     async function saveGroup() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar grupos de produtos.', '🔒');
+        return;
+      }
       const id = document.getElementById('editGroupId').value;
       const name = document.getElementById('groupNameInput').value.trim().toUpperCase();
       const desc = document.getElementById('groupDescInput').value.trim();
@@ -901,6 +909,10 @@
     }
 
     async function toggleGroupHighlight(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar os destaques dos grupos.', '🔒');
+        return;
+      }
       let groups = getGroups();
       let g = groups.find(item => item.id === id);
       if (g) {
@@ -912,6 +924,10 @@
     }
 
     async function deleteGroup(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir grupos de produtos.', '🔒');
+        return;
+      }
       let groups = getGroups();
       let trash = getTrash();
       let g = groups.find(item => item.id === id);
@@ -927,6 +943,10 @@
     }
 
     async function toggleGroupStatus(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode ativar ou pausar grupos.', '🔒');
+        return;
+      }
       let groups = getGroups();
       let g = groups.find(item => item.id === id);
       if (g) {
@@ -938,6 +958,10 @@
     }
 
     async function moveGroup(index, direction) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode reorganizar os grupos.', '🔒');
+        return;
+      }
       let groups = getGroups();
       const newIndex = index + direction;
       if (newIndex < 0 || newIndex >= groups.length) return;
@@ -950,6 +974,10 @@
     }
 
     function openProductModal() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar produtos.', '🔒');
+        return;
+      }
       document.getElementById('editProductId').value = '';
       document.getElementById('productModalTitle').innerText = 'Cadastrar Produto';
       document.getElementById('prodName').value = '';
@@ -1060,7 +1088,18 @@
     }
 
     async function saveProduct() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      const canManageProducts = permissions.includes('catalog.manage_products');
+      const canManagePrices = permissions.includes('catalog.manage_prices');
+      if (!canManageProducts && !canManagePrices) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode editar produtos ou preços.', '🔒');
+        return;
+      }
       const id = document.getElementById('editProductId').value;
+      if (!id && (!canManageProducts || !canManagePrices)) {
+        showNoticeModal('Permissão necessária', 'Cadastrar um novo produto exige permissões de produtos e preços.', '🔒');
+        return;
+      }
       const name = document.getElementById('prodName').value.trim();
       const desc = document.getElementById('prodDesc').value.trim();
       const group = document.getElementById('prodGroupSelect').value;
@@ -1112,8 +1151,37 @@
       };
 
       if (id) {
-        let p = products.find(prod => prod.id === parseInt(id));
-        if (p) Object.assign(p, itemData);
+        let p = products.find(prod => String(prod.id) === String(id));
+        if (!p) {
+          showNoticeModal('Produto não encontrado', 'Atualize o catálogo e tente novamente.', '⚠️');
+          return;
+        }
+        if (!canManageProducts && canManagePrices) {
+          const priceFields = {
+            price: itemData.price,
+            oldPrice: itemData.oldPrice,
+            kgPrice: itemData.kgPrice,
+            cost: itemData.cost,
+            happyPrice: itemData.happyPrice,
+            happyStart: itemData.happyStart,
+            happyEnd: itemData.happyEnd
+          };
+          Object.assign(itemData, p, priceFields);
+        } else if (canManageProducts && !canManagePrices) {
+          Object.assign(itemData, {
+            price: p.price,
+            oldPrice: p.oldPrice,
+            kgPrice: p.kgPrice,
+            cost: p.cost,
+            isVariable: p.isVariable,
+            isKg: p.isKg,
+            isHappyHour: p.isHappyHour,
+            happyPrice: p.happyPrice,
+            happyStart: p.happyStart,
+            happyEnd: p.happyEnd
+          });
+        }
+        Object.assign(p, itemData);
       } else {
         const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
         itemData.id = nextId;
@@ -1129,6 +1197,10 @@
     }
 
     async function toggleProductStatus(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode ativar ou pausar produtos.', '🔒');
+        return;
+      }
       let products = getProducts();
       let p = products.find(prod => prod.id === id);
       if (p) {
@@ -1141,6 +1213,10 @@
     }
 
     async function deleteProduct(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir produtos.', '🔒');
+        return;
+      }
       let products = getProducts();
       let trash = getTrash();
       let p = products.find(prod => prod.id === id);
@@ -1243,6 +1319,10 @@
     }
 
     async function saveComplementGroup() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode gerenciar grupos de complementos.', '🔒');
+        return;
+      }
       const groupName = document.getElementById('compGroupName').value.trim().toUpperCase();
       if (!groupName || draftCompItems.length === 0) {
         showNoticeModal('Atenção', 'Dê um nome ao grupo e adicione pelo menos um item.', '⚠️');
@@ -1297,6 +1377,10 @@
     }
 
     async function deleteComplementGroup(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir grupos de complementos.', '🔒');
+        return;
+      }
       let comps = getComplements();
       comps.splice(idx, 1);
       localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
@@ -1328,6 +1412,10 @@
     }
 
     function toggleUpsellItem(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar sugestões de produtos.', '🔒');
+        return;
+      }
       let products = getProducts();
       let p = products.find(item => item.id === id);
       if (p) {
@@ -1378,6 +1466,10 @@
     }
 
     async function restoreGroup(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode restaurar grupos.', '🔒');
+        return;
+      }
       let trash = getTrash();
       let groups = getGroups();
       let restored = trash.groups.splice(idx, 1)[0];
@@ -1390,6 +1482,10 @@
     }
 
     async function restoreProduct(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode restaurar produtos.', '🔒');
+        return;
+      }
       let trash = getTrash();
       let products = getProducts();
       let restored = trash.products.splice(idx, 1)[0];

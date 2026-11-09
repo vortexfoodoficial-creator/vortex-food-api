@@ -28,7 +28,7 @@ BEGIN
       ADD CONSTRAINT vortex_kds_orders_courier_member_fkey
       FOREIGN KEY (store_id,courier_member_id)
       REFERENCES public.vortex_store_members(store_id,user_id)
-      ON DELETE SET NULL;
+      ON DELETE RESTRICT;
   END IF;
 END;
 $$;
@@ -150,7 +150,6 @@ DECLARE
   v_insert text;
   v_update text;
   v_delete text;
-  v_extra_select text := '';
 BEGIN
   FOR v_table,v_select,v_insert,v_update,v_delete IN
     SELECT * FROM (VALUES
@@ -203,59 +202,6 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_insert',v_table);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_update',v_table);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_delete',v_table);
-
-    IF v_table='vortex_kds_orders' THEN
-      v_extra_select := ' AND (NOT EXISTS (
-        SELECT 1 FROM public.vortex_store_members m
-        WHERE m.store_id='||quote_literal('')||'::uuid
-      ))';
-      -- O filtro real de entregador é aplicado sem depender de dados do cliente:
-      -- perfil delivery só lê pedidos cujo courier_member_id seja o próprio usuário.
-      v_select := '('||v_select||') AND (
-        NOT EXISTS (SELECT 1 FROM public.vortex_store_members m
-          WHERE m.store_id = vortex_kds_orders.store_id
-            AND m.user_id = auth.uid()
-            AND m.status = ''active''
-            AND m.profile_key = ''delivery'')
-        OR courier_member_id = auth.uid()
-      )';
-    END IF;
-
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (public.vortex_user_has_permission(store_id,%L) OR (%s))',
-      v_table||'_permission_select',v_table,'__never__',v_select
-    );
-    -- O ramo __never__ sempre retorna falso; expressões de permissão são avaliadas
-    -- por helper para que cada ação tenha a chave individual correta.
-    EXECUTE format('DROP POLICY %I ON public.%I',v_table||'_permission_select',v_table);
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (%s)',
-      v_table||'_permission_select',v_table,
-      replace(v_select,' OR ',' OR public.vortex_user_has_permission(store_id,''')
-    );
-    -- As expressões já contêm chamadas explícitas; substituição textual não é
-    -- segura para compor SQL. A política é montada abaixo por expressão validada.
-    EXECUTE format('DROP POLICY %I ON public.%I',v_table||'_permission_select',v_table);
-
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (%s)',
-      v_table||'_permission_select',v_table,
-      CASE v_table
-        WHEN 'cash_shifts' THEN 'public.vortex_user_has_permission(store_id,''cash.view'')'
-        WHEN 'vortex_financial' THEN 'public.vortex_user_has_permission(store_id,''finance.view'')'
-        WHEN 'vortex_integrations' THEN 'public.vortex_user_has_permission(store_id,''integrations.manage'')'
-        WHEN 'vortex_kds' THEN 'public.vortex_user_has_permission(store_id,''kds.view'')'
-        WHEN 'vortex_kds_orders' THEN '('||v_select||')'
-        WHEN 'vortex_sales' THEN 'public.vortex_user_has_permission(store_id,''pdv.history'')'
-        WHEN 'vortex_sales_history' THEN 'public.vortex_user_has_permission(store_id,''pdv.history'') OR public.vortex_user_has_permission(store_id,''finance.view'') OR public.vortex_user_has_permission(store_id,''reports.financial'')'
-        WHEN 'vortex_stock_items' THEN 'public.vortex_user_has_permission(store_id,''stock.view'') OR public.vortex_user_has_permission(store_id,''stock.manage_items'') OR public.vortex_user_has_permission(store_id,''stock.adjust'')'
-        WHEN 'vortex_stock_movements' THEN 'public.vortex_user_has_permission(store_id,''stock.view'') OR public.vortex_user_has_permission(store_id,''stock.view_costs'')'
-        WHEN 'vortex_store_settings' THEN 'public.vortex_user_has_permission(store_id,''settings.view'') OR public.vortex_user_has_permission(store_id,''settings.manage'')'
-        WHEN 'vortex_public_delivery_settings' THEN 'public.vortex_user_has_permission(store_id,''delivery.view'') OR public.vortex_user_has_permission(store_id,''delivery.manage'')'
-        WHEN 'vortex_public_store_settings' THEN 'public.vortex_user_has_permission(store_id,''tables.view'') OR public.vortex_user_has_permission(store_id,''tables.manage_qr'')'
-        WHEN 'vortex_public_table_requests' THEN 'public.vortex_user_has_permission(store_id,''tables.attend_requests'')'
-      END
-    );
 
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (%s)',

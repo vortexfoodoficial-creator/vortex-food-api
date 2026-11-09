@@ -195,13 +195,7 @@ CREATE POLICY cash_shifts_permission_insert
 ON public.cash_shifts FOR INSERT TO authenticated
 WITH CHECK (public.vortex_user_has_permission(store_id,'cash.open'));
 
-CREATE POLICY cash_shifts_permission_update
-ON public.cash_shifts FOR UPDATE TO authenticated
-USING (public.vortex_user_has_permission(store_id,'cash.move'))
-WITH CHECK (public.vortex_user_has_permission(store_id,'cash.move'));
-
 REVOKE UPDATE, DELETE ON TABLE public.cash_shifts FROM authenticated;
-GRANT UPDATE(movements) ON TABLE public.cash_shifts TO authenticated;
 
 -- Financeiro.
 CREATE POLICY vortex_financial_permission_select
@@ -669,11 +663,12 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_close_cash_shift(uuid,text,timestamptz,numeric,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_close_cash_shift(uuid,text,timestamptz,numeric,text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.rpc_create_cash_financial_entry(
+CREATE OR REPLACE FUNCTION public.rpc_record_cash_movement(
   p_store_id uuid,
   p_shift_id text,
   p_entry_id text,
   p_type text,
+  p_movement_type text,
   p_description text,
   p_value numeric,
   p_date date
@@ -683,34 +678,114 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public, auth
 AS $function$
+DECLARE
+  v_operator text;
+  v_shift text;
+  v_existing text;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'cash.move') THEN
     RAISE EXCEPTION 'Seu perfil não pode registrar movimentações de caixa.';
   END IF;
   IF p_type NOT IN ('income','expense') OR COALESCE(p_value,0)<=0
-     OR COALESCE(p_entry_id,'') NOT LIKE 'cash_mov_%' THEN
+     OR COALESCE(p_entry_id,'') NOT LIKE 'cash_mov_%'
+     OR COALESCE(p_movement_type,'') NOT IN ('SUPRIMENTO','SANGRIA','DESPESA','AJUSTE (+)','AJUSTE (-)') THEN
     RAISE EXCEPTION 'Lançamento de caixa inválido.';
   END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM public.cash_shifts
-    WHERE store_id=p_store_id AND id=p_shift_id AND status='open'
-  ) THEN
-    RAISE EXCEPTION 'Não existe um turno aberto válido para este lançamento.';
+
+  SELECT COALESCE(NULLIF(m.display_name,''),u.email,'Funcionário')
+  INTO v_operator
+  FROM public.vortex_store_members AS m
+  LEFT JOIN auth.users AS u ON u.id=m.user_id
+  WHERE m.store_id=p_store_id AND m.user_id=auth.uid() AND m.status='active';
+
+  IF v_operator IS NULL THEN RAISE EXCEPTION 'Funcionário ativo não identificado.'; END IF;
+
+  SELECT id INTO v_existing
+  FROM public.vortex_financial
+  WHERE store_id=p_store_id AND id=p_entry_id;
+  IF v_existing IS NOT NULL THEN
+    RETURN jsonb_build_object('success',true,'already_recorded',true);
+  END IF;
+
+  UPDATE public.cash_shifts
+  SET movements=COALESCE(movements,'[]'::jsonb) || jsonb_build_array(
+    jsonb_build_object(
+      'time',to_char(now() AT TIME ZONE 'America/Sao_Paulo','HH24:MI'),
+      'type',p_movement_type,
+      'reason',left(COALESCE(p_description,''),300),
+      'val',p_value,
+      'operator',v_operator,
+      'user_id',auth.uid()
+    )
+  )
+  WHERE store_id=p_store_id AND id=p_shift_id AND status='open'
+  RETURNING id INTO v_shift;
+
+  IF v_shift IS NULL THEN
+    RAISE EXCEPTION 'Não existe um turno aberto válido para esta movimentação.';
   END IF;
 
   INSERT INTO public.vortex_financial(store_id,id,type,description,value,date)
   VALUES (
     p_store_id,p_entry_id,p_type,left(COALESCE(p_description,''),300),
     p_value,COALESCE(p_date,current_date)
-  )
-  ON CONFLICT (store_id,id) DO NOTHING;
+  );
 
-  RETURN jsonb_build_object('success',true);
+  RETURN jsonb_build_object('success',true,'shift_id',v_shift);
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.rpc_create_cash_financial_entry(uuid,text,text,text,text,numeric,date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.rpc_create_cash_financial_entry(uuid,text,text,text,text,numeric,date) TO authenticated;
+REVOKE ALL ON FUNCTION public.rpc_record_cash_movement(uuid,text,text,text,text,text,numeric,date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_record_cash_movement(uuid,text,text,text,text,text,numeric,date) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_cash_shift_sales(p_store_id uuid,p_shift_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_opened_at timestamptz;
+  v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'cash.view') THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar o movimento do caixa.';
+  END IF;
+
+  SELECT opened_at INTO v_opened_at
+  FROM public.cash_shifts
+  WHERE store_id=p_store_id AND id=p_shift_id;
+  IF v_opened_at IS NULL THEN
+    RAISE EXCEPTION 'Turno de caixa não encontrado.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id',s.id,
+    'total',s.total,
+    'pay_method',COALESCE(to_jsonb(s)->>'pay_method',to_jsonb(s)->>'paymethod',''),
+    'status',s.status,
+    'date',to_jsonb(s)->>'date',
+    'time',to_jsonb(s)->>'time'
+  )),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_sales_history AS s
+  WHERE s.store_id=p_store_id
+    AND COALESCE(s.status,'')<>'cancelled'
+    AND (
+      (
+        NULLIF(to_jsonb(s)->>'date','')::date
+        + COALESCE(NULLIF(to_jsonb(s)->>'time','')::time,'00:00'::time)
+      ) AT TIME ZONE 'America/Sao_Paulo'
+    ) >= v_opened_at;
+
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_cash_shift_sales(uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_cash_shift_sales(uuid,text) TO authenticated;
+
 
 -- Grava ajustes manuais no histórico. Consumo automático possui RPC separada.
 CREATE OR REPLACE FUNCTION public.rpc_save_stock_movements(p_store_id uuid,p_movements jsonb)

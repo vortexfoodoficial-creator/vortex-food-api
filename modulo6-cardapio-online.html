@@ -304,6 +304,12 @@
             } catch (error) { statusEl.textContent = error.message || 'Não foi possível carregar as configurações do cardápio.'; }
         }
         async function togglePublicDelivery(enabled) {
+            if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage')) {
+                const checkbox = document.getElementById('enablePublicDelivery');
+                checkbox.checked = !enabled;
+                document.getElementById('deliveryLinkStatus').textContent = 'Seu perfil não pode alterar a disponibilidade do delivery.';
+                return;
+            }
             const checkbox = document.getElementById('enablePublicDelivery');
             const statusEl = document.getElementById('deliveryLinkStatus');
             checkbox.disabled = true;

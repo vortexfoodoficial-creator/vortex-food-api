@@ -150,6 +150,7 @@ DECLARE
   v_insert text;
   v_update text;
   v_delete text;
+  v_policy record;
 BEGIN
   FOR v_table,v_select,v_insert,v_update,v_delete IN
     SELECT * FROM (VALUES
@@ -197,11 +198,14 @@ BEGIN
 
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',v_table);
 
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_store_isolation',v_table);
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_select',v_table);
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_insert',v_table);
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_update',v_table);
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_table||'_permission_delete',v_table);
+    -- Remove todas as políticas permissivas anteriores para impedir que uma
+    -- política antiga de associação à loja se some às novas permissões.
+    FOR v_policy IN
+      SELECT policyname FROM pg_policies
+      WHERE schemaname='public' AND tablename=v_table
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',v_policy.policyname,v_table);
+    END LOOP;
 
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (%s)',
@@ -282,8 +286,16 @@ END;
 $policies$;
 
 -- A tabela de assinaturas é visível apenas para quem tem permissão de assinatura.
-DROP POLICY IF EXISTS vortex_subscriptions_member_select ON public.vortex_subscriptions;
-DROP POLICY IF EXISTS vortex_subscriptions_permission_select ON public.vortex_subscriptions;
+DO $
+DECLARE p record;
+BEGIN
+  FOR p IN SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='vortex_subscriptions'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_subscriptions',p.policyname);
+  END LOOP;
+END;
+$;
 CREATE POLICY vortex_subscriptions_permission_select
 ON public.vortex_subscriptions FOR SELECT TO authenticated
 USING (public.vortex_user_has_permission(store_id,'subscription.view')

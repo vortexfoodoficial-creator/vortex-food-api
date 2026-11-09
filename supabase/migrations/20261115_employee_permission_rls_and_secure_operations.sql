@@ -1928,9 +1928,9 @@ BEGIN
       INTO v_old_ids FROM jsonb_array_elements(v_old_products) AS x(value);
       SELECT COALESCE(jsonb_agg(COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name') ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
       INTO v_new_ids FROM jsonb_array_elements(v_new_products) AS x(value);
-      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice','isVariable','isKg','isHappyHour','happyStart','happyEnd'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
       INTO v_old_non_price FROM jsonb_array_elements(v_old_products) AS x(value);
-      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice','isVariable','isKg','isHappyHour','happyStart','happyEnd'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
       INTO v_new_non_price FROM jsonb_array_elements(v_new_products) AS x(value);
       IF v_old_ids IS DISTINCT FROM v_new_ids OR v_old_non_price IS DISTINCT FROM v_new_non_price THEN
         RAISE EXCEPTION 'A permissão de preços permite alterar somente os valores dos produtos existentes.';
@@ -1949,7 +1949,12 @@ BEGIN
              OR (v_old_product->'oldPrice') IS DISTINCT FROM (v_product->'oldPrice')
              OR (v_old_product->'kgPrice') IS DISTINCT FROM (v_product->'kgPrice')
              OR (v_old_product->'cost') IS DISTINCT FROM (v_product->'cost')
-             OR (v_old_product->'happyPrice') IS DISTINCT FROM (v_product->'happyPrice') THEN
+             OR (v_old_product->'happyPrice') IS DISTINCT FROM (v_product->'happyPrice')
+             OR (v_old_product->'isVariable') IS DISTINCT FROM (v_product->'isVariable')
+             OR (v_old_product->'isKg') IS DISTINCT FROM (v_product->'isKg')
+             OR (v_old_product->'isHappyHour') IS DISTINCT FROM (v_product->'isHappyHour')
+             OR (v_old_product->'happyStart') IS DISTINCT FROM (v_product->'happyStart')
+             OR (v_old_product->'happyEnd') IS DISTINCT FROM (v_product->'happyEnd') THEN
             RAISE EXCEPTION 'Seu perfil pode editar dados dos produtos, mas não pode alterar preços ou custos.';
           END IF;
         ELSE
@@ -1957,7 +1962,12 @@ BEGIN
              OR COALESCE(NULLIF(v_product->>'oldPrice','')::numeric,0)<>0
              OR COALESCE(NULLIF(v_product->>'kgPrice','')::numeric,0)<>0
              OR COALESCE(NULLIF(v_product->>'cost','')::numeric,0)<>0
-             OR COALESCE(NULLIF(v_product->>'happyPrice','')::numeric,0)<>0 THEN
+             OR COALESCE(NULLIF(v_product->>'happyPrice','')::numeric,0)<>0
+             OR COALESCE((v_product->>'isVariable')::boolean,false)
+             OR COALESCE((v_product->>'isKg')::boolean,false)
+             OR COALESCE((v_product->>'isHappyHour')::boolean,false)
+             OR COALESCE(NULLIF(v_product->>'happyStart',''),'')<>''
+             OR COALESCE(NULLIF(v_product->>'happyEnd',''),'')<>'' THEN
             RAISE EXCEPTION 'Cadastrar um produto com preço ou custo exige também a permissão de preços.';
           END IF;
         END IF;

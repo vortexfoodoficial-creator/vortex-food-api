@@ -291,7 +291,7 @@ END;
 $policies$;
 
 -- A tabela de assinaturas é visível apenas para quem tem permissão de assinatura.
-DO $
+DO $subscriptionpolicies$
 DECLARE p record;
 BEGIN
   FOR p IN SELECT policyname FROM pg_policies
@@ -300,7 +300,7 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_subscriptions',p.policyname);
   END LOOP;
 END;
-$;
+$subscriptionpolicies$;
 CREATE POLICY vortex_subscriptions_permission_select
 ON public.vortex_subscriptions FOR SELECT TO authenticated
 USING (public.vortex_user_has_permission(store_id,'subscription.view')

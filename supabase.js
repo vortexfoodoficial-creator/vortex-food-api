@@ -955,13 +955,14 @@ async function vortexGetCurrentStoreContext() {
     return { store: null, subscription: null, error: permissionError || new Error('As permissões desta conta não foram encontradas.') };
   }
 
-  const { data: store, error: storeError } = await supabase
-    .from('vortex_stores')
-    .select('id, name, created_at')
-    .eq('id', permissionContext.store_id)
-    .maybeSingle();
+  const { data: store, error: storeError } = await supabase.rpc('rpc_get_my_store_context');
   if (storeError) return { store: null, subscription: null, error: storeError };
-  if (!store) return { store: null, subscription: null, error: new Error('Não foi possível localizar os dados do estabelecimento.') };
+  if (!store || String(store.id) !== String(permissionContext.store_id)) {
+    return { store: null, subscription: null, error: new Error('Não foi possível validar o estabelecimento ativo desta conta.') };
+  }
+  if (store.status !== 'active') {
+    return { store: null, subscription: null, error: new Error('Este estabelecimento está inativo. Entre em contato com o suporte.') };
+  }
 
   if (window.VortexStoreStorage) window.VortexStoreStorage.setStoreId(store.id, userData.user.id, permissionContext.role);
   else {

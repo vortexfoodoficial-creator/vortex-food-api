@@ -500,12 +500,16 @@ WITH CHECK (public.vortex_user_has_permission(store_id,'tables.attend_requests')
 REVOKE INSERT, DELETE ON TABLE public.vortex_public_table_requests FROM authenticated;
 
 -- Assinatura e dados raiz: leitura limitada, sem escrita direta por funcionários.
-DROP POLICY IF EXISTS vortex_subscriptions_select_members ON public.vortex_subscriptions;
+DO $ DECLARE p record; BEGIN
+  FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='vortex_subscriptions'
+  LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_subscriptions',p.policyname); END LOOP;
+  FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='vortex_stores'
+  LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_stores',p.policyname); END LOOP;
+END; $;
 CREATE POLICY vortex_subscriptions_permission_select
 ON public.vortex_subscriptions FOR SELECT TO authenticated
 USING (public.vortex_user_has_permission(store_id,'subscription.view'));
 
-DROP POLICY IF EXISTS vortex_stores_select_members ON public.vortex_stores;
 CREATE POLICY vortex_stores_active_member_select
 ON public.vortex_stores FOR SELECT TO authenticated
 USING (public.vortex_user_has_store_access(id));
@@ -589,6 +593,9 @@ BEGIN
   END IF;
   IF v_current_status IN ('finished','cancelled') THEN
     RAISE EXCEPTION 'Este pedido já foi encerrado.';
+  END IF;
+  IF p_status IS NULL AND NOT p_update_courier THEN
+    RAISE EXCEPTION 'Nenhuma alteração foi solicitada.';
   END IF;
 
   IF p_status IS NOT NULL THEN

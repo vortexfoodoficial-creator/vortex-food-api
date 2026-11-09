@@ -1732,6 +1732,7 @@ REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authentica
 -- A RPC entrega apenas o status para quem consulta e segredos somente para quem gerencia.
 DROP POLICY IF EXISTS vortex_integrations_permission_select ON public.vortex_integrations;
 REVOKE SELECT ON TABLE public.vortex_integrations FROM authenticated;
+GRANT SELECT (store_id,platform) ON TABLE public.vortex_integrations TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_integrations()
 RETURNS jsonb

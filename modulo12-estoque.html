@@ -801,7 +801,8 @@
     }
 
     function toggleCostInput(type) {
-      document.getElementById('unitCostGroup').style.display = type === 'entry' ? 'block' : 'none';
+      const canViewCosts = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.view_costs') === true;
+      document.getElementById('unitCostGroup').style.display = type === 'entry' && canViewCosts ? 'block' : 'none';
     }
 
     function openMovementModal(type) {

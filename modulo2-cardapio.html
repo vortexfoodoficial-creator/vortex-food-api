@@ -848,6 +848,15 @@
       });
     }
 
+    function openComplementsModal() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_categories') || !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'A gestão de complementos exige permissões de categorias e preços.', '🔒');
+        return;
+      }
+      document.getElementById('complementsModal').classList.add('active');
+    }
+
     function openGroupModal() {
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar grupos.', '🔒');
@@ -974,8 +983,9 @@
     }
 
     function openProductModal() {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar produtos.', '🔒');
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_products') && !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode editar produtos ou preços.', '🔒');
         return;
       }
       document.getElementById('editProductId').value = '';
@@ -1319,8 +1329,9 @@
     }
 
     async function saveComplementGroup() {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode gerenciar grupos de complementos.', '🔒');
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_categories') || !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'Gerenciar grupos de complementos exige permissões de categorias e preços.', '🔒');
         return;
       }
       const groupName = document.getElementById('compGroupName').value.trim().toUpperCase();
@@ -1338,7 +1349,9 @@
       let targetProductIds = [];
       document.querySelectorAll('.comp-apply-prod-check:checked').forEach(cb => targetProductIds.push(parseInt(cb.value)));
 
-      if (targetProductIds.length > 0) {
+      if (targetProductIds.length > 0 && !permissions.includes('catalog.manage_products')) {
+        showNoticeModal('Grupo salvo sem vínculo', 'O grupo de complementos foi salvo, mas seu perfil não pode vinculá-lo aos produtos. Solicite também a permissão de gestão de produtos.', '⚠️');
+      } else if (targetProductIds.length > 0) {
         let products = getProducts();
         products.forEach(p => {
           if (targetProductIds.includes(p.id)) {
@@ -1377,13 +1390,15 @@
     }
 
     async function deleteComplementGroup(idx) {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir grupos de complementos.', '🔒');
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_categories') || !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'Excluir grupos de complementos exige permissões de categorias e preços.', '🔒');
         return;
       }
       let comps = getComplements();
       comps.splice(idx, 1);
       localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
+      if (!(await syncCatalogToCloud())) return;
       renderSavedComplements();
     }
 
@@ -1482,8 +1497,9 @@
     }
 
     async function restoreProduct(idx) {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode restaurar produtos.', '🔒');
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_products') || !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'Restaurar produtos exige permissões de produtos e preços.', '🔒');
         return;
       }
       let trash = getTrash();
@@ -1499,6 +1515,7 @@
     }
 
     function permanentDeleteGroup(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) return;
       let trash = getTrash();
       trash.groups.splice(idx, 1);
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
@@ -1506,6 +1523,7 @@
     }
 
     function permanentDeleteProduct(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) return;
       let trash = getTrash();
       trash.products.splice(idx, 1);
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));

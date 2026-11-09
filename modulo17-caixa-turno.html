@@ -420,51 +420,28 @@
     async function loadSalesForActiveShift(openedAt) {
       let cCash = 0;
       let cDigital = 0;
-      const openedTime = new Date(openedAt).getTime();
-
-      let allSales = [];
-      if (typeof dbFetchSales === 'function') {
-        allSales = await dbFetchSales();
-      } else if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient) {
-        try {
-          const { data } = await window.supabaseClient.from('vortex_sales_history').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-          if (data) allSales = data;
-        } catch(e) {}
+      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
+      if (!client || !currentCashData.shiftId) {
+        currentCashData.salesCash = 0;
+        currentCashData.salesDigital = 0;
+        return;
       }
-
-      const rawLocal = localStorage.getItem('vortex_sales_history');
-      if (rawLocal) {
-        try {
-          const localList = JSON.parse(rawLocal);
-          if (Array.isArray(localList)) {
-            localList.forEach(localItem => {
-              if (!allSales.some(s => String(s.id) === String(localItem.id))) {
-                allSales.push(localItem);
-              }
-            });
-          }
-        } catch(e) {}
-      }
-
-      allSales.forEach(order => {
-        if (order.status === 'cancelled') return;
-
-        const dateStr = order.date || new Date().toISOString().split('T')[0];
-        const timeStr = order.time || '00:00';
-        const orderTimestamp = new Date(`${dateStr}T${timeStr}:00`).getTime();
-
-        if (orderTimestamp >= openedTime || order.date >= openedAt.split('T')[0]) {
-          const total = parseFloat(order.total || order.valor || order.subtotal || 0);
-          const payMethod = String(order.payMethod || order.payment || order.paymentMethod || order.forma_pagamento || '').toLowerCase();
-
-          if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) {
-            cCash += total;
-          } else {
-            cDigital += total;
-          }
-        }
+      const { data, error } = await client.rpc('rpc_get_cash_shift_sales', {
+        p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+        p_shift_id: String(currentCashData.shiftId)
       });
-
+      if (error) {
+        console.error('Não foi possível consultar as vendas deste turno:', error);
+        currentCashData.salesCash = 0;
+        currentCashData.salesDigital = 0;
+        return;
+      }
+      (Array.isArray(data) ? data : []).forEach(order => {
+        const total = parseFloat(order.total || 0);
+        const payMethod = String(order.pay_method || '').toLowerCase();
+        if (payMethod.includes('dinheiro') || payMethod.includes('cash') || payMethod.includes('especie')) cCash += total;
+        else cDigital += total;
+      });
       currentCashData.salesCash = cCash;
       currentCashData.salesDigital = cDigital;
     }
@@ -644,120 +621,71 @@
     }
 
     async function confirmMovement() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('cash.move')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode registrar movimentações de caixa.', '🔒');
+        return;
+      }
       const valStr = document.getElementById('movValue').value;
       const reason = document.getElementById('movReason').value.trim();
       const numVal = parseCurrencyToFloat(valStr);
-
       if (!valStr || numVal <= 0 || !reason) {
         showCustomAlert('Campos Incompletos', 'Informe um valor válido e a justificativa da operação.', '⚠️');
         return;
       }
+      if (!currentCashData.isOpen || !currentCashData.shiftId) {
+        showCustomAlert('Caixa não confirmado', 'Abra um turno sincronizado antes de registrar movimentações.', '⚠️');
+        return;
+      }
 
       let typeLabel = currentMovementType.toUpperCase();
+      let nextWithdrawals = currentCashData.withdrawals;
       if (typeLabel === 'AJUSTE') {
         const direction = document.getElementById('adjustmentDirection').value;
-        if (direction === 'negativo') {
-          typeLabel = 'AJUSTE (-)';
-          currentCashData.withdrawals += numVal;
-        } else {
-          typeLabel = 'AJUSTE (+)';
-        }
+        if (direction === 'negativo') { typeLabel = 'AJUSTE (-)'; nextWithdrawals += numVal; }
+        else typeLabel = 'AJUSTE (+)';
       } else if (typeLabel === 'SANGRIA' || typeLabel === 'DESPESA') {
-        currentCashData.withdrawals += numVal;
+        nextWithdrawals += numVal;
       }
 
       const newMov = {
         time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
         type: typeLabel,
-        reason: reason,
+        reason,
         val: numVal,
-        operator: currentCashData.operator
+        operator: window.VORTEX_AUTH_CONTEXT?.display_name || window.VORTEX_AUTH_CONTEXT?.email || 'Funcionário',
+        user_id: window.VORTEX_AUTH_CONTEXT?.user_id || null
       };
-
-      currentCashData.movements.push(newMov);
-
-      // --- SINCRONIZAÇÃO OFICIAL COM O SUPABASE E FINANCEIRO ---
       const entryId = 'cash_mov_' + Date.now();
       const entryDate = new Date().toISOString().split('T')[0];
-      let financialType = 'expense';
-      let descriptiveText = `Caixa (${typeLabel}): ${reason}`;
-
-      if (typeLabel === 'DESPESA' || typeLabel === 'SANGRIA' || typeLabel === 'AJUSTE (-)') {
-        financialType = 'expense';
-      } else if (typeLabel === 'SUPRIMENTO' || typeLabel === 'AJUSTE (+)') {
-        financialType = 'income';
-      }
-
+      const financialType = ['DESPESA','SANGRIA','AJUSTE (-)'].includes(typeLabel) ? 'expense' : 'income';
       const financialPayload = {
-        store_id: window.VORTEX_ACTIVE_STORE_ID,
         id: entryId,
         type: financialType,
-        description: descriptiveText,
+        description: `Caixa (${typeLabel}): ${reason}`,
         value: numVal,
         date: entryDate
       };
 
-      let financialSynced = false;
-      let shiftSynced = false;
-      let syncErrorMessage = '';
-      const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-
-      // Registra o lançamento financeiro e confere o retorno real do Supabase.
       try {
-        if (typeof dbSaveFinancialEntry === 'function') {
-          const result = await dbSaveFinancialEntry(financialPayload);
-          if (result && result.error) throw result.error;
-          financialSynced = true;
-        } else if (client) {
-          const { error } = await client.from('vortex_financial').upsert([financialPayload]);
-          if (error) throw error;
-          financialSynced = true;
-        } else {
-          throw new Error('Conexão com a nuvem indisponível.');
+        if (typeof dbSaveCashFinancialEntry !== 'function') throw new Error('Rotina segura de movimentação do caixa indisponível.');
+        const result = await dbSaveCashFinancialEntry(financialPayload, currentCashData.shiftId, newMov);
+        if (result && result.error) throw result.error;
+        if (!result || !result.data || result.data.success !== true) {
+          throw new Error((result && result.data && result.data.message) || 'O banco não confirmou a movimentação.');
         }
-      } catch (error) {
-        syncErrorMessage = error.message || 'Falha ao sincronizar o lançamento financeiro.';
-        console.error('Erro ao salvar no Supabase:', error);
-      }
-
-      // Mantém o registro local para não perder a operação durante uma queda de conexão.
-      try {
-        let localList = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
-        localList.unshift({
-          id: entryId,
-          type: financialType,
-          description: descriptiveText,
-          value: numVal,
-          date: entryDate,
-          timestamp: new Date().toISOString()
-        });
-        localStorage.setItem('vortex_financial_entries', JSON.stringify(localList));
-      } catch(e) {}
-
-      if (client && currentCashData.shiftId) {
+        currentCashData.movements.push(newMov);
+        currentCashData.withdrawals = nextWithdrawals;
         try {
-          const { error } = await client
-            .from('cash_shifts')
-            .update({ movements: currentCashData.movements })
-            .eq('id', currentCashData.shiftId)
-            .eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-          if (error) throw error;
-          shiftSynced = true;
-        } catch (error) {
-          syncErrorMessage = syncErrorMessage || error.message || 'Falha ao atualizar o turno na nuvem.';
-          console.error('Erro ao atualizar movimentações no Supabase:', error);
-        }
-      } else {
-        syncErrorMessage = syncErrorMessage || 'Turno ainda não identificado na nuvem.';
-      }
-
-      saveCurrentCashState();
-      renderCashState();
-      closeMovementModal();
-      if (financialSynced && shiftSynced) {
-        showCustomAlert('Movimentação Sincronizada', 'A movimentação foi registrada no caixa e no financeiro, com confirmação da nuvem.', '✅');
-      } else {
-        showCustomAlert('Sincronização pendente', 'A movimentação ficou registrada neste aparelho, mas não foi possível confirmar todas as gravações na nuvem. ' + syncErrorMessage + ' Verifique antes de utilizar outro dispositivo.', '⚠️');
+          let localList = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
+          localList.unshift({ ...financialPayload, timestamp: new Date().toISOString() });
+          localStorage.setItem('vortex_financial_entries', JSON.stringify(localList));
+        } catch(e) {}
+        saveCurrentCashState();
+        renderCashState();
+        closeMovementModal();
+        showCustomAlert('Movimentação Sincronizada', 'A movimentação foi registrada no caixa e no financeiro em uma única operação confirmada pelo servidor.', '✅');
+      } catch (error) {
+        showCustomAlert('Movimentação não confirmada', error.message || 'O servidor não confirmou a operação. O caixa não foi alterado.', '⚠️');
       }
     }
 
@@ -786,80 +714,57 @@
     }
 
     async function finalizeCashClose() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('cash.close')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode fechar o caixa.', '🔒');
+        return;
+      }
       const countedStr = document.getElementById('countedCash').value;
       if (!countedStr) {
         showCustomAlert('Contagem Obrigatória', 'Informe o valor contado fisicamente no caixa.', '⚠️');
         return;
       }
-
+      if (!currentCashData.shiftId) {
+        showCustomAlert('Turno não identificado', 'Não foi possível localizar o turno na nuvem.', '⚠️');
+        return;
+      }
       const closedTimeIso = new Date().toISOString();
       const countedVal = parseCurrencyToFloat(countedStr);
       const closeReasonText = document.getElementById('closeReason').value;
-
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-      let cloudSynced = false;
-      let cloudErrorMessage = '';
-
-      if (client && currentCashData.shiftId) {
-        try {
-          const { data, error } = await client
-            .from('cash_shifts')
-            .update({
-              status: 'closed',
-              closed_at: closedTimeIso,
-              counted_cash: countedVal,
-              close_reason: closeReasonText,
-              movements: currentCashData.movements
-            })
-            .eq('id', currentCashData.shiftId)
-            .eq('store_id', window.VORTEX_ACTIVE_STORE_ID)
-            .select('id');
-
-          if (error) throw error;
-          if (!data || !data.length) throw new Error('O banco não confirmou o fechamento deste turno.');
-          cloudSynced = true;
-        } catch (error) {
-          cloudErrorMessage = error.message || 'Falha ao fechar o turno na nuvem.';
-          console.error('Erro ao fechar turno no Supabase:', error);
-        }
-      } else {
-        cloudErrorMessage = 'Turno ainda não identificado na nuvem.';
+      if (!client) {
+        showCustomAlert('Conexão indisponível', 'O fechamento exige confirmação do servidor. O caixa permanece aberto.', '⚠️');
+        return;
       }
+      try {
+        const { data, error } = await client.rpc('rpc_close_cash_shift', {
+          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+          p_shift_id: String(currentCashData.shiftId),
+          p_closed_at: closedTimeIso,
+          p_counted_cash: countedVal,
+          p_close_reason: closeReasonText
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) throw new Error((data && data.message) || 'O banco não confirmou o fechamento.');
 
-      let closedShifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
-      closedShifts.unshift({
-        shiftId: currentCashData.shiftId,
-        operator: currentCashData.operator,
-        openedAt: currentCashData.openedAt,
-        closedAt: closedTimeIso,
-        initialBalance: currentCashData.initialBalance,
-        countedCash: countedVal,
-        movements: currentCashData.movements
-      });
-      localStorage.setItem('vortex_closed_shifts', JSON.stringify(closedShifts));
-
-      currentCashData.isOpen = false;
-      saveCurrentCashState();
-      renderCashState();
-      loadClosedShiftsHistory();
-      closeCloseCashModal();
-      if (cloudSynced) {
+        let closedShifts = JSON.parse(localStorage.getItem('vortex_closed_shifts')) || [];
+        closedShifts.unshift({
+          shiftId: currentCashData.shiftId,
+          operator: currentCashData.operator,
+          openedAt: currentCashData.openedAt,
+          closedAt: closedTimeIso,
+          initialBalance: currentCashData.initialBalance,
+          countedCash: countedVal,
+          movements: currentCashData.movements
+        });
+        localStorage.setItem('vortex_closed_shifts', JSON.stringify(closedShifts));
+        currentCashData.isOpen = false;
+        saveCurrentCashState();
+        renderCashState();
+        loadClosedShiftsHistory();
+        closeCloseCashModal();
         showCustomAlert('Caixa Fechado', 'O turno foi encerrado e o fechamento foi confirmado na nuvem.', '🔒');
-      } else {
-        showCustomAlert('Fechamento local pendente', 'O caixa foi fechado neste aparelho, mas a nuvem não confirmou a operação. ' + cloudErrorMessage + ' Confira a conexão antes de usar outro dispositivo.', '⚠️');
-      }
-    }
-
-    function saveCurrentCashState() {
-      localStorage.setItem('vortex_current_cash', JSON.stringify(currentCashData));
-    }
-
-    function loadCurrentCashState() {
-      const saved = localStorage.getItem('vortex_current_cash');
-      if (saved) {
-        try {
-          currentCashData = JSON.parse(saved);
-        } catch(e) {}
+      } catch (error) {
+        showCustomAlert('Fechamento não confirmado', error.message || 'O servidor não confirmou o fechamento. O caixa permanece aberto.', '⚠️');
       }
     }
 

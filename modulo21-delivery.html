@@ -1381,7 +1381,7 @@
 
       deliveryOrdersFetchInFlight = true;
       try {
-        const { data, error } = await supabase.from('vortex_kds_orders').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
+        const { data, error } = await supabase.rpc('rpc_get_kds_orders');
         if (error) throw error;
         if (!Array.isArray(data)) return;
 

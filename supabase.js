@@ -13,7 +13,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   const nativeSet = proto.setItem;
   const nativeRemove = proto.removeItem;
   const nativeKey = proto.key;
-  const deviceKeys = new Set(['vortex_active_printer','vortex_printer_settings']);
+  const deviceKeys = new Set(['vortex_active_printer','vortex_printer_settings','vortex_store_logo']);
   const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
   const scopedKey = key => {
     if (!window.VORTEX_ACTIVE_STORE_ID) return null;
@@ -61,7 +61,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
       window.VORTEX_ACTIVE_STORE_ID = normalizedStore;
       window.VORTEX_ACTIVE_USER_ID = normalizedUser;
 
-      // Configuração de impressora é do aparelho/loja, não de cada funcionário.
+      // Configurações da impressora e logotipo local são compartilhados pelo aparelho dentro da loja, não por funcionário.
       const devicePrefix = 'vortex_store_' + normalizedStore + '::device::';
       const userPrefixForDevice = 'vortex_store_' + normalizedStore + '::' + normalizedUser + '::';
       for (const key of deviceKeys) {

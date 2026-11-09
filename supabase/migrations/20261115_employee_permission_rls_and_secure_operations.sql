@@ -552,7 +552,9 @@ BEGIN
 
   IF NOT FOUND THEN RAISE EXCEPTION 'Pedido não encontrado nesta loja.'; END IF;
 
-  IF p_status='finished' AND COALESCE(v_origin,'') ILIKE '%Mesa%' THEN
+  IF p_status='finished' AND COALESCE(v_origin,'') ILIKE '%Delivery%' THEN
+    RAISE EXCEPTION 'Pedidos de delivery precisam ser finalizados pelo fluxo de confirmação de entrega.';
+  ELSIF p_status='finished' AND COALESCE(v_origin,'') ILIKE '%Mesa%' THEN
     IF NOT public.vortex_user_has_permission(p_store_id,'tables.close') THEN
       RAISE EXCEPTION 'Seu perfil não pode fechar esta comanda.';
     END IF;

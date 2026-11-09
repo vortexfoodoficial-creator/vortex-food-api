@@ -2070,4 +2070,109 @@ REVOKE ALL ON FUNCTION public.rpc_get_stock_movements(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_stock_movements(uuid) TO authenticated;
 
 
+
+-- Documentos JSON são lidos por RPC para aplicar permissões por chave e ocultar custos.
+REVOKE SELECT ON TABLE public.vortex_store_documents FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.vortex_jsonb_remove_keys_recursive(p_value jsonb,p_keys text[])
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE
+  v_result jsonb;
+BEGIN
+  IF jsonb_typeof(p_value)='object' THEN
+    SELECT COALESCE(jsonb_object_agg(e.key,public.vortex_jsonb_remove_keys_recursive(e.value,p_keys)),'{}'::jsonb)
+    INTO v_result
+    FROM jsonb_each(p_value) AS e
+    WHERE NOT (e.key=ANY(p_keys));
+    RETURN v_result;
+  ELSIF jsonb_typeof(p_value)='array' THEN
+    SELECT COALESCE(jsonb_agg(public.vortex_jsonb_remove_keys_recursive(a.value,p_keys)),'[]'::jsonb)
+    INTO v_result
+    FROM jsonb_array_elements(p_value) AS a(value);
+    RETURN v_result;
+  END IF;
+  RETURN p_value;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.vortex_jsonb_remove_keys_recursive(jsonb,text[]) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_store_document(p_document_key text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_data jsonb;
+  v_allowed boolean := false;
+BEGIN
+  IF auth.uid() IS NULL OR p_document_key IS NULL OR length(p_document_key)>80 THEN
+    RAISE EXCEPTION 'Sessão ou documento inválido.';
+  END IF;
+
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+  IF v_store_id IS NULL THEN RAISE EXCEPTION 'Estabelecimento ativo não identificado.'; END IF;
+
+  v_allowed := CASE p_document_key
+    WHEN 'staff' THEN public.vortex_user_has_permission(v_store_id,'team.view')
+    WHEN 'couriers' THEN (
+      public.vortex_user_has_permission(v_store_id,'delivery.view')
+      OR public.vortex_user_has_permission(v_store_id,'delivery.manage')
+      OR public.vortex_user_has_permission(v_store_id,'delivery.manage_couriers')
+    )
+    WHEN 'catalog' THEN (
+      public.vortex_user_has_permission(v_store_id,'catalog.view')
+      OR public.vortex_user_has_permission(v_store_id,'delivery.manage')
+    )
+    WHEN 'coupons' THEN public.vortex_user_has_permission(v_store_id,'coupons.manage')
+    WHEN 'loyalty' THEN public.vortex_user_has_permission(v_store_id,'loyalty.manage')
+    WHEN 'customers' THEN public.vortex_user_has_permission(v_store_id,'crm.view')
+    WHEN 'table_settings' THEN public.vortex_user_has_permission(v_store_id,'tables.view')
+    WHEN 'settings' THEN public.vortex_user_has_permission(v_store_id,'settings.view')
+    WHEN 'recipes' THEN (
+      public.vortex_user_has_permission(v_store_id,'recipes.view')
+      OR public.vortex_user_has_permission(v_store_id,'reports.view')
+    )
+    WHEN 'purchases' THEN public.vortex_user_has_permission(v_store_id,'purchases.view')
+    WHEN 'accounts' THEN public.vortex_user_has_permission(v_store_id,'accounts.view')
+    WHEN 'printer' THEN public.vortex_user_has_permission(v_store_id,'printers.manage')
+    ELSE false
+  END;
+
+  IF NOT v_allowed THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar este documento.';
+  END IF;
+
+  SELECT data INTO v_data
+  FROM public.vortex_store_documents
+  WHERE store_id=v_store_id AND document_key=p_document_key;
+
+  IF v_data IS NULL THEN RETURN NULL; END IF;
+
+  IF p_document_key IN ('catalog','recipes')
+     AND NOT public.vortex_user_has_permission(v_store_id,'stock.view_costs') THEN
+    RETURN public.vortex_jsonb_remove_keys_recursive(
+      v_data,
+      ARRAY['cost','costPrice','custo','totalCost','unitCost','unit_cost','averageCost','average_cost']
+    );
+  END IF;
+
+  RETURN v_data;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_store_document(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_store_document(text) TO authenticated;
+
+
 COMMIT;

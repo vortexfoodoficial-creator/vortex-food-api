@@ -664,7 +664,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item cadastrado no estoque. Clique em "Novo Item" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${canViewCosts ? 7 : 6}" style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item cadastrado no estoque. Clique em "Novo Item" para começar.</td></tr>`;
       } else {
         filtered.forEach(item => {
           let qty = parseFloat(item.qty || 0);
@@ -881,9 +881,8 @@
       const canManage = permissions.includes('stock.manage_items');
       const canAdjust = permissions.includes('stock.adjust');
       const canViewCosts = permissions.includes('stock.view_costs');
-      document.getElementById('stockNewItemButton').style.display = canManage ? '' : 'none';
-      document.getElementById('stockEntryButton').style.display = canAdjust ? '' : 'none';
-      document.getElementById('stockExitButton').style.display = canAdjust ? '' : 'none';
+      document.querySelectorAll('button[onclick="openItemModal()"]').forEach(button => { button.style.display = canManage ? '' : 'none'; });
+      document.querySelectorAll('button[onclick^="openMovementModal"]').forEach(button => { button.style.display = canAdjust ? '' : 'none'; });
       const costGroup = document.getElementById('itemCost')?.parentElement;
       if (costGroup) costGroup.style.display = canViewCosts ? '' : 'none';
       const qtyInput = document.getElementById('itemQty');

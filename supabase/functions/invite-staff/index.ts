@@ -73,6 +73,9 @@ Deno.serve(async (req: Request) => {
     if (!["administrator", "manager", "attendant", "kitchen", "delivery"].includes(profileKey)) {
       return response(400, { error: "Perfil de acesso inválido. O perfil Proprietário não pode ser atribuído por convite." });
     }
+    if (profileKey === "administrator" && context.profile_key !== "owner") {
+      return response(403, { error: "Somente o proprietário pode convidar outro administrador." });
+    }
 
     const storeId = String(context.store_id);
 

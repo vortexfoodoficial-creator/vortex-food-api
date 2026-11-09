@@ -1797,6 +1797,7 @@ DECLARE
   v_can_all boolean;
   v_can_assigned boolean;
   v_can_own boolean;
+  v_can_sensitive boolean;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Autenticação necessária.';
@@ -1817,12 +1818,23 @@ BEGIN
   );
   v_can_assigned := public.vortex_user_has_permission(v_store_id,'delivery.view');
   v_can_own := public.vortex_user_has_permission(v_store_id,'pdv.view');
+  v_can_sensitive := (
+    public.vortex_user_has_permission(v_store_id,'tables.view')
+    OR public.vortex_user_has_permission(v_store_id,'pdv.history')
+    OR public.vortex_user_has_permission(v_store_id,'delivery.manage')
+  );
 
   IF NOT (v_can_all OR v_can_assigned OR v_can_own) THEN
     RAISE EXCEPTION 'Seu perfil não pode consultar pedidos.';
   END IF;
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(o)-'code'),'[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(
+    CASE
+      WHEN v_can_sensitive OR (v_can_assigned AND o.courier_member_id=auth.uid()) OR (v_can_own AND o.created_by=auth.uid())
+        THEN to_jsonb(o)-'code'
+      ELSE to_jsonb(o)-ARRAY['code','address','payment','cashgiven','change','phone','customer_phone','delivery_phone','delivery_address']
+    END
+  ),'[]'::jsonb)
   INTO v_result
   FROM public.vortex_kds_orders AS o
   WHERE o.store_id=v_store_id

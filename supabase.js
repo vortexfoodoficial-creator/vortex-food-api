@@ -83,7 +83,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
         const storage = window.localStorage;
         for (let i = storage.length - 1; i >= 0; i--) {
           const oldKey = nativeKey.call(storage, i);
-          if (!oldKey || !oldKey.startsWith(legacyPrefix) || oldKey.startsWith(userPrefix)) continue;
+          if (!oldKey || !oldKey.startsWith(legacyPrefix) || oldKey.startsWith(userPrefix) || oldKey.startsWith(devicePrefix)) continue;
           const suffix = oldKey.slice(legacyPrefix.length);
           const newKey = userPrefix + suffix;
           if (nativeGet.call(storage, newKey) === null) {

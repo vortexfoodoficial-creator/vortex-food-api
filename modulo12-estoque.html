@@ -229,9 +229,9 @@
       <div class="card-title">
         <span>📋 Gestão de Itens & Reposição</span>
         <div style="display:flex; gap:8px;">
-          <button class="btn-secondary" onclick="openMovementModal('entry')">➕ Entrada</button>
-          <button class="btn-secondary" onclick="openMovementModal('exit')">➖ Saída / Perda</button>
-          <button class="btn-action" onclick="openItemModal()">➕ Novo Item</button>
+          <button id="stockEntryButton" class="btn-secondary" onclick="openMovementModal('entry')">➕ Entrada</button>
+          <button id="stockExitButton" class="btn-secondary" onclick="openMovementModal('exit')">➖ Saída / Perda</button>
+          <button id="stockNewItemButton" class="btn-action" onclick="openItemModal()">➕ Novo Item</button>
         </div>
       </div>
 
@@ -622,7 +622,7 @@
           </tr>
         `;
 
-        let movs = getStockMovements().filter(m => m.type === 'loss' || m.type === 'waste');
+        let movs = getStockMovements().filter(m => m.type === 'loss' || m.type === 'waste' || m.type === 'exit');
 
         if (movs.length === 0) {
           tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">Nenhum registro de perda ou desperdício encontrado.</td></tr>`;
@@ -643,13 +643,15 @@
         return;
       }
 
+      const canViewCosts = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.view_costs') === true;
+      const canManageItems = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.manage_items') === true;
       thead.innerHTML = `
         <tr>
           <th>Item / Nome</th>
           <th>Categoria</th>
           <th>Qtd. Atual</th>
           <th>Mínimo</th>
-          <th>Custo Médio</th>
+          ${canViewCosts ? '<th>Custo Médio</th>' : ''}
           <th>Status</th>
           <th style="text-align:center;">Ações</th>
         </tr>
@@ -681,11 +683,10 @@
               <td>${escapeStockHtml(item.category)}</td>
               <td><strong>${qty.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeStockHtml(item.unit)}</strong></td>
               <td>${min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeStockHtml(item.unit)}</td>
-              <td>R$ ${(parseFloat(item.cost || 0)).toFixed(2).replace('.', ',')}</td>
+              ${canViewCosts ? `<td>R$ ${(parseFloat(item.cost || 0)).toFixed(2).replace('.', ',')}</td>` : ''}
               <td>${statusBadge}</td>
               <td style="text-align:center;">
-                <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="editStockItem('${item.id}')">✏️</button>
-                <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem; background:rgba(239, 68, 68, 0.2); color:var(--danger);" onclick="deleteStockItem('${item.id}')">🗑️</button>
+                ${canManageItems ? `<button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="editStockItem('${item.id}')">✏️</button><button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem; background:rgba(239, 68, 68, 0.2); color:var(--danger);" onclick="deleteStockItem('${item.id}')">🗑️</button>` : '<span style="font-size:.7rem;color:var(--text-muted);">Somente consulta</span>'}
               </td>
             </tr>
           `;
@@ -706,6 +707,7 @@
     }
 
     function openItemModal() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.manage_items')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar itens de estoque.', '🔒'); return; }
       document.getElementById('editItemId').value = '';
       document.getElementById('itemModalTitle').innerText = 'Cadastrar Novo Item';
       document.getElementById('itemName').value = '';
@@ -723,49 +725,39 @@
     }
 
     async function saveStockItem() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('stock.manage_items')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar itens de estoque.', '🔒'); return; }
       const id = document.getElementById('editItemId').value;
       const name = document.getElementById('itemName').value.trim();
       const category = document.getElementById('itemCategory').value;
       const unit = document.getElementById('itemUnit').value;
-      const qty = parseFloat(document.getElementById('itemQty').value) || 0;
-      const cost = parseFloat(document.getElementById('itemCost').value) || 0;
       const minStock = parseFloat(document.getElementById('itemMinStock').value) || 0;
       const barcode = document.getElementById('itemBarcode').value.trim();
-
-      if (!name) {
-        showNoticeModal('Atenção', 'Informe o nome do item.', '⚠️');
-        return;
+      if (!name) { showNoticeModal('Atenção', 'Informe o nome do item.', '⚠️'); return; }
+      const items = getStockItems();
+      const existing = id ? items.find(item => String(item.id) === String(id)) : null;
+      const canAdjust = permissions.includes('stock.adjust');
+      const canViewCosts = permissions.includes('stock.view_costs');
+      const qty = canAdjust ? (parseFloat(document.getElementById('itemQty').value) || 0) : (existing ? Number(existing.qty) || 0 : 0);
+      const cost = canViewCosts ? (parseFloat(document.getElementById('itemCost').value) || 0) : (existing ? Number(existing.cost) || 0 : 0);
+      const record = { id: id || ('st_' + Date.now()), name, category, unit, qty, cost, minStock, barcode };
+      const nextItems = existing ? items.map(item => String(item.id) === String(id) ? { ...item, ...record } : item) : [...items, record];
+      try {
+        if (typeof dbSaveStock !== 'function') throw new Error('Rotina segura de gravação do estoque indisponível.');
+        const result = await dbSaveStock(nextItems);
+        if (result?.error) throw result.error;
+        if (!result?.data?.success) throw new Error('O banco não confirmou o cadastro do item.');
+        localStorage.setItem('vortex_stock_items', JSON.stringify(nextItems));
+        await refreshStockFromCloud();
+        closeItemModal(); renderStockTable();
+        showNoticeModal('Salvo!', 'Item de estoque confirmado na nuvem.', '📦');
+      } catch (error) {
+        showNoticeModal('Salvamento não confirmado', error.message || 'O banco não confirmou a alteração. Os dados anteriores foram preservados.', '⚠️');
       }
-
-      let items = getStockItems();
-
-      if (id) {
-        let item = items.find(i => String(i.id) === String(id));
-        if (item) {
-          item.name = name;
-          item.category = category;
-          item.unit = unit;
-          item.qty = qty;
-          item.cost = cost;
-          item.minStock = minStock;
-          item.barcode = barcode;
-        }
-      } else {
-        items.push({
-          id: 'st_' + Date.now(),
-          name, category, unit, qty, cost, minStock, barcode
-        });
-      }
-
-      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
-      await syncStockToCloud();
-
-      closeItemModal();
-      renderStockTable();
-      showNoticeModal('Salvo!', 'Item de estoque cadastrado com sucesso.', '📦');
     }
 
     function editStockItem(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.manage_items')) return;
       let items = getStockItems();
       let item = items.find(i => String(i.id) === String(id));
       if (!item) return;
@@ -783,6 +775,7 @@
     }
 
     function deleteStockItem(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.manage_items')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir itens de estoque.', '🔒'); return; }
       document.getElementById('deleteTargetId').value = id;
       document.getElementById('confirmModal').classList.add('active');
     }
@@ -792,32 +785,18 @@
     }
 
     async function confirmDeleteStockItem() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.manage_items')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir itens de estoque.', '🔒'); return; }
       const id = document.getElementById('deleteTargetId').value;
-      closeConfirmModal();
-
-      let items = getStockItems();
-      items = items.filter(i => String(i.id) !== String(id));
-      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
-
-      let cloudDeleted = false;
       try {
-        if (typeof dbDeleteStockItem === 'function') {
-          const result = await dbDeleteStockItem(id);
-          if (result && result.error) throw result.error;
-          if (!result || !Array.isArray(result.data) || !result.data.length) {
-            throw new Error('O banco não confirmou a exclusão do item.');
-          }
-          cloudDeleted = true;
-        }
+        if (typeof dbDeleteStockItem !== 'function') throw new Error('Rotina segura de exclusão indisponível.');
+        const result = await dbDeleteStockItem(id);
+        if (result?.error) throw result.error;
+        if (!result?.data?.success) throw new Error('O banco não confirmou a exclusão do item.');
+        localStorage.setItem('vortex_stock_items', JSON.stringify(getStockItems().filter(item => String(item.id) !== String(id))));
+        closeConfirmModal(); await refreshStockFromCloud(); renderStockTable();
+        showNoticeModal('Removido', 'Item excluído e confirmado na nuvem.', '🗑️');
       } catch (error) {
-        console.error('Erro ao excluir item do estoque na nuvem:', error);
-      }
-
-      renderStockTable();
-      if (cloudDeleted) {
-        showNoticeModal('Removido', 'Item de estoque excluído deste estabelecimento e sincronizado com a nuvem.', '🗑️');
-      } else {
-        showNoticeModal('Exclusão local pendente', 'O item foi removido deste aparelho, mas a exclusão na nuvem não foi confirmada. Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+        closeConfirmModal(); showNoticeModal('Exclusão não confirmada', error.message || 'O item foi preservado.', '⚠️');
       }
     }
 
@@ -826,6 +805,7 @@
     }
 
     function openMovementModal(type) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.adjust')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode lançar entradas, saídas ou perdas de estoque.', '🔒'); return; }
       let items = getStockItems();
       const select = document.getElementById('movItemId');
       select.innerHTML = '';
@@ -851,60 +831,27 @@
     }
 
     async function executeMovement() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('stock.adjust')) { showNoticeModal('Acesso restrito', 'Seu perfil não pode lançar movimentações de estoque.', '🔒'); return; }
       const movType = document.getElementById('movType').value;
       const itemId = document.getElementById('movItemId').value;
       const qty = parseFloat(document.getElementById('movQty').value) || 0;
       const unitCost = parseFloat(document.getElementById('movUnitCost').value) || 0;
       const reason = document.getElementById('movReason').value.trim();
-
-      if (qty <= 0) {
-        showNoticeModal('Atenção', 'Informe uma quantidade válida.', '⚠️');
-        return;
-      }
-
-      let items = getStockItems();
-      let item = items.find(i => String(i.id) === String(itemId));
+      if (qty <= 0 || !reason) { showNoticeModal('Atenção', 'Informe uma quantidade válida e a justificativa da movimentação.', '⚠️'); return; }
+      const item = getStockItems().find(entry => String(entry.id) === String(itemId));
       if (!item) return;
-
-      const currentQty = Number(item.qty) || 0;
-      const currentCost = Number(item.cost) || 0;
-
-      if (movType === 'entry') {
-        if (unitCost > 0) {
-          const currentTotal = currentQty * currentCost;
-          const newTotal = qty * unitCost;
-          const totalQty = currentQty + qty;
-          item.cost = totalQty > 0 ? (currentTotal + newTotal) / totalQty : unitCost;
-        }
-        item.qty = currentQty + qty;
-      } else {
-        item.qty = Math.max(0, currentQty - qty);
-      }
-
-      let movs = getStockMovements();
       const movementId = 'mov_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      movs.unshift({
-        id: movementId,
-        created_at: new Date().toISOString(),
-        date: new Date().toLocaleString('pt-BR'),
-        item_id: item.id,
-        item_name: item.name,
-        type: movType,
-        qty: qty,
-        reason: reason
-      });
-      localStorage.setItem('vortex_stock_movements', JSON.stringify(movs));
-
-      localStorage.setItem('vortex_stock_items', JSON.stringify(items));
-      const stockSynced = await syncStockToCloud();
-      const historySynced = await syncStockMovementsToCloud();
-
-      closeMovementModal();
-      renderStockTable();
-      if (stockSynced && historySynced) {
-        showNoticeModal('Movimentação Concluída', `Estoque de ${item.name} atualizado e sincronizado com a nuvem.`, '⚡');
-      } else {
-        showNoticeModal('Sincronização pendente', 'A movimentação foi registrada neste aparelho, mas não foi possível confirmar a sincronização com a nuvem. Verifique a conexão antes de usar outro dispositivo.', '⚠️');
+      try {
+        if (typeof dbAdjustStockItem !== 'function') throw new Error('Rotina segura de ajuste indisponível.');
+        const result = await dbAdjustStockItem(itemId, movType, qty, unitCost, reason, 'stock_' + movementId);
+        if (result?.error) throw result.error;
+        if (!result?.data?.success) throw new Error('O banco não confirmou a movimentação.');
+        const [stockUpdated, movementsUpdated] = await Promise.all([refreshStockFromCloud(), refreshStockMovementsFromCloud()]);
+        closeMovementModal(); renderStockTable();
+        if (stockUpdated && movementsUpdated) showNoticeModal('Movimentação concluída', `Estoque de ${item.name} atualizado e confirmado na nuvem.`, '⚡');
+        else showNoticeModal('Movimentação registrada', 'O servidor confirmou a alteração, mas a atualização da tela ficou pendente. Atualize a página para consultar os dados.', '⚠️');
+      } catch (error) {
+        showNoticeModal('Movimentação não confirmada', error.message || 'O banco não confirmou a alteração. O estoque foi preservado.', '⚠️');
       }
     }
 
@@ -924,12 +871,28 @@
     }, 1000);
 
     window.addEventListener('load', async function() {
+      if (window.VortexAuth && typeof window.VortexAuth.getCurrentStoreContext === 'function') {
+        const context = await window.VortexAuth.getCurrentStoreContext();
+        if (context.error) { showNoticeModal('Acesso não validado', context.error.message || 'Não foi possível validar sua conta.', '🔒'); return; }
+      }
       loadStoreSettings();
-      renderStockTable();
-      const refreshed = await refreshStockFromCloud();
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      const canManage = permissions.includes('stock.manage_items');
+      const canAdjust = permissions.includes('stock.adjust');
+      const canViewCosts = permissions.includes('stock.view_costs');
+      document.getElementById('stockNewItemButton').style.display = canManage ? '' : 'none';
+      document.getElementById('stockEntryButton').style.display = canAdjust ? '' : 'none';
+      document.getElementById('stockExitButton').style.display = canAdjust ? '' : 'none';
+      const costGroup = document.getElementById('itemCost')?.parentElement;
+      if (costGroup) costGroup.style.display = canViewCosts ? '' : 'none';
+      const qtyInput = document.getElementById('itemQty');
+      if (qtyInput) qtyInput.disabled = !canAdjust;
+      await refreshStockFromCloud();
       await refreshStockMovementsFromCloud();
-      if (refreshed) renderStockTable();
-    });
+      renderStockTable();
+      const suggestCost = document.getElementById('statSuggestCost')?.parentElement?.parentElement;
+      if (suggestCost) suggestCost.style.display = canViewCosts ? '' : 'none';
+    });;
   </script>
 </body>
 </html>

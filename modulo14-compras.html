@@ -525,8 +525,12 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
-    function saveCompra() {
+    async function saveCompra() {
       const editIdx = document.getElementById('editIndexId').value;
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('purchases.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar pedidos de compra.', '🔒');
+        return;
+      }
       const item = document.getElementById('itemInput').value.trim();
       const qtd = document.getElementById('qtdInput').value.trim();
       const supplier = document.getElementById('supplierInput').value.trim();
@@ -543,21 +547,29 @@
       const currentDate = new Date().toLocaleDateString('pt-BR');
       const obj = { date: currentDate, item, qtd, supplier, phone, price, notes, status };
 
-      if (editIdx === '') {
-        comprasData.push(obj);
-      } else {
+      const previous = JSON.stringify(comprasData);
+      if (editIdx === '') comprasData.push(obj);
+      else {
         obj.date = comprasData[editIdx].date;
         comprasData[editIdx] = obj;
       }
-
+      if (!(await syncSupabaseCompras())) {
+        comprasData = JSON.parse(previous);
+        localStorage.setItem('vortex_compras_data', previous);
+        renderComprasTable();
+        return;
+      }
       localStorage.setItem('vortex_compras_data', JSON.stringify(comprasData));
-      syncSupabaseCompras();
       closeCompraModal();
       renderComprasTable();
-      showCustomAlert('Sucesso!', 'Pedido de compra salvo com sucesso.', '🎉');
+      showCustomAlert('Sucesso!', 'Pedido de compra salvo e confirmado na nuvem.', '🎉');
     }
 
     function editCompra(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('purchases.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode editar pedidos de compra.', '🔒');
+        return;
+      }
       const c = comprasData[idx];
       document.getElementById('editIndexId').value = idx;
       document.getElementById('modalTitleText').innerText = 'Editar Pedido de Compra';
@@ -572,6 +584,10 @@
     }
 
     function askDeleteCompra(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('purchases.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir pedidos de compra.', '🔒');
+        return;
+      }
       pendingDeleteIndex = idx;
       document.getElementById('confirmDeleteModal').classList.add('active');
     }
@@ -581,25 +597,39 @@
       document.getElementById('confirmDeleteModal').classList.remove('active');
     }
 
-    function executeDeleteCompra() {
+    async function executeDeleteCompra() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('purchases.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir pedidos de compra.', '🔒');
+        return;
+      }
       if (pendingDeleteIndex !== null) {
+        const previous = JSON.stringify(comprasData);
         comprasData.splice(pendingDeleteIndex, 1);
+        if (!(await syncSupabaseCompras())) {
+          comprasData = JSON.parse(previous);
+          localStorage.setItem('vortex_compras_data', previous);
+          renderComprasTable();
+          return;
+        }
         localStorage.setItem('vortex_compras_data', JSON.stringify(comprasData));
-        syncSupabaseCompras();
         closeConfirmDelete();
         renderComprasTable();
-        showCustomAlert('Excluído', 'O pedido de compra foi removido.', '🗑️');
+        showCustomAlert('Excluído', 'O pedido de compra foi removido e confirmado na nuvem.', '🗑️');
       }
     }
 
     async function syncSupabaseCompras() {
-      if (typeof dbSaveStoreDocument === 'function') {
-        try {
-          const result = await dbSaveStoreDocument('purchases', comprasData);
-          if (result && result.error) throw result.error;
-        } catch (err) {
-          console.warn('Aviso Supabase Compras:', err);
-        }
+      if (typeof dbSaveStoreDocument !== 'function') {
+        showCustomAlert('Sincronização indisponível', 'Não foi possível salvar os pedidos de compra no servidor.', '⚠️');
+        return false;
+      }
+      try {
+        const result = await dbSaveStoreDocument('purchases', comprasData);
+        if (result?.error || !result?.data?.success) throw (result?.error || new Error('O servidor não confirmou a gravação.'));
+        return true;
+      } catch (err) {
+        showCustomAlert('Alteração não confirmada', err.message || 'O servidor não confirmou a alteração. Os dados anteriores foram restaurados.', '⚠️');
+        return false;
       }
     }
 

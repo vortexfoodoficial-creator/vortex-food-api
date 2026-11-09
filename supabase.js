@@ -988,6 +988,38 @@ async function vortexGetCurrentStoreContext() {
     store_name: store.name || ''
   };
 
+  // Se as permissões mudaram desde a última sessão, remove apenas caches de
+  // módulos que esta conta deixou de poder consultar. Os dados na nuvem não são alterados.
+  try {
+    const currentPermissions = new Set(Array.isArray(permissionContext.permissions) ? permissionContext.permissions : []);
+    const previousSignature = localStorage.getItem('vortex_permission_cache_signature');
+    const currentSignature = JSON.stringify(Array.from(currentPermissions).sort());
+    if (previousSignature && previousSignature !== currentSignature) {
+      const hasAny = keys => keys.some(key => currentPermissions.has(key));
+      const clearKeys = keys => keys.forEach(key => localStorage.removeItem(key));
+      if (!hasAny(['pdv.history','reports.view','finance.view'])) clearKeys(['vortex_sales_history']);
+      if (!hasAny(['kds.view','tables.view','delivery.manage','pdv.history'])) clearKeys(['vortex_kds_orders']);
+      if (!currentPermissions.has('stock.view')) clearKeys(['vortex_stock_items','vortex_stock_movements']);
+      if (!hasAny(['finance.view','reports.financial'])) clearKeys(['vortex_financial_entries','vortex_bank_accounts']);
+      if (!currentPermissions.has('cash.view')) clearKeys(['vortex_closed_shifts','vortex_current_cash']);
+      if (!currentPermissions.has('team.view')) clearKeys(['vortex_team_members','vortex_team_sync_pending']);
+      if (!hasAny(['delivery.manage','delivery.manage_couriers'])) clearKeys(['vortex_couriers','vortex_courier_history']);
+      if (!hasAny(['integrations.view','integrations.manage'])) clearKeys(['vortex_integrations_data']);
+      if (!hasAny(['recipes.view','reports.view'])) clearKeys(['vortex_recipes_catalog','vortex_fichas_tecnicas']);
+      if (!hasAny(['purchases.view','purchases.manage'])) clearKeys(['vortex_compras_data']);
+      if (!hasAny(['accounts.view','accounts.manage'])) clearKeys(['vortex_contas_data']);
+      if (!hasAny(['crm.view','crm.manage'])) clearKeys(['vortex_customers_catalog']);
+      if (!currentPermissions.has('coupons.manage')) clearKeys(['vortex_coupons_catalog']);
+      if (!currentPermissions.has('loyalty.manage')) clearKeys(['vortex_loyalty_settings','vortex_clients_loyalty','vortex_loyalty_rewards']);
+      if (!hasAny(['catalog.view','delivery.manage'])) clearKeys(['vortex_products_catalog','vortex_groups_catalog','vortex_complements_catalog','vortex_cardapio_produtos','vortex_trash_catalog','vortex_synced_catalog']);
+      if (!currentPermissions.has('tables.view')) clearKeys(['vortex_table_carts','vortex_total_tables','vortex_qr_enabled']);
+      if (!hasAny(['fiscal.view','fiscal.manage'])) clearKeys(['vortex_fiscal_config','vortex_invoices_list']);
+    }
+    localStorage.setItem('vortex_permission_cache_signature', currentSignature);
+  } catch (cachePolicyError) {
+    console.warn('Não foi possível atualizar a política de cache das permissões:', cachePolicyError);
+  }
+
   // Remove códigos antigos de Delivery do cache da conta atual.
   try {
     const cachedOrders = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');

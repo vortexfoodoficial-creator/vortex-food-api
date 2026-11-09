@@ -76,6 +76,9 @@ Deno.serve(async (req: Request) => {
     if (profileKey === "administrator" && context.profile_key !== "owner") {
       return response(403, { error: "Somente o proprietário pode convidar outro administrador." });
     }
+    if (profileKey === "manager" && !["owner", "administrator"].includes(String(context.profile_key))) {
+      return response(403, { error: "Somente o proprietário ou administrador pode convidar outro gerente." });
+    }
 
     const storeId = String(context.store_id);
 

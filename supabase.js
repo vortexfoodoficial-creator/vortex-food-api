@@ -708,12 +708,11 @@ async function dbSaveStoreDocument(documentKey, documentData) {
   const storeId = await vortexGetCurrentStoreId();
   if (!supabase) return { error: new Error('Supabase não inicializado') };
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
-  return await supabase.from('vortex_store_documents').upsert([{
-    store_id: storeId,
-    document_key: String(documentKey),
-    data: documentData,
-    updated_at: new Date().toISOString()
-  }], { onConflict: 'store_id,document_key' });
+  const { data, error } = await supabase.rpc('rpc_save_store_document', {
+    p_document_key: String(documentKey),
+    p_data: documentData
+  });
+  return { data, error };
 }
 
 async function dbFetchStoreDocument(documentKey) {

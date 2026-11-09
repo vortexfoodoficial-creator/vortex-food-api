@@ -82,12 +82,12 @@ Deno.serve(async (req: Request) => {
     const storeId = String(context.store_id);
     const { data: target, error: targetError } = await admin
       .from("vortex_store_members")
-      .select("store_id,user_id,role,profile_key,status,display_name")
+      .select("store_id,user_id,role,profile_key,status,display_name,invitation_status")
       .eq("store_id", storeId)
       .eq("user_id", targetUserId)
       .maybeSingle();
 
-    const targetIsPendingInvite = target?.status === "inactive" && (target as Record<string, unknown>).invitation_status === "pending";
+    const targetIsPendingInvite = target?.status === "inactive" && target.invitation_status === "pending";
     if (targetError || !target || (target.status !== "active" && !targetIsPendingInvite)) {
       return response(404, { error: "Funcionário ativo ou convite pendente não encontrado nesta loja." });
     }

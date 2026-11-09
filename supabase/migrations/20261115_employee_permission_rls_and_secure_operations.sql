@@ -69,6 +69,7 @@ DECLARE
   v_new jsonb;
   v_old jsonb;
   v_actor jsonb;
+  v_display_name text;
 BEGIN
   v_new := to_jsonb(NEW);
   v_actor := COALESCE(to_jsonb(auth.uid()),'null'::jsonb);
@@ -85,6 +86,17 @@ BEGIN
   END IF;
   IF TG_OP='INSERT' AND v_new ? 'opened_by' THEN
     v_new := jsonb_set(v_new,'{opened_by}',v_actor,true);
+  END IF;
+  IF TG_OP='INSERT' AND v_new ? 'operator' AND auth.uid() IS NOT NULL THEN
+    SELECT COALESCE(NULLIF(m.display_name,''),u.email,'Funcionário')
+      INTO v_display_name
+    FROM public.vortex_store_members AS m
+    LEFT JOIN auth.users AS u ON u.id=m.user_id
+    WHERE m.user_id=auth.uid() AND m.store_id=(v_new->>'store_id')::uuid AND m.status='active'
+    LIMIT 1;
+    IF v_display_name IS NOT NULL THEN
+      v_new := jsonb_set(v_new,'{operator}',to_jsonb(v_display_name),true);
+    END IF;
   END IF;
   IF TG_OP='UPDATE' AND v_new ? 'closed_by'
      AND v_new->>'status'='closed'

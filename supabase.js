@@ -1332,9 +1332,12 @@ function vortexRenderEmployeeChrome(context) {
   }
 }
 
-function vortexShowLockScreen() {
+function vortexShowLockScreen(fromOtherTab = false) {
   if (document.getElementById('vortexLockOverlay')) return;
   const context = window.VORTEX_AUTH_CONTEXT || {};
+  if (!fromOtherTab) {
+    try { localStorage.setItem('vortex_session_locked', '1'); } catch (error) {}
+  }
   const overlay = document.createElement('div');
   overlay.id = 'vortexLockOverlay';
   overlay.innerHTML = `
@@ -1378,6 +1381,7 @@ function vortexShowLockScreen() {
     }
     const previousSignature = JSON.stringify([...(context.permissions || [])].sort());
     const currentSignature = JSON.stringify([...(freshContext.permissions || [])].sort());
+    try { localStorage.removeItem('vortex_session_locked'); } catch (error) {}
     if (previousSignature !== currentSignature || context.profile_key !== freshContext.member?.profile_key) {
       window.location.reload();
       return;
@@ -1392,6 +1396,7 @@ function vortexShowLockScreen() {
 }
 
 async function vortexSwitchUser() {
+  try { localStorage.removeItem('vortex_session_locked'); } catch (error) {}
   const result = await vortexSignOut();
   if (result.error) {
     window.alert('Não foi possível encerrar a sessão. Tente novamente.');
@@ -1476,10 +1481,25 @@ function vortexRequireAuthenticatedPage() {
         }
         document.documentElement.style.visibility = '';
         vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
+        if (localStorage.getItem('vortex_session_locked') === '1') vortexShowLockScreen(true);
       });
     })
     .catch(redirectToLogin);
 }
+
+// Mantém o bloqueio sincronizado entre abas abertas no mesmo dispositivo.
+window.addEventListener('storage', function(event) {
+  if (!event.key || !event.key.includes('vortex_session_locked')) return;
+  if (event.newValue === '1') {
+    vortexShowLockScreen(true);
+  } else if (event.newValue === null) {
+    const overlay = document.getElementById('vortexLockOverlay');
+    if (overlay) {
+      overlay.remove();
+      window.location.reload();
+    }
+  }
+});
 
 // Identidade central do estabelecimento: o mesmo nome é aplicado em todos os módulos.
 let vortexSidebarCanonicalStoreName = '';

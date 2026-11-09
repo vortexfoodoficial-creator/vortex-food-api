@@ -1724,15 +1724,15 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) TO authenticated;
 
-REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
-REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_movements FROM authenticated;
+REVOKE ALL ON TABLE public.vortex_stock_items FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.vortex_stock_movements FROM PUBLIC, anon, authenticated;
 
 
 
 -- Credenciais de integração nunca são retornadas por SELECT direto.
 -- A RPC entrega apenas o status para quem consulta e segredos somente para quem gerencia.
 DROP POLICY IF EXISTS vortex_integrations_permission_select ON public.vortex_integrations;
-REVOKE SELECT ON TABLE public.vortex_integrations FROM authenticated;
+REVOKE SELECT ON TABLE public.vortex_integrations FROM PUBLIC, anon, authenticated;
 GRANT SELECT (store_id,platform) ON TABLE public.vortex_integrations TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_integrations()
@@ -1782,7 +1782,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_integrations() TO authenticated;
 -- Pedidos KDS: o código de confirmação de entrega não pode ser lido diretamente
 -- pelo navegador. A RPC aplica o mesmo escopo de loja e remove sempre a coluna code.
 DROP POLICY IF EXISTS vortex_kds_orders_permission_select ON public.vortex_kds_orders;
-REVOKE SELECT ON TABLE public.vortex_kds_orders FROM authenticated;
+REVOKE SELECT, UPDATE, DELETE ON TABLE public.vortex_kds_orders FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_kds_orders()
 RETURNS jsonb
@@ -2101,7 +2101,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_stock_movements(uuid) TO authenticated;
 
 
 -- Documentos JSON são lidos por RPC para aplicar permissões por chave e ocultar custos.
-REVOKE SELECT ON TABLE public.vortex_store_documents FROM authenticated;
+REVOKE ALL ON TABLE public.vortex_store_documents FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.vortex_jsonb_remove_keys_recursive(p_value jsonb,p_keys text[])
 RETURNS jsonb
@@ -2206,7 +2206,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_store_document(text) TO authenticated;
 
 
 -- O navegador recebe apenas o nome e o identificador da própria loja.
-REVOKE SELECT ON TABLE public.vortex_stores FROM authenticated;
+REVOKE ALL ON TABLE public.vortex_stores FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_my_store_context()
 RETURNS jsonb

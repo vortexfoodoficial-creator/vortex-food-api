@@ -508,7 +508,12 @@
     }
 
     function openOpenCashModal() {
-      document.getElementById('openOperatorName').value = '';
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('cash.open')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode abrir o caixa.', '🔒');
+        return;
+      }
+      const context = window.VORTEX_AUTH_CONTEXT || {};
+      document.getElementById('openOperatorName').value = context.display_name || context.email || 'Funcionário';
       document.getElementById('openInitialBalance').value = '';
       document.getElementById('openCashModal').classList.add('active');
     }
@@ -518,74 +523,58 @@
     }
 
     async function confirmOpenCash() {
-      const op = document.getElementById('openOperatorName').value.trim();
-      const balStr = document.getElementById('openInitialBalance').value;
-      const bal = parseCurrencyToFloat(balStr);
-
-      if (!op) {
-        showCustomAlert('Nome Obrigatório', 'Informe o nome do operador responsável pelo turno.', '⚠️');
+      const context = window.VORTEX_AUTH_CONTEXT || {};
+      if (!context.user_id || !context.store_id || !context.permissions?.includes('cash.open')) {
+        showCustomAlert('Acesso restrito', 'Sua sessão não está autorizada a abrir o caixa.', '🔒');
         return;
       }
-
+      const op = context.display_name || context.email || 'Funcionário';
+      const balStr = document.getElementById('openInitialBalance').value;
+      const bal = parseCurrencyToFloat(balStr);
       const openedTimeIso = new Date().toISOString();
       const initialMovement = {
         time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
         type: 'SALDO INICIAL',
         reason: 'Abertura de caixa com troco inicial',
         val: bal,
-        operator: op
-      };
-
-      currentCashData = {
-        shiftId: 'shift_' + Date.now(),
-        isOpen: true,
         operator: op,
-        openedAt: openedTimeIso,
-        initialBalance: bal,
-        salesCash: 0,
-        salesDigital: 0,
-        withdrawals: 0,
-        movements: [initialMovement]
+        user_id: context.user_id
       };
-
       const client = typeof getSupabase === 'function' ? getSupabase() : window.supabaseClient;
-      let cloudSynced = false;
-      let cloudErrorMessage = '';
-
-      if (client) {
-        try {
-          const { data, error } = await client
-            .from('cash_shifts')
-            .insert([{
-              id: currentCashData.shiftId,
-              store_id: window.VORTEX_ACTIVE_STORE_ID,
-              operator: op,
-              initial_balance: bal,
-              opened_at: openedTimeIso,
-              status: 'open',
-              movements: [initialMovement]
-            }])
-            .select();
-
-          if (error) throw error;
-          if (!data || !data.length) throw new Error('O banco não confirmou a abertura do turno.');
-          currentCashData.shiftId = data[0].id;
-          cloudSynced = true;
-        } catch (error) {
-          cloudErrorMessage = error.message || 'Falha ao salvar o turno na nuvem.';
-          console.error('Erro ao salvar abertura no Supabase:', error);
-        }
-      } else {
-        cloudErrorMessage = 'Conexão com a nuvem indisponível.';
+      if (!client) {
+        showCustomAlert('Conexão indisponível', 'A abertura exige confirmação do servidor. O caixa não foi alterado.', '⚠️');
+        return;
       }
-
-      saveCurrentCashState();
-      renderCashState();
-      closeOpenCashModal();
-      if (cloudSynced) {
-        showCustomAlert('Caixa Aberto', `Turno de ${op} aberto e sincronizado com a nuvem.`, '🔓');
-      } else {
-        showCustomAlert('Caixa aberto neste aparelho', 'O turno foi aberto localmente, mas a nuvem não confirmou a gravação. ' + cloudErrorMessage + ' Não utilize outro dispositivo até sincronizar.', '⚠️');
+      const shiftId = 'shift_' + Date.now();
+      try {
+        const { data, error } = await client.from('cash_shifts').insert([{
+          id: shiftId,
+          store_id: context.store_id,
+          operator: op,
+          initial_balance: bal,
+          opened_at: openedTimeIso,
+          status: 'open',
+          movements: [initialMovement]
+        }]).select();
+        if (error) throw error;
+        if (!data || !data.length) throw new Error('O banco não confirmou a abertura do turno.');
+        currentCashData = {
+          shiftId: data[0].id,
+          isOpen: true,
+          operator: op,
+          openedAt: openedTimeIso,
+          initialBalance: bal,
+          salesCash: 0,
+          salesDigital: 0,
+          withdrawals: 0,
+          movements: [initialMovement]
+        };
+        saveCurrentCashState();
+        renderCashState();
+        closeOpenCashModal();
+        showCustomAlert('Caixa Aberto', `Turno de ${op} aberto e confirmado na nuvem.`, '🔓');
+      } catch (error) {
+        showCustomAlert('Abertura não confirmada', error.message || 'O servidor não confirmou a abertura. O caixa permaneceu fechado.', '⚠️');
       }
     }
 

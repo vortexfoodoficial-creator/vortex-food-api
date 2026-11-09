@@ -213,6 +213,26 @@ BEGIN
     END LOOP;
 
     EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (%s)',
+      v_table||'_permission_select',v_table,
+      CASE v_table
+        WHEN 'cash_shifts' THEN 'public.vortex_user_has_permission(store_id,''cash.view'')'
+        WHEN 'vortex_financial' THEN 'public.vortex_user_has_permission(store_id,''finance.view'')'
+        WHEN 'vortex_integrations' THEN 'public.vortex_user_has_permission(store_id,''integrations.manage'')'
+        WHEN 'vortex_kds' THEN 'public.vortex_user_has_permission(store_id,''kds.view'')'
+        WHEN 'vortex_kds_orders' THEN '((public.vortex_user_has_permission(store_id,''kds.view'') OR public.vortex_user_has_permission(store_id,''delivery.view'') OR public.vortex_user_has_permission(store_id,''pdv.history'') OR public.vortex_user_has_permission(store_id,''tables.view'')) AND (NOT EXISTS (SELECT 1 FROM public.vortex_store_members m WHERE m.store_id=vortex_kds_orders.store_id AND m.user_id=auth.uid() AND m.status=''active'' AND m.profile_key=''delivery'') OR courier_member_id=auth.uid()))'
+        WHEN 'vortex_sales' THEN 'public.vortex_user_has_permission(store_id,''pdv.history'')'
+        WHEN 'vortex_sales_history' THEN 'public.vortex_user_has_permission(store_id,''pdv.history'') OR public.vortex_user_has_permission(store_id,''finance.view'') OR public.vortex_user_has_permission(store_id,''reports.financial'')'
+        WHEN 'vortex_stock_items' THEN 'public.vortex_user_has_permission(store_id,''stock.view'') OR public.vortex_user_has_permission(store_id,''stock.manage_items'') OR public.vortex_user_has_permission(store_id,''stock.adjust'')'
+        WHEN 'vortex_stock_movements' THEN 'public.vortex_user_has_permission(store_id,''stock.view'') OR public.vortex_user_has_permission(store_id,''stock.view_costs'')'
+        WHEN 'vortex_store_settings' THEN 'public.vortex_user_has_permission(store_id,''settings.view'') OR public.vortex_user_has_permission(store_id,''settings.manage'')'
+        WHEN 'vortex_public_delivery_settings' THEN 'public.vortex_user_has_permission(store_id,''delivery.view'') OR public.vortex_user_has_permission(store_id,''delivery.manage'')'
+        WHEN 'vortex_public_store_settings' THEN 'public.vortex_user_has_permission(store_id,''tables.view'') OR public.vortex_user_has_permission(store_id,''tables.manage_qr'')'
+        WHEN 'vortex_public_table_requests' THEN 'public.vortex_user_has_permission(store_id,''tables.attend_requests'')'
+      END
+    );
+
+    EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (%s)',
       v_table||'_permission_insert',v_table,
       CASE v_table

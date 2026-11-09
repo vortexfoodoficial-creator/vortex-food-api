@@ -1724,7 +1724,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) TO authenticated;
 
-REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
 
 
 COMMIT;

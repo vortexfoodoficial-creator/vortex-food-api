@@ -1883,11 +1883,15 @@ DECLARE
   v_product_id text;
   v_allowed boolean := false;
   v_result jsonb;
+  v_save_data jsonb;
+  v_sanitized_products jsonb;
+  v_cost_key text;
   v_old_ids jsonb;
   v_new_ids jsonb;
   v_old_non_price jsonb;
   v_new_non_price jsonb;
 BEGIN
+  v_save_data := p_data;
   IF auth.uid() IS NULL OR p_document_key IS NULL OR length(p_document_key)>80
      OR p_data IS NULL OR jsonb_typeof(p_data) NOT IN ('object','array') THEN
     RAISE EXCEPTION 'Documento inválido ou sessão não autenticada.';
@@ -1929,6 +1933,31 @@ BEGIN
     v_new_groups := COALESCE(p_data->'groups','[]'::jsonb);
     v_old_complements := COALESCE(v_old_data->'complements','[]'::jsonb);
     v_new_complements := COALESCE(p_data->'complements','[]'::jsonb);
+
+    -- Usuários sem permissão de custo nunca podem apagar ou sobrescrever os custos
+    -- que foram mascarados na leitura do catálogo.
+    IF NOT public.vortex_user_has_permission(v_store_id,'stock.view_costs') THEN
+      v_sanitized_products := '[]'::jsonb;
+      FOR v_product IN SELECT value FROM jsonb_array_elements(v_new_products)
+      LOOP
+        v_product_id := COALESCE(v_product->>'id',v_product->>'productId',v_product->>'name');
+        SELECT value INTO v_old_product
+        FROM jsonb_array_elements(v_old_products)
+        WHERE COALESCE(value->>'id',value->>'productId',value->>'name')=v_product_id
+        LIMIT 1;
+        FOREACH v_cost_key IN ARRAY ARRAY['cost','costPrice','custo','totalCost','unitCost','unit_cost','averageCost','average_cost']
+        LOOP
+          IF FOUND AND v_old_product ? v_cost_key THEN
+            v_product := jsonb_set(v_product,ARRAY[v_cost_key],v_old_product->v_cost_key,true);
+          ELSE
+            v_product := v_product-v_cost_key;
+          END IF;
+        END LOOP;
+        v_sanitized_products := v_sanitized_products || jsonb_build_array(v_product);
+      END LOOP;
+      v_new_products := v_sanitized_products;
+      v_save_data := jsonb_set(v_save_data,'{products}',v_new_products,true);
+    END IF;
 
     IF NOT v_can_categories AND v_old_groups IS DISTINCT FROM v_new_groups THEN
       RAISE EXCEPTION 'Seu perfil não pode alterar categorias ou grupos.';
@@ -2013,7 +2042,7 @@ BEGIN
       WHEN 'customers' THEN public.vortex_user_has_permission(v_store_id,'crm.manage')
       WHEN 'table_settings' THEN public.vortex_user_has_permission(v_store_id,'tables.manage_qr')
       WHEN 'settings' THEN (public.vortex_user_has_permission(v_store_id,'settings.view') AND public.vortex_user_has_permission(v_store_id,'settings.manage'))
-      WHEN 'recipes' THEN (public.vortex_user_has_permission(v_store_id,'recipes.view') AND public.vortex_user_has_permission(v_store_id,'recipes.manage'))
+      WHEN 'recipes' THEN (public.vortex_user_has_permission(v_store_id,'recipes.view') AND public.vortex_user_has_permission(v_store_id,'recipes.manage') AND public.vortex_user_has_permission(v_store_id,'stock.view_costs'))
       WHEN 'purchases' THEN (public.vortex_user_has_permission(v_store_id,'purchases.view') AND public.vortex_user_has_permission(v_store_id,'purchases.manage'))
       WHEN 'accounts' THEN (public.vortex_user_has_permission(v_store_id,'accounts.view') AND public.vortex_user_has_permission(v_store_id,'accounts.manage'))
       WHEN 'printer' THEN public.vortex_user_has_permission(v_store_id,'printers.manage')
@@ -2026,7 +2055,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.vortex_store_documents(store_id,document_key,data,updated_at)
-  VALUES (v_store_id,p_document_key,p_data,now())
+  VALUES (v_store_id,p_document_key,v_save_data,now())
   ON CONFLICT (store_id,document_key) DO UPDATE
   SET data=EXCLUDED.data,updated_at=now()
   RETURNING data INTO v_result;

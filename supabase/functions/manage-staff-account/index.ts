@@ -91,29 +91,7 @@ Deno.serve(async (req: Request) => {
         return response(403, { error: "Seu perfil não pode alterar o acesso de um gerente." });
       }
 
-      if (action === "deactivate") {
-        const nextInvitationStatus = member.invitation_status === "pending" ? "revoked" : member.invitation_status;
-        const { error: updateError } = await admin
-          .from("vortex_store_members")
-          .update({ status: "inactive", invitation_status: nextInvitationStatus })
-          .eq("store_id", storeId)
-          .eq("user_id", targetUserId);
-        if (updateError) return response(500, { error: "Não foi possível bloquear o acesso do funcionário." });
 
-        // O vínculo inativo bloqueia imediatamente as consultas e operações protegidas
-        // pelo banco. A sessão Auth pode continuar aberta até o próximo login/refresh,
-        // mas não conserva acesso à loja enquanto o vínculo estiver inativo.
-      } else {
-        if (member.invitation_status !== "accepted") {
-          return response(409, { error: "Este funcionário ainda não aceitou um convite válido. É necessário concluir um novo convite antes de reativar a conta." });
-        }
-        const { error: updateError } = await admin
-          .from("vortex_store_members")
-          .update({ status: "active" })
-          .eq("store_id", storeId)
-          .eq("user_id", targetUserId);
-        if (updateError) return response(500, { error: "Não foi possível reativar o acesso." });
-      }
     }
 
     const { data: accountUpdate, error: accountUpdateError } = await admin.rpc(

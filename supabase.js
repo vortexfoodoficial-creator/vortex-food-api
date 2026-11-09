@@ -186,7 +186,7 @@ async function dbSaveSale(saleData) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase.from('vortex_sales_history').upsert([record]);
+  const { data, error } = await supabase.from('vortex_sales_history').insert([record]);
   if (error) console.error('Erro ao salvar venda:', error);
 
   try {
@@ -270,7 +270,7 @@ async function dbSaveKdsOrder(orderData) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
+  const { data, error } = await supabase.from('vortex_kds_orders').insert([record]);
   if (error) console.error('Erro ao salvar KDS:', error);
 
   try {
@@ -298,7 +298,7 @@ async function dbSaveKdsOrderMinimal(orderData) {
     items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
     observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.id)
   };
-  const { data, error } = await supabase.from('vortex_kds_orders').upsert([record]);
+  const { data, error } = await supabase.from('vortex_kds_orders').insert([record]);
   try {
     const localRecord = { ...record, cloudSyncPending: !!error };
     let localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
@@ -317,11 +317,15 @@ async function dbUpdateKdsOrder(orderId, updates) {
   if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
   const safeUpdates = { ...(updates || {}) };
   delete safeUpdates.id; delete safeUpdates.store_id;
-  const { data, error } = await supabase.from('vortex_kds_orders').update(safeUpdates)
-    .eq('id', String(orderId)).eq('store_id', resolved.storeId).select('id').maybeSingle();
-  if (error) return { data: null, error };
-  if (!data) return { data: null, error: new Error('O pedido não foi encontrado na nuvem para esta loja.') };
-  return { data, error: null };
+  if (Object.keys(safeUpdates).length !== 1 || !safeUpdates.status) {
+    return { data: null, error: new Error('Atualização inválida. Alterações de pedido precisam usar uma operação autorizada.') };
+  }
+  const { data, error } = await supabase.rpc('rpc_update_kds_order_status', {
+    p_store_id: resolved.storeId,
+    p_order_id: String(orderId),
+    p_status: String(safeUpdates.status)
+  });
+  return { data, error };
 }
 
 async function dbFetchKdsOrders() {
@@ -381,35 +385,17 @@ async function dbFetchKdsOrders() {
  * REGRA CENTRAL DE CONSUMO DE ESTOQUE AO ENTRAR EM PREPARO (IDEMPOTENTE)
  */
 async function processStockConsumptionForOrder(order) {
-  if (!order || !Array.isArray(order.items) || !order.items.length) return { success: true, skipped: true, reason: 'no_items' };
+  if (!order || !order.id) return { success: true, skipped: true, reason: 'no_order' };
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
   if (!supabase || !storeId) return { success: false, skipped: false, error: new Error('Conexão ou estabelecimento não disponível para sincronizar o estoque.') };
   try {
-    const stockItems = JSON.parse(localStorage.getItem('vortex_stock_items')) || [];
-    const recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
-    const movements = [];
-    order.items.forEach((item, itemIndex) => {
-      const rec = recipes.find(r => String(r.productId) === String(item.id || item.productId) ||
-        (r.productName && r.productName.trim().toLowerCase() === (item.name || item.title || '').trim().toLowerCase()));
-      if (!rec || !Array.isArray(rec.ingredients)) return;
-      rec.ingredients.forEach(ing => {
-        const totalReqQty = parseFloat(ing.qty || 0) * parseFloat(item.qty || item.quantity || 1);
-        const stockItem = stockItems.find(si => String(si.id) === String(ing.insumoId || ing.ingredientId) ||
-          (si.name && si.name.trim().toLowerCase() === (ing.name || '').trim().toLowerCase()));
-        if (!stockItem || !Number.isFinite(totalReqQty) || totalReqQty <= 0) return;
-        let calculatedQty = totalReqQty;
-        const unitToUse = ing.unit || 'g';
-        if ((unitToUse === 'g' || unitToUse === 'ml') && (stockItem.unit === 'kg' || stockItem.unit === 'l')) calculatedQty = totalReqQty / 1000;
-        if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) return;
-        movements.push({ id: 'mov_' + Date.now() + '_' + itemIndex + '_' + String(stockItem.id),
-          item_id: String(stockItem.id), item_name: String(stockItem.name || ''), type: 'consumption', qty: calculatedQty,
-          reason: `Consumo automático - Pedido #${order.id} (${item.name || 'Produto'})`,
-          idempotency_key: `consumption_${order.id}_item_${itemIndex}_ing_${stockItem.id}` });
-      });
+    // O banco busca o pedido, a ficha técnica e os insumos. O navegador não
+    // envia quantidades de baixa que poderiam ser adulteradas.
+    const { data, error } = await supabase.rpc('rpc_consume_stock_for_order_secure', {
+      p_store_id: storeId,
+      p_order_id: String(order.id)
     });
-    if (!movements.length) return { success: true, skipped: true, reason: 'no_recipe_or_stock_items' };
-    const { data, error } = await supabase.rpc('rpc_consume_stock_for_order', { p_store_id: storeId, p_order_id: String(order.id), p_movements: movements });
     if (error) throw error;
     if (!data || data.success !== true) throw new Error((data && data.message) || 'O banco não confirmou o consumo do estoque.');
     const [cloudStock, cloudMovements] = await Promise.all([
@@ -418,7 +404,7 @@ async function processStockConsumptionForOrder(order) {
     ]);
     if (Array.isArray(cloudStock)) localStorage.setItem('vortex_stock_items', JSON.stringify(cloudStock));
     if (Array.isArray(cloudMovements)) localStorage.setItem('vortex_stock_movements', JSON.stringify(cloudMovements));
-    return { success: true, skipped: false, movements: movements.length, data };
+    return { success: true, skipped: !!data.skipped, movements: Number(data.movements) || 0, data };
   } catch (e) {
     console.error('Erro ao processar consumo automático de estoque:', e);
     return { success: false, skipped: false, error: e };
@@ -534,8 +520,11 @@ async function dbSaveStockMovements(movements) {
     };
   });
 
-  // Histórico append-only: não remove registros remotos a partir de um cache local.
-  const { data, error } = await supabase.from('vortex_stock_movements').upsert(normalized);
+  // Ajustes manuais são validados no servidor; consumo automático usa RPC própria.
+  const { data, error } = await supabase.rpc('rpc_save_stock_movements', {
+    p_store_id: storeId,
+    p_movements: normalized
+  });
   return { data, error };
 }
 
@@ -597,6 +586,23 @@ async function dbSaveFinancialEntry(entryData) {
     value: parseFloat(entryData.value) || 0,
     date: entryData.date || new Date().toISOString().split('T')[0]
   }]);
+  return { data, error };
+}
+
+async function dbSaveCashFinancialEntry(entryData, shiftId) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  const { data, error } = await supabase.rpc('rpc_create_cash_financial_entry', {
+    p_store_id: storeId,
+    p_shift_id: String(shiftId || ''),
+    p_entry_id: String(entryData.id || ''),
+    p_type: String(entryData.type || ''),
+    p_description: String(entryData.description || ''),
+    p_value: Number(entryData.value) || 0,
+    p_date: String(entryData.date || new Date().toISOString().slice(0,10))
+  });
   return { data, error };
 }
 

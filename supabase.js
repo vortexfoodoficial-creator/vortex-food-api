@@ -1376,6 +1376,12 @@ function vortexShowLockScreen() {
       button.textContent = 'Desbloquear';
       return;
     }
+    const previousSignature = JSON.stringify([...(context.permissions || [])].sort());
+    const currentSignature = JSON.stringify([...(freshContext.permissions || [])].sort());
+    if (previousSignature !== currentSignature || context.profile_key !== freshContext.member?.profile_key) {
+      window.location.reload();
+      return;
+    }
     overlay.remove();
   };
   document.getElementById('vortexUnlockButton').addEventListener('click', unlock);

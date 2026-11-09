@@ -1892,8 +1892,8 @@ BEGIN
        OR jsonb_typeof(COALESCE(p_data->'groups','[]'::jsonb)) IS DISTINCT FROM 'array'
        OR jsonb_typeof(COALESCE(p_data->'complements','[]'::jsonb)) IS DISTINCT FROM 'array'
        OR EXISTS (
-         SELECT 1 FROM jsonb_object_keys(p_data) AS k
-         WHERE k NOT IN ('products','groups','complements')
+         SELECT 1 FROM jsonb_object_keys(p_data) AS keys(key)
+         WHERE key NOT IN ('products','groups','complements')
        ) THEN
       RAISE EXCEPTION 'Estrutura do catálogo inválida.';
     END IF;

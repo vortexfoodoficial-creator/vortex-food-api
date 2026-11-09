@@ -529,25 +529,20 @@
     }
 
     async function saveUnifiedCouriers(couriersList) {
-      localStorage.setItem('vortex_team_sync_pending', 'true');
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        return { success: false, error: new Error('Seu perfil não pode cadastrar ou editar entregadores.') };
+      }
       localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: true }))));
-      let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
-      couriersList.forEach(c => {
-        let found = team.find(t => String(t.name).trim().toLowerCase() === String(c.name).trim().toLowerCase());
-        if (found) { found.phone = c.phone; found.role = 'Entregador'; found.courierType = c.type; found.type = c.type; found.status = 'ativo'; }
-        else team.push({ id: c.id, name: c.name, phone: c.phone, role: 'Entregador', courierType: c.type, type: c.type, status: 'ativo' });
-      });
-      localStorage.setItem('vortex_team_members', JSON.stringify(team));
       if (typeof dbSaveStoreDocument !== 'function') return { success: false, error: new Error('Sincronização com a nuvem indisponível.') };
       try {
         const cr = await dbSaveStoreDocument('couriers', couriersList);
         if (!cr || cr.error) throw (cr && cr.error) || new Error('A nuvem não confirmou os entregadores.');
-        const tr = await dbSaveStoreDocument('staff', team);
-        if (!tr || tr.error) throw (tr && tr.error) || new Error('A nuvem não confirmou a equipe.');
         localStorage.setItem('vortex_couriers', JSON.stringify(couriersList.map(c => ({ ...c, syncPending: false }))));
-        localStorage.removeItem('vortex_team_sync_pending');
         return { success: true };
-      } catch (error) { console.warn('Entregadores mantidos localmente; falha na sincronização:', error); return { success: false, error }; }
+      } catch (error) {
+        console.warn('Entregadores mantidos localmente; falha na sincronização:', error);
+        return { success: false, error };
+      }
     }
 
     function openCourierModal(courierId = null) {
@@ -1266,7 +1261,19 @@
       try {
         const supabase = getDeliverySupabaseClient();
         if (!supabase) return { error: new Error('Supabase não inicializado') };
-        return await supabase.from('vortex_kds_orders').update(patch).eq('id', String(orderId)).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
+        const hasCourier = Object.prototype.hasOwnProperty.call(patch || {}, 'courier');
+        const courierName = hasCourier ? String(patch.courier || '') : null;
+        const matchedCourier = hasCourier
+          ? getUnifiedCouriers().find(item => String(item.name || '').trim().toLowerCase() === courierName.trim().toLowerCase())
+          : null;
+        return await supabase.rpc('rpc_update_delivery_order', {
+          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
+          p_order_id: String(orderId),
+          p_status: patch && patch.status ? String(patch.status) : null,
+          p_courier: courierName,
+          p_update_courier: hasCourier,
+          p_courier_member_id: matchedCourier && matchedCourier.authUserId ? matchedCourier.authUserId : null
+        });
       } catch (error) {
         return { error };
       }

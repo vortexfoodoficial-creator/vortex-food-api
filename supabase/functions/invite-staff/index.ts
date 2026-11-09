@@ -18,9 +18,9 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const appOrigin = Deno.env.get("VORTEX_APP_ORIGIN");
+  const appUrl = Deno.env.get("VORTEX_APP_URL");
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !appOrigin) {
+  if (!supabaseUrl || !anonKey || !serviceRoleKey || !appUrl || !Deno.env.get("VORTEX_APP_ORIGIN")) {
     return response(500, { error: "A função de convites não está configurada no servidor." });
   }
 
@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: appOrigin.replace(/\/$/, "") + "/login.html",
+      redirectTo: appUrl.replace(/\/$/, "") + "/login.html",
       data: {
         vortex_store_id: storeId,
         vortex_staff_record_id: staffRecordId,

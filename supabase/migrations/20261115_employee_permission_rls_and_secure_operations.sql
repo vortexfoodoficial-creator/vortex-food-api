@@ -1915,9 +1915,12 @@ BEGIN
     v_old_complements := COALESCE(v_old_data->'complements','[]'::jsonb);
     v_new_complements := COALESCE(p_data->'complements','[]'::jsonb);
 
-    IF NOT v_can_categories AND
-       (v_old_groups IS DISTINCT FROM v_new_groups OR v_old_complements IS DISTINCT FROM v_new_complements) THEN
-      RAISE EXCEPTION 'Seu perfil não pode alterar categorias ou grupos de complementos.';
+    IF NOT v_can_categories AND v_old_groups IS DISTINCT FROM v_new_groups THEN
+      RAISE EXCEPTION 'Seu perfil não pode alterar categorias ou grupos.';
+    END IF;
+    IF v_old_complements IS DISTINCT FROM v_new_complements
+       AND NOT (v_can_categories AND v_can_prices) THEN
+      RAISE EXCEPTION 'A gestão de grupos de complementos exige permissão de categorias e preços.';
     END IF;
 
     IF NOT v_can_products AND NOT v_can_prices AND v_old_products IS DISTINCT FROM v_new_products THEN

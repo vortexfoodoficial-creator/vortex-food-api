@@ -22,6 +22,8 @@ DECLARE
   v_staff jsonb;
   v_updated_data jsonb;
   v_member public.vortex_store_members%ROWTYPE;
+  v_actor public.vortex_store_members%ROWTYPE;
+  v_can_invite boolean := false;
   v_has_member boolean := false;
 BEGIN
   IF p_store_id IS NULL OR p_target_user_id IS NULL OR p_actor_user_id IS NULL
@@ -30,6 +32,53 @@ BEGIN
      OR NULLIF(BTRIM(p_email),'') IS NULL
      OR p_profile_key NOT IN ('administrator','manager','attendant','kitchen','delivery') THEN
     RAISE EXCEPTION 'Dados do convite inválidos.';
+  END IF;
+
+  SELECT * INTO v_actor
+  FROM public.vortex_store_members
+  WHERE store_id=p_store_id AND user_id=p_actor_user_id AND status='active'
+  FOR SHARE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'O responsável pelo convite não possui vínculo ativo nesta loja.';
+  END IF;
+
+  SELECT COALESCE(
+    (SELECT mp.allowed FROM public.vortex_member_permissions mp
+     WHERE mp.store_id=p_store_id AND mp.user_id=p_actor_user_id
+       AND mp.permission_key='team.invite'),
+    (SELECT pp.allowed FROM public.vortex_profile_permissions pp
+     WHERE pp.profile_key=v_actor.profile_key AND pp.permission_key='team.invite'),
+    false
+  ) INTO v_can_invite;
+
+  IF NOT v_can_invite THEN
+    RAISE EXCEPTION 'O responsável não possui permissão para convidar funcionários.';
+  END IF;
+
+  IF p_profile_key='administrator' AND v_actor.profile_key<>'owner' THEN
+    RAISE EXCEPTION 'Somente o proprietário pode convidar administradores.';
+  END IF;
+  IF p_profile_key='manager' AND v_actor.profile_key NOT IN ('owner','administrator') THEN
+    RAISE EXCEPTION 'O responsável não pode convidar gerentes.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.vortex_profile_permissions target_perm
+    WHERE target_perm.profile_key=p_profile_key
+      AND target_perm.allowed=true
+      AND NOT COALESCE(
+        (SELECT mp.allowed FROM public.vortex_member_permissions mp
+         WHERE mp.store_id=p_store_id AND mp.user_id=p_actor_user_id
+           AND mp.permission_key=target_perm.permission_key),
+        (SELECT pp.allowed FROM public.vortex_profile_permissions pp
+         WHERE pp.profile_key=v_actor.profile_key
+           AND pp.permission_key=target_perm.permission_key),
+        false
+      )
+  ) THEN
+    RAISE EXCEPTION 'O perfil selecionado contém permissões superiores às do responsável.';
   END IF;
 
   IF EXISTS (
@@ -161,6 +210,8 @@ DECLARE
   v_staff jsonb;
   v_updated_data jsonb;
   v_member public.vortex_store_members%ROWTYPE;
+  v_actor public.vortex_store_members%ROWTYPE;
+  v_can_manage boolean := false;
 BEGIN
   IF p_store_id IS NULL OR p_actor_user_id IS NULL
      OR NULLIF(BTRIM(p_staff_record_id),'') IS NULL
@@ -168,11 +219,26 @@ BEGIN
     RAISE EXCEPTION 'Dados para alteração da conta inválidos.';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM public.vortex_store_members
-    WHERE store_id=p_store_id AND user_id=p_actor_user_id AND status='active'
-  ) THEN
+  SELECT * INTO v_actor
+  FROM public.vortex_store_members
+  WHERE store_id=p_store_id AND user_id=p_actor_user_id AND status='active'
+  FOR SHARE;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'O responsável pela operação não possui vínculo ativo nesta loja.';
+  END IF;
+
+  SELECT COALESCE(
+    (SELECT mp.allowed FROM public.vortex_member_permissions mp
+     WHERE mp.store_id=p_store_id AND mp.user_id=p_actor_user_id
+       AND mp.permission_key='team.manage'),
+    (SELECT pp.allowed FROM public.vortex_profile_permissions pp
+     WHERE pp.profile_key=v_actor.profile_key AND pp.permission_key='team.manage'),
+    false
+  ) INTO v_can_manage;
+
+  IF NOT v_can_manage THEN
+    RAISE EXCEPTION 'O responsável não possui permissão para gerenciar a equipe.';
   END IF;
 
   SELECT data INTO v_staff_document
@@ -209,6 +275,13 @@ BEGIN
 
     IF NOT FOUND OR v_member.role='owner' OR v_member.profile_key='owner' THEN
       RAISE EXCEPTION 'Conta vinculada não encontrada ou protegida.';
+    END IF;
+
+    IF v_member.profile_key='administrator' AND v_actor.profile_key<>'owner' THEN
+      RAISE EXCEPTION 'Somente o proprietário pode alterar o acesso de outro administrador.';
+    END IF;
+    IF v_member.profile_key='manager' AND v_actor.profile_key NOT IN ('owner','administrator') THEN
+      RAISE EXCEPTION 'O responsável não pode alterar o acesso de um gerente.';
     END IF;
 
     IF p_action='deactivate' THEN

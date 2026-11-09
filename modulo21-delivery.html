@@ -1163,7 +1163,7 @@
         code: '',
         courier: order.courier || ''
       };
-      const { data, error } = await client.from('vortex_kds_orders').insert([record]);
+      const { data, error } = await client.rpc('rpc_create_kds_order', { p_store_id: record.store_id, p_order: record });
       return { data, error };
     }
 

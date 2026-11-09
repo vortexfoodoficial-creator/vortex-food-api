@@ -398,17 +398,17 @@
     </div>
   </main>
 
-  <!-- MODAL DE CONFIRMAÇÃO PARA APAGAR VENDA INDIVIDUAL -->
+  <!-- MODAL DE CONFIRMAÇÃO PARA CANCELAR VENDA -->
   <div class="modal-overlay" id="deleteSaleModal">
     <div class="custom-modal-card">
       <div style="font-size:2.8rem; margin-bottom:10px;">🗑️</div>
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px; color:var(--danger);">Apagar Venda Permanentemente?</div>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px; color:var(--danger);">Cancelar venda?</div>
       <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px; line-height:1.4;">
-        Tem certeza que deseja apagar permanentemente este registro de venda? Esta ação atualizará imediatamente o DRE e o Dashboard.
+        Tem certeza que deseja cancelar esta venda? O registro será preservado no histórico e o DRE será atualizado com o estorno.
       </div>
       <div style="display:flex; gap:10px; justify-content:center;">
         <button class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
-        <button class="btn-modal-confirm-danger" onclick="confirmDeleteSale()">Sim, Apagar Permanentemente</button>
+        <button class="btn-modal-confirm-danger" onclick="confirmDeleteSale()">Sim, Cancelar venda</button>
       </div>
     </div>
   </div>
@@ -576,25 +576,20 @@
 
     async function confirmDeleteSale() {
       if (!saleIdToDelete) return;
-
-      let rawHistory = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      rawHistory = rawHistory.filter(s => String(s.id) !== String(saleIdToDelete));
-      localStorage.setItem('vortex_sales_history', JSON.stringify(rawHistory));
-
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-      kdsOrders = kdsOrders.filter(k => String(k.id) !== String(saleIdToDelete));
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
-
-      if (window.supabaseClient) {
-        try {
-          await window.supabaseClient.from('vortex_sales_history').delete().eq('id', saleIdToDelete).eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
-        } catch (e) {
-          console.warn('Erro ao deletar do Supabase:', e);
-        }
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('pdv.cancel')) {
+        closeDeleteModal();
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode cancelar vendas.', '🔒');
+        return;
       }
-
-      closeDeleteModal();
-      initAndLoadReports();
+      try {
+        if (typeof dbCancelOrder !== 'function') throw new Error('Rotina segura de cancelamento indisponível.');
+        const result = await dbCancelOrder(saleIdToDelete, 'Cancelado pelo módulo de Relatórios');
+        if (!result || !result.success) throw (result && result.error) || new Error('O servidor não confirmou o cancelamento.');
+        closeDeleteModal();
+        await initAndLoadReports();
+      } catch (error) {
+        showNoticeModal('Cancelamento não confirmado', error.message || 'A venda foi preservada sem alterações.', '⚠️');
+      }
     }
 
     async function initAndLoadReports() {
@@ -762,7 +757,7 @@
             <td><strong>${payLabel}</strong>${detailPay}</td>
             <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(val)}</td>
             <td style="text-align:center;">
-              <button class="btn-delete-sale" onclick="openDeleteModal('${s.id}')" title="Apagar permanente">🗑️ Apagar</button>
+              ${window.VORTEX_AUTH_CONTEXT?.permissions?.includes('pdv.cancel') ? `<button class="btn-delete-sale" onclick="openDeleteModal('${s.id}')" title="Cancelar venda">Cancelar</button>` : '<span style="color:var(--text-muted);font-size:.75rem;">Somente consulta</span>'}
             </td>
           </tr>
         `;

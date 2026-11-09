@@ -652,17 +652,8 @@ async function dbSaveCoupons(coupons) {
 }
 
 async function dbFetchCoupons() {
-  const supabase = getSupabase();
-  const storeId = await vortexGetCurrentStoreId();
-  if (!supabase || !storeId) return null;
-  const { data, error } = await supabase
-    .from('vortex_store_documents')
-    .select('data')
-    .eq('store_id', storeId)
-    .eq('document_key', 'coupons')
-    .maybeSingle();
-  if (error || !data) return null;
-  return Array.isArray(data.data) ? data.data : [];
+  const data = await dbFetchStoreDocument('coupons');
+  return Array.isArray(data) ? data : null;
 }
 
 async function dbSaveLoyalty(data) {
@@ -679,17 +670,8 @@ async function dbSaveCustomers(customers) {
 }
 
 async function dbFetchCustomers() {
-  const supabase = getSupabase();
-  const storeId = await vortexGetCurrentStoreId();
-  if (!supabase || !storeId) return null;
-  const { data, error } = await supabase
-    .from('vortex_store_documents')
-    .select('data')
-    .eq('store_id', storeId)
-    .eq('document_key', 'customers')
-    .maybeSingle();
-  if (error || !data) return null;
-  return Array.isArray(data.data) ? data.data : [];
+  const data = await dbFetchStoreDocument('customers');
+  return Array.isArray(data) ? data : null;
 }
 
 async function dbFetchRecipes() {
@@ -715,14 +697,11 @@ async function dbFetchStoreDocument(documentKey) {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
   if (!supabase || !storeId) return null;
-  const { data, error } = await supabase
-    .from('vortex_store_documents')
-    .select('data')
-    .eq('store_id', storeId)
-    .eq('document_key', String(documentKey))
-    .maybeSingle();
-  if (error || !data) return null;
-  return data.data;
+  const { data, error } = await supabase.rpc('rpc_get_store_document', {
+    p_document_key: String(documentKey)
+  });
+  if (error) return null;
+  return data;
 }
 
 async function dbSavePublicQrEnabled(enabled) {

@@ -563,31 +563,37 @@
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
       if (!order) return;
-      order.status = newStatus;
-      localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
-      renderKds();
-      let stockWarning = '', cloudWarning = '';
-      if (typeof processStockConsumptionForOrder === 'function' && newStatus === 'preparing') {
-        const result = await processStockConsumptionForOrder(order);
-        if (result && result.success === false && !result.skipped) {
-          stockWarning = ' A baixa automática do estoque não foi confirmada: ' +
-            (result.error && result.error.message ? result.error.message : 'Falha não identificada');
-        }
-      }
+      const previousStatus = order.status;
       try {
         if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
-        const result = await dbUpdateKdsOrder(id, { status: newStatus });
-        if (result && result.error) throw result.error;
-      } catch (e) {
-        console.warn('Erro ao sincronizar status na nuvem:', e);
-        cloudWarning = ' A alteração ficou salva neste dispositivo, mas não foi confirmada na nuvem.';
+        const cloudResult = await dbUpdateKdsOrder(id, { status: newStatus });
+        if (cloudResult && cloudResult.error) throw cloudResult.error;
+
+        order.status = newStatus;
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+        renderKds();
+
+        let stockWarning = '';
+        if (typeof processStockConsumptionForOrder === 'function' && newStatus === 'preparing') {
+          const stockResult = await processStockConsumptionForOrder(order);
+          if (stockResult && stockResult.success === false && !stockResult.skipped) {
+            stockWarning = ' A baixa automática do estoque não foi confirmada: ' +
+              (stockResult.error && stockResult.error.message ? stockResult.error.message : 'Falha não identificada');
+          }
+        }
+
+        const visibleDisplayId = order.displayId || id;
+        const noticeMsg = `Pedido #${visibleDisplayId} atualizado e confirmado na nuvem.` + stockWarning;
+        showNoticeModal(stockWarning ? 'Atenção no Estoque' : 'Atualização do Pedido',
+          noticeMsg, stockWarning ? '⚠️' : '👨‍🍳');
+      } catch (error) {
+        order.status = previousStatus;
+        localStorage.setItem('vortex_kds_orders', JSON.stringify(orders));
+        renderKds();
+        showNoticeModal('Alteração não autorizada ou não sincronizada',
+          error.message || 'O banco não confirmou a mudança. O pedido foi mantido no status anterior.',
+          '🔒');
       }
-      const visibleDisplayId = order.displayId || id;
-      let noticeMsg = cloudWarning ? `Pedido #${visibleDisplayId} atualizado localmente.${cloudWarning}` :
-        `Pedido #${visibleDisplayId} atualizado e confirmado na nuvem.`;
-      noticeMsg += stockWarning;
-      showNoticeModal(stockWarning || cloudWarning ? 'Atenção na Sincronização' : 'Atualização do Pedido',
-        noticeMsg, stockWarning || cloudWarning ? '⚠️' : '👨‍🍳');
     }
 
     function askCancelOrder(id) {

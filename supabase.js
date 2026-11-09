@@ -186,7 +186,7 @@ async function dbSaveSale(saleData) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase.from('vortex_sales_history').insert([record]);
+  const { data, error } = await supabase.rpc('rpc_create_sale', { p_store_id: storeId, p_sale: record });
   if (error) console.error('Erro ao salvar venda:', error);
 
   try {

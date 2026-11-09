@@ -542,6 +542,10 @@
     }
 
     async function finalizePdvOrder() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('pdv.sell')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil pode consultar o PDV, mas não tem permissão para registrar vendas.', '🔒');
+        return;
+      }
       if (pdvCart.length === 0) {
         showNoticeModal('Carrinho Vazio', 'Adicione itens ao carrinho antes de finalizar.', '⚠️');
         return;

@@ -885,6 +885,8 @@
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
       const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      const operatorInput = document.getElementById('openOperatorName');
+      if (operatorInput) operatorInput.value = window.VORTEX_AUTH_CONTEXT?.display_name || window.VORTEX_AUTH_CONTEXT?.email || 'Usuário conectado';
       const canOpen = permissions.includes('cash.open');
       const canMove = permissions.includes('cash.move');
       const canClose = permissions.includes('cash.close');

@@ -613,8 +613,12 @@
       document.getElementById('customAlertModal').classList.remove('active');
     }
 
-    function saveConta() {
+    async function saveConta() {
       const editIdx = document.getElementById('editIndexId').value;
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('accounts.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas a pagar e receber.', '🔒');
+        return;
+      }
       const type = document.getElementById('typeInput').value;
       const category = document.getElementById('categoryInput').value;
       const description = document.getElementById('descriptionInput').value.trim();
@@ -633,20 +637,26 @@
 
       const obj = { type, category, description, entity, amount, dueDate, paymentMethod, status, pixKey, notes };
 
-      if (editIdx === '') {
-        contasData.push(obj);
-      } else {
-        contasData[editIdx] = obj;
+      const previous = JSON.stringify(contasData);
+      if (editIdx === '') contasData.push(obj);
+      else contasData[editIdx] = obj;
+      if (!(await syncSupabaseContas())) {
+        contasData = JSON.parse(previous);
+        localStorage.setItem('vortex_contas_data', previous);
+        renderContasTable();
+        return;
       }
-
       localStorage.setItem('vortex_contas_data', JSON.stringify(contasData));
-      syncSupabaseContas();
       closeContaModal();
       renderContasTable();
-      showCustomAlert('Sucesso!', 'Conta financeira salva com sucesso.', '🎉');
+      showCustomAlert('Sucesso!', 'Conta financeira salva e confirmada na nuvem.', '🎉');
     }
 
     function editConta(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('accounts.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode editar contas financeiras.', '🔒');
+        return;
+      }
       const c = contasData[idx];
       document.getElementById('editIndexId').value = idx;
       document.getElementById('modalTitleText').innerText = 'Editar Conta Financeira';
@@ -663,15 +673,29 @@
       document.getElementById('contaModal').classList.add('active');
     }
 
-    function togglePaymentStatus(idx) {
+    async function togglePaymentStatus(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('accounts.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode alterar a quitação de contas.', '🔒');
+        return;
+      }
+      const previous = JSON.stringify(contasData);
       contasData[idx].status = contasData[idx].status === 'paid' ? 'pending' : 'paid';
+      if (!(await syncSupabaseContas())) {
+        contasData = JSON.parse(previous);
+        localStorage.setItem('vortex_contas_data', previous);
+        renderContasTable();
+        return;
+      }
       localStorage.setItem('vortex_contas_data', JSON.stringify(contasData));
-      syncSupabaseContas();
       renderContasTable();
-      showCustomAlert('Status Atualizado', 'O status de quitação da conta foi atualizado.', '✅');
+      showCustomAlert('Status Atualizado', 'O status de quitação foi confirmado na nuvem.', '✅');
     }
 
     function askDeleteConta(idx) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('accounts.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir contas financeiras.', '🔒');
+        return;
+      }
       pendingDeleteIndex = idx;
       document.getElementById('confirmDeleteModal').classList.add('active');
     }
@@ -681,25 +705,39 @@
       document.getElementById('confirmDeleteModal').classList.remove('active');
     }
 
-    function executeDeleteConta() {
+    async function executeDeleteConta() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('accounts.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir contas financeiras.', '🔒');
+        return;
+      }
       if (pendingDeleteIndex !== null) {
+        const previous = JSON.stringify(contasData);
         contasData.splice(pendingDeleteIndex, 1);
+        if (!(await syncSupabaseContas())) {
+          contasData = JSON.parse(previous);
+          localStorage.setItem('vortex_contas_data', previous);
+          renderContasTable();
+          return;
+        }
         localStorage.setItem('vortex_contas_data', JSON.stringify(contasData));
-        syncSupabaseContas();
         closeConfirmDelete();
         renderContasTable();
-        showCustomAlert('Excluído', 'A conta financeira foi removida.', '🗑️');
+        showCustomAlert('Excluído', 'A conta financeira foi removida e confirmada na nuvem.', '🗑️');
       }
     }
 
     async function syncSupabaseContas() {
-      if (typeof dbSaveStoreDocument === 'function') {
-        try {
-          const result = await dbSaveStoreDocument('accounts', contasData);
-          if (result && result.error) throw result.error;
-        } catch (err) {
-          console.warn('Aviso Supabase Contas:', err);
-        }
+      if (typeof dbSaveStoreDocument !== 'function') {
+        showCustomAlert('Sincronização indisponível', 'Não foi possível salvar as contas financeiras no servidor.', '⚠️');
+        return false;
+      }
+      try {
+        const result = await dbSaveStoreDocument('accounts', contasData);
+        if (result?.error || !result?.data?.success) throw (result?.error || new Error('O servidor não confirmou a gravação.'));
+        return true;
+      } catch (err) {
+        showCustomAlert('Alteração não confirmada', err.message || 'O servidor não confirmou a alteração. Os dados anteriores foram restaurados.', '⚠️');
+        return false;
       }
     }
 

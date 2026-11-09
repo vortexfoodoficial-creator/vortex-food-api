@@ -100,10 +100,9 @@ Deno.serve(async (req: Request) => {
           .eq("user_id", targetUserId);
         if (updateError) return response(500, { error: "Não foi possível bloquear o acesso do funcionário." });
 
-        // Invalida sessões existentes quando o provedor disponibiliza a operação.
-        try { await admin.auth.admin.signOut(targetUserId, "global"); } catch (error) {
-          console.warn("Não foi possível invalidar sessões antigas; o vínculo inativo já bloqueia as consultas protegidas.", error);
-        }
+        // O vínculo inativo bloqueia imediatamente as consultas e operações protegidas
+        // pelo banco. A sessão Auth pode continuar aberta até o próximo login/refresh,
+        // mas não conserva acesso à loja enquanto o vínculo estiver inativo.
       } else {
         if (member.invitation_status !== "accepted") {
           return response(409, { error: "Este funcionário ainda não aceitou um convite válido. É necessário concluir um novo convite antes de reativar a conta." });

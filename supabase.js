@@ -998,7 +998,7 @@ async function vortexGetCurrentStoreContext() {
       const hasAny = keys => keys.some(key => currentPermissions.has(key));
       const clearKeys = keys => keys.forEach(key => localStorage.removeItem(key));
       if (!hasAny(['pdv.history','reports.view','finance.view'])) clearKeys(['vortex_sales_history']);
-      if (!hasAny(['kds.view','tables.view','delivery.manage','pdv.history'])) clearKeys(['vortex_kds_orders']);
+      // Qualquer mudança de permissões invalida a cópia local de pedidos; a nuvem devolverá novamente apenas os campos autorizados.\n      clearKeys(['vortex_kds_orders']);
       if (!currentPermissions.has('stock.view')) clearKeys(['vortex_stock_items','vortex_stock_movements']);
       if (!hasAny(['finance.view','reports.financial'])) clearKeys(['vortex_financial_entries','vortex_bank_accounts']);
       if (!currentPermissions.has('cash.view')) clearKeys(['vortex_closed_shifts','vortex_current_cash']);

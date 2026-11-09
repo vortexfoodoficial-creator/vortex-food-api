@@ -678,7 +678,11 @@
             localStorage.setItem('vortex_products_catalog', JSON.stringify(cloudCatalog.products));
             localStorage.setItem('vortex_groups_catalog', JSON.stringify(cloudCatalog.groups));
             if (Array.isArray(cloudCatalog.complements)) localStorage.setItem('vortex_complements_catalog', JSON.stringify(cloudCatalog.complements));
-            if (Array.isArray(cloudCatalog.complements)) localStorage.setItem('vortex_complements_catalog', JSON.stringify(cloudCatalog.complements));
+            window.__VORTEX_CATALOG_LAST_CONFIRMED = {
+              products: cloudCatalog.products,
+              groups: cloudCatalog.groups,
+              complements: Array.isArray(cloudCatalog.complements) ? cloudCatalog.complements : []
+            };
           }
         }
       } catch (e) {}
@@ -796,15 +800,33 @@
     }
 
     async function syncCatalogToCloud() {
+      const payload = {
+        products: getProducts(),
+        groups: getGroups(),
+        complements: getComplements()
+      };
+      const previous = window.__VORTEX_CATALOG_LAST_CONFIRMED || {
+        products: [],
+        groups: [],
+        complements: []
+      };
       try {
-        if (typeof dbSaveCatalog === 'function') {
-          await dbSaveCatalog({
-            products: getProducts(),
-            groups: getGroups(),
-            complements: getComplements()
-          });
-        }
-      } catch (e) {}
+        if (typeof dbSaveCatalog !== 'function') throw new Error('Rotina segura de sincronização do catálogo indisponível.');
+        const result = await dbSaveCatalog(payload);
+        if (result?.error) throw result.error;
+        if (!result?.data?.success) throw new Error('O banco não confirmou a alteração do catálogo.');
+        window.__VORTEX_CATALOG_LAST_CONFIRMED = JSON.parse(JSON.stringify(payload));
+        return true;
+      } catch (error) {
+        const rollback = previous || { products: [], groups: [], complements: [] };
+        localStorage.setItem('vortex_products_catalog', JSON.stringify(rollback.products || []));
+        localStorage.setItem('vortex_groups_catalog', JSON.stringify(rollback.groups || []));
+        localStorage.setItem('vortex_complements_catalog', JSON.stringify(rollback.complements || []));
+        syncWithOtherModules(rollback.products || []);
+        renderCardapio();
+        showNoticeModal('Alteração não sincronizada', error.message || 'O servidor não confirmou a alteração. O catálogo anterior foi restaurado.', '⚠️');
+        return false;
+      }
     }
 
     function renderComplementsChecklist(selectedCompIds = []) {
@@ -860,7 +882,7 @@
       }
 
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       closeGroupModal();
       renderCardapio();
       showNoticeModal('Salvo!', 'Grupo de produtos atualizado.', '📁');
@@ -884,7 +906,7 @@
       if (g) {
         g.isHighlight = !g.isHighlight;
         localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-        await syncCatalogToCloud();
+        if (!(await syncCatalogToCloud())) return;
         renderCardapio();
       }
     }
@@ -899,7 +921,7 @@
       }
       groups = groups.filter(item => item.id !== id);
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       renderCardapio();
       showNoticeModal('Movido para a Lixeira', 'Grupo enviado para a lixeira.', '🗑️');
     }
@@ -910,7 +932,7 @@
       if (g) {
         g.active = g.active === false ? true : false;
         localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-        await syncCatalogToCloud();
+        if (!(await syncCatalogToCloud())) return;
         renderCardapio();
       }
     }
@@ -923,7 +945,7 @@
       groups[index] = groups[newIndex];
       groups[newIndex] = temp;
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       renderCardapio();
     }
 
@@ -1100,7 +1122,7 @@
 
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       closeProductModal();
       renderCardapio();
       showNoticeModal('Salvo com Sucesso!', 'Produto atualizado e sincronizado na nuvem.', '💾');
@@ -1113,7 +1135,7 @@
         p.active = p.active === false ? true : false;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
         syncWithOtherModules(products);
-        await syncCatalogToCloud();
+        if (!(await syncCatalogToCloud())) return;
         renderCardapio();
       }
     }
@@ -1129,7 +1151,7 @@
       products = products.filter(p => p.id !== id);
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       renderCardapio();
       showNoticeModal('Movido para a Lixeira', 'Produto enviado para a lixeira.', '🗑️');
     }
@@ -1231,7 +1253,7 @@
       let comps = getComplements();
       comps.push({ id: newCompId, name: groupName, items: [...draftCompItems] });
       localStorage.setItem('vortex_complements_catalog', JSON.stringify(comps));
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
 
       let targetProductIds = [];
       document.querySelectorAll('.comp-apply-prod-check:checked').forEach(cb => targetProductIds.push(parseInt(cb.value)));
@@ -1245,7 +1267,7 @@
           }
         });
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
-        await syncCatalogToCloud();
+        if (!(await syncCatalogToCloud())) return;
       }
 
       draftCompItems = [];
@@ -1362,7 +1384,7 @@
       groups.push(restored);
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
       localStorage.setItem('vortex_groups_catalog', JSON.stringify(groups));
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       openTrashModal();
       renderCardapio();
     }
@@ -1375,7 +1397,7 @@
       localStorage.setItem('vortex_trash_catalog', JSON.stringify(trash));
       localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
       syncWithOtherModules(products);
-      await syncCatalogToCloud();
+      if (!(await syncCatalogToCloud())) return;
       openTrashModal();
       renderCardapio();
     }

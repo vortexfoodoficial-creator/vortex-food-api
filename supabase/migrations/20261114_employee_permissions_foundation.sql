@@ -230,7 +230,7 @@ BEGIN
       CHECK (invitation_status IN ('pending','accepted','revoked'));
   END IF;
 END;
-$;
+$$;
 
 DO $$
 BEGIN

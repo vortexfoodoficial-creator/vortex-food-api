@@ -1345,9 +1345,8 @@
       let targetProductIds = [];
       document.querySelectorAll('.comp-apply-prod-check:checked').forEach(cb => targetProductIds.push(parseInt(cb.value)));
 
-      if (targetProductIds.length > 0 && !permissions.includes('catalog.manage_products')) {
-        showNoticeModal('Grupo salvo sem vínculo', 'O grupo de complementos foi salvo, mas seu perfil não pode vinculá-lo aos produtos. Solicite também a permissão de gestão de produtos.', '⚠️');
-      } else if (targetProductIds.length > 0) {
+      const linkSkipped = targetProductIds.length > 0 && !permissions.includes('catalog.manage_products');
+      if (targetProductIds.length > 0 && permissions.includes('catalog.manage_products')) {
         let products = getProducts();
         products.forEach(p => {
           if (targetProductIds.includes(p.id)) {
@@ -1364,7 +1363,9 @@
       renderDraftComplements();
       renderSavedComplements();
       renderCardapio();
-      showNoticeModal('Salvo!', 'Grupo de complementos criado e vinculado aos produtos selecionados.', '📋');
+      showNoticeModal('Salvo!', linkSkipped
+        ? 'Grupo de complementos criado. Seu perfil não permite vinculá-lo aos produtos selecionados.'
+        : (targetProductIds.length > 0 ? 'Grupo de complementos criado e vinculado aos produtos selecionados.' : 'Grupo de complementos criado.'), '📋');
     }
 
     function renderSavedComplements() {
@@ -1422,7 +1423,7 @@
       document.getElementById('upsellModal').classList.add('active');
     }
 
-    function toggleUpsellItem(id) {
+    async function toggleUpsellItem(id) {
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_products')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar sugestões de produtos.', '🔒');
         return;
@@ -1432,6 +1433,7 @@
       if (p) {
         p.isUpsell = !p.isUpsell;
         localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+        if (!(await syncCatalogToCloud())) return;
       }
     }
 

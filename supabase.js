@@ -813,10 +813,8 @@ async function dbFetchIntegrations() {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
   if (!supabase || !storeId) return [];
-  const { data, error } = await supabase.from('vortex_integrations')
-    .select('platform, connected, credentials, updated_at')
-    .eq('store_id', storeId);
-  return error ? [] : (data || []);
+  const { data, error } = await supabase.rpc('rpc_get_integrations');
+  return error || !Array.isArray(data) ? [] : data;
 }
 
 async function dbDeleteRecord(tableName, id) {

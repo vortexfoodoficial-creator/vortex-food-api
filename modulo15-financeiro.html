@@ -643,6 +643,7 @@
     function closeEntryModal() { document.getElementById('entryModal').classList.remove('active'); }
 
     function openBankModal(id = null) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.edit')) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
       document.getElementById('editBankId').value = '';
       document.getElementById('bankNameInput').value = '';
       document.getElementById('bankBalanceInput').value = '';
@@ -663,6 +664,11 @@
     function closeBankModal() { document.getElementById('bankModal').classList.remove('active'); }
 
     function openSocioModal(id = null) {
+      const requiredPermission = id ? 'finance.edit' : 'finance.create';
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes(requiredPermission)) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode criar ou editar operações de sócios.', '🔒');
+        return;
+      }
       document.getElementById('editSocioId').value = '';
       document.getElementById('socioType').value = 'retirada';
       document.getElementById('socioName').value = '';
@@ -696,6 +702,10 @@
     function closeCustomAlert() { document.getElementById('customAlertModal').classList.remove('active'); }
 
     function askDelete(id, type, msg) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.delete')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir registros financeiros.', '🔒');
+        return;
+      }
       document.getElementById('deleteTargetId').value = id;
       document.getElementById('deleteTargetType').value = type;
       document.getElementById('deleteConfirmMessage').innerText = msg;
@@ -704,27 +714,41 @@
     function closeConfirmDelete() { document.getElementById('confirmDeleteModal').classList.remove('active'); }
 
     async function executeDelete() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.delete')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode excluir registros financeiros.', '🔒');
+        return;
+      }
       const id = document.getElementById('deleteTargetId').value;
       const type = document.getElementById('deleteTargetType').value;
-      closeConfirmDelete();
-
       if (type === 'bank') {
         let banks = JSON.parse(localStorage.getItem('vortex_bank_accounts')) || [];
         banks = banks.filter(b => String(b.id) !== String(id));
         localStorage.setItem('vortex_bank_accounts', JSON.stringify(banks));
-        showCustomAlert('Removido', 'Conta bancária excluída com sucesso.', '🗑️');
-      } else if (type === 'socio' || type === 'entry') {
-        if (typeof dbDeleteRecord === 'function') {
-          await dbDeleteRecord('vortex_financial', id);
+        closeConfirmDelete();
+        await loadFinancialData(true);
+        showCustomAlert('Removido', 'Conta bancária excluída.', '🗑️');
+        return;
+      }
+      if (type === 'socio' || type === 'entry') {
+        if (typeof dbDeleteRecord !== 'function') {
+          showCustomAlert('Exclusão não confirmada', 'A rotina segura de exclusão está indisponível.', '⚠️');
+          return;
+        }
+        const result = await dbDeleteRecord('vortex_financial', id);
+        if (result?.error) {
+          showCustomAlert('Exclusão não confirmada', result.error.message || 'O servidor não confirmou a exclusão.', '⚠️');
+          return;
         }
         let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
         entries = entries.filter(e => String(e.id) !== String(id));
         localStorage.setItem('vortex_financial_entries', JSON.stringify(entries));
       }
-      await loadFinancialData(true); // Força refresh após exclusão
+      closeConfirmDelete();
+      await loadFinancialData(true);
     }
 
     async function saveBankAccount() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.edit')) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
       const editId = document.getElementById('editBankId').value;
       const name = document.getElementById('bankNameInput').value.trim();
       const balance = parseCurrencyToFloat(document.getElementById('bankBalanceInput').value);
@@ -750,6 +774,11 @@
 
     async function saveSocioOperation() {
       const editId = document.getElementById('editSocioId').value;
+      const requiredPermission = editId ? 'finance.edit' : 'finance.create';
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes(requiredPermission)) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode criar ou editar operações de sócios.', '🔒');
+        return;
+      }
       const type = document.getElementById('socioType').value;
       const name = document.getElementById('socioName').value.trim();
       const val = parseCurrencyToFloat(document.getElementById('socioValue').value);
@@ -769,8 +798,14 @@
         date: getLocalDateStr(new Date())
       };
 
-      if (typeof dbSaveFinancialEntry === 'function') {
-        await dbSaveFinancialEntry(payload);
+      if (typeof dbSaveFinancialEntry !== 'function') {
+        showCustomAlert('Sincronização indisponível', 'Não foi possível confirmar a operação financeira no servidor.', '⚠️');
+        return;
+      }
+      const cloudResult = await dbSaveFinancialEntry(payload);
+      if (cloudResult?.error) {
+        showCustomAlert('Operação não confirmada', cloudResult.error.message || 'O servidor não confirmou a operação.', '⚠️');
+        return;
       }
 
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
@@ -792,6 +827,7 @@
     }
 
     async function saveFinancialEntry() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.create')) { showCustomAlert('Acesso restrito', 'Seu perfil não pode criar lançamentos financeiros.', '🔒'); return; }
       const type = document.getElementById('entryType').value;
       const desc = document.getElementById('entryDesc').value.trim();
       const val = parseCurrencyToFloat(document.getElementById('entryValue').value);
@@ -809,8 +845,14 @@
         date: getLocalDateStr(new Date())
       };
 
-      if (typeof dbSaveFinancialEntry === 'function') {
-        await dbSaveFinancialEntry(payload);
+      if (typeof dbSaveFinancialEntry !== 'function') {
+        showCustomAlert('Sincronização indisponível', 'Não foi possível confirmar o lançamento no servidor.', '⚠️');
+        return;
+      }
+      const cloudResult = await dbSaveFinancialEntry(payload);
+      if (cloudResult?.error) {
+        showCustomAlert('Lançamento não confirmado', cloudResult.error.message || 'O servidor não confirmou o lançamento.', '⚠️');
+        return;
       }
 
       let entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];

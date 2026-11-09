@@ -176,7 +176,7 @@ FROM public.vortex_permission_catalog
 WHERE permission_key IN (
   'dashboard.view','pdv.view','pdv.sell','tables.view','tables.open',
   'tables.close','tables.attend_requests','delivery.view','delivery.manage',
-  'kds.view','catalog.view','cash.view','cash.open','cash.move'
+  'delivery.assign','delivery.dispatch','kds.view','catalog.view','cash.view','cash.open','cash.move'
 )
 ON CONFLICT (profile_key,permission_key) DO UPDATE SET allowed=true;
 

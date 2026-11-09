@@ -1777,4 +1777,66 @@ REVOKE ALL ON FUNCTION public.rpc_get_integrations() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_integrations() TO authenticated;
 
 
+
+-- Pedidos KDS: o código de confirmação de entrega não pode ser lido diretamente
+-- pelo navegador. A RPC aplica o mesmo escopo de loja e remove sempre a coluna code.
+DROP POLICY IF EXISTS vortex_kds_orders_permission_select ON public.vortex_kds_orders;
+REVOKE SELECT ON TABLE public.vortex_kds_orders FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_kds_orders()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_result jsonb;
+  v_can_all boolean;
+  v_can_assigned boolean;
+  v_can_own boolean;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Autenticação necessária.';
+  END IF;
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+  IF v_store_id IS NULL THEN
+    RAISE EXCEPTION 'Estabelecimento ativo não identificado.';
+  END IF;
+
+  v_can_all := (
+    public.vortex_user_has_permission(v_store_id,'kds.view')
+    OR public.vortex_user_has_permission(v_store_id,'tables.view')
+    OR public.vortex_user_has_permission(v_store_id,'pdv.history')
+    OR public.vortex_user_has_permission(v_store_id,'delivery.manage')
+  );
+  v_can_assigned := public.vortex_user_has_permission(v_store_id,'delivery.view');
+  v_can_own := public.vortex_user_has_permission(v_store_id,'pdv.view');
+
+  IF NOT (v_can_all OR v_can_assigned OR v_can_own) THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar pedidos.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(o)-'code' ORDER BY o.created_at DESC NULLS LAST),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_kds_orders AS o
+  WHERE o.store_id=v_store_id
+    AND (
+      v_can_all
+      OR (v_can_assigned AND o.courier_member_id=auth.uid())
+      OR (v_can_own AND o.created_by=auth.uid())
+    );
+
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_kds_orders() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_kds_orders() TO authenticated;
+
+
 COMMIT;

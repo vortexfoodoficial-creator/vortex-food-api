@@ -845,6 +845,11 @@
     }
 
     function handleLogoUpload(input) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('settings.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar o logotipo ou as configurações da loja.', '🔒');
+        input.value = '';
+        return;
+      }
       const file = input.files[0];
       if (file) {
         const reader = new FileReader();
@@ -857,10 +862,20 @@
       }
     }
 
-    function promptRemoveLogo() { document.getElementById('confirmLogoModal').classList.add('active'); }
+    function promptRemoveLogo() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('settings.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode remover o logotipo da loja.', '🔒');
+        return;
+      }
+      document.getElementById('confirmLogoModal').classList.add('active');
+    }
     function closeConfirmLogoModal() { document.getElementById('confirmLogoModal').classList.remove('active'); }
 
     function confirmRemoveLogo() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('settings.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode remover o logotipo da loja.', '🔒');
+        return;
+      }
       tempLogoBase64 = null;
       localStorage.removeItem('vortex_store_logo');
       document.getElementById('storeLogoInput').value = '';
@@ -924,6 +939,10 @@
 
     /* SALVAR TODAS AS CONFIGURAÇÕES E UNIFICAR COM O SUPABASE E DELIVERY */
     async function saveAllSettings() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('settings.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil pode consultar as configurações, mas não pode alterá-las.', '🔒');
+        return;
+      }
       let activeStoreId = null;
       try {
         activeStoreId = typeof vortexGetCurrentStoreId === 'function'

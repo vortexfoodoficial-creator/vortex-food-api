@@ -1013,7 +1013,19 @@ async function vortexGetCurrentStoreContext() {
       if (!currentPermissions.has('cash.view')) clearKeys(['vortex_closed_shifts','vortex_current_cash']);
       if (!currentPermissions.has('team.view')) clearKeys(['vortex_team_members','vortex_team_sync_pending']);
       if (!hasAny(['delivery.manage','delivery.manage_couriers'])) clearKeys(['vortex_couriers','vortex_courier_history']);
-      if (!hasAny(['integrations.view','integrations.manage'])) clearKeys(['vortex_integrations_data']);
+      if (!hasAny(['integrations.view','integrations.manage'])) {
+        clearKeys(['vortex_integrations_data']);
+      } else if (!currentPermissions.has('integrations.manage')) {
+        try {
+          const integrationCache = JSON.parse(localStorage.getItem('vortex_integrations_data') || '{}') || {};
+          Object.keys(integrationCache).forEach(platform => {
+            integrationCache[platform] = { connected: !!integrationCache[platform]?.connected, credentials: null };
+          });
+          localStorage.setItem('vortex_integrations_data', JSON.stringify(integrationCache));
+        } catch (error) {
+          clearKeys(['vortex_integrations_data']);
+        }
+      }
       if (!hasAny(['recipes.view','reports.view'])) clearKeys(['vortex_recipes_catalog','vortex_fichas_tecnicas']);
       if (!hasAny(['purchases.view','purchases.manage'])) clearKeys(['vortex_compras_data']);
       if (!hasAny(['accounts.view','accounts.manage'])) clearKeys(['vortex_contas_data']);

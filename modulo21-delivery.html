@@ -550,6 +550,10 @@
         showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
         return;
       }
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
+        return;
+      }
       document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
       document.getElementById('courierPhoneInput').value = '';
@@ -581,6 +585,10 @@
     }
 
     async function saveCourier() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
+        return;
+      }
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
         return;
@@ -622,6 +630,10 @@
 
     function deleteCourier(courierId) {
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir entregadores.', '🔒');
+        return;
+      }
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode remover entregadores.', '🔒');
         return;
       }
@@ -639,6 +651,10 @@
     }
 
     async function executeDeleteCourier() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir entregadores.', '🔒');
+        return;
+      }
       const courierId = document.getElementById('deleteCourierTargetId').value;
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode remover entregadores.', '🔒');
@@ -861,6 +877,10 @@
     }
 
     async function assignOrderToCourier(orderId, courierName) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.assign')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode atribuir entregadores aos pedidos.', '🔒');
+        return;
+      }
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
@@ -889,6 +909,10 @@
     }
 
     async function saveOrderCourierChange() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.assign')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar o entregador atribuído.', '🔒');
+        return;
+      }
       const orderId = document.getElementById('editCourierOrderId').value;
       const newCourier = document.getElementById('modalEditCourierSelect').value;
       const kdsOrders = readLocalKdsOrders();
@@ -1456,6 +1480,10 @@
     }
 
     async function finishDeliveryOrder(orderId) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manual_finish')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode finalizar entregas manualmente.', '🔒');
+        return;
+      }
       const order = readLocalKdsOrders().find(item => String(item.id) === String(orderId));
       if (!order) return;
       try {
@@ -1480,6 +1508,10 @@
     }
 
     async function confirmDeliveryWithCode(orderId) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.confirm')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode confirmar códigos de entrega.', '🔒');
+        return;
+      }
       const inputVal = document.getElementById('codeInput_' + orderId)?.value.trim() || '';
       if (!/^\d{6}$/.test(inputVal)) {
         showNoticeModal('Código inválido', 'Digite os seis números informados pelo cliente.', '⚠️');

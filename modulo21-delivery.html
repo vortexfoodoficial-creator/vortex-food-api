@@ -1314,7 +1314,10 @@
       const canConfirm = permissions.includes('delivery.confirm');
       const canManualFinish = permissions.includes('delivery.manual_finish');
       const todayDateStr = getLocalDateStr(new Date());
+      const isDeliveryAccount = window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery';
+      const currentUserId = String(window.VORTEX_AUTH_CONTEXT?.user_id || '');
       const deliveryOrders = kdsOrders.filter(o => {
+        if (isDeliveryAccount && String(o.courier_member_id || o.courierMemberId || '') !== currentUserId) return false;
         if (!o.origin || !String(o.origin).includes('Delivery')) return false;
         if (o.status === 'cancelled') return false;
         let itemDate = o.date ? o.date.split('T')[0] : todayDateStr;
@@ -1369,7 +1372,9 @@
       const activeElement = document.activeElement;
       if (activeElement && activeElement.classList.contains('code-input')) return;
 
-      const localOrders = readLocalKdsOrders();
+      const isDeliveryAccount = window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery';
+      const localOrders = isDeliveryAccount ? [] : readLocalKdsOrders();
+      if (isDeliveryAccount) localStorage.setItem('vortex_kds_orders', '[]');
       renderActiveDeliveryOrders(localOrders);
       const supabase = getDeliverySupabaseClient();
       if (options.skipRemote || !supabase || deliveryOrdersFetchInFlight) return;
@@ -1379,6 +1384,19 @@
         const { data, error } = await supabase.from('vortex_kds_orders').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
         if (error) throw error;
         if (!Array.isArray(data)) return;
+
+        if (isDeliveryAccount) {
+          const assignedOrders = data
+            .filter(order => String(order.courier_member_id || '') === String(window.VORTEX_AUTH_CONTEXT?.user_id || ''))
+            .map(order => ({
+              ...order,
+              courier_member_id: order.courier_member_id,
+              displayId: order.displayId || order.displayid || null
+            }));
+          localStorage.setItem('vortex_kds_orders', JSON.stringify(assignedOrders));
+          renderActiveDeliveryOrders(assignedOrders, true);
+          return;
+        }
 
         if (Date.now() - deliveryLastLocalMutationAt < 2500) return;
         const currentLocal = readLocalKdsOrders();

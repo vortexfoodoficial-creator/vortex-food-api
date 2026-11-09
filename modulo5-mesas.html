@@ -440,11 +440,12 @@
     }
 
     async function toggleQrFeature(enabled) {
+      const toggle = document.getElementById('qrEnableToggle');
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.manage_qr')) {
+        toggle.checked = isQrEnabled;
         showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar as configurações do QR Code ou da quantidade de mesas.', '🔒');
         return;
       }
-      const toggle = document.getElementById('qrEnableToggle');
       toggle.disabled = true;
       try {
         const result = await dbSavePublicQrEnabled(enabled);

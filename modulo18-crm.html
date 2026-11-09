@@ -536,12 +536,23 @@
     }
 
     async function syncCustomersToCloud(customers) {
-      if (typeof dbSaveCustomers !== 'function') return;
+      if (typeof dbSaveCustomers !== 'function') {
+        showCustomAlert('Sincronização indisponível', 'Não foi possível salvar os clientes no servidor.', '⚠️');
+        return false;
+      }
       const result = await dbSaveCustomers(customers);
-      if (result && result.error) console.error('Erro ao sincronizar clientes:', result.error);
+      if (result?.error || !result?.data?.success) {
+        showCustomAlert('Alteração não confirmada', result?.error?.message || 'O servidor não confirmou a gravação dos clientes.', '⚠️');
+        return false;
+      }
+      return true;
     }
 
     async function saveCustomer() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('crm.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar clientes.', '🔒');
+        return;
+      }
       const editId = document.getElementById('editCustomerId').value;
       const name = document.getElementById('custName').value.trim();
       const phone = document.getElementById('custPhone').value.trim();
@@ -557,7 +568,8 @@
         return;
       }
 
-      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      const previous = localStorage.getItem('vortex_customers_catalog') || '[]';
+      let customers = JSON.parse(previous);
 
       if (editId) {
         let cust = customers.find(c => String(c.id) === String(editId));
@@ -580,8 +592,12 @@
         });
       }
 
+      if (!(await syncCustomersToCloud(customers))) {
+        localStorage.setItem('vortex_customers_catalog', previous);
+        loadCRMData();
+        return;
+      }
       localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
-      await syncCustomersToCloud(customers);
       closeCustomerModal();
       loadCRMData();
       showCustomAlert('Sucesso!', editId ? 'Cadastro do cliente atualizado!' : 'Cliente cadastrado com sucesso!', '👤');
@@ -633,6 +649,10 @@
     }
 
     function openNoteModal() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('crm.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode registrar notas de atendimento.', '🔒');
+        return;
+      }
       document.getElementById('noteTextInput').value = '';
       document.getElementById('noteModal').classList.add('active');
     }
@@ -642,13 +662,18 @@
     }
 
     async function saveCustomerNote() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('crm.manage')) {
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode registrar notas de atendimento.', '🔒');
+        return;
+      }
       const text = document.getElementById('noteTextInput').value.trim();
       if (!text) {
         showCustomAlert('Atenção', 'Escreva a observação ou reclamação antes de salvar.', '⚠️');
         return;
       }
 
-      let customers = JSON.parse(localStorage.getItem('vortex_customers_catalog')) || [];
+      const previous = localStorage.getItem('vortex_customers_catalog') || '[]';
+      let customers = JSON.parse(previous);
       let cust = customers.find(c => String(c.id) === String(selectedDetailCustomerId));
       if (cust) {
         if (!cust.notes) cust.notes = [];
@@ -656,8 +681,11 @@
           date: new Date().toLocaleDateString('pt-BR'),
           text: text
         });
+        if (!(await syncCustomersToCloud(customers))) {
+          localStorage.setItem('vortex_customers_catalog', previous);
+          return;
+        }
         localStorage.setItem('vortex_customers_catalog', JSON.stringify(customers));
-        await syncCustomersToCloud(customers);
         closeNoteModal();
         openCustomerDetail(selectedDetailCustomerId);
         showCustomAlert('Sucesso', 'Nota de atendimento adicionada com sucesso.', '✅');

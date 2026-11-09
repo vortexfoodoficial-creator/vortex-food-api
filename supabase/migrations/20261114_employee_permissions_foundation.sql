@@ -218,7 +218,7 @@ ALTER TABLE public.vortex_store_members
   ALTER COLUMN profile_key SET DEFAULT 'attendant',
   ALTER COLUMN profile_key SET NOT NULL;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -232,7 +232,7 @@ BEGIN
 END;
 $;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint

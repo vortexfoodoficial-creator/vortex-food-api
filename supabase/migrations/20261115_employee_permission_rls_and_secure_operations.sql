@@ -1821,7 +1821,7 @@ BEGIN
     RAISE EXCEPTION 'Seu perfil não pode consultar pedidos.';
   END IF;
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(o)-'code' ORDER BY o.created_at DESC NULLS LAST),'[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(o)-'code'),'[]'::jsonb)
   INTO v_result
   FROM public.vortex_kds_orders AS o
   WHERE o.store_id=v_store_id

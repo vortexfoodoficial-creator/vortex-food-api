@@ -578,7 +578,7 @@
       if (!saleIdToDelete) return;
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('pdv.cancel')) {
         closeDeleteModal();
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode cancelar vendas.', '🔒');
+        window.alert('Seu perfil não tem permissão para cancelar vendas.');
         return;
       }
       try {
@@ -588,7 +588,7 @@
         closeDeleteModal();
         await initAndLoadReports();
       } catch (error) {
-        showNoticeModal('Cancelamento não confirmado', error.message || 'A venda foi preservada sem alterações.', '⚠️');
+        window.alert(error.message || 'O cancelamento não foi confirmado. A venda foi preservada.');
       }
     }
 

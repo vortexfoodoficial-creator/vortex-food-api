@@ -1040,7 +1040,7 @@ async function vortexGetCurrentStoreContext() {
         }
         return value;
       };
-      ['vortex_products_catalog','vortex_cardapio_produtos','vortex_synced_catalog','vortex_recipes_catalog','vortex_fichas_tecnicas'].forEach(key => {
+      ['vortex_stock_items','vortex_stock_movements','vortex_products_catalog','vortex_cardapio_produtos','vortex_synced_catalog','vortex_recipes_catalog','vortex_fichas_tecnicas'].forEach(key => {
         try {
           const raw = localStorage.getItem(key);
           if (raw) localStorage.setItem(key, JSON.stringify(stripCosts(JSON.parse(raw))));

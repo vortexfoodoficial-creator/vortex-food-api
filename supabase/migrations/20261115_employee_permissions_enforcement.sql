@@ -118,12 +118,17 @@ $function$;
 REVOKE ALL ON FUNCTION public.vortex_user_can_access_document(uuid,text,boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.vortex_user_can_access_document(uuid,text,boolean) TO authenticated;
 
--- Substitui a política ampla de documento por autorização por chave e ação.
-DROP POLICY IF EXISTS vortex_store_documents_store_isolation ON public.vortex_store_documents;
-DROP POLICY IF EXISTS vortex_store_documents_permission_select ON public.vortex_store_documents;
-DROP POLICY IF EXISTS vortex_store_documents_permission_insert ON public.vortex_store_documents;
-DROP POLICY IF EXISTS vortex_store_documents_permission_update ON public.vortex_store_documents;
-DROP POLICY IF EXISTS vortex_store_documents_permission_delete ON public.vortex_store_documents;
+-- Substitui todas as políticas anteriores de documentos por autorização por chave.
+DO $docpolicies$
+DECLARE p record;
+BEGIN
+  FOR p IN SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='vortex_store_documents'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_store_documents',p.policyname);
+  END LOOP;
+END;
+$docpolicies$;
 
 CREATE POLICY vortex_store_documents_permission_select
 ON public.vortex_store_documents FOR SELECT TO authenticated
@@ -219,7 +224,7 @@ BEGIN
         WHEN 'vortex_sales' THEN 'public.vortex_user_has_permission(store_id,''pdv.sell'')'
         WHEN 'vortex_sales_history' THEN 'public.vortex_user_has_permission(store_id,''pdv.sell'')'
         WHEN 'vortex_stock_items' THEN 'public.vortex_user_has_permission(store_id,''stock.manage_items'')'
-        WHEN 'vortex_stock_movements' THEN 'public.vortex_user_has_permission(store_id,''stock.adjust'') OR public.vortex_user_has_permission(store_id,''stock.consume'')'
+        WHEN 'vortex_stock_movements' THEN 'public.vortex_user_has_permission(store_id,''stock.adjust'')'
         WHEN 'vortex_store_settings' THEN 'public.vortex_user_has_permission(store_id,''settings.manage'')'
         WHEN 'vortex_public_delivery_settings' THEN 'public.vortex_user_has_permission(store_id,''delivery.manage'')'
         WHEN 'vortex_public_store_settings' THEN 'public.vortex_user_has_permission(store_id,''tables.manage_qr'')'

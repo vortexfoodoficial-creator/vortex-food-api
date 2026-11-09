@@ -643,7 +643,8 @@
     function closeEntryModal() { document.getElementById('entryModal').classList.remove('active'); }
 
     function openBankModal(id = null) {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.edit')) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
+      const requiredPermission = id ? 'finance.edit' : 'finance.create';
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes(requiredPermission)) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
       document.getElementById('editBankId').value = '';
       document.getElementById('bankNameInput').value = '';
       document.getElementById('bankBalanceInput').value = '';
@@ -748,8 +749,9 @@
     }
 
     async function saveBankAccount() {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('finance.edit')) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
       const editId = document.getElementById('editBankId').value;
+      const requiredPermission = editId ? 'finance.edit' : 'finance.create';
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes(requiredPermission)) { showCustomAlert('Acesso restrito', 'Seu perfil não pode cadastrar ou editar contas bancárias.', '🔒'); return; }
       const name = document.getElementById('bankNameInput').value.trim();
       const balance = parseCurrencyToFloat(document.getElementById('bankBalanceInput').value);
       

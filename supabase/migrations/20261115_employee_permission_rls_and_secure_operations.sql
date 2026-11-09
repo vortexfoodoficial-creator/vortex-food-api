@@ -331,6 +331,7 @@ DECLARE
   v_status text;
   v_financial_status text;
   v_items jsonb;
+  v_items_total numeric := 0;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.vortex_user_has_store_access(p_store_id) THEN
     RAISE EXCEPTION 'Acesso não autorizado.';
@@ -353,6 +354,24 @@ BEGIN
   END IF;
   IF v_total<0 OR v_subtotal<0 OR v_discount<0 OR v_discount>v_subtotal THEN
     RAISE EXCEPTION 'Valores da venda inválidos.';
+  END IF;
+
+  IF round(v_subtotal-v_discount,2)<>round(v_total,2) THEN
+    RAISE EXCEPTION 'O total da venda não corresponde ao subtotal menos o desconto.';
+  END IF;
+
+  SELECT COALESCE(SUM(
+    COALESCE(
+      NULLIF(x.item->>'total','')::numeric,
+      COALESCE(NULLIF(x.item->>'price','')::numeric,0)
+        * COALESCE(NULLIF(x.item->>'qty','')::numeric,NULLIF(x.item->>'quantity','')::numeric,1)
+    )
+  ),0)
+  INTO v_items_total
+  FROM jsonb_array_elements(v_items) AS x(item);
+
+  IF round(v_items_total,2)<>round(v_subtotal,2) THEN
+    RAISE EXCEPTION 'O subtotal não corresponde à soma dos itens da venda.';
   END IF;
   IF v_status NOT IN ('completed','finished','pending','processing') THEN
     RAISE EXCEPTION 'Status inicial de venda inválido.';

@@ -308,6 +308,10 @@
     }
 
     async function saveIntegration(platform) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('integrations.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil pode consultar o status das integrações, mas não pode visualizar ou alterar credenciais.', '🔒');
+        return;
+      }
       let credentials = {};
       let name = '';
 
@@ -332,9 +336,15 @@
         };
       }
 
-      // Salva no Supabase via função central
-      if (typeof dbSaveIntegration === 'function') {
-        await dbSaveIntegration(platform, credentials);
+      // Salva no Supabase via função central e só confirma após resposta do servidor.
+      if (typeof dbSaveIntegration !== 'function') {
+        showNoticeModal('Sincronização indisponível', 'Não foi possível salvar a integração no servidor.', '⚠️');
+        return;
+      }
+      const cloudResult = await dbSaveIntegration(platform, credentials);
+      if (cloudResult?.error) {
+        showNoticeModal('Integração não salva', cloudResult.error.message || 'O servidor não confirmou a gravação das credenciais.', '⚠️');
+        return;
       }
 
       // Salva também localmente para feedback instantâneo de interface

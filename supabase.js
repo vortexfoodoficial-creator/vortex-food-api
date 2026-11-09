@@ -2,8 +2,9 @@
 const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
 
-// Armazenamento local separado por estabelecimento. A preferência visual
-// vortex_theme permanece no dispositivo; os demais dados vortex_* são isolados.
+// Armazenamento local separado por estabelecimento e funcionário.
+// Preferências visuais ficam no dispositivo; impressora é compartilhada entre
+// funcionários da mesma loja naquele aparelho.
 (function installVortexStoreStorage() {
   if (window.__VORTEX_STORE_STORAGE_INSTALLED) return;
   window.__VORTEX_STORE_STORAGE_INSTALLED = true;
@@ -12,9 +13,14 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   const nativeSet = proto.setItem;
   const nativeRemove = proto.removeItem;
   const nativeKey = proto.key;
+  const deviceKeys = new Set(['vortex_active_printer','vortex_printer_settings']);
   const isTenantKey = key => String(key).startsWith('vortex_') && key !== 'vortex_theme';
   const scopedKey = key => {
-    if (!window.VORTEX_ACTIVE_STORE_ID || !window.VORTEX_ACTIVE_USER_ID) return null;
+    if (!window.VORTEX_ACTIVE_STORE_ID) return null;
+    if (deviceKeys.has(String(key))) {
+      return 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::device::' + key;
+    }
+    if (!window.VORTEX_ACTIVE_USER_ID) return null;
     return 'vortex_store_' + window.VORTEX_ACTIVE_STORE_ID + '::' + window.VORTEX_ACTIVE_USER_ID + '::' + key;
   };
 
@@ -54,6 +60,20 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
       const changedUser = window.VORTEX_ACTIVE_USER_ID !== normalizedUser;
       window.VORTEX_ACTIVE_STORE_ID = normalizedStore;
       window.VORTEX_ACTIVE_USER_ID = normalizedUser;
+
+      // Configuração de impressora é do aparelho/loja, não de cada funcionário.
+      const devicePrefix = 'vortex_store_' + normalizedStore + '::device::';
+      const userPrefixForDevice = 'vortex_store_' + normalizedStore + '::' + normalizedUser + '::';
+      for (const key of deviceKeys) {
+        const deviceKey = devicePrefix + key;
+        const userKey = userPrefixForDevice + key;
+        if (nativeGet.call(window.localStorage, deviceKey) === null) {
+          const userValue = nativeGet.call(window.localStorage, userKey);
+          const legacyValue = nativeGet.call(window.localStorage, key);
+          if (userValue !== null) nativeSet.call(window.localStorage, deviceKey, userValue);
+          else if (legacyValue !== null) nativeSet.call(window.localStorage, deviceKey, legacyValue);
+        }
+      }
 
       // Migra o cache antigo (somente loja) para a conta do proprietário.
       // Funcionários nunca herdam caches deixados por outra conta no dispositivo.

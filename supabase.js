@@ -290,7 +290,7 @@ async function dbSaveKdsOrder(orderData) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase.from('vortex_kds_orders').insert([record]);
+  const { data, error } = await supabase.rpc('rpc_create_kds_order', { p_store_id: storeId, p_order: record });
   if (error) console.error('Erro ao salvar KDS:', error);
 
   try {
@@ -318,7 +318,7 @@ async function dbSaveKdsOrderMinimal(orderData) {
     items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
     observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.id)
   };
-  const { data, error } = await supabase.from('vortex_kds_orders').insert([record]);
+  const { data, error } = await supabase.rpc('rpc_create_kds_order', { p_store_id: resolved.storeId, p_order: record });
   try {
     const localRecord = { ...record, cloudSyncPending: !!error };
     let localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];

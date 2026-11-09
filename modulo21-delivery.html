@@ -884,14 +884,24 @@
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
-      order.courier = courierName;
+
+      const selected = getUnifiedCouriers().find(item =>
+        String(item.name || '').trim().toLowerCase() === String(courierName || '').trim().toLowerCase()
+      );
+      const result = await syncKdsPatch(orderId, { courier: courierName || '' });
+      if (result && result.error) {
+        showNoticeModal('Não foi possível atribuir', result.error.message || 'O servidor recusou a alteração.', '⚠️');
+        return;
+      }
+
+      order.courier = courierName || '';
+      order.courier_member_id = selected && selected.authUserId ? selected.authUserId : null;
       saveLocalKdsOrders(kdsOrders);
       renderActiveDeliveryOrders(kdsOrders, true);
       runSmartRouteOptimization();
       const visibleNum = order.displayId || orderId;
       if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${visibleNum} foi vinculado a ${courierName}.`, '🛵');
       else showNoticeModal('Entrega Desvinculada', `O pedido #${visibleNum} foi desvinculado.`, 'ℹ️');
-      await syncKdsPatch(orderId, { courier: courierName || '' });
     }
 
     function openEditCourierModal(orderId) {

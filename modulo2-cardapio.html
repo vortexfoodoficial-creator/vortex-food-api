@@ -848,15 +848,6 @@
       });
     }
 
-    function openComplementsModal() {
-      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
-      if (!permissions.includes('catalog.manage_categories') || !permissions.includes('catalog.manage_prices')) {
-        showNoticeModal('Acesso restrito', 'A gestão de complementos exige permissões de categorias e preços.', '🔒');
-        return;
-      }
-      document.getElementById('complementsModal').classList.add('active');
-    }
-
     function openGroupModal() {
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('catalog.manage_categories')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode criar ou editar grupos.', '🔒');
@@ -1291,6 +1282,11 @@
     }
 
     function openComplementsModal() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('catalog.manage_categories') || !permissions.includes('catalog.manage_prices')) {
+        showNoticeModal('Acesso restrito', 'A gestão de complementos exige permissões de categorias e preços.', '🔒');
+        return;
+      }
       document.getElementById('compGroupName').value = '';
       document.getElementById('compItemName').value = '';
       document.getElementById('compItemPrice').value = 'R$ 0,00';

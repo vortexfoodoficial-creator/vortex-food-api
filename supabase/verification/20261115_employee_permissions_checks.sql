@@ -109,5 +109,6 @@ ORDER BY event_type;
 
 -- 8. A função de auditoria deve preservar o autor original em atualizações.
 SELECT
-  position("jsonb_set(v_new,'{created_by}',COALESCE(v_old->'created_by','null'::jsonb),true)" in pg_get_functiondef('public.vortex_set_actor_audit_fields()'::regprocedure)) > 0
-  AS created_by_immutable_on_update;
+  position($needle$jsonb_set(v_new,'{created_by}',COALESCE(v_old->'created_by','null'::jsonb),true)$needle$ in
+    pg_get_functiondef('public.vortex_set_actor_audit_fields()'::regprocedure)
+  ) > 0 AS created_by_immutable_on_update;

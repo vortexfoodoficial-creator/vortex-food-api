@@ -560,6 +560,10 @@
     }
 
     async function updateOrderStatus(id, newStatus) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('kds.update_status')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil pode visualizar a fila, mas não pode alterar o preparo dos pedidos.', '🔒');
+        return;
+      }
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
       if (!order) return;

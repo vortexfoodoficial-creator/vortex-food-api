@@ -372,7 +372,7 @@
           throw new Error('Sincronização de fichas técnicas indisponível.');
         }
         const result = await dbSaveStoreDocument('recipes', getRecipes());
-        if (result && result.error) throw result.error;
+        if (result?.error || !result?.data?.success) throw (result?.error || new Error('O servidor não confirmou a ficha técnica.'));
         return true;
       } catch (error) {
         console.error('Erro ao sincronizar fichas técnicas no Supabase:', error);
@@ -601,6 +601,11 @@
     }
 
     async function saveRecipe() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('catalog.view')) {
+        showNoticeModal('Acesso restrito', 'Para criar fichas técnicas, seu perfil precisa de gestão de fichas, consulta ao estoque e consulta ao catálogo.', '🔒');
+        return;
+      }
       const rawProdId = document.getElementById('recipeProductSelect').value;
       const productId = isNaN(rawProdId) ? rawProdId : parseInt(rawProdId);
 
@@ -625,30 +630,37 @@
         else totalCalculatedCost += ing.qty * unitCost;
       });
 
-      // GARANTIA TOTAL DE SINCRONIZAÇÃO: Atualiza todas as chaves de custo possíveis no produto
-      p.cost = totalCalculatedCost;
-      p.costPrice = totalCalculatedCost;
-      p.custo = totalCalculatedCost;
-      p.totalCost = totalCalculatedCost;
-      p.unitCost = totalCalculatedCost;
-
-      // Salva o catálogo completo no documento isolado deste estabelecimento.
-      localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
-      localStorage.setItem('vortex_cardapio_produtos', JSON.stringify(products));
-      let catalogSynced = false;
-      try {
-        if (typeof dbSaveCatalog !== 'function') {
-          throw new Error('Sincronização do catálogo indisponível.');
+      // Atualiza o custo do produto somente quando o funcionário também pode gerenciar preços.
+      const previousProducts = JSON.stringify(products);
+      let catalogSynced = true;
+      const canManageProductPrices = permissions.includes('catalog.manage_prices');
+      if (canManageProductPrices) {
+        p.cost = totalCalculatedCost;
+        p.costPrice = totalCalculatedCost;
+        p.custo = totalCalculatedCost;
+        p.totalCost = totalCalculatedCost;
+        p.unitCost = totalCalculatedCost;
+        localStorage.setItem('vortex_products_catalog', JSON.stringify(products));
+        localStorage.setItem('vortex_cardapio_produtos', JSON.stringify(products));
+        try {
+          if (typeof dbSaveCatalog !== 'function') throw new Error('Sincronização do catálogo indisponível.');
+          const catalogResult = await dbSaveCatalog({
+            products,
+            groups: JSON.parse(localStorage.getItem('vortex_groups_catalog') || '[]'),
+            complements: JSON.parse(localStorage.getItem('vortex_complements_catalog') || '[]')
+          });
+          if (catalogResult?.error || !catalogResult?.data?.success) {
+            throw (catalogResult?.error || new Error('O servidor não confirmou o custo do produto.'));
+          }
+        } catch (error) {
+          catalogSynced = false;
+          products = JSON.parse(previousProducts);
+          localStorage.setItem('vortex_products_catalog', previousProducts);
+          localStorage.setItem('vortex_cardapio_produtos', previousProducts);
+          console.warn('Erro ao atualizar custo do produto na nuvem:', error);
         }
-        const catalogResult = await dbSaveCatalog({
-          products,
-          groups: JSON.parse(localStorage.getItem('vortex_groups_catalog') || '[]'),
-          complements: JSON.parse(localStorage.getItem('vortex_complements_catalog') || '[]')
-        });
-        if (catalogResult && catalogResult.error) throw catalogResult.error;
-        catalogSynced = true;
-      } catch (error) {
-        console.warn('Erro ao atualizar custo do produto na nuvem:', error);
+      } else {
+        catalogSynced = false;
       }
 
       const recipeData = {
@@ -660,6 +672,7 @@
         ingredients: [...draftIngredients]
       };
 
+      const previousRecipes = JSON.stringify(recipes);
       if (id) {
         let r = recipes.find(item => String(item.id) === String(id));
         if (r) Object.assign(r, recipeData);
@@ -670,17 +683,28 @@
 
       localStorage.setItem('vortex_recipes_catalog', JSON.stringify(recipes));
       const recipesSynced = await syncRecipesToCloud();
+      if (!recipesSynced) {
+        recipes = JSON.parse(previousRecipes);
+        localStorage.setItem('vortex_recipes_catalog', previousRecipes);
+        renderRecipes();
+        showNoticeModal('Ficha não sincronizada', 'O servidor não confirmou a gravação. A versão anterior da ficha foi restaurada.', '⚠️');
+        return;
+      }
 
       closeRecipeModal();
       renderRecipes();
-      if (catalogSynced && recipesSynced) {
+      if (catalogSynced) {
         showNoticeModal('Ficha Técnica Salva!', 'Ficha e custo do produto sincronizados com a nuvem deste estabelecimento.', '📖');
       } else {
-        showNoticeModal('Salvo neste aparelho', 'A ficha técnica e o custo foram atualizados localmente, mas a sincronização completa com a nuvem não foi confirmada. Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+        showNoticeModal('Ficha salva', 'A ficha técnica foi sincronizada. O custo do produto não foi alterado porque seu perfil não possui permissão de gestão de preços ou o catálogo não confirmou a atualização.', '⚠️');
       }
     }
 
     function editRecipe(id) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('recipes.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode editar fichas técnicas.', '🔒');
+        return;
+      }
       let recipes = getRecipes();
       let r = recipes.find(item => String(item.id) === String(id));
       if (!r) return;
@@ -694,12 +718,21 @@
     }
 
     async function deleteRecipe(id) {
-      let recipes = getRecipes();
-      recipes = recipes.filter(r => String(r.id) !== String(id));
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('recipes.manage')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode excluir fichas técnicas.', '🔒');
+        return;
+      }
+      const previous = JSON.stringify(getRecipes());
+      let recipes = getRecipes().filter(r => String(r.id) !== String(id));
       localStorage.setItem('vortex_recipes_catalog', JSON.stringify(recipes));
-      await syncRecipesToCloud();
+      if (!(await syncRecipesToCloud())) {
+        localStorage.setItem('vortex_recipes_catalog', previous);
+        renderRecipes();
+        showNoticeModal('Exclusão não confirmada', 'O servidor não confirmou a exclusão. A ficha foi preservada.', '⚠️');
+        return;
+      }
       renderRecipes();
-      showNoticeModal('Removido', 'Ficha técnica excluída.', '🗑️');
+      showNoticeModal('Removido', 'Ficha técnica excluída e confirmada na nuvem.', '🗑️');
     }
 
     function showNoticeModal(title, desc, icon) {

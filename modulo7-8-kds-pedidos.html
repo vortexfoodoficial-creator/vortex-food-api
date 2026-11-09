@@ -525,8 +525,13 @@
         let isCancelled = order.status === 'cancelled';
         let isFinished = order.status === 'finished' || order.status === 'completed';
 
-        const canUpdateStatus = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('kds.update_status') === true;
-        const canCancelKds = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('kds.cancel') === true;
+        const currentPermissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+        const canUpdateStatus = currentPermissions.includes('kds.update_status');
+        const canCancelKds = isTableOrder
+          ? (currentPermissions.includes('tables.close') || currentPermissions.includes('pdv.cancel'))
+          : (String(order.origin || '').toLowerCase().includes('delivery')
+              ? (currentPermissions.includes('delivery.manage') || currentPermissions.includes('pdv.cancel'))
+              : (currentPermissions.includes('kds.cancel') || currentPermissions.includes('pdv.cancel')));
         let actionsHtml = '';
         if (!isCancelled && !isFinished) {
           if (canUpdateStatus && (order.status === 'new' || order.status === 'received')) {

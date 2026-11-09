@@ -606,7 +606,7 @@ DO $ DECLARE p record; BEGIN
   LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_subscriptions',p.policyname); END LOOP;
   FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='vortex_stores'
   LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_stores',p.policyname); END LOOP;
-END; $;
+END; $$;
 CREATE POLICY vortex_subscriptions_permission_select
 ON public.vortex_subscriptions FOR SELECT TO authenticated
 USING (public.vortex_user_has_permission(store_id,'subscription.view'));

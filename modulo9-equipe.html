@@ -452,7 +452,7 @@
       teamCouriers.forEach(t => {
         const key = String(t.name || '').trim().toLowerCase();
         if ((t.status || 'ativo') === 'ativo') map.set(key, {
-          id: t.id, name: t.name, phone: t.phone || t.telefone || '', type: t.courierType || t.type || 'Próprio'
+          id: t.id, name: t.name, phone: t.phone || t.telefone || '', type: t.courierType || t.type || 'Próprio', authUserId: t.authUserId || null
         });
         else map.delete(key);
       });

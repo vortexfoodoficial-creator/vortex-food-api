@@ -30,6 +30,7 @@ BEGIN
      OR NULLIF(BTRIM(p_staff_record_id),'') IS NULL
      OR NULLIF(BTRIM(p_display_name),'') IS NULL
      OR NULLIF(BTRIM(p_email),'') IS NULL
+     OR p_profile_key IS NULL
      OR p_profile_key NOT IN ('administrator','manager','attendant','kitchen','delivery') THEN
     RAISE EXCEPTION 'Dados do convite inválidos.';
   END IF;
@@ -215,6 +216,7 @@ DECLARE
 BEGIN
   IF p_store_id IS NULL OR p_actor_user_id IS NULL
      OR NULLIF(BTRIM(p_staff_record_id),'') IS NULL
+     OR p_action IS NULL
      OR p_action NOT IN ('deactivate','reactivate') THEN
     RAISE EXCEPTION 'Dados para alteração da conta inválidos.';
   END IF;

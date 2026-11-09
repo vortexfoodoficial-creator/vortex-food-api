@@ -1899,6 +1899,9 @@ BEGIN
       RAISE EXCEPTION 'Estrutura do catálogo inválida.';
     END IF;
 
+    IF NOT public.vortex_user_has_permission(v_store_id,'catalog.view') THEN
+      RAISE EXCEPTION 'Seu perfil não pode consultar e alterar o catálogo.';
+    END IF;
     v_can_products := public.vortex_user_has_permission(v_store_id,'catalog.manage_products');
     v_can_prices := public.vortex_user_has_permission(v_store_id,'catalog.manage_prices');
     v_can_categories := public.vortex_user_has_permission(v_store_id,'catalog.manage_categories');
@@ -1982,19 +1985,25 @@ BEGIN
 
   ELSE
     v_allowed := CASE p_document_key
-      WHEN 'staff' THEN public.vortex_user_has_permission(v_store_id,'team.manage')
+      WHEN 'staff' THEN (
+        public.vortex_user_has_permission(v_store_id,'team.view')
+        AND public.vortex_user_has_permission(v_store_id,'team.manage')
+      )
       WHEN 'couriers' THEN (
-        public.vortex_user_has_permission(v_store_id,'delivery.manage_couriers')
-        OR public.vortex_user_has_permission(v_store_id,'team.manage')
+        public.vortex_user_has_permission(v_store_id,'delivery.view')
+        AND (
+          public.vortex_user_has_permission(v_store_id,'delivery.manage_couriers')
+          OR public.vortex_user_has_permission(v_store_id,'team.manage')
+        )
       )
       WHEN 'coupons' THEN public.vortex_user_has_permission(v_store_id,'coupons.manage')
       WHEN 'loyalty' THEN public.vortex_user_has_permission(v_store_id,'loyalty.manage')
       WHEN 'customers' THEN public.vortex_user_has_permission(v_store_id,'crm.manage')
       WHEN 'table_settings' THEN public.vortex_user_has_permission(v_store_id,'tables.manage_qr')
-      WHEN 'settings' THEN public.vortex_user_has_permission(v_store_id,'settings.manage')
-      WHEN 'recipes' THEN public.vortex_user_has_permission(v_store_id,'recipes.manage')
-      WHEN 'purchases' THEN public.vortex_user_has_permission(v_store_id,'purchases.manage')
-      WHEN 'accounts' THEN public.vortex_user_has_permission(v_store_id,'accounts.manage')
+      WHEN 'settings' THEN (public.vortex_user_has_permission(v_store_id,'settings.view') AND public.vortex_user_has_permission(v_store_id,'settings.manage'))
+      WHEN 'recipes' THEN (public.vortex_user_has_permission(v_store_id,'recipes.view') AND public.vortex_user_has_permission(v_store_id,'recipes.manage'))
+      WHEN 'purchases' THEN (public.vortex_user_has_permission(v_store_id,'purchases.view') AND public.vortex_user_has_permission(v_store_id,'purchases.manage'))
+      WHEN 'accounts' THEN (public.vortex_user_has_permission(v_store_id,'accounts.view') AND public.vortex_user_has_permission(v_store_id,'accounts.manage'))
       WHEN 'printer' THEN public.vortex_user_has_permission(v_store_id,'printers.manage')
       ELSE false
     END;

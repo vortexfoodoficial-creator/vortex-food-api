@@ -440,6 +440,10 @@
     }
 
     async function toggleQrFeature(enabled) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.manage_qr')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar as configurações do QR Code ou da quantidade de mesas.', '🔒');
+        return;
+      }
       const toggle = document.getElementById('qrEnableToggle');
       toggle.disabled = true;
       try {
@@ -499,6 +503,10 @@
     }
 
     async function addTable() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.manage_qr')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar a quantidade de mesas.', '🔒');
+        return;
+      }
       if (totalTablesCount >= 200) {
         showNoticeModal('Limite atingido', 'O sistema permite cadastrar até 200 mesas.', '⚠️');
         return;
@@ -516,6 +524,10 @@
     }
 
     async function removeTable() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.manage_qr')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode alterar a quantidade de mesas.', '🔒');
+        return;
+      }
       if (totalTablesCount <= 1) {
         showNoticeModal('Aviso', 'Você precisa ter pelo menos 1 mesa cadastrada.', '⚠️');
         return;

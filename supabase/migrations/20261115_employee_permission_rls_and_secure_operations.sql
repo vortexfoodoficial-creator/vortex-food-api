@@ -1727,4 +1727,53 @@ GRANT EXECUTE ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,nu
 REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
 
 
+
+-- Credenciais de integração nunca são retornadas por SELECT direto.
+-- A RPC entrega apenas o status para quem consulta e segredos somente para quem gerencia.
+DROP POLICY IF EXISTS vortex_integrations_permission_select ON public.vortex_integrations;
+REVOKE SELECT ON TABLE public.vortex_integrations FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_integrations()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_can_view boolean;
+  v_can_manage boolean;
+  v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Autenticação necessária.';
+  END IF;
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+  v_can_view := public.vortex_user_has_permission(v_store_id,'integrations.view');
+  v_can_manage := public.vortex_user_has_permission(v_store_id,'integrations.manage');
+  IF v_store_id IS NULL OR NOT (v_can_view OR v_can_manage) THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar integrações.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'platform',i.platform,
+    'connected',i.connected,
+    'updated_at',i.updated_at,
+    'credentials',CASE WHEN v_can_manage THEN i.credentials ELSE NULL END
+  ) ORDER BY i.platform),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_integrations AS i
+  WHERE i.store_id=v_store_id;
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_integrations() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_integrations() TO authenticated;
+
+
 COMMIT;

@@ -1463,4 +1463,267 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_mark_delivery_manual(uuid,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_mark_delivery_manual(uuid,text) TO authenticated;
 
+
+-- Cadastro, consulta e ajustes de estoque são expostos por RPCs que filtram custos
+-- e validam separadamente cadastro, quantidade e custo unitário.
+CREATE OR REPLACE FUNCTION public.rpc_get_stock_items(p_store_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_result jsonb;
+  v_can_view_costs boolean;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'stock.view') THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar o estoque.';
+  END IF;
+  v_can_view_costs := public.vortex_user_has_permission(p_store_id,'stock.view_costs');
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id',i.id,
+    'name',i.name,
+    'category',i.category,
+    'unit',i.unit,
+    'qty',i.qty,
+    'cost',CASE WHEN v_can_view_costs THEN i.cost ELSE NULL END,
+    'min_stock',i.min_stock,
+    'barcode',i.barcode
+  ) ORDER BY i.name),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_stock_items AS i
+  WHERE i.store_id=p_store_id;
+
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_stock_items(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_stock_items(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_save_stock_items(p_store_id uuid,p_items jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_item jsonb;
+  v_id text;
+  v_existing public.vortex_stock_items%ROWTYPE;
+  v_name text;
+  v_category text;
+  v_unit text;
+  v_qty numeric;
+  v_cost numeric;
+  v_min_stock numeric;
+  v_barcode text;
+  v_manage boolean;
+  v_adjust boolean;
+  v_cost_access boolean;
+  v_count integer := 0;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_store_access(p_store_id) THEN
+    RAISE EXCEPTION 'Acesso não autorizado.';
+  END IF;
+  v_manage := public.vortex_user_has_permission(p_store_id,'stock.manage_items');
+  v_adjust := public.vortex_user_has_permission(p_store_id,'stock.adjust');
+  v_cost_access := public.vortex_user_has_permission(p_store_id,'stock.view_costs');
+
+  IF jsonb_typeof(COALESCE(p_items,'[]'::jsonb)) IS DISTINCT FROM 'array'
+     OR jsonb_array_length(COALESCE(p_items,'[]'::jsonb))>1000 THEN
+    RAISE EXCEPTION 'Lista de itens inválida.';
+  END IF;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_items,'[]'::jsonb))
+  LOOP
+    v_id := NULLIF(BTRIM(v_item->>'id'),'');
+    IF v_id IS NULL THEN RAISE EXCEPTION 'Item sem identificador.'; END IF;
+
+    SELECT * INTO v_existing
+    FROM public.vortex_stock_items
+    WHERE store_id=p_store_id AND id=v_id
+    FOR UPDATE;
+
+    v_name := left(COALESCE(v_item->>'name',''),160);
+    v_category := left(COALESCE(v_item->>'category','Geral'),100);
+    v_unit := left(COALESCE(v_item->>'unit','un'),30);
+    v_qty := COALESCE(NULLIF(v_item->>'qty','')::numeric,0);
+    v_cost := COALESCE(NULLIF(v_item->>'cost','')::numeric,0);
+    v_min_stock := COALESCE(NULLIF(v_item->>'min_stock','')::numeric,0);
+    v_barcode := left(COALESCE(v_item->>'barcode',''),80);
+
+    IF v_name='' OR v_qty<0 OR v_cost<0 OR v_min_stock<0 THEN
+      RAISE EXCEPTION 'Dados inválidos em um item do estoque.';
+    END IF;
+
+    IF NOT FOUND THEN
+      IF NOT v_manage THEN RAISE EXCEPTION 'Seu perfil não pode cadastrar itens de estoque.'; END IF;
+      IF v_qty>0 AND NOT v_adjust THEN RAISE EXCEPTION 'Seu perfil não pode definir quantidade inicial de estoque.'; END IF;
+      IF v_cost>0 AND NOT v_cost_access THEN RAISE EXCEPTION 'Seu perfil não pode cadastrar custos de insumos.'; END IF;
+
+      INSERT INTO public.vortex_stock_items(store_id,id,name,category,unit,qty,cost,min_stock,barcode,updated_at)
+      VALUES(p_store_id,v_id,v_name,v_category,v_unit,
+        CASE WHEN v_adjust THEN v_qty ELSE 0 END,
+        CASE WHEN v_cost_access THEN v_cost ELSE 0 END,
+        v_min_stock,v_barcode,now());
+    ELSE
+      IF NOT v_manage AND NOT v_adjust THEN
+        RAISE EXCEPTION 'Seu perfil não pode editar itens ou quantidades de estoque.';
+      END IF;
+      IF NOT v_manage AND (
+        v_name IS DISTINCT FROM v_existing.name
+        OR v_category IS DISTINCT FROM v_existing.category
+        OR v_unit IS DISTINCT FROM v_existing.unit
+        OR v_min_stock IS DISTINCT FROM v_existing.min_stock
+        OR v_barcode IS DISTINCT FROM v_existing.barcode
+      ) THEN
+        RAISE EXCEPTION 'Seu perfil não pode alterar os dados cadastrais dos insumos.';
+      END IF;
+      IF v_qty IS DISTINCT FROM v_existing.qty AND NOT v_adjust THEN
+        RAISE EXCEPTION 'Seu perfil não pode alterar quantidades de estoque.';
+      END IF;
+      IF v_cost IS DISTINCT FROM v_existing.cost AND NOT v_cost_access THEN
+        RAISE EXCEPTION 'Seu perfil não pode alterar custos de insumos.';
+      END IF;
+
+      UPDATE public.vortex_stock_items
+      SET name=CASE WHEN v_manage THEN v_name ELSE name END,
+          category=CASE WHEN v_manage THEN v_category ELSE category END,
+          unit=CASE WHEN v_manage THEN v_unit ELSE unit END,
+          qty=CASE WHEN v_adjust THEN v_qty ELSE qty END,
+          cost=CASE WHEN v_cost_access THEN v_cost ELSE cost END,
+          min_stock=CASE WHEN v_manage THEN v_min_stock ELSE min_stock END,
+          barcode=CASE WHEN v_manage THEN v_barcode ELSE barcode END,
+          updated_at=now()
+      WHERE store_id=p_store_id AND id=v_id;
+    END IF;
+
+    v_count:=v_count+1;
+  END LOOP;
+
+  RETURN jsonb_build_object('success',true,'processed',v_count);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_save_stock_items(uuid,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_save_stock_items(uuid,jsonb) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_delete_stock_item(p_store_id uuid,p_item_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_deleted text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'stock.manage_items') THEN
+    RAISE EXCEPTION 'Seu perfil não pode excluir itens de estoque.';
+  END IF;
+  DELETE FROM public.vortex_stock_items
+  WHERE store_id=p_store_id AND id=p_item_id
+  RETURNING id INTO v_deleted;
+  RETURN jsonb_build_object('success',v_deleted IS NOT NULL,'id',v_deleted);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_delete_stock_item(uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_delete_stock_item(uuid,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_adjust_stock_item(
+  p_store_id uuid,
+  p_item_id text,
+  p_type text,
+  p_qty numeric,
+  p_unit_cost numeric DEFAULT 0,
+  p_reason text DEFAULT '',
+  p_idempotency_key text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_item public.vortex_stock_items%ROWTYPE;
+  v_new_qty numeric;
+  v_new_cost numeric;
+  v_key text;
+  v_inserted integer;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'stock.adjust') THEN
+    RAISE EXCEPTION 'Seu perfil não pode ajustar quantidades de estoque.';
+  END IF;
+  IF p_type NOT IN ('entry','exit') OR COALESCE(p_qty,0)<=0 THEN
+    RAISE EXCEPTION 'Tipo ou quantidade de movimentação inválida.';
+  END IF;
+  v_key := left(COALESCE(NULLIF(p_idempotency_key,''),'stock_adj_'||replace(gen_random_uuid()::text,'-','')),180);
+
+  IF EXISTS (
+    SELECT 1 FROM public.vortex_stock_movements
+    WHERE store_id=p_store_id AND idempotency_key=v_key
+  ) THEN
+    RETURN jsonb_build_object('success',true,'already_recorded',true);
+  END IF;
+
+  SELECT * INTO v_item
+  FROM public.vortex_stock_items
+  WHERE store_id=p_store_id AND id=p_item_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Insumo não encontrado neste estabelecimento.'; END IF;
+
+  IF p_type='entry' THEN
+    v_new_qty := COALESCE(v_item.qty,0)+p_qty;
+    v_new_cost := COALESCE(v_item.cost,0);
+    IF COALESCE(p_unit_cost,0)>0 AND public.vortex_user_has_permission(p_store_id,'stock.view_costs') THEN
+      v_new_cost := CASE WHEN v_new_qty>0
+        THEN ((COALESCE(v_item.qty,0)*COALESCE(v_item.cost,0))+(p_qty*p_unit_cost))/v_new_qty
+        ELSE p_unit_cost END;
+    END IF;
+  ELSE
+    v_new_qty := GREATEST(0,COALESCE(v_item.qty,0)-p_qty);
+    v_new_cost := COALESCE(v_item.cost,0);
+  END IF;
+
+  UPDATE public.vortex_stock_items
+  SET qty=v_new_qty,cost=v_new_cost,updated_at=now()
+  WHERE store_id=p_store_id AND id=p_item_id;
+
+  INSERT INTO public.vortex_stock_movements(
+    store_id,id,item_id,item_name,type,qty,reason,idempotency_key,created_at
+  ) VALUES (
+    p_store_id,
+    'mov_'||replace(gen_random_uuid()::text,'-',''),
+    p_item_id,
+    v_item.name,
+    p_type,
+    p_qty,
+    left(COALESCE(p_reason,''),300),
+    v_key,
+    now()
+  )
+  ON CONFLICT (store_id,idempotency_key) DO NOTHING;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+  IF v_inserted=0 THEN
+    -- A chave já foi utilizada; restaura a quantidade para não aplicar o ajuste duas vezes.
+    UPDATE public.vortex_stock_items
+    SET qty=v_item.qty,cost=v_item.cost,updated_at=now()
+    WHERE store_id=p_store_id AND id=p_item_id;
+    RETURN jsonb_build_object('success',true,'already_recorded',true);
+  END IF;
+
+  RETURN jsonb_build_object('success',true,'qty',v_new_qty);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_adjust_stock_item(uuid,text,text,numeric,numeric,text,text) TO authenticated;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE public.vortex_stock_items FROM authenticated;
+
+
 COMMIT;

@@ -589,17 +589,18 @@ async function dbSaveFinancialEntry(entryData) {
   return { data, error };
 }
 
-async function dbSaveCashFinancialEntry(entryData, shiftId) {
+async function dbSaveCashFinancialEntry(entryData, shiftId, movementData) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
-  const { data, error } = await supabase.rpc('rpc_create_cash_financial_entry', {
+  const { data, error } = await supabase.rpc('rpc_record_cash_movement', {
     p_store_id: storeId,
     p_shift_id: String(shiftId || ''),
     p_entry_id: String(entryData.id || ''),
     p_type: String(entryData.type || ''),
-    p_description: String(entryData.description || ''),
+    p_movement_type: String(movementData.type || ''),
+    p_description: String(entryData.description || movementData.reason || ''),
     p_value: Number(entryData.value) || 0,
     p_date: String(entryData.date || new Date().toISOString().slice(0,10))
   });

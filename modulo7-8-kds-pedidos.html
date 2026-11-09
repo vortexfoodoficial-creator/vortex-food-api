@@ -525,17 +525,19 @@
         let isCancelled = order.status === 'cancelled';
         let isFinished = order.status === 'finished' || order.status === 'completed';
 
+        const canUpdateStatus = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('kds.update_status') === true;
+        const canCancelKds = window.VORTEX_AUTH_CONTEXT?.permissions?.includes('kds.cancel') === true;
         let actionsHtml = '';
         if (!isCancelled && !isFinished) {
-          if (order.status === 'new' || order.status === 'received') {
+          if (canUpdateStatus && (order.status === 'new' || order.status === 'received')) {
             actionsHtml += `<button class="btn-action-kds btn-start" onclick="updateOrderStatus('${order.id}', 'preparing')">👨‍🍳 Iniciar Preparo</button>`;
-          } else if (order.status === 'preparing') {
+          } else if (canUpdateStatus && order.status === 'preparing') {
             actionsHtml += `<button class="btn-action-kds btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')">✅ Marcar como Pronto</button>`;
-          } else if (order.status === 'ready' && !isTableOrder) {
+          } else if (canUpdateStatus && order.status === 'ready' && !isTableOrder) {
             actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar</button>`;
           }
           actionsHtml += `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
-          actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
+          if (canCancelKds) actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
         } else {
           actionsHtml = `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
         }

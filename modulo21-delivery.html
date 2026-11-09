@@ -546,6 +546,10 @@
     }
 
     function openCourierModal(courierId = null) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
+        return;
+      }
       document.getElementById('courierEditId').value = '';
       document.getElementById('courierNameInput').value = '';
       document.getElementById('courierPhoneInput').value = '';
@@ -554,6 +558,10 @@
       if (courierId) {
         let couriers = getUnifiedCouriers();
         const found = couriers.find(c => String(c.id) === String(courierId));
+        if (found && found.authUserId) {
+          showNoticeModal('Entregador vinculado à equipe', 'Este entregador possui uma conta individual. Altere seus dados pelo módulo Equipe para preservar o vínculo de acesso.', 'ℹ️');
+          return;
+        }
         if (found) {
           document.getElementById('courierEditId').value = found.id;
           document.getElementById('courierNameInput').value = found.name || '';
@@ -573,6 +581,10 @@
     }
 
     async function saveCourier() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode cadastrar ou editar entregadores.', '🔒');
+        return;
+      }
       const editId = document.getElementById('courierEditId').value;
       const name = document.getElementById('courierNameInput').value.trim();
       const phone = document.getElementById('courierPhoneInput').value.trim();
@@ -586,6 +598,11 @@
       let couriers = getUnifiedCouriers();
 
       if (editId) {
+        const linkedCourier = couriers.find(c => String(c.id) === String(editId));
+        if (linkedCourier && linkedCourier.authUserId) {
+          showNoticeModal('Entregador vinculado à equipe', 'Edite os dados deste funcionário pelo módulo Equipe.', 'ℹ️');
+          return;
+        }
         let index = couriers.findIndex(c => String(c.id) === String(editId));
         if (index !== -1) {
           couriers[index].name = name;
@@ -604,6 +621,15 @@
     }
 
     function deleteCourier(courierId) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode remover entregadores.', '🔒');
+        return;
+      }
+      const linked = getUnifiedCouriers().find(c => String(c.id) === String(courierId));
+      if (linked && linked.authUserId) {
+        showNoticeModal('Entregador vinculado à equipe', 'Desative este funcionário pelo módulo Equipe para preservar o histórico e a conta individual.', 'ℹ️');
+        return;
+      }
       document.getElementById('deleteCourierTargetId').value = courierId;
       document.getElementById('confirmDeleteCourierModal').classList.add('active');
     }
@@ -614,21 +640,17 @@
 
     async function executeDeleteCourier() {
       const courierId = document.getElementById('deleteCourierTargetId').value;
-      
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.manage_couriers')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode remover entregadores.', '🔒');
+        return;
+      }
       let couriers = getUnifiedCouriers();
-      const courierToRemove = couriers.find(c => String(c.id) === String(courierId));
-      const courierName = courierToRemove ? courierToRemove.name.trim().toLowerCase() : '';
-
       couriers = couriers.filter(c => String(c.id) !== String(courierId));
-      let team = JSON.parse(localStorage.getItem('vortex_team_members')) || [];
-      team = team.filter(t => String(t.name || '').trim().toLowerCase() !== courierName);
-      localStorage.setItem('vortex_couriers', JSON.stringify(couriers.map(c => ({ ...c, syncPending: true }))));
-      localStorage.setItem('vortex_team_members', JSON.stringify(team));
       const syncResult = await saveUnifiedCouriers(couriers);
       closeConfirmDeleteCourierModal();
       await loadCouriers();
       if (!syncResult.success) showNoticeModal('Removido no Dispositivo', 'A remoção foi mantida neste dispositivo, mas não foi confirmada na nuvem. Verifique a conexão e tente novamente.', '⚠️');
-      else showNoticeModal('Entregador Excluído', 'O entregador foi removido com sucesso de todos os módulos.', '🗑️');
+      else showNoticeModal('Entregador Excluído', 'O entregador externo foi removido da lista de entregadores.', '🗑️');
     }
 
     async function loadCouriers() {

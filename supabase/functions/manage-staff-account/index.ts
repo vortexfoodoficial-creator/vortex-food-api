@@ -81,6 +81,12 @@ Deno.serve(async (req: Request) => {
       if (member.role === "owner" || member.profile_key === "owner") {
         return response(403, { error: "A conta do proprietário não pode ser desativada por este recurso." });
       }
+      if (member.profile_key === "administrator" && context.profile_key !== "owner") {
+        return response(403, { error: "Somente o proprietário pode alterar o acesso de outro administrador." });
+      }
+      if (member.profile_key === "manager" && !["owner", "administrator"].includes(String(context.profile_key))) {
+        return response(403, { error: "Seu perfil não pode alterar o acesso de um gerente." });
+      }
 
       if (action === "deactivate") {
         const nextInvitationStatus = member.invitation_status === "pending" ? "revoked" : member.invitation_status;

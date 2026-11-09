@@ -1839,4 +1839,169 @@ REVOKE ALL ON FUNCTION public.rpc_get_kds_orders() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_kds_orders() TO authenticated;
 
 
+
+-- Escrita de documentos JSON passa por uma RPC que aplica permissões por chave
+-- e separa edição de produtos, preços, categorias e complementos.
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_store_documents FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_save_store_document(
+  p_document_key text,
+  p_data jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_old_data jsonb;
+  v_old_products jsonb;
+  v_new_products jsonb;
+  v_old_groups jsonb;
+  v_new_groups jsonb;
+  v_old_complements jsonb;
+  v_new_complements jsonb;
+  v_can_products boolean := false;
+  v_can_prices boolean := false;
+  v_can_categories boolean := false;
+  v_old_product jsonb;
+  v_product jsonb;
+  v_product_id text;
+  v_allowed boolean := false;
+  v_result jsonb;
+  v_old_ids jsonb;
+  v_new_ids jsonb;
+  v_old_non_price jsonb;
+  v_new_non_price jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR p_document_key IS NULL OR length(p_document_key)>80
+     OR p_data IS NULL OR jsonb_typeof(p_data) NOT IN ('object','array') THEN
+    RAISE EXCEPTION 'Documento inválido ou sessão não autenticada.';
+  END IF;
+
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+  IF v_store_id IS NULL THEN RAISE EXCEPTION 'Estabelecimento ativo não identificado.'; END IF;
+
+  IF p_document_key='catalog' THEN
+    IF jsonb_typeof(p_data) IS DISTINCT FROM 'object'
+       OR jsonb_typeof(COALESCE(p_data->'products','[]'::jsonb)) IS DISTINCT FROM 'array'
+       OR jsonb_typeof(COALESCE(p_data->'groups','[]'::jsonb)) IS DISTINCT FROM 'array'
+       OR jsonb_typeof(COALESCE(p_data->'complements','[]'::jsonb)) IS DISTINCT FROM 'array'
+       OR EXISTS (
+         SELECT 1 FROM jsonb_object_keys(p_data) AS k
+         WHERE k NOT IN ('products','groups','complements')
+       ) THEN
+      RAISE EXCEPTION 'Estrutura do catálogo inválida.';
+    END IF;
+
+    v_can_products := public.vortex_user_has_permission(v_store_id,'catalog.manage_products');
+    v_can_prices := public.vortex_user_has_permission(v_store_id,'catalog.manage_prices');
+    v_can_categories := public.vortex_user_has_permission(v_store_id,'catalog.manage_categories');
+
+    SELECT data INTO v_old_data
+    FROM public.vortex_store_documents
+    WHERE store_id=v_store_id AND document_key='catalog'
+    FOR UPDATE;
+
+    v_old_products := COALESCE(v_old_data->'products','[]'::jsonb);
+    v_new_products := COALESCE(p_data->'products','[]'::jsonb);
+    v_old_groups := COALESCE(v_old_data->'groups','[]'::jsonb);
+    v_new_groups := COALESCE(p_data->'groups','[]'::jsonb);
+    v_old_complements := COALESCE(v_old_data->'complements','[]'::jsonb);
+    v_new_complements := COALESCE(p_data->'complements','[]'::jsonb);
+
+    IF NOT v_can_categories AND
+       (v_old_groups IS DISTINCT FROM v_new_groups OR v_old_complements IS DISTINCT FROM v_new_complements) THEN
+      RAISE EXCEPTION 'Seu perfil não pode alterar categorias ou grupos de complementos.';
+    END IF;
+
+    IF NOT v_can_products AND NOT v_can_prices AND v_old_products IS DISTINCT FROM v_new_products THEN
+      RAISE EXCEPTION 'Seu perfil não pode alterar produtos ou preços.';
+    END IF;
+
+    IF v_can_prices AND NOT v_can_products THEN
+      SELECT COALESCE(jsonb_agg(COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name') ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      INTO v_old_ids FROM jsonb_array_elements(v_old_products) AS x(value);
+      SELECT COALESCE(jsonb_agg(COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name') ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      INTO v_new_ids FROM jsonb_array_elements(v_new_products) AS x(value);
+      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      INTO v_old_non_price FROM jsonb_array_elements(v_old_products) AS x(value);
+      SELECT COALESCE(jsonb_agg(x.value-ARRAY['price','oldPrice','kgPrice','cost','happyPrice'] ORDER BY COALESCE(x.value->>'id',x.value->>'productId',x.value->>'name')),'[]'::jsonb)
+      INTO v_new_non_price FROM jsonb_array_elements(v_new_products) AS x(value);
+      IF v_old_ids IS DISTINCT FROM v_new_ids OR v_old_non_price IS DISTINCT FROM v_new_non_price THEN
+        RAISE EXCEPTION 'A permissão de preços permite alterar somente os valores dos produtos existentes.';
+      END IF;
+    ELSIF v_can_products AND NOT v_can_prices THEN
+      FOR v_product IN SELECT value FROM jsonb_array_elements(v_new_products)
+      LOOP
+        v_product_id := COALESCE(v_product->>'id',v_product->>'productId',v_product->>'name');
+        SELECT value INTO v_old_product
+        FROM jsonb_array_elements(v_old_products)
+        WHERE COALESCE(value->>'id',value->>'productId',value->>'name')=v_product_id
+        LIMIT 1;
+
+        IF FOUND THEN
+          IF (v_old_product->'price') IS DISTINCT FROM (v_product->'price')
+             OR (v_old_product->'oldPrice') IS DISTINCT FROM (v_product->'oldPrice')
+             OR (v_old_product->'kgPrice') IS DISTINCT FROM (v_product->'kgPrice')
+             OR (v_old_product->'cost') IS DISTINCT FROM (v_product->'cost')
+             OR (v_old_product->'happyPrice') IS DISTINCT FROM (v_product->'happyPrice') THEN
+            RAISE EXCEPTION 'Seu perfil pode editar dados dos produtos, mas não pode alterar preços ou custos.';
+          END IF;
+        ELSE
+          IF COALESCE(NULLIF(v_product->>'price','')::numeric,0)<>0
+             OR COALESCE(NULLIF(v_product->>'oldPrice','')::numeric,0)<>0
+             OR COALESCE(NULLIF(v_product->>'kgPrice','')::numeric,0)<>0
+             OR COALESCE(NULLIF(v_product->>'cost','')::numeric,0)<>0
+             OR COALESCE(NULLIF(v_product->>'happyPrice','')::numeric,0)<>0 THEN
+            RAISE EXCEPTION 'Cadastrar um produto com preço ou custo exige também a permissão de preços.';
+          END IF;
+        END IF;
+      END LOOP;
+    END IF;
+
+    v_allowed := v_can_products OR v_can_prices OR v_can_categories;
+
+  ELSE
+    v_allowed := CASE p_document_key
+      WHEN 'staff' THEN public.vortex_user_has_permission(v_store_id,'team.manage')
+      WHEN 'couriers' THEN (
+        public.vortex_user_has_permission(v_store_id,'delivery.manage_couriers')
+        OR public.vortex_user_has_permission(v_store_id,'team.manage')
+      )
+      WHEN 'coupons' THEN public.vortex_user_has_permission(v_store_id,'coupons.manage')
+      WHEN 'loyalty' THEN public.vortex_user_has_permission(v_store_id,'loyalty.manage')
+      WHEN 'customers' THEN public.vortex_user_has_permission(v_store_id,'crm.manage')
+      WHEN 'table_settings' THEN public.vortex_user_has_permission(v_store_id,'tables.manage_qr')
+      WHEN 'settings' THEN public.vortex_user_has_permission(v_store_id,'settings.manage')
+      WHEN 'recipes' THEN public.vortex_user_has_permission(v_store_id,'recipes.manage')
+      WHEN 'purchases' THEN public.vortex_user_has_permission(v_store_id,'purchases.manage')
+      WHEN 'accounts' THEN public.vortex_user_has_permission(v_store_id,'accounts.manage')
+      WHEN 'printer' THEN public.vortex_user_has_permission(v_store_id,'printers.manage')
+      ELSE false
+    END;
+  END IF;
+
+  IF NOT v_allowed THEN
+    RAISE EXCEPTION 'Seu perfil não tem permissão para salvar este documento.';
+  END IF;
+
+  INSERT INTO public.vortex_store_documents(store_id,document_key,data,updated_at)
+  VALUES (v_store_id,p_document_key,p_data,now())
+  ON CONFLICT (store_id,document_key) DO UPDATE
+  SET data=EXCLUDED.data,updated_at=now()
+  RETURNING data INTO v_result;
+
+  RETURN jsonb_build_object('success',true,'document_key',p_document_key);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_save_store_document(text,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_save_store_document(text,jsonb) TO authenticated;
+
+
 COMMIT;

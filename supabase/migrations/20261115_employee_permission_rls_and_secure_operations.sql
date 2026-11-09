@@ -601,7 +601,7 @@ WITH CHECK (public.vortex_user_has_permission(store_id,'tables.attend_requests')
 REVOKE INSERT, DELETE ON TABLE public.vortex_public_table_requests FROM authenticated;
 
 -- Assinatura e dados raiz: leitura limitada, sem escrita direta por funcionários.
-DO $ DECLARE p record; BEGIN
+DO $$ DECLARE p record; BEGIN
   FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='vortex_subscriptions'
   LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.vortex_subscriptions',p.policyname); END LOOP;
   FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='vortex_stores'

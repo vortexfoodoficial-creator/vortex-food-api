@@ -2155,7 +2155,7 @@ BEGIN
   v_allowed := CASE p_document_key
     WHEN 'staff' THEN public.vortex_user_has_permission(v_store_id,'team.view')
     WHEN 'couriers' THEN (
-      public.vortex_user_has_permission(v_store_id,'delivery.view')
+      public.vortex_user_has_permission(v_store_id,'team.view')
       OR public.vortex_user_has_permission(v_store_id,'delivery.manage')
       OR public.vortex_user_has_permission(v_store_id,'delivery.manage_couriers')
     )

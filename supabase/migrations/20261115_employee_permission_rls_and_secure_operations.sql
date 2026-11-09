@@ -2339,6 +2339,9 @@ AS $function$
 DECLARE
   v_store_id uuid;
   v_result jsonb;
+  v_can_settings boolean;
+  v_can_delivery boolean;
+  v_can_tables boolean;
 BEGIN
   SELECT store_id INTO v_store_id
   FROM public.vortex_store_members
@@ -2349,12 +2352,16 @@ BEGIN
     RAISE EXCEPTION 'Estabelecimento ativo não identificado.';
   END IF;
 
+  v_can_settings := public.vortex_user_has_permission(v_store_id,'settings.view');
+  v_can_delivery := public.vortex_user_has_permission(v_store_id,'delivery.view');
+  v_can_tables := public.vortex_user_has_permission(v_store_id,'tables.view');
+
   SELECT jsonb_build_object(
     'store_name',COALESCE(s.store_name,st.name,''),
-    'store_address',COALESCE(s.store_address,''),
-    'phone',COALESCE(s.phone,''),
-    'taxa',COALESCE(s.taxa,'10,00'),
-    'rodape',COALESCE(s.rodape,'')
+    'store_address',CASE WHEN v_can_settings OR v_can_delivery OR v_can_tables THEN COALESCE(s.store_address,'') ELSE '' END,
+    'phone',CASE WHEN v_can_settings OR v_can_delivery OR v_can_tables THEN COALESCE(s.phone,'') ELSE '' END,
+    'taxa',CASE WHEN v_can_settings THEN COALESCE(s.taxa,'10,00') ELSE NULL END,
+    'rodape',CASE WHEN v_can_settings THEN COALESCE(s.rodape,'') ELSE '' END
   ) INTO v_result
   FROM public.vortex_stores AS st
   LEFT JOIN LATERAL (

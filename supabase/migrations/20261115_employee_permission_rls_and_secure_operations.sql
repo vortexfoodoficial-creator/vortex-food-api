@@ -350,7 +350,10 @@ ON public.vortex_store_documents FOR SELECT TO authenticated
 USING (
   CASE document_key
     WHEN 'staff' THEN public.vortex_user_has_permission(store_id,'team.view')
-    WHEN 'couriers' THEN public.vortex_user_has_permission(store_id,'delivery.view')
+    WHEN 'couriers' THEN (
+      public.vortex_user_has_permission(store_id,'delivery.manage')
+      OR public.vortex_user_has_permission(store_id,'delivery.manage_couriers')
+    )
     WHEN 'catalog' THEN (
       public.vortex_user_has_permission(store_id,'catalog.view')
       OR public.vortex_user_has_permission(store_id,'delivery.manage')

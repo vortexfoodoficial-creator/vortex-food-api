@@ -152,6 +152,9 @@ Deno.serve(async (req: Request) => {
       if (usersError || !existingUser) {
         return response(409, { error: "Este e-mail já possui uma conta. Não foi possível localizar o usuário com segurança." });
       }
+      if (!existingUser.email_confirmed_at) {
+        return response(409, { error: "Este e-mail já possui uma conta, mas ainda não foi confirmado. O funcionário precisa concluir a confirmação dessa conta antes de ser vinculado à loja." });
+      }
       invitedUserId = existingUser.id;
       existingAccount = true;
     } else {

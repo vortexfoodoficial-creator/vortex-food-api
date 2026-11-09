@@ -294,7 +294,7 @@
       <div class="card-title">🔓 Abertura de Caixa</div>
       <div class="form-group">
         <label>Nome do Operador:*</label>
-        <input type="text" class="form-input" id="openOperatorName" placeholder="Ex: João Silva">
+        <input type="text" class="form-input" id="openOperatorName" readonly aria-readonly="true" placeholder="Usuário conectado">
       </div>
       <div class="form-group">
         <label>Valor do Troco Inicial (R$):*</label>
@@ -886,9 +886,22 @@
 
     window.onload = async function() {
       applyTheme();
+      if (window.VortexAuth && typeof window.VortexAuth.getCurrentStoreContext === 'function') {
+        const context = await window.VortexAuth.getCurrentStoreContext();
+        if (context.error) {
+          showCustomAlert('Acesso não validado', context.error.message || 'Não foi possível validar sua conta.', '🔒');
+          return;
+        }
+      }
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       document.getElementById('sidebarStoreName').innerText = settings.storeName || 'MEU ESTABELECIMENTO';
-      
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      const canOpen = permissions.includes('cash.open');
+      const canMove = permissions.includes('cash.move');
+      const canClose = permissions.includes('cash.close');
+      document.getElementById('btnOpenCash').style.display = canOpen ? '' : 'none';
+      document.querySelectorAll('[onclick^="openMovementModal"]').forEach(button => button.style.display = canMove ? '' : 'none');
+      document.querySelector('[onclick="openCloseCashModal()"]').style.display = canClose ? '' : 'none';
       await checkActiveShiftFromSupabase();
     };
   </script>

@@ -2242,4 +2242,128 @@ REVOKE ALL ON FUNCTION public.rpc_get_my_store_context() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_my_store_context() TO authenticated;
 
 
+
+-- Suspensão do estabelecimento bloqueia também as permissões internas e as RPCs autenticadas.
+CREATE OR REPLACE FUNCTION public.vortex_user_has_store_access(p_store_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.vortex_store_members AS m
+    JOIN public.vortex_stores AS s ON s.id=m.store_id
+    WHERE m.user_id=auth.uid()
+      AND m.store_id=p_store_id
+      AND m.status='active'
+      AND s.status='active'
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION public.vortex_user_has_store_access(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.vortex_user_has_store_access(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.vortex_user_has_permission(
+  p_store_id uuid,
+  p_permission_key text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_user_id uuid;
+  v_role text;
+  v_profile_key text;
+  v_override boolean;
+  v_profile_allowed boolean;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL OR p_store_id IS NULL OR p_permission_key IS NULL THEN
+    RETURN false;
+  END IF;
+  IF NOT public.vortex_user_has_store_access(p_store_id) THEN
+    RETURN false;
+  END IF;
+
+  SELECT m.role,m.profile_key
+    INTO v_role,v_profile_key
+  FROM public.vortex_store_members AS m
+  WHERE m.store_id=p_store_id
+    AND m.user_id=v_user_id
+    AND m.status='active'
+  LIMIT 1;
+
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF v_role='owner' OR v_profile_key='owner' THEN RETURN true; END IF;
+
+  SELECT mp.allowed INTO v_override
+  FROM public.vortex_member_permissions AS mp
+  WHERE mp.store_id=p_store_id
+    AND mp.user_id=v_user_id
+    AND mp.permission_key=p_permission_key;
+
+  IF FOUND THEN RETURN v_override; END IF;
+
+  SELECT pp.allowed INTO v_profile_allowed
+  FROM public.vortex_profile_permissions AS pp
+  WHERE pp.profile_key=v_profile_key
+    AND pp.permission_key=p_permission_key;
+
+  RETURN COALESCE(v_profile_allowed,false);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.vortex_user_has_permission(uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.vortex_user_has_permission(uuid,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_store_operational_settings()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_store_id uuid;
+  v_result jsonb;
+BEGIN
+  SELECT store_id INTO v_store_id
+  FROM public.vortex_store_members
+  WHERE user_id=auth.uid() AND status='active'
+  LIMIT 1;
+
+  IF v_store_id IS NULL OR NOT public.vortex_user_has_store_access(v_store_id) THEN
+    RAISE EXCEPTION 'Estabelecimento ativo não identificado.';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'store_name',COALESCE(s.store_name,st.name,''),
+    'store_address',COALESCE(s.store_address,''),
+    'phone',COALESCE(s.phone,''),
+    'taxa',COALESCE(s.taxa,'10,00'),
+    'rodape',COALESCE(s.rodape,'')
+  ) INTO v_result
+  FROM public.vortex_stores AS st
+  LEFT JOIN LATERAL (
+    SELECT store_name,store_address,phone,taxa,rodape
+    FROM public.vortex_store_settings
+    WHERE store_id=v_store_id
+    ORDER BY id
+    LIMIT 1
+  ) AS s ON true
+  WHERE st.id=v_store_id AND st.status='active';
+
+  RETURN COALESCE(v_result,'{}'::jsonb);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_store_operational_settings() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_store_operational_settings() TO authenticated;
+
+
 COMMIT;

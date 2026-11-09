@@ -499,7 +499,7 @@
 
     function openRecipeModal() {
       const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
-      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('catalog.view')) {
+      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('stock.view_costs') || !permissions.includes('catalog.view')) {
         showNoticeModal('Acesso restrito', 'Para criar ou editar fichas técnicas, seu perfil precisa de gestão de fichas, consulta ao estoque e consulta ao catálogo.', '🔒');
         return;
       }
@@ -607,7 +607,7 @@
 
     async function saveRecipe() {
       const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
-      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('catalog.view')) {
+      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('stock.view_costs') || !permissions.includes('catalog.view')) {
         showNoticeModal('Acesso restrito', 'Para criar fichas técnicas, seu perfil precisa de gestão de fichas, consulta ao estoque e consulta ao catálogo.', '🔒');
         return;
       }

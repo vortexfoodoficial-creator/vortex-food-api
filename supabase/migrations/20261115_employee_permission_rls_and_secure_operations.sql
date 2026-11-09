@@ -315,6 +315,98 @@ WITH CHECK (
 );
 REVOKE UPDATE, DELETE ON TABLE public.vortex_sales_history FROM authenticated;
 
+CREATE OR REPLACE FUNCTION public.rpc_create_sale(p_store_id uuid,p_sale jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_id text;
+  v_channel text;
+  v_total numeric;
+  v_subtotal numeric;
+  v_discount numeric;
+  v_status text;
+  v_financial_status text;
+  v_items jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_store_access(p_store_id) THEN
+    RAISE EXCEPTION 'Acesso não autorizado.';
+  END IF;
+  IF jsonb_typeof(p_sale) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'Dados da venda inválidos.';
+  END IF;
+
+  v_id := NULLIF(BTRIM(p_sale->>'id'),'');
+  v_channel := COALESCE(p_sale->>'channel','');
+  v_total := COALESCE(NULLIF(p_sale->>'total','')::numeric,0);
+  v_subtotal := COALESCE(NULLIF(p_sale->>'subtotal','')::numeric,v_total);
+  v_discount := COALESCE(NULLIF(p_sale->>'discount','')::numeric,0);
+  v_status := COALESCE(NULLIF(p_sale->>'status',''),'completed');
+  v_financial_status := COALESCE(NULLIF(p_sale->>'financial_status',''),'paid');
+  v_items := COALESCE(p_sale->'items','[]'::jsonb);
+
+  IF v_id IS NULL OR length(v_id)>120 OR v_channel='' THEN
+    RAISE EXCEPTION 'Identificação ou canal da venda inválido.';
+  END IF;
+  IF v_total<0 OR v_subtotal<0 OR v_discount<0 OR v_discount>v_subtotal THEN
+    RAISE EXCEPTION 'Valores da venda inválidos.';
+  END IF;
+  IF v_status NOT IN ('completed','finished','pending','processing') THEN
+    RAISE EXCEPTION 'Status inicial de venda inválido.';
+  END IF;
+  IF v_financial_status NOT IN ('paid','pending') THEN
+    RAISE EXCEPTION 'Situação financeira inicial inválida.';
+  END IF;
+  IF jsonb_typeof(v_items) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Os itens da venda precisam estar em uma lista válida.';
+  END IF;
+
+  IF v_channel ILIKE '%Delivery%' THEN
+    IF NOT public.vortex_user_has_permission(p_store_id,'delivery.manage') THEN
+      RAISE EXCEPTION 'Seu perfil não pode registrar pedidos de delivery.';
+    END IF;
+  ELSIF v_channel ILIKE '%Mesa%' THEN
+    IF NOT (
+      public.vortex_user_has_permission(p_store_id,'tables.open')
+      OR public.vortex_user_has_permission(p_store_id,'tables.close')
+    ) THEN
+      RAISE EXCEPTION 'Seu perfil não pode registrar vendas de mesa.';
+    END IF;
+  ELSIF NOT public.vortex_user_has_permission(p_store_id,'pdv.sell') THEN
+    RAISE EXCEPTION 'Seu perfil não pode registrar vendas no PDV.';
+  END IF;
+
+  IF v_discount>0 AND NOT public.vortex_user_has_permission(p_store_id,'pdv.discount') THEN
+    RAISE EXCEPTION 'Seu perfil não pode aplicar descontos.';
+  END IF;
+
+  INSERT INTO public.vortex_sales_history(
+    store_id,id,client,channel,total,subtotal,discount,
+    paymethod,pay_method,status,financial_status,date,time,items,updated_at
+  ) VALUES (
+    p_store_id,v_id,
+    left(COALESCE(p_sale->>'client','Cliente Balcão'),180),
+    left(v_channel,80),
+    v_total,v_subtotal,v_discount,
+    left(COALESCE(p_sale->>'pay_method',p_sale->>'payMethod',p_sale->>'paymentMethod','PIX'),80),
+    left(COALESCE(p_sale->>'pay_method',p_sale->>'payMethod',p_sale->>'paymentMethod','PIX'),80),
+    v_status,v_financial_status,
+    COALESCE(NULLIF(p_sale->>'date','')::date,current_date),
+    left(COALESCE(p_sale->>'time',to_char(now() AT TIME ZONE 'America/Sao_Paulo','HH24:MI')),20),
+    v_items,now()
+  );
+
+  RETURN jsonb_build_object('success',true,'sale_id',v_id);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_create_sale(uuid,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_create_sale(uuid,jsonb) TO authenticated;
+
+REVOKE INSERT ON TABLE public.vortex_sales_history FROM authenticated;
+
 -- Estoque: ajustes e cadastro são diferentes de consulta.
 CREATE POLICY vortex_stock_items_permission_select
 ON public.vortex_stock_items FOR SELECT TO authenticated

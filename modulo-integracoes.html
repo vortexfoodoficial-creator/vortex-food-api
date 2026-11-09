@@ -362,7 +362,7 @@
         const cached = JSON.parse(localStorage.getItem('vortex_integrations_data') || '{}') || {};
         Object.keys(cached).forEach(platform => { cached[platform] = { connected: !!cached[platform]?.connected, credentials: null }; });
         localStorage.setItem('vortex_integrations_data', JSON.stringify(cached));
-        document.querySelectorAll('.integration-card input').forEach(input => { input.disabled = true; input.value = ''; });
+        document.querySelectorAll('input').forEach(input => { input.disabled = true; input.value = ''; });
         document.querySelectorAll('button[onclick^="saveIntegration("]').forEach(button => { button.style.display = 'none'; });
       }
       if (typeof dbFetchIntegrations === 'function') {

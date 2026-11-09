@@ -478,7 +478,10 @@ BEGIN
   FROM public.vortex_store_members
   WHERE store_id = p_store_id
     AND user_id = p_target_user_id
-    AND status = 'active'
+    AND (
+      status = 'active'
+      OR (status = 'inactive' AND invitation_status = 'pending')
+    )
   FOR UPDATE;
 
   IF NOT FOUND THEN

@@ -872,13 +872,19 @@
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
+      const result = await syncKdsPatch(orderId, { courier: newCourier || '' });
+      if (result && result.error) {
+        showNoticeModal('Não foi possível atribuir', result.error.message || 'O servidor recusou a alteração.', '⚠️');
+        return;
+      }
       order.courier = newCourier;
+      const selected = getUnifiedCouriers().find(item => String(item.name || '').trim().toLowerCase() === String(newCourier).trim().toLowerCase());
+      order.courier_member_id = selected && selected.authUserId ? selected.authUserId : null;
       saveLocalKdsOrders(kdsOrders);
       closeEditCourierModal();
       renderActiveDeliveryOrders(kdsOrders, true);
       const visibleNum = order.displayId || orderId;
       showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${visibleNum} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
-      await syncKdsPatch(orderId, { courier: newCourier || '' });
     }
 
     function recordCourierHistory(o) {
@@ -1280,6 +1286,11 @@
     }
 
     function renderActiveDeliveryOrders(kdsOrders, force = false) {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      const canDispatch = permissions.includes('delivery.dispatch');
+      const canAssign = permissions.includes('delivery.assign');
+      const canConfirm = permissions.includes('delivery.confirm');
+      const canManualFinish = permissions.includes('delivery.manual_finish');
       const todayDateStr = getLocalDateStr(new Date());
       const deliveryOrders = kdsOrders.filter(o => {
         if (!o.origin || !String(o.origin).includes('Delivery')) return false;
@@ -1313,11 +1324,11 @@
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--warning); text-align:center; margin-top:4px;">Em produção pela cozinha...</div>`;
         } else if (o.status === 'ready') {
           statusClass = 'status-ready'; statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>`;
+          actionAreaHtml = canDispatch ? `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>` : `<div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:4px;">Aguardando usuário autorizado para despachar.</div>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
           const isOnlineDelivery = String(o.origin || '').toLowerCase().includes('online');
-          actionAreaHtml = `<div style="margin-top:6px;">${isOnlineDelivery ? `<div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div>` : ''}<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button></div>`;
+          actionAreaHtml = `<div style="margin-top:6px;">${isOnlineDelivery && canConfirm ? `<div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div>` : ''}${canManualFinish ? `<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button>` : ''}${!canConfirm && !canManualFinish ? `<div style="font-size:0.78rem;color:var(--text-muted);">Aguardando confirmação por usuário autorizado.</div>` : ''}</div>`;
         } else if (o.status === 'finished') {
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
@@ -1327,7 +1338,7 @@
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> <button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }
@@ -1380,17 +1391,28 @@
     }
 
     async function dispatchOrderDirect(orderId) {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('delivery.dispatch') || !permissions.includes('delivery.assign')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode despachar ou atribuir este pedido.', '🔒');
+        return;
+      }
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
+      const previous = { status: order.status, courier: order.courier };
+      const selectedCourier = order.courier || document.getElementById('selectCourierForRoute').value || '';
+      const result = await syncKdsPatch(orderId, { status: 'delivering', courier: selectedCourier });
+      if (result && result.error) {
+        showNoticeModal('Não foi possível despachar', result.error.message || 'O servidor recusou a operação.', '⚠️');
+        return;
+      }
       order.status = 'delivering';
-      if (!order.courier) order.courier = document.getElementById('selectCourierForRoute').value || 'Não atribuído';
+      order.courier = selectedCourier || 'Não atribuído';
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
       const visibleNum = order.displayId || orderId;
       showNoticeModal('Pedido Despachado!', `O pedido #${visibleNum} foi enviado para rota.`, '🚀');
-      await syncKdsPatch(orderId, { status: 'delivering', courier: order.courier });
     }
 
     async function finishDeliveryOrder(orderId) {

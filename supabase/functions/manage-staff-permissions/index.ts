@@ -102,6 +102,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const profileKey = requestedProfile || target.profile_key;
+    if (profileKey === "administrator" && context.profile_key !== "owner") {
+      return response(403, { error: "Somente o proprietário pode atribuir o perfil Administrador." });
+    }
     const { data: profileRows, error: profileError } = await admin
       .from("vortex_profile_permissions")
       .select("permission_key")

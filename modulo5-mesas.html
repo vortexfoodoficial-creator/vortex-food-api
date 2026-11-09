@@ -650,6 +650,10 @@
     }
 
     async function submitTableOrderToKds() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.open')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode abrir comandas ou enviar pedidos de mesa.', '🔒');
+        return;
+      }
       if (tempCart.length === 0) {
         showNoticeModal('Nenhum Item Novo', 'Selecione novos itens do cardápio para enviar para a cozinha.', '⚠️');
         return;
@@ -799,6 +803,10 @@
     }
 
     async function finalizeTablePayment() {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.close')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode fechar comandas ou finalizar pagamentos de mesa.', '🔒');
+        return;
+      }
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       let currentData = tableCarts[activeTableId];
       if (!currentData) return;
@@ -907,7 +915,7 @@
         return '<div style="border:1px solid var(--border); border-radius:10px; padding:12px;">' +
           '<strong>Mesa ' + escapeRequestText(request.table_number) + ' — ' + label + '</strong>' +
           '<div style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 8px;">' + escapeRequestText(time) + '</div>' +
-          '<button class="btn-modal-primary" onclick="resolvePublicTableRequest(\'' + escapeRequestText(request.id) + '\')">Marcar como atendida</button></div>';
+          (window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.attend_requests') ? '<button class="btn-modal-primary" onclick="resolvePublicTableRequest(\'' + escapeRequestText(request.id) + '\')">Marcar como atendida</button>' : '<span style="font-size:12px;color:var(--text-muted);">Somente consulta</span>') + '</div>';
       }).join('');
     }
 
@@ -921,6 +929,10 @@
     }
 
     async function resolvePublicTableRequest(requestId) {
+      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.attend_requests')) {
+        showNoticeModal('Acesso restrito', 'Seu perfil não pode marcar solicitações de mesa como atendidas.', '🔒');
+        return;
+      }
       const result = await dbResolvePublicTableRequest(requestId);
       if (result && result.error) {
         showNoticeModal('Erro', result.error.message || 'Não foi possível atualizar a solicitação.', '⚠️');

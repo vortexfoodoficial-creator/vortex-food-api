@@ -1259,7 +1259,7 @@ function vortexRenderEmployeeChrome(context) {
   const displayName = context.display_name || context.email || 'Usuário';
   const header = document.querySelector('header');
 
-  if (header && !document.getElementById('vortexEmployeeIdentity')) {
+  if (!document.getElementById('vortexEmployeeIdentity')) {
     const identity = document.createElement('div');
     identity.id = 'vortexEmployeeIdentity';
     identity.innerHTML = `
@@ -1271,9 +1271,17 @@ function vortexRenderEmployeeChrome(context) {
         <button type="button" id="vortexLockButton">🔒 Bloquear tela</button>
         <button type="button" id="vortexSwitchButton">⇄ Trocar usuário</button>
       </div>`;
-    header.appendChild(identity);
+    if (header) header.appendChild(identity);
+    else document.body.insertBefore(identity, document.body.firstChild);
     document.getElementById('vortexLockButton').addEventListener('click', vortexShowLockScreen);
     document.getElementById('vortexSwitchButton').addEventListener('click', vortexSwitchUser);
+  }
+
+  const blockedPermission = new URLSearchParams(window.location.search).get('blocked');
+  if (blockedPermission && !window.__VORTEX_BLOCKED_NOTICE_SHOWN) {
+    window.__VORTEX_BLOCKED_NOTICE_SHOWN = true;
+    const profiles = VORTEX_PERMISSION_LABELS[blockedPermission] || 'Proprietário e Administrador';
+    window.setTimeout(() => window.alert('Seu perfil atual não tem permissão para acessar este módulo. Perfis autorizados: ' + profiles + '. Solicite ao proprietário uma revisão das suas permissões.'), 150);
   }
 
   document.querySelectorAll('.nav-link[href]').forEach(link => {
@@ -1348,6 +1356,13 @@ function vortexShowLockScreen() {
     const result = await vortexSignIn(context.email, password);
     if (result.error || !result.data?.user || result.data.user.id !== context.user_id) {
       errorBox.textContent = 'Senha incorreta. A tela continua bloqueada.';
+      button.disabled = false;
+      button.textContent = 'Desbloquear';
+      return;
+    }
+    const freshContext = await vortexGetCurrentStoreContext();
+    if (freshContext.error || !freshContext.store || String(freshContext.store.id) !== String(context.store_id)) {
+      errorBox.textContent = 'Esta conta não possui mais acesso ativo à loja. Entre em contato com o proprietário.';
       button.disabled = false;
       button.textContent = 'Desbloquear';
       return;

@@ -334,9 +334,8 @@ async function dbFetchKdsOrders() {
   if (!storeId) return [];
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
-  const { data, error } = await supabase.from('vortex_kds_orders').select('*').eq('store_id', storeId);
-  if (error) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-  if (!data) return [];
+  const { data, error } = await supabase.rpc('rpc_get_kds_orders');
+  if (error || !Array.isArray(data)) return JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
 
   const remoteMapped = data.map(item => ({
     id: item.id,
@@ -354,30 +353,44 @@ async function dbFetchKdsOrders() {
     observation: item.observation,
     status: item.status || 'received',
     financialStatus: item.financial_status || 'paid',
-    code: item.code,
-    displayId: item.displayId || item.displayid || null
+    code: '',
+    displayId: item.displayId || item.displayid || null,
+    courier: item.courier || '',
+    courier_member_id: item.courier_member_id || null,
+    created_by: item.created_by || null
   }));
 
-  // Preserva o número de exibição local quando a nuvem não o retorna.
+  // Entregadores recebem somente os pedidos atribuídos retornados pela RPC;
+  // nunca mesclam uma lista local antiga que possa conter pedidos de outros motoboys.
+  if (window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery') {
+    try { localStorage.setItem('vortex_kds_orders', JSON.stringify(remoteMapped)); } catch (e) {}
+    return remoteMapped;
+  }
+
   let localOrders = [];
   try {
     localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
-  } catch(e) {
+    if (!Array.isArray(localOrders)) localOrders = [];
+  } catch (e) {
     localOrders = [];
   }
 
-  const localMap = new Map(localOrders.map(order => [String(order.id), order]));
+  const localMap = new Map(localOrders.map(order => {
+    const safeOrder = { ...order };
+    if (String(safeOrder.origin || '').toLowerCase().includes('delivery')) delete safeOrder.code;
+    return [String(safeOrder.id), safeOrder];
+  }));
   remoteMapped.forEach(remoteOrder => {
     const localOrder = localMap.get(String(remoteOrder.id)) || {};
     localMap.set(String(remoteOrder.id), {
       ...localOrder,
       ...remoteOrder,
-      displayId: remoteOrder.displayId || remoteOrder.displayid || localOrder.displayId || localOrder.displayid || null
+      displayId: remoteOrder.displayId || localOrder.displayId || localOrder.displayid || null
     });
   });
 
   const mergedOrders = Array.from(localMap.values());
-  try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mergedOrders)); } catch(e) {}
+  try { localStorage.setItem('vortex_kds_orders', JSON.stringify(mergedOrders)); } catch (e) {}
   return mergedOrders;
 }
 

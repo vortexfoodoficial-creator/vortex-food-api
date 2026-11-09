@@ -384,7 +384,7 @@
           const kdsRes = await dbFetchKdsOrdersResult();
           if (kdsRes && kdsRes.data) remoteKds = kdsRes.data;
         } else if (window.supabaseClient) {
-          const { data } = await window.supabaseClient.from('vortex_kds_orders').select('*').eq('store_id', window.VORTEX_ACTIVE_STORE_ID);
+          const { data } = await window.supabaseClient.rpc('rpc_get_kds_orders');
           if (data) remoteKds = data;
         }
 
@@ -394,6 +394,14 @@
             localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
           } catch(e) { localOrders = []; }
 
+          localOrders = localOrders.map(order => {
+            if (String(order.origin || '').toLowerCase().includes('delivery') && Object.prototype.hasOwnProperty.call(order, 'code')) {
+              const safeOrder = { ...order };
+              delete safeOrder.code;
+              return safeOrder;
+            }
+            return order;
+          });
           let localMap = new Map(localOrders.map(o => [String(o.id), o]));
           remoteKds.forEach(r => {
             let localItem = localMap.get(String(r.id));

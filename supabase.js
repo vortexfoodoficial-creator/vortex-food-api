@@ -728,16 +728,8 @@ async function dbSyncPublicTableCount(localCount) {
   const storeId = await vortexGetCurrentStoreId();
   if (!supabase || !storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
 
-  const { data, error } = await supabase
-    .from('vortex_store_documents')
-    .select('data')
-    .eq('store_id', storeId)
-    .eq('document_key', 'table_settings')
-    .maybeSingle();
-
-  if (error) return { data: null, error };
-
-  const cloudCount = Number(data && data.data && data.data.totalTablesCount);
+  const tableSettings = await dbFetchStoreDocument('table_settings');
+  const cloudCount = Number(tableSettings && tableSettings.totalTablesCount);
   if (Number.isInteger(cloudCount) && cloudCount >= 1 && cloudCount <= 200) {
     return { data: cloudCount, error: null };
   }

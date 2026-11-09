@@ -766,6 +766,9 @@ async function dbSyncPublicTableCount(localCount) {
   const initialCount = Number.isInteger(Number(localCount))
     ? Math.max(1, Math.min(200, Number(localCount)))
     : 10;
+  if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.manage_qr')) {
+    return { data: initialCount, error: null };
+  }
   const saved = await dbSaveStoreDocument('table_settings', { totalTablesCount: initialCount });
   if (saved && saved.error) return { data: null, error: saved.error };
   return { data: initialCount, error: null };

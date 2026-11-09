@@ -102,6 +102,9 @@ Deno.serve(async (req: Request) => {
     if (staffRecord.authUserId) {
       return response(409, { error: "Este colaborador já possui uma conta vinculada." });
     }
+    if (String(staffRecord.email || '').trim().toLowerCase() !== email) {
+      return response(409, { error: "O e-mail precisa ser salvo no cadastro do colaborador antes de enviar o convite." });
+    }
 
     // Não permitir que o responsável pelo convite conceda poderes que ele próprio não possui.
     const { data: targetPermissions, error: targetPermissionsError } = await admin
@@ -125,7 +128,9 @@ Deno.serve(async (req: Request) => {
       return response(400, { error: "O cadastro do colaborador precisa ter um nome." });
     }
 
-    const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+    let invitedUserId = '';
+    let existingAccount = false;
+    const inviteResult = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: appUrl.replace(/\/$/, "") + "/login.html",
       data: {
         vortex_store_id: storeId,
@@ -133,33 +138,77 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    if (inviteError || !inviteData.user) {
+    if (!inviteResult.error && inviteResult.data.user) {
+      invitedUserId = inviteResult.data.user.id;
+    } else if (/already registered|already been registered|user already exists/i.test(inviteResult.error?.message || '')) {
+      const { data: usersResult, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const existingUser = (usersResult?.users || []).find((user) => String(user.email || '').toLowerCase() === email);
+      if (usersError || !existingUser) {
+        return response(409, { error: "Este e-mail já possui uma conta. Não foi possível localizar o usuário com segurança." });
+      }
+      invitedUserId = existingUser.id;
+      existingAccount = true;
+    } else {
       return response(409, {
-        error: inviteError?.message || "Não foi possível enviar o convite. Verifique se este e-mail já possui uma conta no Vortex Food.",
+        error: inviteResult.error?.message || "Não foi possível enviar o convite. Verifique o e-mail e tente novamente.",
       });
     }
 
-    const invitedUserId = inviteData.user.id;
-
-    const { error: membershipError } = await admin
+    // O modelo atual mantém uma conta vinculada a uma única loja.
+    const { data: existingMemberships, error: membershipsReadError } = await admin
       .from("vortex_store_members")
-      .insert({
-        store_id: storeId,
-        user_id: invitedUserId,
-        role: "employee",
-        status: "inactive",
-        profile_key: profileKey,
-        display_name: displayName,
-        staff_record_id: staffRecordId,
-        invitation_status: "pending",
-        invited_at: new Date().toISOString(),
-        invited_by: actorId,
-      });
+      .select("store_id,role,staff_record_id,status")
+      .eq("user_id", invitedUserId);
 
-    if (membershipError) {
-      return response(500, {
-        error: "O convite foi criado, mas não foi possível concluir o vínculo da equipe. O acesso continua bloqueado; contate o suporte antes de reenviar.",
-      });
+    if (membershipsReadError) {
+      return response(500, { error: "Não foi possível verificar os vínculos existentes desta conta." });
+    }
+    const otherStoreMembership = (existingMemberships || []).find((member) => String(member.store_id) !== storeId);
+    if (otherStoreMembership) {
+      return response(409, { error: "Esta conta já está vinculada a outro estabelecimento. O Vortex ainda trabalha com uma loja por usuário." });
+    }
+    const sameStoreMembership = (existingMemberships || []).find((member) => String(member.store_id) === storeId);
+    if (sameStoreMembership && (sameStoreMembership.role === "owner" || String(sameStoreMembership.staff_record_id || "") !== staffRecordId)) {
+      return response(409, { error: "Esta conta já está vinculada a outro cadastro ou é a conta do proprietário." });
+    }
+
+    if (sameStoreMembership) {
+      const { error: membershipError } = await admin
+        .from("vortex_store_members")
+        .update({
+          role: "employee",
+          status: "inactive",
+          profile_key: profileKey,
+          display_name: displayName,
+          staff_record_id: staffRecordId,
+          invitation_status: "pending",
+          invited_at: new Date().toISOString(),
+          invited_by: actorId,
+        })
+        .eq("store_id", storeId)
+        .eq("user_id", invitedUserId);
+      if (membershipError) return response(500, { error: "Não foi possível preparar o vínculo pendente deste funcionário." });
+    } else {
+      const { error: membershipError } = await admin
+        .from("vortex_store_members")
+        .insert({
+          store_id: storeId,
+          user_id: invitedUserId,
+          role: "employee",
+          status: "inactive",
+          profile_key: profileKey,
+          display_name: displayName,
+          staff_record_id: staffRecordId,
+          invitation_status: "pending",
+          invited_at: new Date().toISOString(),
+          invited_by: actorId,
+        });
+
+      if (membershipError) {
+        return response(500, {
+          error: "O convite foi criado, mas não foi possível concluir o vínculo da equipe. O acesso continua bloqueado; contate o suporte antes de reenviar.",
+        });
+      }
     }
 
     const updatedStaff = staffList.map((member, index) => index === staffIndex
@@ -206,7 +255,10 @@ Deno.serve(async (req: Request) => {
       success: true,
       invitation_status: "pending",
       user_id: invitedUserId,
-      message: "Convite enviado. O funcionário precisa aceitar o e-mail e criar a própria senha antes de acessar o Vortex Food.",
+      existing_account: existingAccount,
+      message: existingAccount
+        ? "Este e-mail já possui uma conta. Nenhum novo e-mail de convite foi enviado; peça ao funcionário para entrar com a senha atual. O vínculo será ativado no primeiro acesso."
+        : "Convite enviado. O funcionário precisa aceitar o e-mail e criar a própria senha antes de acessar o Vortex Food.",
     });
   } catch (error) {
     console.error("invite-staff error:", error);

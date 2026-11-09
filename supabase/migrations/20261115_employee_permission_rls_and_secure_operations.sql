@@ -63,6 +63,7 @@ CREATE INDEX IF NOT EXISTS vortex_kds_orders_created_by_idx
 CREATE OR REPLACE FUNCTION public.vortex_set_actor_audit_fields()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = pg_catalog, public, auth
 AS $function$
 DECLARE

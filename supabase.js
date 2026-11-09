@@ -1353,9 +1353,18 @@ function vortexShowLockScreen() {
     const password = document.getElementById('vortexUnlockPassword').value;
     button.disabled = true;
     button.textContent = 'Verificando...';
-    const result = await vortexSignIn(context.email, password);
-    if (result.error || !result.data?.user || result.data.user.id !== context.user_id) {
-      errorBox.textContent = 'Senha incorreta. A tela continua bloqueada.';
+    const supabase = getSupabase();
+    if (!supabase) {
+      errorBox.textContent = 'Conexão indisponível. A tela continua bloqueada.';
+      button.disabled = false;
+      button.textContent = 'Desbloquear';
+      return;
+    }
+    const { data: verification, error: verificationError } = await supabase.functions.invoke('verify-current-password', {
+      body: { password }
+    });
+    if (verificationError || !verification?.success) {
+      errorBox.textContent = verificationError?.message || verification?.error || 'Senha incorreta. A tela continua bloqueada.';
       button.disabled = false;
       button.textContent = 'Desbloquear';
       return;

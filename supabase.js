@@ -463,21 +463,22 @@ async function dbSaveStock(stockData) {
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
 
   const items = Array.isArray(stockData) ? stockData : [];
-  if (!items.length) return { data: [], error: null };
+  if (!items.length) return { data: { success: true, processed: 0 }, error: null };
 
   const records = items.map(i => ({
-    store_id: storeId,
     id: String(i.id),
     name: i.name,
     category: i.category,
     unit: i.unit,
     qty: parseFloat(i.qty) || 0,
-    cost: parseFloat(i.cost) || 0,
+    cost: i.cost == null ? null : (parseFloat(i.cost) || 0),
     min_stock: parseFloat(i.minStock) || 0,
-    barcode: i.barcode || '',
-    updated_at: new Date().toISOString()
+    barcode: i.barcode || ''
   }));
-  const { data, error } = await supabase.from('vortex_stock_items').upsert(records);
+  const { data, error } = await supabase.rpc('rpc_save_stock_items', {
+    p_store_id: storeId,
+    p_items: records
+  });
   return { data, error };
 }
 
@@ -486,46 +487,32 @@ async function dbDeleteStockItem(itemId) {
   if (!supabase) return { error: new Error('Supabase não inicializado') };
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
-  return await supabase
-    .from('vortex_stock_items')
-    .delete()
-    .eq('store_id', storeId)
-    .eq('id', String(itemId))
-    .select('id');
+  const { data, error } = await supabase.rpc('rpc_delete_stock_item', {
+    p_store_id: storeId,
+    p_item_id: String(itemId)
+  });
+  return { data, error };
 }
 
-async function dbSaveStockMovements(movements) {
+async function dbAdjustStockItem(itemId, type, qty, unitCost, reason, idempotencyKey) {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Supabase não inicializado') };
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { error: new Error('Estabelecimento ativo não identificado.') };
-
-  const entries = Array.isArray(movements) ? movements : [];
-  if (!entries.length) return { data: [], error: null };
-
-  const normalized = entries.map((movement, index) => {
-    const id = String(movement.id || ('mov_' + Date.now() + '_' + index));
-    movement.id = id;
-    return {
-      store_id: storeId,
-      id,
-      order_id: movement.order_id ? String(movement.order_id) : null,
-      item_id: String(movement.item_id || ''),
-      item_name: String(movement.item_name || movement.itemName || ''),
-      type: String(movement.type || 'adjustment'),
-      qty: Number(movement.qty) || 0,
-      reason: String(movement.reason || ''),
-      idempotency_key: String(movement.idempotency_key || ('stock_' + id)),
-      created_at: movement.created_at || movement.createdAt || new Date().toISOString()
-    };
-  });
-
-  // Ajustes manuais são validados no servidor; consumo automático usa RPC própria.
-  const { data, error } = await supabase.rpc('rpc_save_stock_movements', {
+  const { data, error } = await supabase.rpc('rpc_adjust_stock_item', {
     p_store_id: storeId,
-    p_movements: normalized
+    p_item_id: String(itemId),
+    p_type: String(type),
+    p_qty: Number(qty) || 0,
+    p_unit_cost: Number(unitCost) || 0,
+    p_reason: String(reason || ''),
+    p_idempotency_key: String(idempotencyKey || '')
   });
   return { data, error };
+}
+
+async function dbSaveStockMovements(movements) {
+  return { error: new Error('Movimentações manuais precisam ser registradas junto com o ajuste de quantidade pelo módulo de Estoque.') };
 }
 
 async function dbFetchStockMovements() {
@@ -558,15 +545,15 @@ async function dbFetchStock() {
   if (!supabase) return null;
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return [];
-  const { data, error } = await supabase.from('vortex_stock_items').select('*').eq('store_id', storeId);
-  if (error || !data) return null;
+  const { data, error } = await supabase.rpc('rpc_get_stock_items', { p_store_id: storeId });
+  if (error || !Array.isArray(data)) return null;
   return data.map(i => ({
     id: i.id,
     name: i.name,
     category: i.category,
     unit: i.unit,
     qty: parseFloat(i.qty) || 0,
-    cost: parseFloat(i.cost) || 0,
+    cost: i.cost == null ? null : (parseFloat(i.cost) || 0),
     minStock: parseFloat(i.min_stock) || 0,
     barcode: i.barcode || ''
   }));

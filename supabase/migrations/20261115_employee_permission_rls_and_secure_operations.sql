@@ -1552,6 +1552,7 @@ BEGIN
     v_unit := left(COALESCE(v_item->>'unit','un'),30);
     v_qty := COALESCE(NULLIF(v_item->>'qty','')::numeric,0);
     v_cost := COALESCE(NULLIF(v_item->>'cost','')::numeric,0);
+    IF NOT v_cost_access THEN v_cost := CASE WHEN FOUND THEN COALESCE(v_existing.cost,0) ELSE 0 END; END IF;
     v_min_stock := COALESCE(NULLIF(v_item->>'min_stock','')::numeric,0);
     v_barcode := left(COALESCE(v_item->>'barcode',''),80);
 

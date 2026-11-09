@@ -81,6 +81,9 @@ BEGIN
 
   IF TG_OP='INSERT' AND v_new ? 'created_by' THEN
     v_new := jsonb_set(v_new,'{created_by}',v_actor,true);
+  ELSIF TG_OP='UPDATE' AND v_new ? 'created_by' THEN
+    -- O autor original é imutável; uma atualização nunca pode falsificar autoria.
+    v_new := jsonb_set(v_new,'{created_by}',COALESCE(v_old->'created_by','null'::jsonb),true);
   END IF;
   IF v_new ? 'updated_by' THEN
     v_new := jsonb_set(v_new,'{updated_by}',v_actor,true);

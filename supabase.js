@@ -472,8 +472,7 @@ async function dbCancelOrder(orderId, reason = 'Cancelado via operação') {
     }
   }
 
-  updateLocalCachesAfterCancel(orderId, reason, cancelTimestamp);
-  return { success: true, offline: true };
+  return { success: false, error: new Error('Conexão com o servidor indisponível. O cancelamento não foi realizado.') };
 }
 
 function updateLocalCachesAfterCancel(orderId, reason, timestamp) {

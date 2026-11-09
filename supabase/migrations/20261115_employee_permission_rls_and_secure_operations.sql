@@ -1733,6 +1733,7 @@ REVOKE ALL ON TABLE public.vortex_stock_movements FROM PUBLIC, anon, authenticat
 -- A RPC entrega apenas o status para quem consulta e segredos somente para quem gerencia.
 DROP POLICY IF EXISTS vortex_integrations_permission_select ON public.vortex_integrations;
 REVOKE SELECT ON TABLE public.vortex_integrations FROM PUBLIC, anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.vortex_integrations FROM PUBLIC, anon;
 GRANT SELECT (store_id,platform) ON TABLE public.vortex_integrations TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_integrations()
@@ -1783,6 +1784,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_integrations() TO authenticated;
 -- pelo navegador. A RPC aplica o mesmo escopo de loja e remove sempre a coluna code.
 DROP POLICY IF EXISTS vortex_kds_orders_permission_select ON public.vortex_kds_orders;
 REVOKE SELECT, UPDATE, DELETE ON TABLE public.vortex_kds_orders FROM PUBLIC, anon, authenticated;
+REVOKE INSERT ON TABLE public.vortex_kds_orders FROM PUBLIC, anon;
 
 CREATE OR REPLACE FUNCTION public.rpc_get_kds_orders()
 RETURNS jsonb

@@ -184,9 +184,9 @@ BEGIN
     RAISE EXCEPTION 'Cadastro da equipe não encontrado ou inválido.';
   END IF;
 
-  SELECT item INTO v_staff
-  FROM jsonb_array_elements(v_staff_document) AS item
-  WHERE item->>'id'=p_staff_record_id
+  SELECT x.item INTO v_staff
+  FROM jsonb_array_elements(v_staff_document) AS x(item)
+  WHERE x.item->>'id'=p_staff_record_id
   LIMIT 1;
 
   IF v_staff IS NULL THEN

@@ -498,6 +498,11 @@
     }
 
     function openRecipeModal() {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('recipes.manage') || !permissions.includes('stock.view') || !permissions.includes('catalog.view')) {
+        showNoticeModal('Acesso restrito', 'Para criar ou editar fichas técnicas, seu perfil precisa de gestão de fichas, consulta ao estoque e consulta ao catálogo.', '🔒');
+        return;
+      }
       document.getElementById('editRecipeId').value = '';
       document.getElementById('recipeModalTitle').innerText = 'Montar Ficha Técnica';
       draftIngredients = [];

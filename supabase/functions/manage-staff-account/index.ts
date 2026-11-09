@@ -116,24 +116,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const updatedStaff = staffList.map((item, itemIndex) => itemIndex === index
-      ? { ...item, status: action === "deactivate" ? "inativo" : "ativo" }
-      : item);
+    const { data: accountUpdate, error: accountUpdateError } = await admin.rpc(
+      "rpc_admin_set_staff_account_status",
+      {
+        p_store_id: storeId,
+        p_staff_record_id: staffRecordId,
+        p_target_user_id: targetUserId || null,
+        p_actor_user_id: actorId,
+        p_action: action,
+      },
+    );
 
-    const { error: documentError } = await admin
-      .from("vortex_store_documents")
-      .update({ data: updatedStaff, updated_at: new Date().toISOString() })
-      .eq("store_id", storeId)
-      .eq("document_key", "staff");
-    if (documentError) return response(500, { error: "O acesso foi atualizado, mas o cadastro da equipe não foi sincronizado. Atualize a tela e confira o status." });
-
-    await admin.from("vortex_permission_audit_log").insert({
-      store_id: storeId,
-      actor_user_id: actorId,
-      target_user_id: targetUserId || null,
-      event_type: action === "deactivate" ? "staff_deactivated" : "staff_reactivated",
-      details: { staff_record_id: staffRecordId },
-    });
+    if (accountUpdateError || !accountUpdate?.success) {
+      console.error("manage-staff-account atomic update error:", accountUpdateError);
+      return response(500, { error: accountUpdateError?.message || "Não foi possível atualizar a conta e registrar a auditoria." });
+    }
 
     return response(200, {
       success: true,

@@ -731,7 +731,7 @@
         member.invitedAt = new Date().toISOString();
         localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
         renderStaffTable();
-        showCustomAlert('Convite enviado', 'O funcionário receberá um e-mail para aceitar o convite e criar a própria senha. O acesso ficará bloqueado até a ativação.', '✅');
+        showCustomAlert(result.data.existing_account ? 'Conta já existente' : 'Convite enviado', result.data.message || 'O acesso ficará bloqueado até a ativação.', result.data.existing_account ? 'ℹ️' : '✅');
       } catch (error) {
         showCustomAlert('Não foi possível convidar', error.message || 'Verifique o e-mail e tente novamente.', '⚠️');
       }

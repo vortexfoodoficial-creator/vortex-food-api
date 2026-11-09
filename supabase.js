@@ -1015,6 +1015,26 @@ async function vortexGetCurrentStoreContext() {
       if (!currentPermissions.has('tables.view')) clearKeys(['vortex_table_carts','vortex_total_tables','vortex_qr_enabled']);
       if (!hasAny(['fiscal.view','fiscal.manage'])) clearKeys(['vortex_fiscal_config','vortex_invoices_list']);
     }
+    if (!currentPermissions.has('stock.view_costs')) {
+      const costKeys = new Set(['cost','costPrice','custo','totalCost','unitCost','unit_cost','averageCost','average_cost']);
+      const stripCosts = value => {
+        if (Array.isArray(value)) return value.map(stripCosts);
+        if (value && typeof value === 'object') {
+          const safe = {};
+          Object.keys(value).forEach(key => {
+            if (!costKeys.has(key)) safe[key] = stripCosts(value[key]);
+          });
+          return safe;
+        }
+        return value;
+      };
+      ['vortex_products_catalog','vortex_cardapio_produtos','vortex_synced_catalog','vortex_recipes_catalog','vortex_fichas_tecnicas'].forEach(key => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) localStorage.setItem(key, JSON.stringify(stripCosts(JSON.parse(raw))));
+        } catch (error) {}
+      });
+    }
     localStorage.setItem('vortex_permission_cache_signature', currentSignature);
   } catch (cachePolicyError) {
     console.warn('Não foi possível atualizar a política de cache das permissões:', cachePolicyError);

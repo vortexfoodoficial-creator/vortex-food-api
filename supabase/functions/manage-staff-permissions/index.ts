@@ -87,11 +87,18 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", targetUserId)
       .maybeSingle();
 
-    if (targetError || !target || target.status !== "active") {
-      return response(404, { error: "Funcionário ativo não encontrado nesta loja." });
+    const targetIsPendingInvite = target?.status === "inactive" && (target as Record<string, unknown>).invitation_status === "pending";
+    if (targetError || !target || (target.status !== "active" && !targetIsPendingInvite)) {
+      return response(404, { error: "Funcionário ativo ou convite pendente não encontrado nesta loja." });
     }
     if (target.role === "owner" || target.profile_key === "owner") {
       return response(403, { error: "A conta do proprietário é protegida e não pode ser alterada por este recurso." });
+    }
+    if (target.profile_key === "administrator" && context.profile_key !== "owner") {
+      return response(403, { error: "Somente o proprietário pode alterar as permissões de outro administrador." });
+    }
+    if (target.profile_key === "manager" && !["owner", "administrator"].includes(String(context.profile_key))) {
+      return response(403, { error: "Seu perfil não pode alterar as permissões de um gerente." });
     }
 
     const profileKey = requestedProfile || target.profile_key;

@@ -163,102 +163,30 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // O modelo atual mantém uma conta vinculada a uma única loja.
-    const { data: existingMemberships, error: membershipsReadError } = await admin
-      .from("vortex_store_members")
-      .select("store_id,role,staff_record_id,status")
-      .eq("user_id", invitedUserId);
+    // A finalização do vínculo, a sincronização do cadastro e a auditoria
+    // são feitas atomicamente no banco. O convite Auth já foi criado; se
+    // esta etapa falhar, o funcionário permanece sem vínculo/acesso à loja.
+    const invitedAt = new Date().toISOString();
+    const { data: finalized, error: finalizeError } = await admin.rpc(
+      "rpc_admin_finalize_staff_invitation",
+      {
+        p_store_id: storeId,
+        p_target_user_id: invitedUserId,
+        p_actor_user_id: actorId,
+        p_staff_record_id: staffRecordId,
+        p_email: email,
+        p_profile_key: profileKey,
+        p_display_name: displayName,
+        p_invited_at: invitedAt,
+      },
+    );
 
-    if (membershipsReadError) {
-      return response(500, { error: "Não foi possível verificar os vínculos existentes desta conta." });
-    }
-    const otherStoreMembership = (existingMemberships || []).find((member) => String(member.store_id) !== storeId);
-    if (otherStoreMembership) {
-      return response(409, { error: "Esta conta já está vinculada a outro estabelecimento. O Vortex ainda trabalha com uma loja por usuário." });
-    }
-    const sameStoreMembership = (existingMemberships || []).find((member) => String(member.store_id) === storeId);
-    if (sameStoreMembership && (sameStoreMembership.role === "owner" || String(sameStoreMembership.staff_record_id || "") !== staffRecordId)) {
-      return response(409, { error: "Esta conta já está vinculada a outro cadastro ou é a conta do proprietário." });
-    }
-
-    if (sameStoreMembership) {
-      const { error: membershipError } = await admin
-        .from("vortex_store_members")
-        .update({
-          role: "employee",
-          status: "inactive",
-          profile_key: profileKey,
-          display_name: displayName,
-          staff_record_id: staffRecordId,
-          invitation_status: "pending",
-          invited_at: new Date().toISOString(),
-          invited_by: actorId,
-        })
-        .eq("store_id", storeId)
-        .eq("user_id", invitedUserId);
-      if (membershipError) return response(500, { error: "Não foi possível preparar o vínculo pendente deste funcionário." });
-    } else {
-      const { error: membershipError } = await admin
-        .from("vortex_store_members")
-        .insert({
-          store_id: storeId,
-          user_id: invitedUserId,
-          role: "employee",
-          status: "inactive",
-          profile_key: profileKey,
-          display_name: displayName,
-          staff_record_id: staffRecordId,
-          invitation_status: "pending",
-          invited_at: new Date().toISOString(),
-          invited_by: actorId,
-        });
-
-      if (membershipError) {
-        return response(500, {
-          error: "O convite foi criado, mas não foi possível concluir o vínculo da equipe. O acesso continua bloqueado; contate o suporte antes de reenviar.",
-        });
-      }
-    }
-
-    const updatedStaff = staffList.map((member, index) => index === staffIndex
-      ? {
-          ...member,
-          email,
-          authUserId: invitedUserId,
-          profileKey,
-          invitationStatus: "pending",
-          invitedAt: new Date().toISOString(),
-        }
-      : member);
-
-    const { error: staffUpdateError } = await admin
-      .from("vortex_store_documents")
-      .update({ data: updatedStaff, updated_at: new Date().toISOString() })
-      .eq("store_id", storeId)
-      .eq("document_key", "staff");
-
-    if (staffUpdateError) {
-      await admin.from("vortex_store_members")
-        .update({ status: "inactive", invitation_status: "revoked" })
-        .eq("store_id", storeId)
-        .eq("user_id", invitedUserId);
-
+    if (finalizeError || !finalized?.success) {
+      console.error("invite-staff finalize error:", finalizeError);
       return response(500, {
-        error: "O convite foi enviado, mas não foi possível vincular o cadastro da equipe. O acesso permanece bloqueado; revise o cadastro antes de reenviar.",
+        error: "O convite foi criado, mas não foi possível concluir o vínculo seguro da equipe. O acesso à loja permanece bloqueado; revise o cadastro antes de reenviar.",
       });
     }
-
-    await admin.from("vortex_permission_audit_log").insert({
-      store_id: storeId,
-      actor_user_id: actorId,
-      target_user_id: invitedUserId,
-      event_type: "staff_invited",
-      details: {
-        staff_record_id: staffRecordId,
-        email,
-        profile_key: profileKey,
-      },
-    });
 
     return response(200, {
       success: true,

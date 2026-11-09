@@ -533,12 +533,8 @@ async function dbFetchStockMovements() {
   if (!supabase) return null;
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return [];
-  const { data, error } = await supabase
-    .from('vortex_stock_movements')
-    .select('*')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false });
-  if (error || !data) return null;
+  const { data, error } = await supabase.rpc('rpc_get_stock_movements', { p_store_id: storeId });
+  if (error || !Array.isArray(data)) return null;
   return data.map(movement => ({
     id: movement.id,
     order_id: movement.order_id,

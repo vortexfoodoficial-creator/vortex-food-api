@@ -2204,4 +2204,42 @@ REVOKE ALL ON FUNCTION public.rpc_get_store_document(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_store_document(text) TO authenticated;
 
 
+
+-- O navegador recebe apenas o nome e o identificador da própria loja.
+REVOKE SELECT ON TABLE public.vortex_stores FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_my_store_context()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Autenticação necessária.'; END IF;
+
+  SELECT jsonb_build_object(
+    'id',s.id,
+    'name',s.name,
+    'created_at',s.created_at,
+    'status',s.status
+  )
+  INTO v_result
+  FROM public.vortex_stores AS s
+  JOIN public.vortex_store_members AS m ON m.store_id=s.id
+  WHERE m.user_id=auth.uid()
+    AND m.status='active'
+  LIMIT 1;
+
+  IF v_result IS NULL THEN RAISE EXCEPTION 'Não foi encontrado um estabelecimento ativo para esta conta.'; END IF;
+  RETURN v_result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_my_store_context() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_get_my_store_context() TO authenticated;
+
+
 COMMIT;

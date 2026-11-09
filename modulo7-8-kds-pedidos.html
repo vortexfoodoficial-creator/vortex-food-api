@@ -538,7 +538,7 @@
             actionsHtml += `<button class="btn-action-kds btn-start" onclick="updateOrderStatus('${order.id}', 'preparing')">👨‍🍳 Iniciar Preparo</button>`;
           } else if (canUpdateStatus && order.status === 'preparing') {
             actionsHtml += `<button class="btn-action-kds btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')">✅ Marcar como Pronto</button>`;
-          } else if (canUpdateStatus && order.status === 'ready' && !isTableOrder) {
+          } else if (canUpdateStatus && order.status === 'ready' && !isTableOrder && !String(order.origin || '').toLowerCase().includes('delivery')) {
             actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar</button>`;
           }
           actionsHtml += `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;

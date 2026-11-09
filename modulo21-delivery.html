@@ -1153,7 +1153,7 @@
         code: '',
         courier: order.courier || ''
       };
-      const { data, error } = await client.from('vortex_kds_orders').upsert([record]);
+      const { data, error } = await client.from('vortex_kds_orders').insert([record]);
       return { data, error };
     }
 

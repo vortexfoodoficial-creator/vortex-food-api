@@ -15,9 +15,7 @@ AS $function$
 DECLARE
   v_order_id text;
   v_origin text;
-  v_sale_channel text;
   v_total numeric;
-  v_sale_total numeric;
   v_items jsonb;
   v_status text;
 BEGIN
@@ -45,35 +43,19 @@ BEGIN
     RAISE EXCEPTION 'Status inicial de pedido inválido.';
   END IF;
 
-  SELECT h.channel,h.total
-    INTO v_sale_channel,v_sale_total
-  FROM public.vortex_sales_history h
-  WHERE h.store_id=p_store_id AND h.id=v_order_id
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'A venda correspondente não foi registrada nesta loja.';
-  END IF;
-  IF round(COALESCE(v_sale_total,0),2)<>round(v_total,2) THEN
-    RAISE EXCEPTION 'O valor do pedido não corresponde à venda registrada.';
-  END IF;
-
   IF v_origin ILIKE '%delivery%' THEN
-    IF v_sale_channel NOT ILIKE '%delivery%'
-       OR NOT public.vortex_user_has_permission(p_store_id,'delivery.manage') THEN
+    IF NOT public.vortex_user_has_permission(p_store_id,'delivery.manage') THEN
       RAISE EXCEPTION 'Seu perfil não pode registrar este pedido de delivery.';
     END IF;
   ELSIF v_origin ILIKE '%mesa%' THEN
-    IF v_sale_channel NOT ILIKE '%mesa%'
-       OR NOT (
+    IF NOT (
          public.vortex_user_has_permission(p_store_id,'tables.open')
          OR public.vortex_user_has_permission(p_store_id,'tables.close')
        ) THEN
       RAISE EXCEPTION 'Seu perfil não pode registrar este pedido de mesa.';
     END IF;
   ELSE
-    IF v_sale_channel ILIKE '%delivery%' OR v_sale_channel ILIKE '%mesa%'
-       OR NOT public.vortex_user_has_permission(p_store_id,'pdv.sell') THEN
+    IF NOT public.vortex_user_has_permission(p_store_id,'pdv.sell') THEN
       RAISE EXCEPTION 'Seu perfil não pode registrar este pedido no PDV.';
     END IF;
   END IF;

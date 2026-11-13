@@ -24,7 +24,7 @@ Estes arquivos são modelos HTML para os e-mails de autenticação e notificaç�
 
 Os arquivos no GitHub **não alteram automaticamente** os modelos do projeto Supabase hospedado. Depois de revisar os modelos, copie o conteúdo de cada arquivo para o tipo correspondente em **Supabase Dashboard → Authentication → Email Templates** e configure os assuntos sugeridos. Ative também as notificações de alteração de senha e e-mail em Authentication → Notifications, quando disponíveis.
 
-Configure um provedor SMTP próprio e verificado antes de liberar o envio para clientes e funcionários. O SMTP de teste padrão do Supabase tem restrições de destinatários e não é adequado para produção. Configure também o endereço remetente do Vortex Food, SPF, DKIM e DMARC no domínio de envio.
+Ative a opção **Secure email change** nas configurações do provedor de e-mail do Supabase para exigir confirmação tanto no endereço atual quanto no novo endereço. O Supabase documenta que, com essa opção ativa, a mudança de e-mail envia confirmações aos dois endereços; desativada, envia apenas ao novo. Configure um provedor SMTP próprio e verificado antes de liberar o envio para clientes e funcionários. O SMTP de teste padrão do Supabase tem restrições de destinatários e não é adequado para produção. Configure também o endereço remetente do Vortex Food, SPF, DKIM e DMARC no domínio de envio.
 
 ## Observações
 

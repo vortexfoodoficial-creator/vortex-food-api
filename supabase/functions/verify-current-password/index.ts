@@ -55,7 +55,8 @@ Deno.serve(async (req: Request) => {
       email: user.email,
       password,
     });
-    await verifier.auth.signOut();
+    // Não chamar signOut aqui: o logout do Supabase pode revogar outras
+    // sessões da mesma conta. Este cliente é temporário e não persiste sessão.
 
     if (passwordError || verified.user?.id !== user.id) {
       return response(401, { error: "Senha incorreta." });

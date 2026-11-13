@@ -1350,17 +1350,27 @@ function vortexRenderEmployeeChrome(context) {
   // em todas as páginas internas sem exigir edição manual de cada menu.
   document.querySelectorAll('.sidebar-nav').forEach(nav => {
     if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
+
+    // Garante que Dados do Estabelecimento exista somente nesta categoria,
+    // mesmo que alguma página antiga ainda tenha o link em Administração.
+    nav.querySelectorAll('a[href="modulo-dados-estabelecimento.html"]').forEach(link => link.remove());
+
     const section = document.createElement('div');
     section.className = 'nav-section';
     section.dataset.vortexAccountNavigation = 'true';
-    const hasStoreProfileLink = !!nav.querySelector('a[href="modulo-dados-estabelecimento.html"]');
     section.innerHTML = `
       <span class="nav-section-title">CONTA & ESTABELECIMENTO</span>
-      ${hasStoreProfileLink ? '' : '<a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>'}
+      <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
       <a href="modulo-minha-conta.html" class="nav-link"><span class="nav-icon">👤</span><span class="nav-text">Minha conta</span></a>
       <a href="modulo-seguranca.html" class="nav-link"><span class="nav-icon">🛡️</span><span class="nav-text">Segurança</span></a>
     `;
-    nav.appendChild(section);
+
+    const adminSection = Array.from(nav.querySelectorAll('.nav-section')).find(item =>
+      (item.querySelector('.nav-section-title')?.textContent || '').trim().toUpperCase() === 'ADMINISTRAÇÃO'
+    );
+    if (adminSection) nav.insertBefore(section, adminSection);
+    else nav.appendChild(section);
+
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
     section.querySelectorAll('a[href]').forEach(link => {
       if (link.getAttribute('href') === currentPage) link.classList.add('active');

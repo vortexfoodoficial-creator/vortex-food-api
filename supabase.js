@@ -1339,58 +1339,104 @@ function vortexRenderEmployeeChrome(context) {
     window.setTimeout(() => vortexShowAccessDeniedModal(profiles), 150);
   }
 
-  // Mantém o nome atualizado do módulo em todos os menus legados.
-  document.querySelectorAll('a[href="modulo-configuracoes.html"]').forEach(link => {
-    const label = link.querySelector('.nav-text');
-    if (label) label.textContent = 'Configurações do Sistema';
-    else if (link.classList.contains('menu-item')) link.textContent = '⚙️ Configurações do Sistema';
-  });
+  // Menu lateral canônico do Vortex Food.
+  // A mesma estrutura é reconstruída em todos os módulos para impedir
+  // diferenças de ordem, categorias duplicadas ou links esquecidos.
+  const VORTEX_NAVIGATION_GROUPS = [
+    {
+      title: 'OPERACIONAL',
+      items: [
+        ['index.html', '📊', 'Dashboard'],
+        ['modulo3-pdv.html', '💻', 'PDV / Caixa'],
+        ['modulo5-mesas.html', '🍽️', 'Mesas & Comandas'],
+        ['modulo21-delivery.html', '🛵', 'Delivery & Entregas'],
+        ['modulo7-8-kds-pedidos.html', '👨‍🍳', 'KDS / Cozinha'],
+        ['modulo-integracoes.html', '🔗', 'Integrações Delivery']
+      ]
+    },
+    {
+      title: 'PRODUTOS & PROMOÇÕES',
+      items: [
+        ['modulo2-cardapio.html', '📋', 'Cardápio & Produtos'],
+        ['modulo6-cardapio-online.html', '🌐', 'Cardápio Online'],
+        ['modulo13-fichas-tecnicas.html', '📖', 'Fichas Técnicas'],
+        ['modulo-cupons.html', '🏷️', 'Cupons & Promoções'],
+        ['modulo-fidelidade.html', '⭐', 'Fidelidade / Cashback']
+      ]
+    },
+    {
+      title: 'SUPRIMENTOS & CLIENTES',
+      items: [
+        ['modulo12-estoque.html', '📦', 'Estoque & Insumos'],
+        ['modulo14-compras.html', '🛒', 'Compras & Cotações'],
+        ['modulo18-crm.html', '👥', 'CRM & Clientes'],
+        ['modulo-marketing.html', '💡', 'Ideias de Marketing']
+      ]
+    },
+    {
+      title: 'ADMINISTRAÇÃO',
+      items: [
+        ['modulo17-caixa-turno.html', '🔒', 'Fechamento de Caixa'],
+        ['modulo15-financeiro.html', '💰', 'Financeiro & DRE'],
+        ['modulo16-contas.html', '📄', 'Contas Pagar/Receber'],
+        ['modulo9-equipe.html', '👔', 'Equipe & Permissões'],
+        ['modulo19-fiscal.html', '🧾', 'Emissão Fiscal'],
+        ['modulo10-relatorios.html', '📈', 'Relatórios'],
+        ['modulo-impressoras.html', '🖨️', 'Impressoras & Bluetooth'],
+        ['modulo-suporte.html', '💬', 'Suporte & Ajuda'],
+        ['modulo-mensalidade.html', '💳', 'Pagamento Mensalidade']
+      ]
+    },
+    {
+      title: 'CONFIGURAÇÕES',
+      items: [
+        ['modulo-configuracoes.html', '⚙️', 'Configurações do Sistema']
+      ]
+    },
+    {
+      title: 'CONTA & ESTABELECIMENTO',
+      items: [
+        ['modulo-dados-estabelecimento.html', '🏪', 'Dados do Estabelecimento'],
+        ['modulo-minha-conta.html', '👤', 'Minha conta'],
+        ['modulo-seguranca.html', '🛡️', 'Segurança']
+      ]
+    }
+  ];
 
-  // Navegação centralizada: módulos de conta e estabelecimento aparecem
-  // em todas as páginas internas sem exigir edição manual de cada menu.
+  const currentNavigationPage = window.location.pathname.split('/').pop() || 'index.html';
+  const escapeNavigationText = value => String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+
   document.querySelectorAll('.sidebar-nav').forEach(nav => {
-    if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
-
-    // Garante que Dados do Estabelecimento exista somente nesta categoria,
-    // mesmo que alguma página antiga ainda tenha o link em Administração.
-    nav.querySelectorAll('a[href="modulo-dados-estabelecimento.html"]').forEach(link => link.remove());
-
-    const section = document.createElement('div');
-    section.className = 'nav-section';
-    section.dataset.vortexAccountNavigation = 'true';
-    section.innerHTML = `
-      <span class="nav-section-title">CONTA & ESTABELECIMENTO</span>
-      <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
-      <a href="modulo-minha-conta.html" class="nav-link"><span class="nav-icon">👤</span><span class="nav-text">Minha conta</span></a>
-      <a href="modulo-seguranca.html" class="nav-link"><span class="nav-icon">🛡️</span><span class="nav-text">Segurança</span></a>
-    `;
-
-    const adminSection = Array.from(nav.querySelectorAll('.nav-section')).find(item =>
-      (item.querySelector('.nav-section-title')?.textContent || '').trim().toUpperCase() === 'ADMINISTRAÇÃO'
-    );
-    if (adminSection) nav.insertBefore(section, adminSection);
-    else nav.appendChild(section);
-
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    section.querySelectorAll('a[href]').forEach(link => {
-      if (link.getAttribute('href') === currentPage) link.classList.add('active');
-    });
+    nav.innerHTML = VORTEX_NAVIGATION_GROUPS.map(group => `
+      <div class="nav-section">
+        <span class="nav-section-title">${escapeNavigationText(group.title)}</span>
+        ${group.items.map(([href, icon, label]) => `
+          <a href="${href}" class="nav-link${href === currentNavigationPage ? ' active' : ''}">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-text">${escapeNavigationText(label)}</span>
+          </a>
+        `).join('')}
+      </div>
+    `).join('');
+    nav.dataset.vortexNavigationVersion = '2';
   });
+
+  // Compatibilidade com páginas antigas que ainda usem .sidebar-menu.
   document.querySelectorAll('.sidebar-menu').forEach(nav => {
-    if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
-    const group = document.createElement('div');
-    group.dataset.vortexAccountNavigation = 'true';
-    group.innerHTML = `
-      <div class="menu-group-label">Conta & Estabelecimento</div>
-      <a href="modulo-dados-estabelecimento.html" class="menu-item nav-link">🏪 Dados do Estabelecimento</a>
-      <a href="modulo-minha-conta.html" class="menu-item nav-link">👤 Minha conta</a>
-      <a href="modulo-seguranca.html" class="menu-item nav-link">🛡️ Segurança</a>
-    `;
-    nav.appendChild(group);
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    group.querySelectorAll('a[href]').forEach(link => {
-      if (link.getAttribute('href') === currentPage) link.classList.add('active');
-    });
+    nav.innerHTML = VORTEX_NAVIGATION_GROUPS.map(group => `
+      <div class="menu-group">
+        <div class="menu-group-label">${escapeNavigationText(group.title)}</div>
+        ${group.items.map(([href, icon, label]) => `
+          <a href="${href}" class="menu-item nav-link${href === currentNavigationPage ? ' active' : ''}">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-text">${escapeNavigationText(label)}</span>
+          </a>
+        `).join('')}
+      </div>
+    `).join('');
+    nav.dataset.vortexNavigationVersion = '2';
   });
 
   document.querySelectorAll('.nav-link[href]').forEach(link => {

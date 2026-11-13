@@ -34,6 +34,18 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='status'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='date'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='time'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='origin'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='updated_at'
   ) THEN
     RAISE EXCEPTION 'A tabela vortex_kds_orders não possui as colunas mínimas esperadas. Migração cancelada.';
   END IF;
@@ -147,15 +159,28 @@ BEGIN
         'items',
           COALESCE((
             SELECT jsonb_agg(
-              jsonb_build_object(
-                'name',left(COALESCE(NULLIF(x.value->>'name',''),'Item'),160),
-                'quantity',
-                  CASE jsonb_typeof(x.value->'qty')
-                    WHEN 'number' THEN x.value->'qty'
-                    WHEN 'string' THEN to_jsonb(left(x.value->>'qty',12))
-                    ELSE '1'::jsonb
-                  END
-              )
+              CASE WHEN v_profile='kitchen' THEN
+                jsonb_build_object(
+                  'name',left(COALESCE(NULLIF(x.value->>'name',''),'Item'),160),
+                  'quantity',
+                    CASE jsonb_typeof(x.value->'qty')
+                      WHEN 'number' THEN x.value->'qty'
+                      WHEN 'string' THEN to_jsonb(left(x.value->>'qty',12))
+                      ELSE '1'::jsonb
+                    END,
+                  'category',left(COALESCE(x.value->>'category',''),80)
+                )
+              ELSE
+                jsonb_build_object(
+                  'name',left(COALESCE(NULLIF(x.value->>'name',''),'Item'),160),
+                  'quantity',
+                    CASE jsonb_typeof(x.value->'qty')
+                      WHEN 'number' THEN x.value->'qty'
+                      WHEN 'string' THEN to_jsonb(left(x.value->>'qty',12))
+                      ELSE '1'::jsonb
+                    END
+                )
+              END
               ORDER BY x.ordinality
             )
             FROM jsonb_array_elements(

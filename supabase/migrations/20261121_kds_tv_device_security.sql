@@ -116,13 +116,15 @@ BEGIN
     RETURN jsonb_build_object('authorized',false,'reason','invalid_token');
   END IF;
 
-  SELECT d.id,d.store_id,d.profile
-    INTO v_device_id,v_store_id,v_profile
-  FROM public.vortex_kds_tv_devices AS d
+  -- Valida e atualiza o último acesso em uma única operação atômica.
+  -- Isso serializa a leitura com uma eventual revogação concorrente.
+  UPDATE public.vortex_kds_tv_devices AS d
+  SET last_seen_at=now()
   WHERE d.token_hash = extensions.digest(p_device_token,'sha256')
     AND d.is_active = true
     AND d.revoked_at IS NULL
-  LIMIT 1;
+  RETURNING d.id,d.store_id,d.profile
+    INTO v_device_id,v_store_id,v_profile;
 
   IF v_device_id IS NULL THEN
     IF EXISTS (
@@ -143,10 +145,6 @@ BEGIN
   ) THEN
     RETURN jsonb_build_object('authorized',false,'reason','store_unavailable');
   END IF;
-
-  UPDATE public.vortex_kds_tv_devices
-  SET last_seen_at=now()
-  WHERE id=v_device_id AND is_active=true AND revoked_at IS NULL;
 
   SELECT COALESCE(
     jsonb_agg(
@@ -198,7 +196,7 @@ BEGIN
     SELECT id,status,date,time,origin,items,updated_at
     FROM public.vortex_kds_orders
     WHERE store_id=v_store_id
-      AND status NOT IN ('finished','cancelled')
+      AND COALESCE(status,'') NOT IN ('finished','cancelled')
     ORDER BY date DESC NULLS LAST,time DESC NULLS LAST,updated_at DESC NULLS LAST
     LIMIT 100
   ) AS o;

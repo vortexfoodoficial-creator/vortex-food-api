@@ -1339,6 +1339,13 @@ function vortexRenderEmployeeChrome(context) {
     window.setTimeout(() => vortexShowAccessDeniedModal(profiles), 150);
   }
 
+  // Mantém o nome atualizado do módulo em todos os menus legados.
+  document.querySelectorAll('a[href="modulo-configuracoes.html"]').forEach(link => {
+    const label = link.querySelector('.nav-text');
+    if (label) label.textContent = 'Configurações do Sistema';
+    else if (link.classList.contains('menu-item')) link.textContent = '⚙️ Configurações do Sistema';
+  });
+
   // Navegação centralizada: módulos de conta e estabelecimento aparecem
   // em todas as páginas internas sem exigir edição manual de cada menu.
   document.querySelectorAll('.sidebar-nav').forEach(nav => {

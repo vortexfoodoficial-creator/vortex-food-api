@@ -1223,6 +1223,8 @@ const VORTEX_PAGE_PERMISSION_MAP = {
   'modulo21-delivery.html': 'delivery.view',
   'modulo-configuracoes.html': 'settings.view',
   'modulo-dados-estabelecimento.html': 'settings.view',
+  'modulo-minha-conta.html': 'dashboard.view',
+  'modulo-seguranca.html': 'dashboard.view',
   'modulo-cupons.html': 'coupons.manage',
   'modulo-fidelidade.html': 'loyalty.manage',
   'modulo-impressoras.html': 'printers.manage',
@@ -1347,6 +1349,8 @@ function vortexRenderEmployeeChrome(context) {
     section.innerHTML = `
       <span class="nav-section-title">CONTA & ESTABELECIMENTO</span>
       <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
+      <a href="modulo-minha-conta.html" class="nav-link"><span class="nav-icon">👤</span><span class="nav-text">Minha conta</span></a>
+      <a href="modulo-seguranca.html" class="nav-link"><span class="nav-icon">🛡️</span><span class="nav-text">Segurança</span></a>
     `;
     nav.appendChild(section);
   });
@@ -1357,6 +1361,8 @@ function vortexRenderEmployeeChrome(context) {
     group.innerHTML = `
       <div class="menu-group-label">Conta & Estabelecimento</div>
       <a href="modulo-dados-estabelecimento.html" class="menu-item nav-link">🏪 Dados do Estabelecimento</a>
+      <a href="modulo-minha-conta.html" class="menu-item nav-link">👤 Minha conta</a>
+      <a href="modulo-seguranca.html" class="menu-item nav-link">🛡️ Segurança</a>
     `;
     nav.appendChild(group);
   });

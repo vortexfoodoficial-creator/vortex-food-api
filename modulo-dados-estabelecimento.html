@@ -20,12 +20,33 @@ h1{font-size:1.55rem;margin:0}h2{font-size:1.05rem;margin:0 0 16px;color:var(--p
 input,select{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.92rem}input:focus,select:focus{outline:1px solid var(--primary)}
 button{border:0;border-radius:9px;padding:12px 18px;background:var(--primary);color:white;font-weight:700;cursor:pointer}.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}.danger{background:#ef444420;border:1px solid var(--danger);color:var(--danger)}
 .actions{display:flex;gap:10px;flex-wrap:wrap}.hint{font-size:.82rem;color:var(--muted);line-height:1.5;margin:0 0 16px}.status{margin-top:12px;font-size:.88rem;min-height:20px}.logo-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.logo-preview{width:72px;height:72px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:#fff}
-@media(max-width:760px){.sidebar{position:static;width:auto;max-height:320px;padding:14px;overflow:auto}.sidebar nav{display:block;overflow:visible}.sidebar nav a{white-space:normal}.nav-title{display:none}main{margin:0;padding:16px}.grid{grid-template-columns:1fr}}
+@media(max-width:900px){
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;max-height:none;height:100vh;overflow-y:auto;transform:translateX(-100%);transition:transform .25s ease;z-index:1001}
+.sidebar.open{transform:translateX(0)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000}
+.sidebar-overlay.open{display:block}
+.close-sidebar-btn{display:block;margin-left:auto;background:transparent;border:0;color:var(--muted);font-size:1.4rem;cursor:pointer;padding:4px 8px}
+.menu-toggle{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 11px;margin-right:10px}
+main{margin-left:0!important;width:100%;padding:16px}
+.grid{grid-template-columns:1fr}
+}.sidebar nav{display:block;overflow:visible}.sidebar nav a{white-space:normal}.nav-title{display:none}main{margin:0;padding:16px}.grid{grid-template-columns:1fr}}
+.menu-toggle{display:none}
+@media(max-width:900px){
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;max-height:none;height:100vh;overflow-y:auto;transform:translateX(-100%);transition:transform .25s ease;z-index:1001}
+.sidebar.open{transform:translateX(0)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000}
+.sidebar-overlay.open{display:block}
+.close-sidebar-btn{display:block;margin-left:auto;background:transparent;border:0;color:var(--muted);font-size:1.4rem;cursor:pointer;padding:4px 8px}
+.menu-toggle{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 11px;margin-right:10px}
+main{margin-left:0!important;width:100%;padding:16px}
+.grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 <aside class="sidebar" id="sidebar">
-<div class="brand">🌪️ <span id="sidebarStoreName">VORTEX FOOD</span></div>
+<div class="brand" style="display:flex;align-items:center;gap:8px">🌪️ <span id="sidebarStoreName">VORTEX FOOD</span><button class="close-sidebar-btn" type="button" onclick="toggleMenu()" aria-label="Fechar menu">×</button></div>
 <nav class="sidebar-nav">
 <div class="nav-section"><span class="nav-section-title">OPERACIONAL</span>
 <a href="index.html" class="nav-link">📊 Dashboard</a><a href="modulo3-pdv.html" class="nav-link">💻 PDV / Caixa</a><a href="modulo5-mesas.html" class="nav-link">🍽️ Mesas & Comandas</a><a href="modulo21-delivery.html" class="nav-link">🛵 Delivery & Entregas</a><a href="modulo7-8-kds-pedidos.html" class="nav-link">👨‍🍳 KDS / Cozinha</a><a href="modulo-integracoes.html" class="nav-link">🔗 Integrações Delivery</a>
@@ -41,8 +62,9 @@ button{border:0;border-radius:9px;padding:12px 18px;background:var(--primary);co
 </div>
 </nav><div class="sidebar-footer">🌪️ VORTEX <strong>FOOD</strong></div>
 </aside>
+<script>function toggleMenu(){document.getElementById("sidebar").classList.toggle("open");document.getElementById("sidebarOverlay").classList.toggle("open");}</script>
 <main>
-<header><div><h1>Dados do estabelecimento</h1><p class="hint">Informações comerciais, contatos e endereço da sua loja.</p></div><button class="secondary" type="button" id="reloadBtn">↻ Recarregar</button></header>
+<header><button class="menu-toggle" type="button" onclick="toggleMenu()" aria-label="Abrir menu">☰</button><div><h1>Dados do estabelecimento</h1><p class="hint">Informações comerciais, contatos e endereço da sua loja.</p></div><button class="secondary" type="button" id="reloadBtn">↻ Recarregar</button></header>
 <section class="card">
 <h2>Identidade da loja</h2>
 <div class="grid">

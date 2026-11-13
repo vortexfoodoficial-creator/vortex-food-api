@@ -1673,8 +1673,7 @@ window.addEventListener('storage', function(event) {
 // Por isso, revalida a sessão e o marcador antes de mostrar o conteúdo.
 window.addEventListener('pageshow', async function(event) {
   if (!event.persisted) return;
-  const marker = vortexReadSessionLock();
-  if (!marker) return;
+  if (!vortexIsSessionLocked()) return;
 
   document.documentElement.style.visibility = 'hidden';
   try {

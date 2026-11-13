@@ -1400,17 +1400,20 @@ function vortexRenderEmployeeChrome(context) {
 function vortexLockStorageKey(context = window.VORTEX_AUTH_CONTEXT || {}) {
   const storeId = context.store_id || window.VORTEX_ACTIVE_STORE_ID || 'store';
   const userId = context.user_id || window.VORTEX_ACTIVE_USER_ID || 'user';
-  return 'vortex_session_locked::' + String(storeId) + '::' + String(userId);
+  // Prefixo fora de "vortex_" para não ser reescrito pelo armazenamento
+  // operacional separado por funcionário.
+  return 'vf_session_locked::' + String(storeId) + '::' + String(userId);
 }
 
 function vortexSetSessionLocked(locked) {
   try {
+    const key = vortexLockStorageKey();
     if (locked) {
-      localStorage.setItem('vortex_session_locked', '1');
-      sessionStorage.setItem(vortexLockStorageKey(), '1');
+      localStorage.setItem(key, '1');
+      sessionStorage.setItem(key, '1');
     } else {
-      localStorage.removeItem('vortex_session_locked');
-      sessionStorage.removeItem(vortexLockStorageKey());
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
     }
   } catch (error) {
     console.warn('Não foi possível atualizar o estado de bloqueio local:', error);
@@ -1419,8 +1422,9 @@ function vortexSetSessionLocked(locked) {
 
 function vortexIsSessionLocked() {
   try {
-    return localStorage.getItem('vortex_session_locked') === '1'
-      || sessionStorage.getItem(vortexLockStorageKey()) === '1';
+    const key = vortexLockStorageKey();
+    return localStorage.getItem(key) === '1'
+      || sessionStorage.getItem(key) === '1';
   } catch (error) {
     return false;
   }
@@ -1591,9 +1595,11 @@ function vortexRequireAuthenticatedPage() {
           window.location.replace('index.html?blocked=' + encodeURIComponent(requiredPermission));
           return;
         }
-        document.documentElement.style.visibility = '';
         vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
+        // O overlay é criado enquanto o documento ainda está oculto, impedindo
+        // que o painel apareça por um instante durante refresh ou restauração.
         if (vortexIsSessionLocked()) vortexShowLockScreen(true);
+        document.documentElement.style.visibility = '';
       });
     })
     .catch(redirectToLogin);
@@ -1601,7 +1607,7 @@ function vortexRequireAuthenticatedPage() {
 
 // Mantém o bloqueio sincronizado entre abas abertas no mesmo dispositivo.
 window.addEventListener('storage', function(event) {
-  if (!event.key || !event.key.includes('vortex_session_locked')) return;
+  if (!event.key || !event.key.includes('vf_session_locked')) return;
   if (event.newValue === '1') {
     vortexShowLockScreen(true);
   } else if (event.newValue === null) {

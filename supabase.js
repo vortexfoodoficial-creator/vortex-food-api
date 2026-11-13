@@ -1346,9 +1346,10 @@ function vortexRenderEmployeeChrome(context) {
     const section = document.createElement('div');
     section.className = 'nav-section';
     section.dataset.vortexAccountNavigation = 'true';
+    const hasStoreProfileLink = !!nav.querySelector('a[href="modulo-dados-estabelecimento.html"]');
     section.innerHTML = `
       <span class="nav-section-title">CONTA & ESTABELECIMENTO</span>
-      <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
+      ${hasStoreProfileLink ? '' : '<a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>'}
       <a href="modulo-minha-conta.html" class="nav-link"><span class="nav-icon">👤</span><span class="nav-text">Minha conta</span></a>
       <a href="modulo-seguranca.html" class="nav-link"><span class="nav-icon">🛡️</span><span class="nav-text">Segurança</span></a>
     `;

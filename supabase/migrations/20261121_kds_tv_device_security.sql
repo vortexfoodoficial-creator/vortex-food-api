@@ -200,7 +200,7 @@ BEGIN
     SELECT id,"displayId",status,date,time,origin,items,updated_at
     FROM public.vortex_kds_orders
     WHERE store_id=v_store_id
-      AND COALESCE(status,'') NOT IN ('finished','cancelled')
+      AND COALESCE(status,'') NOT IN ('finished','completed','cancelled')
     ORDER BY date DESC NULLS LAST,time DESC NULLS LAST,updated_at DESC NULLS LAST
     LIMIT 100
   ) AS o;

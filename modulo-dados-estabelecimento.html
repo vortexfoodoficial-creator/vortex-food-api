@@ -42,6 +42,22 @@ main{margin-left:0!important;width:100%;padding:16px}
 main{margin-left:0!important;width:100%;padding:16px}
 .grid{grid-template-columns:1fr}
 }
+
+/* Vortex sidebar layout: consistent with the established internal modules */
+body{min-height:100vh}
+.sidebar{position:fixed!important;top:0!important;left:0!important;bottom:0!important;width:250px!important;height:100vh!important;max-height:100vh!important;overflow-y:auto!important;z-index:1001!important;transform:none}
+main{margin-left:250px!important;width:calc(100% - 250px)!important;max-width:none}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000}
+.menu-toggle{display:none}
+.close-sidebar-btn{display:none}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)!important}
+  .sidebar.open{transform:translateX(0)!important}
+  .sidebar-overlay.open{display:block!important}
+  .menu-toggle{display:inline-flex!important;align-items:center;justify-content:center}
+  .close-sidebar-btn{display:block!important}
+  main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:16px}
+}
 </style>
 </head>
 <body>

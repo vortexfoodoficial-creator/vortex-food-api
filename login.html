@@ -247,7 +247,7 @@
         }
         else if (isEmailChangeLink) {
           showSection('login');
-          showMessage('Confirmação de e-mail processada. Tente entrar usando o endereço atualizado.', 'success');
+          showMessage('Esta etapa da confirmação foi processada. Se o Supabase solicitar confirmação no outro endereço, confirme também antes de entrar com o novo e-mail.', 'success');
         }
       } catch (error) {
         showMessage('Não foi possível verificar a sessão. Atualize a página e tente novamente.', 'error');

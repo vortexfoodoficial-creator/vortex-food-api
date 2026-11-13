@@ -1397,35 +1397,38 @@ function vortexRenderEmployeeChrome(context) {
   }
 }
 
-const VORTEX_SESSION_LOCK_KEY = 'vf_session_lock_v1';
+const VORTEX_SESSION_LOCK_KEY = 'vf_session_locks_v1';
 
-function vortexLockStorageKey() {
-  return VORTEX_SESSION_LOCK_KEY;
+function vortexLockIdentity(context = window.VORTEX_AUTH_CONTEXT || {}) {
+  const storeId = context.store_id || window.VORTEX_ACTIVE_STORE_ID;
+  const userId = context.user_id || window.VORTEX_ACTIVE_USER_ID;
+  if (!storeId || !userId) return null;
+  return String(storeId) + '::' + String(userId);
 }
 
-function vortexReadSessionLock() {
+function vortexReadSessionLocks() {
+  const raw = localStorage.getItem(VORTEX_SESSION_LOCK_KEY);
+  if (!raw) return {};
   try {
-    const raw = localStorage.getItem(VORTEX_SESSION_LOCK_KEY);
-    if (!raw) return null;
-    const marker = JSON.parse(raw);
-    if (!marker || typeof marker !== 'object' || !marker.user_id || !marker.store_id) return null;
-    return marker;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.locks && typeof parsed.locks === 'object' ? parsed.locks : {};
   } catch (error) {
-    return null;
+    return {};
   }
 }
 
 function vortexSetSessionLocked(locked) {
   try {
-    if (locked) {
-      const context = window.VORTEX_AUTH_CONTEXT || {};
-      const marker = JSON.stringify({
-        store_id: String(context.store_id || window.VORTEX_ACTIVE_STORE_ID || ''),
-        user_id: String(context.user_id || window.VORTEX_ACTIVE_USER_ID || ''),
-        locked_at: new Date().toISOString()
-      });
-      localStorage.setItem(VORTEX_SESSION_LOCK_KEY, marker);
-      sessionStorage.setItem(VORTEX_SESSION_LOCK_KEY, marker);
+    const identity = vortexLockIdentity();
+    if (!identity) throw new Error('Identidade da sessão ainda não foi identificada.');
+    const locks = vortexReadSessionLocks();
+    if (locked) locks[identity] = new Date().toISOString();
+    else delete locks[identity];
+
+    if (Object.keys(locks).length) {
+      const value = JSON.stringify({ locks: locks });
+      localStorage.setItem(VORTEX_SESSION_LOCK_KEY, value);
+      sessionStorage.setItem(VORTEX_SESSION_LOCK_KEY, value);
     } else {
       localStorage.removeItem(VORTEX_SESSION_LOCK_KEY);
       sessionStorage.removeItem(VORTEX_SESSION_LOCK_KEY);
@@ -1437,41 +1440,28 @@ function vortexSetSessionLocked(locked) {
 
 function vortexIsSessionLocked(context = window.VORTEX_AUTH_CONTEXT || {}) {
   try {
-    let marker = vortexReadSessionLock();
+    const identity = vortexLockIdentity(context);
+    const locks = vortexReadSessionLocks();
 
-    // Migra automaticamente o marcador criado pela versão anterior.
-    if (!marker && context.store_id && context.user_id) {
-      const legacyKey = 'vf_session_locked::' + String(context.store_id) + '::' + String(context.user_id);
+    // Migra o marcador individual da versão anterior sem afetar outros funcionários.
+    if (identity) {
+      const legacyKey = 'vf_session_locked::' + identity;
       if (localStorage.getItem(legacyKey) === '1') {
-        marker = {
-          store_id: String(context.store_id),
-          user_id: String(context.user_id),
-          locked_at: new Date().toISOString()
-        };
-        localStorage.setItem(VORTEX_SESSION_LOCK_KEY, JSON.stringify(marker));
+        locks[identity] = new Date().toISOString();
+        localStorage.setItem(VORTEX_SESSION_LOCK_KEY, JSON.stringify({ locks: locks }));
         localStorage.removeItem(legacyKey);
       }
+      return Object.prototype.hasOwnProperty.call(locks, identity);
     }
 
-    if (!marker) return false;
-    // Sem contexto ainda, a existência do marcador é suficiente para manter
-    // a página oculta até que a sessão e a identidade sejam confirmadas.
-    if (!context.store_id || !context.user_id) return true;
-
-    const matches = String(marker.store_id) === String(context.store_id)
-      && String(marker.user_id) === String(context.user_id);
-    if (!matches) {
-      vortexSetSessionLocked(false);
-      return false;
-    }
-    return true;
+    // Antes de identificar a conta, qualquer marcador exige que a página
+    // permaneça oculta até que o contexto autenticado seja carregado.
+    return Object.keys(locks).length > 0;
   } catch (error) {
-    // Em caso de falha de leitura, falha fechada: não libera uma tela que
-    // possa estar bloqueada.
+    // Falha fechada: não libera a página se não conseguir consultar o marcador.
     return true;
   }
 }
-
 function vortexShowLockScreen(fromOtherTab = false) {
   if (document.getElementById('vortexLockOverlay')) return;
   const context = window.VORTEX_AUTH_CONTEXT || {};
@@ -1667,8 +1657,8 @@ function vortexRequireAuthenticatedPage() {
 // Mantém o bloqueio sincronizado entre abas abertas no mesmo dispositivo.
 window.addEventListener('storage', function(event) {
   if (event.key !== VORTEX_SESSION_LOCK_KEY) return;
-  if (event.newValue) {
-    if (vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) vortexShowLockScreen(true);
+  if (vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) {
+    vortexShowLockScreen(true);
   } else {
     try { sessionStorage.removeItem(VORTEX_SESSION_LOCK_KEY); } catch (error) {}
     const overlay = document.getElementById('vortexLockOverlay');

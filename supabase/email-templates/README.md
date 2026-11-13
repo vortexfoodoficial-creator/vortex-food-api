@@ -14,6 +14,11 @@ Estes arquivos são modelos HTML para os e-mails de autenticação e notificaç�
 | reauthentication.html | Reauthentication | Código de verificação do Vortex Food: {{ .Token }} |
 | password_changed_notification.html | Password changed notification | Sua senha do Vortex Food foi alterada |
 | email_changed_notification.html | Email changed notification | O e-mail da sua conta Vortex Food foi alterado |
+| phone_changed_notification.html | Phone changed notification | Seu telefone de segurança foi alterado |
+| identity_linked_notification.html | Identity linked notification | Um novo método de acesso foi vinculado |
+| identity_unlinked_notification.html | Identity unlinked notification | Um método de acesso foi desvinculado |
+| factor_enrolled_notification.html | Factor enrolled notification | Um método de verificação foi adicionado |
+| factor_unenrolled_notification.html | Factor unenrolled notification | Um método de verificação foi removido |
 
 ## Aplicação no projeto Supabase hospedado
 

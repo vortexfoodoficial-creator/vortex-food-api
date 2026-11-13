@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.vortex_account_security_events (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   event_type text NOT NULL CHECK (event_type IN (
     'account_email_change_requested',
+    'account_email_changed',
     'account_password_changed',
     'account_other_sessions_signed_out'
   )),
@@ -41,6 +42,7 @@ BEGIN
 
   IF p_event_type NOT IN (
     'account_email_change_requested',
+    'account_email_changed',
     'account_password_changed',
     'account_other_sessions_signed_out'
   ) THEN

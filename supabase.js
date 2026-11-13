@@ -1260,6 +1260,32 @@ function vortexPermissionHas(permissionKey) {
   return Array.isArray(permissions) && permissions.includes(permissionKey);
 }
 
+function vortexShowAccessDeniedModal(profiles) {
+  if (!document.body || document.getElementById('vortexAccessDeniedOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'vortexAccessDeniedOverlay';
+  overlay.innerHTML = `
+    <section id="vortexAccessDeniedCard" role="dialog" aria-modal="true" aria-labelledby="vortexAccessDeniedTitle">
+      <div class="vortex-access-denied-icon" aria-hidden="true">🔒</div>
+      <h2 id="vortexAccessDeniedTitle">Acesso não autorizado</h2>
+      <p>Seu perfil atual não tem permissão para acessar este módulo.</p>
+      <p class="vortex-access-denied-profiles"><strong>Perfis autorizados:</strong> <span id="vortexAccessDeniedProfiles"></span></p>
+      <p>Solicite ao proprietário uma revisão das suas permissões.</p>
+      <div class="vortex-access-denied-actions"><button type="button" id="vortexAccessDeniedClose">Entendi</button></div>
+    </section>`;
+  document.body.appendChild(overlay);
+  document.getElementById('vortexAccessDeniedProfiles').textContent = String(profiles || 'Proprietário e Administrador');
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', escapeHandler);
+  };
+  const escapeHandler = event => { if (event.key === 'Escape') close(); };
+  document.getElementById('vortexAccessDeniedClose').addEventListener('click', close);
+  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+  document.addEventListener('keydown', escapeHandler);
+  document.getElementById('vortexAccessDeniedClose').focus();
+}
+
 function vortexRenderEmployeeChrome(context) {
   if (!context || !document.body) return;
   if (document.readyState === 'loading') {
@@ -1307,7 +1333,7 @@ function vortexRenderEmployeeChrome(context) {
   if (blockedPermission && !window.__VORTEX_BLOCKED_NOTICE_SHOWN) {
     window.__VORTEX_BLOCKED_NOTICE_SHOWN = true;
     const profiles = VORTEX_PERMISSION_LABELS[blockedPermission] || 'Proprietário e Administrador';
-    window.setTimeout(() => window.alert('Seu perfil atual não tem permissão para acessar este módulo. Perfis autorizados: ' + profiles + '. Solicite ao proprietário uma revisão das suas permissões.'), 150);
+    window.setTimeout(() => vortexShowAccessDeniedModal(profiles), 150);
   }
 
   document.querySelectorAll('.nav-link[href]').forEach(link => {
@@ -1320,7 +1346,9 @@ function vortexRenderEmployeeChrome(context) {
     const allowed = vortexPermissionHas(permission);
     const state = document.createElement('span');
     state.className = 'vortex-permission-state ' + (allowed ? 'is-allowed' : 'is-blocked');
-    state.textContent = allowed ? '✓ Liberado' : '🔒 Bloqueado';
+    state.textContent = allowed ? '🔓✅' : '🔒❌';
+    state.setAttribute('aria-label', allowed ? 'Acesso permitido' : 'Acesso bloqueado');
+    state.title = allowed ? 'Acesso permitido' : 'Acesso bloqueado';
     link.appendChild(state);
     if (!allowed) {
       link.classList.add('vortex-nav-blocked');
@@ -1328,7 +1356,7 @@ function vortexRenderEmployeeChrome(context) {
       link.addEventListener('click', function(event) {
         event.preventDefault();
         const profiles = VORTEX_PERMISSION_LABELS[permission] || 'Proprietário e Administrador';
-        window.alert('Seu perfil atual não tem permissão para acessar este módulo. Perfis autorizados: ' + profiles + '. Solicite ao proprietário uma revisão das suas permissões.');
+        vortexShowAccessDeniedModal(profiles);
       });
     }
   });
@@ -1339,30 +1367,117 @@ function vortexRenderEmployeeChrome(context) {
     style.textContent = `
       #vortexEmployeeIdentity{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;padding:10px 12px;margin-top:10px;border:1px solid var(--border,#334155);border-radius:10px;background:var(--bg-card,#1e293b);font-size:12px}
       .vortex-identity-copy{display:flex;flex-direction:column;gap:3px;color:var(--text-muted,#94a3b8)}
-      .vortex-identity-copy strong{font-size:13px;color:var(--text-main,#f8fafc)}
-      .vortex-connected{color:#22c55e;font-weight:700}
-      .vortex-identity-actions{display:flex;gap:7px;flex-wrap:wrap}
-      .vortex-identity-actions button{border:1px solid var(--border,#334155);border-radius:7px;background:transparent;color:var(--text-main,#f8fafc);padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer}
-      .vortex-permission-state{margin-left:auto;font-size:10px;font-weight:700;white-space:nowrap}
-      .vortex-permission-state.is-allowed{color:#22c55e}
-      .vortex-permission-state.is-blocked{color:#f87171}
-      .vortex-nav-blocked{opacity:.65}
-      #vortexLockOverlay{position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.97);display:flex;align-items:center;justify-content:center;padding:20px}
-      #vortexLockCard{width:min(100%,390px);background:#1e293b;color:#f8fafc;border:1px solid #475569;border-radius:16px;padding:24px}
-      #vortexLockCard input{width:100%;padding:12px;margin:12px 0;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:8px}
-      #vortexLockCard button{padding:11px 14px;border:0;border-radius:8px;background:#f97316;color:#fff;font-weight:700;cursor:pointer}
-      #vortexLockError{color:#fca5a5;font-size:12px;min-height:18px}
-      @media(max-width:600px){#vortexEmployeeIdentity{align-items:flex-start}.vortex-identity-actions{width:100%}.vortex-identity-actions button{flex:1}}
-    `;
-    document.head.appendChild(style);
+      .vortex-identity-copy strong{font-size:13px;color:var(--text-main,#ffunction vortexLockStorageKey(context = window.VORTEX_AUTH_CONTEXT || {}) {
+  const storeId = context.store_id || window.VORTEX_ACTIVE_STORE_ID || 'store';
+  const userId = context.user_id || window.VORTEX_ACTIVE_USER_ID || 'user';
+  return 'vortex_session_locked::' + String(storeId) + '::' + String(userId);
+}
+
+function vortexSetSessionLocked(locked) {
+  try {
+    if (locked) {
+      localStorage.setItem('vortex_session_locked', '1');
+      sessionStorage.setItem(vortexLockStorageKey(), '1');
+    } else {
+      localStorage.removeItem('vortex_session_locked');
+      sessionStorage.removeItem(vortexLockStorageKey());
+    }
+  } catch (error) {
+    console.warn('Não foi possível atualizar o estado de bloqueio local:', error);
+  }
+}
+
+function vortexIsSessionLocked() {
+  try {
+    return localStorage.getItem('vortex_session_locked') === '1'
+      || sessionStorage.getItem(vortexLockStorageKey()) === '1';
+  } catch (error) {
+    return false;
   }
 }
 
 function vortexShowLockScreen(fromOtherTab = false) {
   if (document.getElementById('vortexLockOverlay')) return;
   const context = window.VORTEX_AUTH_CONTEXT || {};
-  if (!fromOtherTab) {
-    try { localStorage.setItem('vortex_session_locked', '1'); } catch (error) {}
+  if (!fromOtherTab) vortexSetSessionLocked(true);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'vortexLockOverlay';
+  overlay.innerHTML = `
+    <div id="vortexLockCard" role="dialog" aria-modal="true" aria-labelledby="vortexLockTitle">
+      <div style="font-size:28px;margin-bottom:8px">🔒</div>
+      <h2 id="vortexLockTitle" style="font-size:20px;margin-bottom:8px">Tela bloqueada</h2>
+      <p style="font-size:13px;line-height:1.5;color:#cbd5e1">Esta sessão pertence a <strong>${String(context.display_name || context.email || 'este usuário').replace(/[<>]/g, '')}</strong>. Informe sua senha para continuar.</p>
+      <input id="vortexUnlockPassword" type="password" autocomplete="current-password" placeholder="Sua senha" aria-label="Senha do usuário atual">
+      <div id="vortexLockError" role="alert" aria-live="polite"></div>
+      <button type="button" id="vortexUnlockButton">Desbloquear</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const unlock = async function() {
+    const button = document.getElementById('vortexUnlockButton');
+    const errorBox = document.getElementById('vortexLockError');
+    const passwordInput = document.getElementById('vortexUnlockPassword');
+    const password = passwordInput ? passwordInput.value : '';
+    if (!password) {
+      errorBox.textContent = 'Digite sua senha para desbloquear a tela.';
+      passwordInput?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = 'Verificando...';
+    errorBox.textContent = '';
+    try {
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Conexão com Supabase indisponível. A tela continua bloqueada.');
+
+      const { data: verification, error: verificationError } = await supabase.functions.invoke('verify-current-password', {
+        body: { password }
+      });
+      if (verificationError) {
+        console.error('Falha ao chamar verify-current-password:', verificationError);
+        throw new Error('Não foi possível validar sua senha no servidor. Verifique se a função de desbloqueio está implantada no Supabase e tente novamente.');
+      }
+      if (!verification || verification.success !== true) {
+        throw new Error((verification && verification.error) || 'Senha incorreta. A tela continua bloqueada.');
+      }
+
+      const freshContext = await vortexGetCurrentStoreContext();
+      if (freshContext.error || !freshContext.store || String(freshContext.store.id) !== String(context.store_id)) {
+        throw new Error('Esta conta não possui mais acesso ativo à loja. Entre em contato com o proprietário.');
+      }
+
+      const previousSignature = JSON.stringify([...(context.permissions || [])].sort());
+      const currentSignature = JSON.stringify([...(freshContext.permissions || [])].sort());
+      if (previousSignature !== currentSignature || context.profile_key !== freshContext.profile_key) {
+        vortexSetSessionLocked(false);
+        window.location.reload();
+        return;
+      }
+
+      vortexSetSessionLocked(false);
+      overlay.remove();
+    } catch (error) {
+      errorBox.textContent = error && error.message ? error.message : 'Não foi possível desbloquear. A tela continua bloqueada.';
+      passwordInput.value = '';
+      passwordInput.focus();
+    } finally {
+      if (document.getElementById('vortexUnlockButton')) {
+        button.disabled = false;
+        button.textContent = 'Desbloquear';
+      }
+    }
+  };
+
+  document.getElementById('vortexUnlockButton').addEventListener('click', unlock);
+  document.getElementById('vortexUnlockPassword').addEventListener('keydown', event => {
+    if (event.key === 'Enter') unlock();
+  });
+  document.getElementById('vortexUnlockPassword').focus();
+}
+
+}
   }
   const overlay = document.createElement('div');
   overlay.id = 'vortexLockOverlay';
@@ -1422,7 +1537,7 @@ function vortexShowLockScreen(fromOtherTab = false) {
 }
 
 async function vortexSwitchUser() {
-  try { localStorage.removeItem('vortex_session_locked'); } catch (error) {}
+  vortexSetSessionLocked(false);
   const result = await vortexSignOut();
   if (result.error) {
     window.alert('Não foi possível encerrar a sessão. Tente novamente.');
@@ -1507,7 +1622,7 @@ function vortexRequireAuthenticatedPage() {
         }
         document.documentElement.style.visibility = '';
         vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
-        if (localStorage.getItem('vortex_session_locked') === '1') vortexShowLockScreen(true);
+        if (vortexIsSessionLocked()) vortexShowLockScreen(true);
       });
     })
     .catch(redirectToLogin);
@@ -1519,11 +1634,21 @@ window.addEventListener('storage', function(event) {
   if (event.newValue === '1') {
     vortexShowLockScreen(true);
   } else if (event.newValue === null) {
+    try { sessionStorage.removeItem(vortexLockStorageKey()); } catch (error) {}
     const overlay = document.getElementById('vortexLockOverlay');
     if (overlay) {
       overlay.remove();
       window.location.reload();
     }
+  }
+});
+
+// Reaplica o bloqueio quando o navegador restaura uma página pelo histórico (bfcache).
+window.addEventListener('pageshow', function() {
+  if (vortexIsSessionLocked()) {
+    document.documentElement.style.visibility = 'hidden';
+    vortexShowLockScreen(true);
+    document.documentElement.style.visibility = '';
   }
 });
 

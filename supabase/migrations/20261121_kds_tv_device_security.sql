@@ -46,6 +46,9 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='updated_at'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='displayId'
   ) THEN
     RAISE EXCEPTION 'A tabela vortex_kds_orders não possui as colunas mínimas esperadas. Migração cancelada.';
   END IF;
@@ -150,6 +153,7 @@ BEGIN
     jsonb_agg(
       jsonb_build_object(
         'id',o.id,
+        'displayId',COALESCE(NULLIF(o."displayId",''),o.id),
         'status',o.status,
         'date',o.date,
         'time',o.time,
@@ -193,7 +197,7 @@ BEGIN
   )
   INTO v_orders
   FROM (
-    SELECT id,status,date,time,origin,items,updated_at
+    SELECT id,"displayId",status,date,time,origin,items,updated_at
     FROM public.vortex_kds_orders
     WHERE store_id=v_store_id
       AND COALESCE(status,'') NOT IN ('finished','cancelled')

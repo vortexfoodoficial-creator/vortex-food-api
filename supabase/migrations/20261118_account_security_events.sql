@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.vortex_account_security_events (
   event_type text NOT NULL CHECK (event_type IN (
     'account_email_change_requested',
     'account_email_changed',
+    'account_display_name_changed',
     'account_password_changed',
     'account_other_sessions_signed_out'
   )),
@@ -43,6 +44,7 @@ BEGIN
   IF p_event_type NOT IN (
     'account_email_change_requested',
     'account_email_changed',
+    'account_display_name_changed',
     'account_password_changed',
     'account_other_sessions_signed_out'
   ) THEN

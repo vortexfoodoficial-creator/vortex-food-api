@@ -324,6 +324,81 @@ input[type=checkbox]{accent-color:var(--primary)}
   .link-box{align-items:stretch}
 }
 
+
+/* Estrutura do conteúdo alinhada aos módulos atuais */
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important}
+main.main-content{min-height:100vh;min-height:100dvh}
+header.top-header{
+  flex:0 0 auto;min-height:82px!important;padding:14px 24px!important;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+.top-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+.top-header h1{font-size:1.25rem;font-weight:800;line-height:1.2;margin-top:3px}
+.eyebrow,.section-kicker{display:block;color:var(--text-muted);font-size:.68rem;font-weight:700;letter-spacing:.08em}
+.module-tag{padding:7px 11px;border:1px solid var(--border-color);border-radius:999px;color:var(--text-muted);font-size:.75rem;font-weight:600}
+.content-body{width:100%;max-width:1180px;margin:0 auto;padding:26px 28px 40px!important}
+.page-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.page-intro h2{font-size:1.35rem;font-weight:800;line-height:1.3;margin-bottom:6px;color:var(--text-dark)}
+.page-intro p,.section-heading p{font-size:.88rem;line-height:1.6;color:var(--text-muted);max-width:680px}
+.online-config-card{
+  padding:22px 24px!important;margin-bottom:18px!important;border-radius:14px!important;
+  border:1px solid var(--border-color)!important;background:var(--card-white)!important;
+  box-shadow:none!important;color:var(--text-dark)!important;
+}
+.section-heading{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px}
+.section-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:rgba(249,115,22,.13);color:var(--primary);font-size:1.35rem;font-weight:800}
+.section-heading h3{font-size:1.02rem;font-weight:750;line-height:1.35;margin:4px 0 5px;color:var(--text-dark)}
+.section-heading p{font-size:.82rem}
+.link-panel{padding:16px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px}
+.field-label{display:block;font-size:.67rem;font-weight:750;letter-spacing:.07em;color:var(--text-muted);margin-bottom:9px}
+.link-box{display:block!important;margin:0!important;padding:12px 14px!important;min-height:46px;background:var(--panel-dark)!important;border:1px solid var(--border-color)!important;border-radius:8px!important;color:var(--text-dark)!important;font-size:.84rem!important;font-weight:500!important;line-height:1.5;overflow-wrap:anywhere;word-break:break-word}
+.link-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.btn-primary,.btn-secondary{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;
+  padding:9px 15px;border-radius:8px;font-size:.83rem;font-weight:700;
+  cursor:pointer;transition:background .18s,border-color .18s,opacity .18s;
+}
+.btn-primary{background:var(--primary)!important;color:#fff!important;border:1px solid var(--primary)!important}
+.btn-primary:hover{background:var(--primary-hover,#ea580c)!important}
+.btn-secondary{background:var(--panel-dark)!important;color:var(--text-dark)!important;border:1px solid var(--border-color)!important}
+.btn-secondary:hover{border-color:var(--primary)!important;color:var(--primary)!important}
+.btn-primary:disabled,.btn-secondary:disabled{opacity:.45;cursor:not-allowed}
+.inline-status{margin-top:14px;padding:11px 13px;border-radius:9px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--text-muted);font-size:.8rem;line-height:1.5}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px}
+.setting-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.setting-copy strong{font-size:.9rem;color:var(--text-dark)}
+.setting-copy span{font-size:.8rem;line-height:1.5;color:var(--text-muted);max-width:700px}
+.switch-control{position:relative;display:inline-flex;align-items:center;flex:0 0 auto;cursor:pointer}
+.switch-control input{position:absolute;opacity:0;width:1px!important;height:1px!important}
+.switch-track{width:48px;height:27px;border-radius:999px;background:#475569;border:1px solid var(--border-color);transition:background .2s;position:relative}
+.switch-track:after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch-control input:checked+.switch-track{background:var(--primary);border-color:var(--primary)}
+.switch-control input:checked+.switch-track:after{transform:translateX(21px)}
+.switch-control input:focus-visible+.switch-track{outline:2px solid var(--primary);outline-offset:3px}
+.switch-control input:disabled+.switch-track{opacity:.5;cursor:not-allowed}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.module-note{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;color:var(--text-muted);font-size:.78rem;line-height:1.55}
+.module-note>span{color:var(--info,#38bdf8);font-size:1rem}
+@media(max-width:900px){
+  header.top-header{padding:13px 16px!important;min-height:74px!important}
+  .content-body{padding:20px 16px 34px!important}
+  .page-intro{align-items:flex-start}
+  .page-intro h2{font-size:1.18rem}
+  .online-config-card{padding:18px!important}
+}
+@media(max-width:560px){
+  .module-tag{display:none}
+  .top-header h1{font-size:1.08rem}
+  .page-intro{display:block}
+  .page-intro .btn-secondary{margin-top:14px}
+  .section-heading{gap:11px}
+  .section-icon{width:38px;height:38px;flex-basis:38px}
+  .setting-row{align-items:flex-start;padding:13px;gap:12px}
+  .setting-copy span{font-size:.76rem}
+  .link-actions{display:grid;grid-template-columns:1fr}
+  .link-actions button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -353,41 +428,80 @@ input[type=checkbox]{accent-color:var(--primary)}
 
     <main class="main-content">
         <header class="top-header">
-            <button class="btn-toggle-menu" onclick="toggleSidebar()">☰ Menu</button>
-            <div style="font-weight: 800; font-size: 13px;">Módulo 6 — Cardápio Digital & Web</div>
-            <div style="font-size: 11px; color: var(--warning);">● Configuração pendente</div>
+            <div class="top-header-left">
+                <button class="btn-toggle-menu" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+                <div>
+                    <span class="eyebrow">PRODUTOS & PROMOÇÕES</span>
+                    <h1>Cardápio Online</h1>
+                </div>
+            </div>
+            <span class="module-tag">Módulo 6 · Pedidos pela internet</span>
         </header>
 
         <div class="content-body">
-            <div class="page-title-bar">
-                <h2>Cardápio Digital & Link de Pedidos</h2>
-                <button style="background: var(--primary-gradient); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 800; cursor: pointer;" onclick="alert('Gerando QR Code para impressão de mesas e balcão...')">📷 Gerar QR Code do Salão</button>
-            </div>
-
-            <div class="online-config-card">
-                <h3 style="margin-bottom: 8px; font-weight: 800;">🌐 O seu Link Exclusivo de Delivery</h3>
-                <p style="font-size: 13px; color: var(--text-muted);">Envie este link aos seus clientes pelo WhatsApp ou redes sociais para receberem pedidos diretamente no painel.</p>
-                
-                <div class="link-box">
-                    <span id="publicDeliveryLinkText">Carregando link do seu cardápio...</span>
-                    <button class="btn-copy" id="openDeliveryLink" type="button" disabled onclick="openPublicDeliveryLink()" style="background:var(--primary);">Abrir Cardápio do Cliente</button>
-                    <button class="btn-copy" id="copyDeliveryLink" type="button" disabled onclick="copyPublicDeliveryLink()">Copiar Link</button>
+            <section class="page-intro">
+                <div>
+                    <h2>Seu cardápio, disponível na internet</h2>
+                    <p>Gerencie a disponibilidade dos pedidos online e compartilhe o link exclusivo do seu estabelecimento.</p>
                 </div>
-                <p id="deliveryLinkStatus" style="font-size:12px;color:var(--text-muted);margin-top:10px;">Ative o cardápio para começar a receber pedidos online.</p>
-            </div>
+                <button class="btn-secondary" type="button" onclick="alert('A geração de QR Code para impressão ainda não está disponível neste módulo.')">▦ QR Code do salão</button>
+            </section>
 
-            <div class="online-config-card">
-                <h3 style="margin-bottom: 12px; font-weight: 800;">⚙️ Configurações de Atendimento Online</h3>
-                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
-                    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="enablePublicDelivery" onchange="togglePublicDelivery(this.checked)" style="width:auto;"> Aceitar pedidos de Delivery pelo cardápio digital</label>
+            <section class="online-config-card link-card" aria-labelledby="linkCardTitle">
+                <div class="section-heading">
+                    <div class="section-icon">↗</div>
+                    <div>
+                        <span class="section-kicker">COMPARTILHAMENTO</span>
+                        <h3 id="linkCardTitle">Link exclusivo do seu cardápio</h3>
+                        <p>Compartilhe este endereço com seus clientes para receber pedidos diretamente no Vortex Food.</p>
+                    </div>
                 </div>
-                <p style="font-size: 11px; color: var(--text-muted);">Ao ativar, seus clientes poderão acessar o link público, montar o pedido e receber o código de confirmação na tela após concluir a compra.</p>
+                <div class="link-panel">
+                    <span class="field-label">ENDEREÇO PÚBLICO</span>
+                    <div class="link-box">
+                        <span id="publicDeliveryLinkText">Carregando link do seu cardápio...</span>
+                    </div>
+                    <div class="link-actions">
+                        <button class="btn-primary" id="openDeliveryLink" type="button" disabled onclick="openPublicDeliveryLink()">Abrir cardápio ↗</button>
+                        <button class="btn-secondary" id="copyDeliveryLink" type="button" disabled onclick="copyPublicDeliveryLink()">Copiar link</button>
+                    </div>
+                </div>
+                <div class="inline-status" id="deliveryLinkStatus" role="status" aria-live="polite">
+                    Ative o cardápio para começar a receber pedidos online.
+                </div>
+            </section>
+
+            <section class="online-config-card settings-card" aria-labelledby="settingsCardTitle">
+                <div class="section-heading">
+                    <div class="section-icon">⚙</div>
+                    <div>
+                        <span class="section-kicker">DISPONIBILIDADE</span>
+                        <h3 id="settingsCardTitle">Atendimento online</h3>
+                        <p>Controle se o estabelecimento pode receber novos pedidos pelo cardápio digital.</p>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-copy">
+                        <strong>Aceitar pedidos de delivery</strong>
+                        <span>Quando ativado, seus clientes poderão acessar o link público, montar o pedido e receber o código de confirmação na tela.</span>
+                    </div>
+                    <label class="switch-control" for="enablePublicDelivery">
+                        <input type="checkbox" id="enablePublicDelivery" onchange="togglePublicDelivery(this.checked)">
+                        <span class="switch-track"></span>
+                        <span class="sr-only">Ativar recebimento de pedidos online</span>
+                    </label>
+                </div>
+            </section>
+
+            <div class="module-note">
+                <span>ⓘ</span>
+                <p>O link público é exclusivo deste estabelecimento. Antes de divulgar, confira se o recebimento de pedidos está ativado.</p>
             </div>
         </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js?v=20261113-ui2"></script>
+    <script src="supabase.js?v=20261113-ui3"></script>
 
     <script>
         let publicDeliveryUrl = '';

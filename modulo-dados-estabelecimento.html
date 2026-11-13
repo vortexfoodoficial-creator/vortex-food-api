@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex Food - Dados do Estabelecimento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<style>
+:root{--bg:#0f172a;--panel:#1e293b;--text:#f8fafc;--muted:#94a3b8;--border:#334155;--primary:#f97316;--danger:#ef4444}
+body.light-theme{--bg:#f1f5f9;--panel:#fff;--text:#0f172a;--muted:#64748b;--border:#cbd5e1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Tahoma,sans-serif;min-height:100vh}
+.sidebar{position:fixed;inset:0 auto 0 0;width:250px;background:var(--panel);border-right:1px solid var(--border);padding:20px;overflow:auto}
+.brand{font-weight:800;font-size:1.05rem;margin-bottom:24px}.nav-title{color:var(--muted);font-size:.72rem;letter-spacing:.08em;margin:18px 0 8px}
+nav a{display:block;padding:10px 12px;color:var(--muted);text-decoration:none;border-radius:8px;margin:3px 0;font-size:.9rem}nav a:hover,nav a.active{background:#f9731620;color:var(--primary)}
+main{margin-left:250px;padding:24px;max-width:1180px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px}
+h1{font-size:1.55rem;margin:0}h2{font-size:1.05rem;margin:0 0 16px;color:var(--primary)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{margin-bottom:14px}label{display:block;color:var(--muted);font-size:.82rem;font-weight:600;margin-bottom:6px}
+input,select{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.92rem}input:focus,select:focus{outline:1px solid var(--primary)}
+button{border:0;border-radius:9px;padding:12px 18px;background:var(--primary);color:white;font-weight:700;cursor:pointer}.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}.danger{background:#ef444420;border:1px solid var(--danger);color:var(--danger)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.hint{font-size:.82rem;color:var(--muted);line-height:1.5;margin:0 0 16px}.status{margin-top:12px;font-size:.88rem;min-height:20px}.logo-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.logo-preview{width:72px;height:72px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:#fff}
+@media(max-width:760px){.sidebar{position:static;width:auto;padding:14px}.sidebar nav{display:flex;gap:6px;overflow:auto}.sidebar nav a{white-space:nowrap}.nav-title{display:none}main{margin:0;padding:16px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+ <div class="brand">🌪️ VORTEX FOOD</div>
+ <div class="nav-title">ADMINISTRAÇÃO</div>
+ <nav>
+  <a href="index.html">📊 Dashboard</a>
+  <a href="modulo-configuracoes.html">⚙️ Configurações do sistema</a>
+  <a class="active" href="modulo-dados-estabelecimento.html">🏪 Dados do estabelecimento</a>
+  <a href="modulo9-equipe.html">👔 Equipe & Permissões</a>
+  <a href="modulo-mensalidade.html">💳 Mensalidade</a>
+ </nav>
+</aside>
+<main>
+<header><div><h1>Dados do estabelecimento</h1><p class="hint">Informações comerciais, contatos e endereço da sua loja.</p></div><button class="secondary" type="button" id="reloadBtn">↻ Recarregar</button></header>
+<section class="card">
+<h2>Identidade da loja</h2>
+<div class="grid">
+ <div class="field"><label for="storeName">Nome fantasia</label><input id="storeName" maxlength="120"></div>
+ <div class="field"><label for="legalName">Razão social</label><input id="legalName" maxlength="160"></div>
+ <div class="field"><label for="storeType">Tipo de estabelecimento</label><select id="storeType"><option value="">Selecione</option><option>Hamburgueria</option><option>Pizzaria</option><option>Restaurante</option><option>Padaria</option><option>Japonesa</option><option>Acai</option><option>Outros</option></select></div>
+ <div class="field"><label for="ownerName">Proprietário / responsável</label><input id="ownerName" maxlength="120"></div>
+ <div class="field"><label for="docNumber">CPF ou CNPJ</label><input id="docNumber" maxlength="18"></div>
+</div>
+<div class="field"><label for="logoFile">Logotipo</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+<div class="logo-row"><img id="logoPreview" class="logo-preview" alt="Prévia do logotipo" hidden><button class="secondary" type="button" id="removeLogo">Remover logotipo</button><span class="hint">O logotipo atual será preservado se você não selecionar outro.</span></div>
+</section>
+<section class="card">
+<h2>Contato do estabelecimento</h2>
+<div class="grid">
+ <div class="field"><label for="phone">Telefone / WhatsApp comercial</label><input id="phone" type="tel" maxlength="30"></div>
+ <div class="field"><label for="email">E-mail comercial (não é o e-mail de login)</label><input id="email" type="email" maxlength="254"></div>
+</div>
+</section>
+<section class="card">
+<h2>Endereço</h2>
+<div class="grid">
+ <div class="field"><label for="cep">CEP</label><input id="cep" maxlength="9" autocomplete="postal-code"></div>
+ <div class="field"><label for="streetNumber">Número</label><input id="streetNumber" maxlength="20"></div>
+ <div class="field"><label for="street">Rua / Logradouro</label><input id="street" maxlength="160"></div>
+ <div class="field"><label for="complement">Complemento</label><input id="complement" maxlength="100"></div>
+ <div class="field"><label for="neighborhood">Bairro</label><input id="neighborhood" maxlength="100"></div>
+ <div class="field"><label for="city">Cidade</label><input id="city" maxlength="100"></div>
+ <div class="field"><label for="uf">UF</label><input id="uf" maxlength="2"></div>
+</div>
+<p class="hint">A consulta de CEP preenche os campos quando o serviço dos Correios/ ViaCEP estiver disponível. Confira os dados antes de salvar.</p>
+</section>
+<div class="actions"><button id="saveBtn" type="button">Salvar dados do estabelecimento</button></div>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+let context=null, settings={}, logoData=null, removeLogo=false, saving=false;
+const fields={storeName:'storeName',legalName:'legalName',storeType:'storeType',ownerName:'ownerName',docNumber:'docNumber',phone:'phone',email:'email',cep:'cep',streetNumber:'streetNumber',complement:'complement',street:'street',neighborhood:'neighborhood',city:'city',uf:'uf'};
+function status(message,error){$('status').textContent=message;$('status').style.color=error?'var(--danger)':'var(--muted)';}
+function validEmail(v){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
+function fill(data){
+ settings=data||{};
+ Object.entries(fields).forEach(([key,id])=>$(id).value=settings[key]||'');
+ logoData=settings.logoBase64||localStorage.getItem('vortex_store_logo')||null;
+ renderLogo();
+}
+function renderLogo(){const img=$('logoPreview');if(logoData){img.src=logoData;img.hidden=false;}else{img.removeAttribute('src');img.hidden=true;}}
+async function load(){
+ status('Carregando dados sincronizados…');
+ if(!window.VortexAuth)throw new Error('O serviço de autenticação não foi carregado.');
+ const result=await window.VortexAuth.getCurrentStoreContext();
+ if(!result||result.error||!result.store)throw new Error('Não foi possível confirmar a loja desta sessão. Entre novamente.');
+ context=result;
+ if(!Array.isArray(result.permissions)||!result.permissions.includes('settings.view'))throw new Error('Seu perfil não tem permissão para consultar os dados do estabelecimento.');
+ if(!result.permissions.includes('settings.manage'))$('saveBtn').disabled=true;
+ const cloud=await dbFetchStoreDocument('settings');
+ settings=cloud&&typeof cloud==='object'?cloud:{};
+ if(window.supabaseClient){
+  const {data,error}=await window.supabaseClient.from('vortex_store_settings').select('*').eq('store_id',result.store.id).limit(1);
+  if(error)throw error;
+  if(data&&data[0]){
+   const row=data[0];
+   if(!settings.storeName)settings.storeName=row.store_name||row.nome||'';
+   if(!settings.street)settings.street=row.store_address||row.endereco||'';
+   if(!settings.phone)settings.phone=row.phone||row.tel||'';
+   if(!settings.email)settings.email=row.email||'';
+  }
+ }
+ fill(settings);
+ status('Dados carregados da loja '+(result.store.name||'')+'.');
+}
+async function save(){
+ if(saving)return;
+ if(!context||!context.store||!context.permissions.includes('settings.manage')){status('Seu perfil não pode alterar estes dados.',true);return;}
+ const email=$('email').value.trim().toLowerCase();
+ if(!validEmail(email)){status('Informe um e-mail comercial válido.',true);$('email').focus();return;}
+ const storeName=$('storeName').value.trim();
+ if(!storeName){status('Informe o nome fantasia do estabelecimento.',true);$('storeName').focus();return;}
+ const next={...settings};
+ Object.entries(fields).forEach(([key,id])=>next[key]=$(id).value.trim());
+ next.uf=next.uf.toUpperCase();
+ const fullAddress=[next.street,next.streetNumber?'Nº '+next.streetNumber:'',next.neighborhood,next.city,next.uf,next.cep?'CEP: '+next.cep:''].filter(Boolean).join(', ');
+ next.storeAddress=fullAddress;next.endereco=fullAddress;next.address=fullAddress;
+ if(removeLogo)next.logoBase64=null;else if(logoData)next.logoBase64=logoData;
+ const storeId=String(context.store.id);
+ saving=true;$('saveBtn').disabled=true;status('Salvando e sincronizando…');
+ try{
+  const docResult=await dbSaveStoreDocument('settings',next);
+  if(docResult&&docResult.error)throw docResult.error;
+  if(!window.supabaseClient)throw new Error('Conexão segura com o banco indisponível; sincronização não confirmada.');
+  const {error}=await window.supabaseClient.from('vortex_store_settings').upsert([{
+   store_id:storeId,id:1,store_name:next.storeName,store_address:fullAddress,endereco:fullAddress,address:fullAddress,
+   phone:next.phone,email:next.email,taxa:next.serviceTax||'10,00',rodape:next.receiptFooter||''
+  }],{onConflict:'store_id,id'});
+  if(error)throw error;
+  settings=next;
+  localStorage.setItem('vortex_store_settings',JSON.stringify(next));
+  localStorage.setItem('vortex_store_address',fullAddress);localStorage.setItem('vortex_endereco',fullAddress);
+  if(next.logoBase64){localStorage.setItem('vortex_store_logo',next.logoBase64);}else{localStorage.removeItem('vortex_store_logo');}
+  if(typeof vortexSetSidebarStoreName==='function')vortexSetSidebarStoreName(next.storeName);
+  removeLogo=false;status('Dados salvos e sincronizados com a nuvem.');
+ }catch(error){console.error('Falha ao salvar dados do estabelecimento:',error);status('Não foi possível confirmar a sincronização: '+(error.message||'erro desconhecido')+'. Os dados não foram apresentados como salvos.',true);}
+ finally{saving=false;$('saveBtn').disabled=!context.permissions.includes('settings.manage');}
+}
+$('saveBtn').addEventListener('click',save);
+$('reloadBtn').addEventListener('click',()=>load().catch(e=>status(e.message,true)));
+$('removeLogo').addEventListener('click',()=>{logoData=null;removeLogo=true;renderLogo();});
+$('logoFile').addEventListener('change',event=>{
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(file.size>2*1024*1024){status('O logotipo deve ter no máximo 2 MB.',true);event.target.value='';return;}
+ const reader=new FileReader();reader.onload=()=>{logoData=String(reader.result||'');removeLogo=false;renderLogo();};reader.onerror=()=>status('Não foi possível ler o arquivo de imagem.',true);reader.readAsDataURL(file);
+});
+$('cep').addEventListener('blur',async()=>{
+ const cep=$('cep').value.replace(/\D/g,'');if(cep.length!==8)return;
+ try{const response=await fetch('https://viacep.com.br/ws/'+cep+'/json/');if(!response.ok)throw new Error('CEP indisponível');const data=await response.json();if(data.erro){status('CEP não encontrado.',true);return;}
+ $('street').value=data.logradouro||$('street').value;$('neighborhood').value=data.bairro||$('neighborhood').value;$('city').value=data.localidade||$('city').value;$('uf').value=data.uf||$('uf').value;
+ }catch(error){status('Não foi possível consultar o CEP agora. Preencha o endereço manualmente.',true);}
+});
+document.addEventListener('DOMContentLoaded',()=>load().catch(error=>{console.error(error);status(error.message||'Não foi possível carregar os dados.',true);}));
+})();
+</script>
+</body></html>

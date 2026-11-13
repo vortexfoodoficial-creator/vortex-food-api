@@ -1450,7 +1450,7 @@ function vortexShowLockScreen(fromOtherTab = false) {
 
       const previousSignature = JSON.stringify([...(context.permissions || [])].sort());
       const currentSignature = JSON.stringify([...(freshContext.permissions || [])].sort());
-      if (previousSignature !== currentSignature || context.profile_key !== freshContext.profile_key) {
+      if (previousSignature !== currentSignature || context.profile_key !== freshContext.member?.profile_key) {
         vortexSetSessionLocked(false);
         window.location.reload();
         return;
@@ -1470,65 +1470,6 @@ function vortexShowLockScreen(fromOtherTab = false) {
     }
   };
 
-  document.getElementById('vortexUnlockButton').addEventListener('click', unlock);
-  document.getElementById('vortexUnlockPassword').addEventListener('keydown', event => {
-    if (event.key === 'Enter') unlock();
-  });
-  document.getElementById('vortexUnlockPassword').focus();
-}
-
-}
-  }
-  const overlay = document.createElement('div');
-  overlay.id = 'vortexLockOverlay';
-  overlay.innerHTML = `
-    <div id="vortexLockCard">
-      <div style="font-size:28px;margin-bottom:8px">🔒</div>
-      <h2 style="font-size:20px;margin-bottom:8px">Tela bloqueada</h2>
-      <p style="font-size:13px;line-height:1.5;color:#cbd5e1">Esta sessão pertence a <strong>${String(context.display_name || context.email || 'este usuário').replace(/[<>]/g, '')}</strong>. Informe sua senha para continuar.</p>
-      <input id="vortexUnlockPassword" type="password" autocomplete="current-password" placeholder="Sua senha">
-      <div id="vortexLockError"></div>
-      <button type="button" id="vortexUnlockButton">Desbloquear</button>
-    </div>`;
-  document.body.appendChild(overlay);
-  const unlock = async function() {
-    const button = document.getElementById('vortexUnlockButton');
-    const errorBox = document.getElementById('vortexLockError');
-    const password = document.getElementById('vortexUnlockPassword').value;
-    button.disabled = true;
-    button.textContent = 'Verificando...';
-    const supabase = getSupabase();
-    if (!supabase) {
-      errorBox.textContent = 'Conexão indisponível. A tela continua bloqueada.';
-      button.disabled = false;
-      button.textContent = 'Desbloquear';
-      return;
-    }
-    const { data: verification, error: verificationError } = await supabase.functions.invoke('verify-current-password', {
-      body: { password }
-    });
-    if (verificationError || !verification?.success) {
-      errorBox.textContent = verificationError?.message || verification?.error || 'Senha incorreta. A tela continua bloqueada.';
-      button.disabled = false;
-      button.textContent = 'Desbloquear';
-      return;
-    }
-    const freshContext = await vortexGetCurrentStoreContext();
-    if (freshContext.error || !freshContext.store || String(freshContext.store.id) !== String(context.store_id)) {
-      errorBox.textContent = 'Esta conta não possui mais acesso ativo à loja. Entre em contato com o proprietário.';
-      button.disabled = false;
-      button.textContent = 'Desbloquear';
-      return;
-    }
-    const previousSignature = JSON.stringify([...(context.permissions || [])].sort());
-    const currentSignature = JSON.stringify([...(freshContext.permissions || [])].sort());
-    try { localStorage.removeItem('vortex_session_locked'); } catch (error) {}
-    if (previousSignature !== currentSignature || context.profile_key !== freshContext.member?.profile_key) {
-      window.location.reload();
-      return;
-    }
-    overlay.remove();
-  };
   document.getElementById('vortexUnlockButton').addEventListener('click', unlock);
   document.getElementById('vortexUnlockPassword').addEventListener('keydown', event => {
     if (event.key === 'Enter') unlock();

@@ -218,6 +218,37 @@ header.top-header{
 }
 
 
+
+/* No celular, a página rola por inteiro (sem cortar o fim do conteúdo) */
+@media(max-width:900px){
+  html{min-height:100%;height:auto;overflow-x:hidden;overflow-y:auto}
+  body{
+    display:block!important;
+    height:auto!important;
+    min-height:100vh!important;
+    min-height:100dvh!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  main.main-content{
+    display:flex!important;
+    flex-direction:column!important;
+    height:auto!important;
+    min-height:100vh!important;
+    min-height:100dvh!important;
+    overflow:visible!important;
+    margin-left:0!important;
+    width:100%!important;
+  }
+  .content-body{
+    flex:0 0 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    overflow:visible!important;
+    padding-bottom:calc(34px + env(safe-area-inset-bottom))!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -254,7 +285,6 @@ header.top-header{
                     <h1>Cardápio Online</h1>
                 </div>
             </div>
-            <span class="module-tag">Módulo 6 · Pedidos pela internet</span>
         </header>
 
         <div class="content-body">
@@ -320,7 +350,7 @@ header.top-header{
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js?v=20261113-ui3"></script>
+    <script src="supabase.js?v=20261113-ui4"></script>
 
     <script>
         let publicDeliveryUrl = '';

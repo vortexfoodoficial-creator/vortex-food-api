@@ -97,7 +97,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public, auth
-AS $
+AS $$
 DECLARE
   v_user_id uuid := auth.uid();
   v_store_id uuid;
@@ -166,7 +166,7 @@ BEGIN
 
   RETURN jsonb_build_object('success', true, 'display_name', v_new_name);
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.rpc_update_my_display_name(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_update_my_display_name(text) TO authenticated, service_role;

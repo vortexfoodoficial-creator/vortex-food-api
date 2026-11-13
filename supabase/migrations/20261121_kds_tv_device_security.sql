@@ -24,6 +24,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_stores' AND column_name='status'
+  ) THEN
+    RAISE EXCEPTION 'A tabela vortex_stores não possui a coluna status esperada. Migração cancelada.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='store_id'
   ) OR NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -49,6 +56,9 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='displayId'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='vortex_kds_orders' AND column_name='observation'
   ) THEN
     RAISE EXCEPTION 'A tabela vortex_kds_orders não possui as colunas mínimas esperadas. Migração cancelada.';
   END IF;

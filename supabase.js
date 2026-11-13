@@ -1337,6 +1337,30 @@ function vortexRenderEmployeeChrome(context) {
     window.setTimeout(() => vortexShowAccessDeniedModal(profiles), 150);
   }
 
+  // Navegação centralizada: módulos de conta e estabelecimento aparecem
+  // em todas as páginas internas sem exigir edição manual de cada menu.
+  document.querySelectorAll('.sidebar-nav').forEach(nav => {
+    if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
+    const section = document.createElement('div');
+    section.className = 'nav-section';
+    section.dataset.vortexAccountNavigation = 'true';
+    section.innerHTML = `
+      <span class="nav-section-title">CONTA & ESTABELECIMENTO</span>
+      <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
+    `;
+    nav.appendChild(section);
+  });
+  document.querySelectorAll('.sidebar-menu').forEach(nav => {
+    if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
+    const group = document.createElement('div');
+    group.dataset.vortexAccountNavigation = 'true';
+    group.innerHTML = `
+      <div class="menu-group-label">Conta & Estabelecimento</div>
+      <a href="modulo-dados-estabelecimento.html" class="menu-item nav-link">🏪 Dados do Estabelecimento</a>
+    `;
+    nav.appendChild(group);
+  });
+
   document.querySelectorAll('.nav-link[href]').forEach(link => {
     if (link.dataset.vortexPermissionApplied === 'true') return;
     const href = link.getAttribute('href') || '';

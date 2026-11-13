@@ -1325,7 +1325,7 @@ function vortexRenderEmployeeChrome(context) {
       </div>`;
     if (header) header.appendChild(identity);
     else document.body.insertBefore(identity, document.body.firstChild);
-    document.getElementById('vortexLockButton').addEventListener('click', vortexShowLockScreen);
+    document.getElementById('vortexLockButton').addEventListener('click', function() { vortexShowLockScreen(false); });
     document.getElementById('vortexSwitchButton').addEventListener('click', vortexSwitchUser);
   }
 
@@ -1678,15 +1678,20 @@ window.addEventListener('pageshow', async function(event) {
   document.documentElement.style.visibility = 'hidden';
   try {
     const context = await vortexGetCurrentStoreContext();
-    if (context && !context.error && context.store
-      && vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) {
-      vortexShowLockScreen(true);
+    if (context && !context.error && context.store) {
+      if (vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) {
+        vortexShowLockScreen(true);
+      } else {
+        // A conta/loja validada não possui bloqueio ativo.
+        document.documentElement.style.visibility = '';
+      }
     } else {
-      vortexSetSessionLocked(false);
+      // Não apaga o marcador quando não foi possível validar a sessão.
+      // Mantém a página bloqueada até uma validação confiável.
+      vortexShowLockScreen(true);
     }
   } catch (error) {
     console.error('Não foi possível restaurar a tela bloqueada:', error);
-    // Mantém a página bloqueada se a sessão não puder ser revalidada.
     vortexShowLockScreen(true);
   } finally {
     document.documentElement.style.visibility = '';

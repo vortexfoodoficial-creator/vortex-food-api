@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vortex Food - Configurações</title>
+  <title>Vortex Food - Configurações do Sistema</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -233,7 +233,7 @@
         <a href="modulo9-equipe.html" class="nav-link"><span class="nav-icon">👔</span><span class="nav-text">Equipe & Permissões</span></a>
         <a href="modulo19-fiscal.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-text">Emissão Fiscal</span></a>
         <a href="modulo10-relatorios.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-text">Relatórios</span></a>
-        <a href="modulo-configuracoes.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações</span></a>
+        <a href="modulo-configuracoes.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-text">Configurações do Sistema</span></a>
         <a href="modulo-dados-estabelecimento.html" class="nav-link"><span class="nav-icon">🏪</span><span class="nav-text">Dados do Estabelecimento</span></a>
         <a href="modulo-impressoras.html" class="nav-link"><span class="nav-icon">🖨️</span><span class="nav-text">Impressoras & Bluetooth</span></a>
         <a href="modulo-suporte.html" class="nav-link"><span class="nav-icon">💬</span><span class="nav-text">Suporte & Ajuda</span></a>
@@ -252,7 +252,7 @@
     <header>
       <div class="header-left">
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
-        <h1>Configurações do Estabelecimento</h1>
+        <h1>Configurações do Sistema</h1>
       </div>
       <div class="header-actions">
         <div style="font-size: 0.9rem; color: var(--text-muted);">
@@ -279,8 +279,8 @@
         </div>
       </div>
 
-      <!-- CARD 1: IDENTIDADE E LOGOTIPO -->
-      <div class="config-card">
+      <!-- Dados cadastrais movidos para modulo-dados-estabelecimento.html; campos mantidos no DOM para compatibilidade do salvamento legado. -->
+      <div class="config-card" hidden id="movedStoreIdentityCard">
         <div class="config-title">🏷️ Identidade da Loja</div>
 
         <div class="form-grid-2">
@@ -322,8 +322,8 @@
         </div>
       </div>
 
-      <!-- CARD 2: RESPONSÁVEL E CONTATOS -->
-      <div class="config-card">
+      <!-- Dados cadastrais movidos para modulo-dados-estabelecimento.html; campos mantidos no DOM para compatibilidade do salvamento legado. -->
+      <div class="config-card" hidden id="movedStoreContactCard">
         <div class="config-title">👤 Responsável & Contato</div>
 
         <div class="form-grid-2">
@@ -349,8 +349,8 @@
         </div>
       </div>
 
-      <!-- CARD 3: ENDEREÇO -->
-      <div class="config-card">
+      <!-- Dados cadastrais movidos para modulo-dados-estabelecimento.html; campos mantidos no DOM para compatibilidade do salvamento legado. -->
+      <div class="config-card" hidden id="movedStoreAddressCard">
         <div class="config-title">📍 Endereço do Estabelecimento</div>
 
         <div class="form-grid-3">

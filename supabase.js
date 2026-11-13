@@ -1397,36 +1397,78 @@ function vortexRenderEmployeeChrome(context) {
   }
 }
 
-function vortexLockStorageKey(context = window.VORTEX_AUTH_CONTEXT || {}) {
-  const storeId = context.store_id || window.VORTEX_ACTIVE_STORE_ID || 'store';
-  const userId = context.user_id || window.VORTEX_ACTIVE_USER_ID || 'user';
-  // Prefixo fora de "vortex_" para não ser reescrito pelo armazenamento
-  // operacional separado por funcionário.
-  return 'vf_session_locked::' + String(storeId) + '::' + String(userId);
+const VORTEX_SESSION_LOCK_KEY = 'vf_session_lock_v1';
+
+function vortexLockStorageKey() {
+  return VORTEX_SESSION_LOCK_KEY;
+}
+
+function vortexReadSessionLock() {
+  try {
+    const raw = localStorage.getItem(VORTEX_SESSION_LOCK_KEY);
+    if (!raw) return null;
+    const marker = JSON.parse(raw);
+    if (!marker || typeof marker !== 'object' || !marker.user_id || !marker.store_id) return null;
+    return marker;
+  } catch (error) {
+    return null;
+  }
 }
 
 function vortexSetSessionLocked(locked) {
   try {
-    const key = vortexLockStorageKey();
     if (locked) {
-      localStorage.setItem(key, '1');
-      sessionStorage.setItem(key, '1');
+      const context = window.VORTEX_AUTH_CONTEXT || {};
+      const marker = JSON.stringify({
+        store_id: String(context.store_id || window.VORTEX_ACTIVE_STORE_ID || ''),
+        user_id: String(context.user_id || window.VORTEX_ACTIVE_USER_ID || ''),
+        locked_at: new Date().toISOString()
+      });
+      localStorage.setItem(VORTEX_SESSION_LOCK_KEY, marker);
+      sessionStorage.setItem(VORTEX_SESSION_LOCK_KEY, marker);
     } else {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
+      localStorage.removeItem(VORTEX_SESSION_LOCK_KEY);
+      sessionStorage.removeItem(VORTEX_SESSION_LOCK_KEY);
     }
   } catch (error) {
     console.warn('Não foi possível atualizar o estado de bloqueio local:', error);
   }
 }
 
-function vortexIsSessionLocked() {
+function vortexIsSessionLocked(context = window.VORTEX_AUTH_CONTEXT || {}) {
   try {
-    const key = vortexLockStorageKey();
-    return localStorage.getItem(key) === '1'
-      || sessionStorage.getItem(key) === '1';
+    let marker = vortexReadSessionLock();
+
+    // Migra automaticamente o marcador criado pela versão anterior.
+    if (!marker && context.store_id && context.user_id) {
+      const legacyKey = 'vf_session_locked::' + String(context.store_id) + '::' + String(context.user_id);
+      if (localStorage.getItem(legacyKey) === '1') {
+        marker = {
+          store_id: String(context.store_id),
+          user_id: String(context.user_id),
+          locked_at: new Date().toISOString()
+        };
+        localStorage.setItem(VORTEX_SESSION_LOCK_KEY, JSON.stringify(marker));
+        localStorage.removeItem(legacyKey);
+      }
+    }
+
+    if (!marker) return false;
+    // Sem contexto ainda, a existência do marcador é suficiente para manter
+    // a página oculta até que a sessão e a identidade sejam confirmadas.
+    if (!context.store_id || !context.user_id) return true;
+
+    const matches = String(marker.store_id) === String(context.store_id)
+      && String(marker.user_id) === String(context.user_id);
+    if (!matches) {
+      vortexSetSessionLocked(false);
+      return false;
+    }
+    return true;
   } catch (error) {
-    return false;
+    // Em caso de falha de leitura, falha fechada: não libera uma tela que
+    // possa estar bloqueada.
+    return true;
   }
 }
 
@@ -1470,8 +1512,25 @@ function vortexShowLockScreen(fromOtherTab = false) {
         body: { password }
       });
       if (verificationError) {
-        console.error('Falha ao chamar verify-current-password:', verificationError);
-        throw new Error('Não foi possível validar sua senha no servidor. Verifique se a função de desbloqueio está implantada no Supabase e tente novamente.');
+        let functionErrorBody = null;
+        try {
+          if (verificationError.context && typeof verificationError.context.json === 'function') {
+            functionErrorBody = await verificationError.context.json();
+          }
+        } catch (parseError) {}
+
+        if (verificationError.context?.status === 401
+          && String(functionErrorBody?.error || '').toLowerCase().includes('senha incorreta')) {
+          throw new Error('Senha incorreta.');
+        }
+
+        console.error('Falha ao chamar verify-current-password:', {
+          name: verificationError.name,
+          message: verificationError.message,
+          status: verificationError.context?.status,
+          body: functionErrorBody
+        });
+        throw new Error('Não foi possível conectar ao serviço de validação. Verifique sua conexão e tente novamente.');
       }
       if (!verification || verification.success !== true) {
         throw new Error((verification && verification.error) || 'Senha incorreta. A tela continua bloqueada.');
@@ -1598,7 +1657,7 @@ function vortexRequireAuthenticatedPage() {
         vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);
         // O overlay é criado enquanto o documento ainda está oculto, impedindo
         // que o painel apareça por um instante durante refresh ou restauração.
-        if (vortexIsSessionLocked()) vortexShowLockScreen(true);
+        if (vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) vortexShowLockScreen(true);
         document.documentElement.style.visibility = '';
       });
     })
@@ -1607,11 +1666,11 @@ function vortexRequireAuthenticatedPage() {
 
 // Mantém o bloqueio sincronizado entre abas abertas no mesmo dispositivo.
 window.addEventListener('storage', function(event) {
-  if (!event.key || !event.key.includes('vf_session_locked')) return;
-  if (event.newValue === '1') {
-    vortexShowLockScreen(true);
-  } else if (event.newValue === null) {
-    try { sessionStorage.removeItem(vortexLockStorageKey()); } catch (error) {}
+  if (event.key !== VORTEX_SESSION_LOCK_KEY) return;
+  if (event.newValue) {
+    if (vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) vortexShowLockScreen(true);
+  } else {
+    try { sessionStorage.removeItem(VORTEX_SESSION_LOCK_KEY); } catch (error) {}
     const overlay = document.getElementById('vortexLockOverlay');
     if (overlay) {
       overlay.remove();
@@ -1620,11 +1679,27 @@ window.addEventListener('storage', function(event) {
   }
 });
 
-// Reaplica o bloqueio quando o navegador restaura uma página pelo histórico (bfcache).
-window.addEventListener('pageshow', function() {
-  if (vortexIsSessionLocked()) {
-    document.documentElement.style.visibility = 'hidden';
+// O bfcache restaura a página sem executar novamente todos os scripts.
+// Por isso, revalida a sessão e o marcador antes de mostrar o conteúdo.
+window.addEventListener('pageshow', async function(event) {
+  if (!event.persisted) return;
+  const marker = vortexReadSessionLock();
+  if (!marker) return;
+
+  document.documentElement.style.visibility = 'hidden';
+  try {
+    const context = await vortexGetCurrentStoreContext();
+    if (context && !context.error && context.store
+      && vortexIsSessionLocked(window.VORTEX_AUTH_CONTEXT)) {
+      vortexShowLockScreen(true);
+    } else {
+      vortexSetSessionLocked(false);
+    }
+  } catch (error) {
+    console.error('Não foi possível restaurar a tela bloqueada:', error);
+    // Mantém a página bloqueada se a sessão não puder ser revalidada.
     vortexShowLockScreen(true);
+  } finally {
     document.documentElement.style.visibility = '';
   }
 });

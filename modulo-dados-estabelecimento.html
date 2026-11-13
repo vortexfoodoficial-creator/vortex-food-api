@@ -58,12 +58,126 @@ main{margin-left:250px!important;width:calc(100% - 250px)!important;max-width:no
   .close-sidebar-btn{display:block!important}
   main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:16px}
 }
+
+/* Sidebar padronizada com o visual do Dashboard */
+#sidebar.sidebar{
+  width:260px!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  background:var(--panel,#1e293b)!important;
+  border-right:1px solid var(--border,#334155)!important;
+}
+#sidebar .sidebar-header{
+  min-height:92px;
+  padding:18px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border-bottom:1px solid var(--border,#334155);
+}
+#sidebar .store-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  max-width:190px;
+  color:var(--text,#f8fafc);
+  font-size:1.1rem;
+  font-weight:800;
+  letter-spacing:.03em;
+  line-height:1.25;
+  text-transform:uppercase;
+  overflow-wrap:anywhere;
+}
+#sidebar .store-brand-logo{
+  width:32px;height:32px;object-fit:contain;border-radius:6px;display:none;
+}
+#sidebar .close-sidebar-btn{
+  display:none;
+  flex:0 0 auto;
+  margin:0;
+  padding:0 2px;
+  border:0;
+  background:transparent;
+  color:var(--muted,#94a3b8);
+  font-size:2rem;
+  line-height:1;
+  cursor:pointer;
+}
+#sidebar .sidebar-nav{
+  flex:1;
+  padding:15px 10px!important;
+  overflow-y:auto;
+}
+#sidebar .nav-section{margin-bottom:20px}
+#sidebar .nav-section-title{
+  display:block;
+  padding:0 10px 8px;
+  margin:0;
+  color:var(--muted,#94a3b8);
+  font-size:.75rem;
+  font-weight:400;
+  letter-spacing:.05em;
+  line-height:1.4;
+  text-transform:uppercase;
+}
+#sidebar .nav-link{
+  display:flex!important;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:12px;
+  min-height:49px;
+  margin:0 0 4px!important;
+  padding:10px 12px!important;
+  border-radius:8px;
+  color:var(--muted,#94a3b8);
+  font-size:.90rem!important;
+  line-height:1.3;
+  text-decoration:none;
+}
+#sidebar .nav-link:hover,#sidebar .nav-link.active{
+  background:rgba(249,115,22,.15);
+  color:var(--primary,#f97316);
+}
+#sidebar .nav-icon{flex:0 0 1.2em;font-size:1.1rem;line-height:1.2}
+#sidebar .nav-text{flex:1 1 auto;min-width:0;overflow-wrap:normal;word-break:normal}
+#sidebar .vortex-permission-state{
+  flex:0 0 auto;
+  margin-left:auto;
+  white-space:nowrap;
+  font-size:12px;
+}
+#sidebar .sidebar-footer{
+  flex:0 0 auto;
+  padding:14px 16px;
+  border-top:1px solid var(--border,#334155);
+  color:var(--muted,#94a3b8);
+  font-size:.78rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  background:rgba(0,0,0,.1);
+}
+main{margin-left:260px!important;width:calc(100% - 260px)!important;max-width:none!important}
+@media(max-width:900px){
+  #sidebar.sidebar{
+    width:260px!important;
+    transform:translateX(-100%)!important;
+    transition:transform .3s ease;
+  }
+  #sidebar.sidebar.open{transform:translateX(0)!important}
+  #sidebar .close-sidebar-btn{display:block!important}
+  main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:16px}
+}
+
 </style>
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 <aside class="sidebar" id="sidebar">
-<div class="brand" style="display:flex;align-items:center;gap:8px">🌪️ <span id="sidebarStoreName">VORTEX FOOD</span><button class="close-sidebar-btn" type="button" onclick="toggleMenu()" aria-label="Fechar menu">×</button></div>
+<div class="sidebar-header"><div class="store-brand"><img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo"><span id="sidebarStoreName">MEU ESTABELECIMENTO</span></div><button class="close-sidebar-btn" type="button" onclick="toggleMenu()" aria-label="Fechar menu">✕</button></div>
 <nav class="sidebar-nav">
 <div class="nav-section"><span class="nav-section-title">OPERACIONAL</span>
 <a href="index.html" class="nav-link">📊 Dashboard</a><a href="modulo3-pdv.html" class="nav-link">💻 PDV / Caixa</a><a href="modulo5-mesas.html" class="nav-link">🍽️ Mesas & Comandas</a><a href="modulo21-delivery.html" class="nav-link">🛵 Delivery & Entregas</a><a href="modulo7-8-kds-pedidos.html" class="nav-link">👨‍🍳 KDS / Cozinha</a><a href="modulo-integracoes.html" class="nav-link">🔗 Integrações Delivery</a>

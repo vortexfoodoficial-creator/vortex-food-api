@@ -1222,6 +1222,7 @@ const VORTEX_PAGE_PERMISSION_MAP = {
   'modulo19-fiscal.html': 'fiscal.view',
   'modulo21-delivery.html': 'delivery.view',
   'modulo-configuracoes.html': 'settings.view',
+  'modulo-dados-estabelecimento.html': 'settings.view',
   'modulo-cupons.html': 'coupons.manage',
   'modulo-fidelidade.html': 'loyalty.manage',
   'modulo-impressoras.html': 'printers.manage',

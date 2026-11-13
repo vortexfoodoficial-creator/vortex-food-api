@@ -139,7 +139,16 @@
           throw new Error('Não foi possível validar seu acesso: ' + account.error.message);
         }
 
-        showMessage('Login realizado. Abrindo o Vortex Food...', 'success');
+        let emailSyncWarning = '';
+        if (window.supabaseClient) {
+          const emailSync = await window.supabaseClient.rpc('rpc_sync_my_auth_email');
+          if (emailSync.error) {
+            console.warn('Não foi possível sincronizar o e-mail confirmado com o cadastro da equipe:', emailSync.error);
+          } else if (emailSync.data?.staff_record_synced === false) {
+            emailSyncWarning = ' Seu e-mail de acesso foi atualizado, mas o cadastro da equipe não pôde ser sincronizado. Avise o proprietário.';
+          }
+        }
+        showMessage('Login realizado. Abrindo o Vortex Food...' + emailSyncWarning, emailSyncWarning ? 'error' : 'success');
         loginButton.textContent = 'Acesso confirmado';
         window.setTimeout(function() { window.location.href = 'index.html'; }, 700);
       } catch (error) {
@@ -247,7 +256,16 @@
         }
         else if (isEmailChangeLink) {
           showSection('login');
-          showMessage('Esta etapa da confirmação foi processada. Se o Supabase solicitar confirmação no outro endereço, confirme também antes de entrar com o novo e-mail.', 'success');
+          if (sessionResult.session && supabaseClient) {
+            const emailSync = await supabaseClient.rpc('rpc_sync_my_auth_email');
+            if (emailSync.error || emailSync.data?.staff_record_synced === false) {
+              showMessage('A confirmação do e-mail foi processada, mas a sincronização do cadastro da equipe não foi confirmada. Entre novamente ou solicite ajuda ao proprietário.', 'error');
+            } else {
+              showMessage('Esta etapa da confirmação foi processada. Se o Supabase solicitar confirmação no outro endereço, confirme também antes de entrar com o novo e-mail.', 'success');
+            }
+          } else {
+            showMessage('Confirmação processada. Entre com o novo e-mail para concluir a sincronização da conta com o estabelecimento.', 'success');
+          }
         }
       } catch (error) {
         showMessage('Não foi possível verificar a sessão. Atualize a página e tente novamente.', 'error');

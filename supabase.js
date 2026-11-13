@@ -1367,7 +1367,37 @@ function vortexRenderEmployeeChrome(context) {
     style.textContent = `
       #vortexEmployeeIdentity{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;padding:10px 12px;margin-top:10px;border:1px solid var(--border,#334155);border-radius:10px;background:var(--bg-card,#1e293b);font-size:12px}
       .vortex-identity-copy{display:flex;flex-direction:column;gap:3px;color:var(--text-muted,#94a3b8)}
-      .vortex-identity-copy strong{font-size:13px;color:var(--text-main,#ffunction vortexLockStorageKey(context = window.VORTEX_AUTH_CONTEXT || {}) {
+      .vortex-identity-copy strong{font-size:13px;color:var(--text-main,#f8fafc)}
+      .vortex-connected{color:#22c55e;font-weight:700}
+      .vortex-identity-actions{display:flex;gap:7px;flex-wrap:wrap}
+      .vortex-identity-actions button{border:1px solid var(--border,#334155);border-radius:7px;background:transparent;color:var(--text-main,#f8fafc);padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer}
+      .vortex-permission-state{margin-left:auto;font-size:12px;font-weight:700;white-space:nowrap;letter-spacing:.02em}
+      .vortex-permission-state.is-allowed{color:#22c55e}
+      .vortex-permission-state.is-blocked{color:#f87171}
+      .vortex-nav-blocked{opacity:.65;cursor:not-allowed}
+      #vortexAccessDeniedOverlay{position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.76);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px}
+      #vortexAccessDeniedCard{width:min(100%,430px);background:var(--bg-card,#1e293b);color:var(--text-main,#f8fafc);border:1px solid var(--border,#475569);border-radius:18px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,.38);font-family:inherit}
+      .vortex-access-denied-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(248,113,113,.13);font-size:25px;margin-bottom:14px}
+      #vortexAccessDeniedCard h2{font-size:19px;margin:0 0 12px;color:var(--text-main,#f8fafc)}
+      #vortexAccessDeniedCard p{font-size:13px;line-height:1.6;color:var(--text-muted,#cbd5e1);margin:8px 0}
+      #vortexAccessDeniedCard .vortex-access-denied-profiles{padding:10px 12px;border:1px solid var(--border,#475569);border-radius:9px;background:rgba(148,163,184,.07)}
+      #vortexAccessDeniedCard .vortex-access-denied-profiles strong{color:var(--text-main,#f8fafc)}
+      .vortex-access-denied-actions{display:flex;justify-content:flex-end;margin-top:20px}
+      #vortexAccessDeniedClose{border:0;border-radius:9px;background:#f97316;color:#fff;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer}
+      #vortexAccessDeniedClose:hover{background:#ea580c}
+      #vortexLockOverlay{position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.97);display:flex;align-items:center;justify-content:center;padding:20px}
+      #vortexLockCard{width:min(100%,390px);background:#1e293b;color:#f8fafc;border:1px solid #475569;border-radius:16px;padding:24px}
+      #vortexLockCard input{width:100%;padding:12px;margin:12px 0;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:8px}
+      #vortexLockCard button{padding:11px 14px;border:0;border-radius:8px;background:#f97316;color:#fff;font-weight:700;cursor:pointer}
+      #vortexLockCard button:disabled{opacity:.65;cursor:wait}
+      #vortexLockError{color:#fca5a5;font-size:12px;min-height:18px;line-height:1.5}
+      @media(max-width:600px){#vortexEmployeeIdentity{align-items:flex-start}.vortex-identity-actions{width:100%}.vortex-identity-actions button{flex:1}}
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+function vortexLockStorageKey(context = window.VORTEX_AUTH_CONTEXT || {}) {
   const storeId = context.store_id || window.VORTEX_ACTIVE_STORE_ID || 'store';
   const userId = context.user_id || window.VORTEX_ACTIVE_USER_ID || 'user';
   return 'vortex_session_locked::' + String(storeId) + '::' + String(userId);

@@ -11,7 +11,8 @@ SELECT p.proname,
        has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid=p.pronamespace
-WHERE n.nspname='public' AND p.proname='rpc_sync_my_auth_email';
+WHERE n.nspname='public' AND p.proname IN ('rpc_sync_my_auth_email','rpc_update_my_display_name')
+ORDER BY p.proname;
 
 -- Verifica se os e-mails de autenticação foram inicializados para os membros existentes.
 SELECT count(*) AS members_with_email,

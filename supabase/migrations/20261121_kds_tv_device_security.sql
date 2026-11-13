@@ -158,6 +158,7 @@ BEGIN
         'date',o.date,
         'time',o.time,
         'origin',o.origin,
+        'observation',CASE WHEN v_profile='kitchen' THEN NULLIF(left(COALESCE(o.observation,''),500),'') ELSE NULL END,
         'items',
           COALESCE((
             SELECT jsonb_agg(
@@ -197,7 +198,7 @@ BEGIN
   )
   INTO v_orders
   FROM (
-    SELECT id,"displayId",status,date,time,origin,items,updated_at
+    SELECT id,"displayId",status,date,time,origin,observation,items,updated_at
     FROM public.vortex_kds_orders
     WHERE store_id=v_store_id
       AND COALESCE(status,'') NOT IN ('finished','completed','cancelled')

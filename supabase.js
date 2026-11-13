@@ -1290,7 +1290,7 @@ function vortexShowAccessDeniedModal(profiles) {
 }
 
 function vortexRenderEmployeeChrome(context) {
-  if (!context || !document.body) return;
+  if (!document.body) return;
   if (document.readyState === 'loading') {
     if (!window.__VORTEX_CHROME_WAITING) {
       window.__VORTEX_CHROME_WAITING = true;
@@ -1302,34 +1302,36 @@ function vortexRenderEmployeeChrome(context) {
     return;
   }
 
-  const profileLabels = {
-    owner: 'Proprietário',
-    administrator: 'Administrador',
-    manager: 'Gerente',
-    attendant: 'Atendente',
-    kitchen: 'Equipe de cozinha',
-    delivery: 'Entregador'
-  };
-  const profileLabel = profileLabels[context.profile_key] || 'Equipe';
-  const displayName = context.display_name || context.email || 'Usuário';
-  const header = document.querySelector('header');
-
-  if (!document.getElementById('vortexEmployeeIdentity')) {
-    const identity = document.createElement('div');
-    identity.id = 'vortexEmployeeIdentity';
-    identity.innerHTML = `
-      <div class="vortex-identity-copy">
-        <strong>${displayName.replace(/[<>]/g, '')}</strong>
-        <span>${profileLabel} · <span class="vortex-connected">Conectado</span></span>
-      </div>
-      <div class="vortex-identity-actions">
-        <button type="button" id="vortexLockButton">🔒 Bloquear tela</button>
-        <button type="button" id="vortexSwitchButton">⇄ Trocar usuário</button>
-      </div>`;
-    if (header) header.appendChild(identity);
-    else document.body.insertBefore(identity, document.body.firstChild);
-    document.getElementById('vortexLockButton').addEventListener('click', function() { vortexShowLockScreen(false); });
-    document.getElementById('vortexSwitchButton').addEventListener('click', vortexSwitchUser);
+  if (context) {
+    const profileLabels = {
+      owner: 'Proprietário',
+      administrator: 'Administrador',
+      manager: 'Gerente',
+      attendant: 'Atendente',
+      kitchen: 'Equipe de cozinha',
+      delivery: 'Entregador'
+    };
+    const profileLabel = profileLabels[context.profile_key] || 'Equipe';
+    const displayName = context.display_name || context.email || 'Usuário';
+    const header = document.querySelector('header');
+  
+    if (!document.getElementById('vortexEmployeeIdentity')) {
+      const identity = document.createElement('div');
+      identity.id = 'vortexEmployeeIdentity';
+      identity.innerHTML = `
+        <div class="vortex-identity-copy">
+          <strong>${displayName.replace(/[<>]/g, '')}</strong>
+          <span>${profileLabel} · <span class="vortex-connected">Conectado</span></span>
+        </div>
+        <div class="vortex-identity-actions">
+          <button type="button" id="vortexLockButton">🔒 Bloquear tela</button>
+          <button type="button" id="vortexSwitchButton">⇄ Trocar usuário</button>
+        </div>`;
+      if (header) header.appendChild(identity);
+      else document.body.insertBefore(identity, document.body.firstChild);
+      document.getElementById('vortexLockButton').addEventListener('click', function() { vortexShowLockScreen(false); });
+      document.getElementById('vortexSwitchButton').addEventListener('click', vortexSwitchUser);
+    }
   }
 
   const blockedPermission = new URLSearchParams(window.location.search).get('blocked');
@@ -1439,30 +1441,32 @@ function vortexRenderEmployeeChrome(context) {
     nav.dataset.vortexNavigationVersion = '2';
   });
 
-  document.querySelectorAll('.nav-link[href]').forEach(link => {
-    if (link.dataset.vortexPermissionApplied === 'true') return;
-    const href = link.getAttribute('href') || '';
-    const page = href.split('/').pop().split('?')[0];
-    const permission = VORTEX_PAGE_PERMISSION_MAP[page];
-    if (!permission) return;
-    link.dataset.vortexPermissionApplied = 'true';
-    const allowed = vortexPermissionHas(permission);
-    const state = document.createElement('span');
-    state.className = 'vortex-permission-state ' + (allowed ? 'is-allowed' : 'is-blocked');
-    state.textContent = allowed ? '🔓✅' : '🔒❌';
-    state.setAttribute('aria-label', allowed ? 'Acesso permitido' : 'Acesso bloqueado');
-    state.title = allowed ? 'Acesso permitido' : 'Acesso bloqueado';
-    link.appendChild(state);
-    if (!allowed) {
-      link.classList.add('vortex-nav-blocked');
-      link.setAttribute('aria-disabled', 'true');
-      link.addEventListener('click', function(event) {
-        event.preventDefault();
-        const profiles = VORTEX_PERMISSION_LABELS[permission] || 'Proprietário e Administrador';
-        vortexShowAccessDeniedModal(profiles);
-      });
-    }
-  });
+  if (context) {
+    document.querySelectorAll('.nav-link[href]').forEach(link => {
+      if (link.dataset.vortexPermissionApplied === 'true') return;
+      const href = link.getAttribute('href') || '';
+      const page = href.split('/').pop().split('?')[0];
+      const permission = VORTEX_PAGE_PERMISSION_MAP[page];
+      if (!permission) return;
+      link.dataset.vortexPermissionApplied = 'true';
+      const allowed = vortexPermissionHas(permission);
+      const state = document.createElement('span');
+      state.className = 'vortex-permission-state ' + (allowed ? 'is-allowed' : 'is-blocked');
+      state.textContent = allowed ? '🔓✅' : '🔒❌';
+      state.setAttribute('aria-label', allowed ? 'Acesso permitido' : 'Acesso bloqueado');
+      state.title = allowed ? 'Acesso permitido' : 'Acesso bloqueado';
+      link.appendChild(state);
+      if (!allowed) {
+        link.classList.add('vortex-nav-blocked');
+        link.setAttribute('aria-disabled', 'true');
+        link.addEventListener('click', function(event) {
+          event.preventDefault();
+          const profiles = VORTEX_PERMISSION_LABELS[permission] || 'Proprietário e Administrador';
+          vortexShowAccessDeniedModal(profiles);
+        });
+      }
+    });
+  }
 
   if (!document.getElementById('vortexEmployeeChromeStyles')) {
     const style = document.createElement('style');

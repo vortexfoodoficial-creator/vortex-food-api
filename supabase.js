@@ -1361,6 +1361,10 @@ function vortexRenderEmployeeChrome(context) {
       <a href="modulo-seguranca.html" class="nav-link"><span class="nav-icon">🛡️</span><span class="nav-text">Segurança</span></a>
     `;
     nav.appendChild(section);
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    section.querySelectorAll('a[href]').forEach(link => {
+      if (link.getAttribute('href') === currentPage) link.classList.add('active');
+    });
   });
   document.querySelectorAll('.sidebar-menu').forEach(nav => {
     if (nav.querySelector('[data-vortex-account-navigation="true"]')) return;
@@ -1373,6 +1377,10 @@ function vortexRenderEmployeeChrome(context) {
       <a href="modulo-seguranca.html" class="menu-item nav-link">🛡️ Segurança</a>
     `;
     nav.appendChild(group);
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    group.querySelectorAll('a[href]').forEach(link => {
+      if (link.getAttribute('href') === currentPage) link.classList.add('active');
+    });
   });
 
   document.querySelectorAll('.nav-link[href]').forEach(link => {

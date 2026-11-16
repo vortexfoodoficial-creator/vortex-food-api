@@ -68,6 +68,7 @@ DECLARE
   v_expires_at timestamptz;
 BEGIN
   IF p_pairing_id IS NULL
+     OR p_pairing_type IS NULL
      OR p_pairing_type NOT IN ('qr','pin')
      OR p_pairing_hash IS NULL OR octet_length(p_pairing_hash)<>32
      OR p_token_hash IS NULL OR octet_length(p_token_hash)<>32 THEN
@@ -212,6 +213,7 @@ BEGIN
 
   IF p_pairing_id IS NULL
      OR p_pairing_hash IS NULL OR octet_length(p_pairing_hash)<>32
+     OR p_profile IS NULL
      OR p_profile NOT IN ('public','kitchen')
      OR length(btrim(COALESCE(p_device_name,''))) NOT BETWEEN 1 AND 80 THEN
     RETURN jsonb_build_object('success',false,'reason','invalid_request');

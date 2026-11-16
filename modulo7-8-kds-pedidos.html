@@ -918,20 +918,6 @@
       }
     }
 
-    async function kdsTvHashToBytea(secret) {
-      if (!window.crypto || !window.crypto.subtle) {
-        throw new Error('A conexão segura do navegador é necessária para validar o pareamento.');
-      }
-      const digest = await window.crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(String(secret || '').trim())
-      );
-      const hex = Array.from(new Uint8Array(digest))
-        .map(value => value.toString(16).padStart(2, '0'))
-        .join('');
-      return '\\x' + hex;
-    }
-
     async function kdsTvApprovePairing() {
       const button = document.getElementById('btnApproveTvPairing');
       const pairingId = document.getElementById('tvPairingId').value.trim();
@@ -962,11 +948,10 @@
         const storeId = await vortexGetCurrentStoreId();
         if (!storeId) throw new Error('Não foi possível identificar o estabelecimento ativo.');
 
-        const pairingHash = await kdsTvHashToBytea(secret);
         const result = await supabase.rpc('rpc_approve_kds_tv_pairing', {
           p_store_id: storeId,
           p_pairing_id: pairingId,
-          p_pairing_hash: pairingHash,
+          p_pairing_secret: secret,
           p_device_name: deviceName,
           p_profile: profile
         });

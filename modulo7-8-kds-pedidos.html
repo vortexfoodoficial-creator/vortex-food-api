@@ -131,6 +131,27 @@
 
     .cancel-reason-select, .cancel-reason-input { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.88rem; margin-top: 8px; outline: none; }
 
+    .header-right-tools { display: flex; align-items: center; gap: 14px; }
+    .btn-tv-pairing { background: var(--primary); color: #fff; border: 0; border-radius: 9px; padding: 9px 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .btn-tv-pairing:hover { background: var(--primary-hover); }
+    .tv-pairing-card { max-width: 560px; }
+    .tv-pairing-card h2 { font-size: 1.2rem; margin-bottom: 8px; }
+    .tv-pairing-help { color: var(--text-muted); font-size: .86rem; line-height: 1.45; margin-bottom: 16px; }
+    .tv-pairing-field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+    .tv-pairing-field label { color: var(--text-muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+    .tv-pairing-field input, .tv-pairing-field select { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 11px; border-radius: 8px; font-size: .9rem; }
+    .tv-pairing-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tv-pairing-status { min-height: 38px; padding: 9px 11px; border-radius: 8px; background: rgba(56,189,248,.1); color: var(--text-main); font-size: .84rem; line-height: 1.4; margin: 12px 0; }
+    .tv-pairing-scanner { display: none; margin: 12px 0; background: #000; border-radius: 10px; overflow: hidden; }
+    .tv-pairing-scanner.active { display: block; }
+    .tv-pairing-scanner video { width: 100%; max-height: 260px; object-fit: cover; display: block; }
+    .tv-pairing-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .tv-pairing-actions button { flex: 1; }
+    @media (max-width: 520px) {
+      .header-right-tools { width: 100%; justify-content: space-between; }
+      .tv-pairing-row { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
@@ -207,8 +228,11 @@
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
         <h1>KDS - Monitor da Cozinha</h1>
       </div>
-      <div style="font-size: 0.9rem; color: var(--text-muted);">
-        🕒 <span id="currentTimeHeader">--:--:--</span>
+      <div class="header-right-tools">
+        <button type="button" class="btn-tv-pairing" id="btnOpenTvPairing">📺 Parear TV</button>
+        <div style="font-size: 0.9rem; color: var(--text-muted);">
+          🕒 <span id="currentTimeHeader">--:--:--</span>
+        </div>
       </div>
     </header>
 
@@ -258,6 +282,55 @@
       <div style="display:flex; gap:10px; margin-top:15px;">
         <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Voltar</button>
         <button class="btn-modal-danger" id="btnConfirmCancelAction">Sim, Cancelar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="tvPairingModal">
+    <div class="custom-modal-card tv-pairing-card">
+      <h2>📺 Parear televisão do KDS</h2>
+      <p class="tv-pairing-help">
+        Na TV, escolha QR Code ou PIN. Para QR Code, use o leitor abaixo.
+        Para PIN, informe o ID do pareamento e o PIN exibidos na televisão.
+        O código expira em cinco minutos e só pode ser usado uma vez.
+      </p>
+
+      <div class="tv-pairing-field">
+        <label for="tvPairingDeviceName">Nome da televisão</label>
+        <input id="tvPairingDeviceName" type="text" maxlength="80" value="TV da cozinha" placeholder="Ex.: TV balcão">
+      </div>
+
+      <div class="tv-pairing-field">
+        <label for="tvPairingProfile">Perfil de exibição</label>
+        <select id="tvPairingProfile">
+          <option value="public">Público — painel para clientes</option>
+          <option value="kitchen">Cozinha — preparo dos pedidos</option>
+        </select>
+      </div>
+
+      <div class="tv-pairing-row">
+        <div class="tv-pairing-field">
+          <label for="tvPairingId">ID do pareamento</label>
+          <input id="tvPairingId" type="text" maxlength="36" autocomplete="off" placeholder="ID exibido na TV">
+        </div>
+        <div class="tv-pairing-field">
+          <label for="tvPairingSecret">PIN ou segredo do QR</label>
+          <input id="tvPairingSecret" type="text" maxlength="80" autocomplete="off" placeholder="PIN de 6 dígitos">
+        </div>
+      </div>
+
+      <button type="button" class="btn-modal-secondary" id="btnStartTvQrScan">📷 Ler QR Code pela câmera</button>
+      <div class="tv-pairing-scanner" id="tvPairingScanner">
+        <video id="tvPairingVideo" playsinline muted></video>
+      </div>
+
+      <div class="tv-pairing-status" id="tvPairingStatus" role="status" aria-live="polite">
+        Aguardando o código da televisão.
+      </div>
+
+      <div class="tv-pairing-actions">
+        <button type="button" class="btn-modal-secondary" id="btnCloseTvPairing">Cancelar</button>
+        <button type="button" class="btn-modal-primary" id="btnApproveTvPairing">Aprovar pareamento</button>
       </div>
     </div>
   </div>
@@ -734,6 +807,201 @@
     function closeNoticeModal() {
       document.getElementById('noticeModal').classList.remove('active');
     }
+
+    let kdsTvScannerStream = null;
+    let kdsTvScanning = false;
+    let kdsTvBarcodeDetector = null;
+
+    function kdsTvSetPairingStatus(message) {
+      const status = document.getElementById('tvPairingStatus');
+      if (status) status.textContent = message;
+    }
+
+    function kdsTvOpenPairingModal() {
+      document.getElementById('tvPairingModal').classList.add('active');
+      kdsTvSetPairingStatus('Aguardando o código da televisão.');
+    }
+
+    function kdsTvStopQrScanner() {
+      kdsTvScanning = false;
+      if (kdsTvScannerStream) {
+        kdsTvScannerStream.getTracks().forEach(track => track.stop());
+        kdsTvScannerStream = null;
+      }
+      const video = document.getElementById('tvPairingVideo');
+      if (video) video.srcObject = null;
+      const panel = document.getElementById('tvPairingScanner');
+      if (panel) panel.classList.remove('active');
+    }
+
+    function kdsTvClosePairingModal() {
+      kdsTvStopQrScanner();
+      document.getElementById('tvPairingModal').classList.remove('active');
+    }
+
+    function kdsTvApplyQrPayload(rawValue) {
+      let payload = null;
+      const raw = String(rawValue || '').trim();
+
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        try {
+          const parsedUrl = new URL(raw);
+          payload = {
+            pairing_id: parsedUrl.searchParams.get('pairing_id') || parsedUrl.searchParams.get('id'),
+            secret: parsedUrl.searchParams.get('secret')
+          };
+        } catch (urlError) {}
+      }
+
+      if (!payload || typeof payload !== 'object') {
+        kdsTvSetPairingStatus('QR Code inválido. Tente novamente ou informe o PIN manualmente.');
+        return false;
+      }
+
+      const pairingId = String(payload.pairing_id || payload.id || '').trim();
+      const secret = String(payload.secret || payload.code || '').trim();
+
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pairingId) || !secret) {
+        kdsTvSetPairingStatus('O QR Code não contém um ID e um segredo válidos.');
+        return false;
+      }
+
+      document.getElementById('tvPairingId').value = pairingId;
+      document.getElementById('tvPairingSecret').value = secret;
+      kdsTvSetPairingStatus('QR Code lido. Confira o nome e o perfil antes de aprovar.');
+      return true;
+    }
+
+    async function kdsTvStartQrScanner() {
+      if (!('BarcodeDetector' in window)) {
+        kdsTvSetPairingStatus('Este navegador não oferece leitura QR nativa. Use o ID e o PIN nos campos acima.');
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        kdsTvSetPairingStatus('A câmera não está disponível. Verifique a permissão do navegador ou use o PIN.');
+        return;
+      }
+
+      try {
+        kdsTvBarcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        kdsTvScannerStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        const video = document.getElementById('tvPairingVideo');
+        video.srcObject = kdsTvScannerStream;
+        await video.play();
+        document.getElementById('tvPairingScanner').classList.add('active');
+        kdsTvScanning = true;
+        kdsTvSetPairingStatus('Aponte a câmera para o QR Code exibido na televisão.');
+
+        const scanFrame = async function() {
+          if (!kdsTvScanning) return;
+          try {
+            const codes = await kdsTvBarcodeDetector.detect(video);
+            if (codes && codes.length && codes[0].rawValue) {
+              const accepted = kdsTvApplyQrPayload(codes[0].rawValue);
+              if (accepted) {
+                kdsTvStopQrScanner();
+                return;
+              }
+            }
+          } catch (scanError) {}
+          if (kdsTvScanning) requestAnimationFrame(scanFrame);
+        };
+        requestAnimationFrame(scanFrame);
+      } catch (error) {
+        kdsTvStopQrScanner();
+        kdsTvSetPairingStatus('Não foi possível abrir a câmera. Confira a permissão ou use o PIN.');
+      }
+    }
+
+    async function kdsTvHashToBytea(secret) {
+      if (!window.crypto || !window.crypto.subtle) {
+        throw new Error('A conexão segura do navegador é necessária para validar o pareamento.');
+      }
+      const digest = await window.crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(String(secret || '').trim())
+      );
+      const hex = Array.from(new Uint8Array(digest))
+        .map(value => value.toString(16).padStart(2, '0'))
+        .join('');
+      return '\\x' + hex;
+    }
+
+    async function kdsTvApprovePairing() {
+      const button = document.getElementById('btnApproveTvPairing');
+      const pairingId = document.getElementById('tvPairingId').value.trim();
+      const secret = document.getElementById('tvPairingSecret').value.trim();
+      const deviceName = document.getElementById('tvPairingDeviceName').value.trim();
+      const profile = document.getElementById('tvPairingProfile').value;
+
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pairingId)) {
+        kdsTvSetPairingStatus('Informe um ID de pareamento válido.');
+        return;
+      }
+      if (!secret || (profile !== 'public' && profile !== 'kitchen') || !deviceName || deviceName.length > 80) {
+        kdsTvSetPairingStatus('Informe o código, o nome da TV e um perfil válido.');
+        return;
+      }
+      if (/^\d{6}$/.test(secret) === false && !/^[0-9a-f]{64}$/i.test(secret)) {
+        kdsTvSetPairingStatus('O PIN deve ter 6 dígitos ou o segredo QR deve ter 64 caracteres hexadecimais.');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Validando...';
+      kdsTvSetPairingStatus('Validando o código com o servidor...');
+
+      try {
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Conexão com Supabase indisponível.');
+        const storeId = await vortexGetCurrentStoreId();
+        if (!storeId) throw new Error('Não foi possível identificar o estabelecimento ativo.');
+
+        const pairingHash = await kdsTvHashToBytea(secret);
+        const result = await supabase.rpc('rpc_approve_kds_tv_pairing', {
+          p_store_id: storeId,
+          p_pairing_id: pairingId,
+          p_pairing_hash: pairingHash,
+          p_device_name: deviceName,
+          p_profile: profile
+        });
+
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) {
+          const reasons = {
+            invalid_code: 'Código incorreto. Confira o ID e o PIN/QR.',
+            expired: 'Este código expirou. Gere outro código na televisão.',
+            attempts_exceeded: 'Limite de tentativas atingido. Gere um novo código na televisão.',
+            already_approved: 'Este código já foi utilizado.'
+          };
+          throw new Error(reasons[result.data && result.data.reason] || 'Não foi possível aprovar o pareamento.');
+        }
+
+        kdsTvClosePairingModal();
+        showNoticeModal(
+          'Televisão pareada!',
+          'A TV "' + result.data.device_name + '" foi vinculada ao estabelecimento com o perfil ' +
+            (result.data.profile === 'kitchen' ? 'Cozinha' : 'Público') + '.',
+          '📺'
+        );
+      } catch (error) {
+        console.error('Falha no pareamento da TV:', error);
+        kdsTvSetPairingStatus(error && error.message ? error.message : 'Não foi possível concluir o pareamento.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Aprovar pareamento';
+      }
+    }
+
+    document.getElementById('btnOpenTvPairing').addEventListener('click', kdsTvOpenPairingModal);
+    document.getElementById('btnCloseTvPairing').addEventListener('click', kdsTvClosePairingModal);
+    document.getElementById('btnStartTvQrScan').addEventListener('click', kdsTvStartQrScanner);
+    document.getElementById('btnApproveTvPairing').addEventListener('click', kdsTvApprovePairing);
 
     setInterval(() => {
       document.getElementById('currentTimeHeader').innerText = new Date().toLocaleTimeString('pt-BR');

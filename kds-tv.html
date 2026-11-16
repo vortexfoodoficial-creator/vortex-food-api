@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1220">
+  <title>Vortex Food — TV do KDS</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#0b1220; --panel:#131e30; --panel2:#1b2a40; --line:#2b3b52;
+      --text:#f8fafc; --muted:#9aabc0; --accent:#f97316; --green:#22c55e;
+      --red:#ef4444; --blue:#38bdf8; --yellow:#facc15;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at top,#172840 0,#0b1220 55%); color:var(--text); font-family:Arial,Helvetica,sans-serif; }
+    button,select { font:inherit; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 28px; border-bottom:1px solid var(--line); }
+    .brand { font-size:clamp(18px,2.4vw,28px); font-weight:900; letter-spacing:.04em; }
+    .brand span { color:var(--accent); }
+    .connection { color:var(--muted); font-size:14px; display:flex; align-items:center; gap:8px; }
+    .dot { width:9px;height:9px;border-radius:50%;background:var(--yellow);display:inline-block; }
+    .dot.online { background:var(--green); } .dot.offline { background:var(--red); }
+    main { width:min(1400px,100%); margin:0 auto; padding:28px; }
+    .center { min-height:calc(100vh - 100px); display:grid; place-items:center; }
+    .panel { width:min(680px,100%); background:rgba(19,30,48,.96); border:1px solid var(--line); border-radius:22px; padding:clamp(22px,4vw,38px); box-shadow:0 24px 80px #0005; }
+    h1 { margin:0 0 10px; font-size:clamp(25px,4vw,38px); }
+    p { color:var(--muted); line-height:1.55; }
+    .field { margin:22px 0 14px; }
+    label { display:block; color:var(--muted); font-size:13px; font-weight:700; margin-bottom:9px; }
+    select { width:100%; padding:14px; border-radius:12px; color:var(--text); background:var(--bg); border:1px solid var(--line); }
+    .button { border:0; border-radius:12px; padding:14px 18px; font-weight:800; cursor:pointer; }
+    .primary { background:var(--accent); color:white; width:100%; }
+    .secondary { background:var(--panel2); color:var(--text); border:1px solid var(--line); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .pair-result { display:none; margin-top:22px; padding:20px; border:1px solid var(--line); background:var(--bg); border-radius:16px; text-align:center; }
+    .pair-result.visible { display:block; }
+    #qr { display:grid; place-items:center; background:white; padding:14px; border-radius:12px; width:max-content; max-width:100%; margin:12px auto; min-height:40px; }
+    #qr img,#qr canvas { max-width:100%; height:auto; }
+    .pin { font-size:clamp(30px,7vw,48px); letter-spacing:.18em; font-weight:900; margin:16px 0; }
+    .pair-id { font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
+    .hint { font-size:13px; }
+    .status { min-height:24px; margin-top:14px; color:var(--blue); font-size:14px; }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+    .toolbar h1 { margin:0; }
+    .orders { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:18px; }
+    .order { background:var(--panel); border:1px solid var(--line); border-top:5px solid var(--yellow); border-radius:16px; padding:20px; min-width:0; }
+    .order.preparing { border-top-color:var(--blue); } .order.ready { border-top-color:var(--green); }
+    .order-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .order-number { font-size:clamp(25px,3vw,34px); font-weight:900; }
+    .status-tag { padding:7px 10px; border-radius:99px; background:#facc1520; color:var(--yellow); font-size:12px; font-weight:800; white-space:nowrap; }
+    .order-meta { color:var(--muted); font-size:14px; margin:12px 0; }
+    .items { border-top:1px solid var(--line); margin-top:14px; padding-top:12px; }
+    .item { display:flex; justify-content:space-between; gap:14px; padding:7px 0; font-size:17px; }
+    .qty { color:var(--accent); font-weight:900; white-space:nowrap; }
+    .empty { grid-column:1/-1; text-align:center; color:var(--muted); padding:70px 15px; border:1px dashed var(--line); border-radius:16px; }
+    .notice { color:var(--muted); font-size:13px; margin-top:18px; }
+    .hidden { display:none !important; }
+    @media(max-width:600px) { .topbar{padding:14px 18px} main{padding:18px} .connection{font-size:12px} }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">VORTEX <span>FOOD</span></div>
+    <div class="connection"><i class="dot" id="connectionDot"></i><span id="connectionText">Aguardando conexão</span></div>
+  </div>
+
+  <main>
+    <section id="pairScreen" class="center">
+      <div class="panel">
+        <h1>Conectar televisão</h1>
+        <p>Conecte esta tela ao estabelecimento pelo KDS. Abra o KDS em um dispositivo autenticado e aprove o pareamento exibido aqui.</p>
+        <div class="field">
+          <label for="pairType">Método de pareamento</label>
+          <select id="pairType">
+            <option value="qr">QR Code</option>
+            <option value="pin">PIN de 6 dígitos</option>
+          </select>
+        </div>
+        <button class="button primary" id="startPair">Gerar código de pareamento</button>
+        <div class="pair-result" id="pairResult">
+          <div id="qrMode">
+            <strong>Escaneie este QR Code no KDS</strong>
+            <div id="qr"></div>
+            <p class="hint">No KDS, clique em “Parear TV” e use o leitor de QR Code.</p>
+          </div>
+          <div id="pinMode" class="hidden">
+            <strong>Informe este PIN no KDS</strong>
+            <div class="pin" id="pinValue"></div>
+          </div>
+          <div class="pair-id">ID do pareamento: <span id="pairId"></span></div>
+          <div class="status" id="pairStatus">Aguardando aprovação no KDS…</div>
+          <p class="hint">O código expira em cinco minutos e só pode ser usado uma vez.</p>
+        </div>
+        <p class="notice">Esta televisão é somente para visualização. Nenhuma ação sobre pedidos é executada por esta tela.</p>
+      </div>
+    </section>
+
+    <section id="feedScreen" class="hidden">
+      <div class="toolbar">
+        <div><h1>Painel de pedidos</h1><p id="profileLabel">Conectado ao estabelecimento</p></div>
+        <button class="button secondary" id="fullscreenBtn">Tela cheia</button>
+      </div>
+      <div class="orders" id="orders"></div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  'use strict';
+
+  // Chave publicável do projeto Supabase. Não é uma service_role key.
+  const SUPABASE_URL = 'https://oasxlmfwkkubabyvqama.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
+  const TOKEN_STORAGE_KEY = 'vortex_kds_tv_device_token_v1';
+  const POLL_MS = 5000;
+  const PAIR_POLL_MS = 1800;
+
+  const $ = id => document.getElementById(id);
+  const supabase = window.supabase && window.supabase.createClient
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      })
+    : null;
+
+  let pairPollTimer = null;
+  let feedTimer = null;
+  let feedBusy = false;
+  let currentOrders = [];
+
+  function setConnection(state, message) {
+    $('connectionDot').className = 'dot ' + (state || '');
+    $('connectionText').textContent = message;
+  }
+
+  function randomHex(byteLength) {
+    const bytes = new Uint8Array(byteLength);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function makeUuid() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+  }
+
+  async function sha256Hex(value) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function stopPairPolling() {
+    if (pairPollTimer) clearTimeout(pairPollTimer);
+    pairPollTimer = null;
+  }
+
+  function stopFeedPolling() {
+    if (feedTimer) clearTimeout(feedTimer);
+    feedTimer = null;
+  }
+
+  function showPairScreen(message) {
+    stopFeedPolling();
+    $('feedScreen').classList.add('hidden');
+    $('pairScreen').classList.remove('hidden');
+    $('pairResult').classList.remove('visible');
+    setConnection('', message || 'Aguardando pareamento');
+  }
+
+  async function startPairing() {
+    if (!supabase) {
+      $('pairStatus').textContent = 'Não foi possível carregar a conexão com o servidor. Atualize a página.';
+      return;
+    }
+    if (!window.isSecureContext || !crypto.subtle || !crypto.getRandomValues) {
+      $('pairStatus').textContent = 'Este navegador precisa estar em uma conexão HTTPS segura para parear a TV.';
+      $('pairResult').classList.add('visible');
+      return;
+    }
+
+    stopPairPolling();
+    const button = $('startPair');
+    button.disabled = true;
+    button.textContent = 'Gerando código…';
+    $('pairResult').classList.add('visible');
+    $('pairStatus').textContent = 'Criando pareamento seguro…';
+    $('qr').replaceChildren();
+
+    try {
+      const pairingId = makeUuid();
+      const pairingType = $('pairType').value;
+      const pairingSecret = pairingType === 'pin'
+        ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0')
+        : randomHex(32);
+      const deviceToken = randomHex(32);
+      const tokenHashHex = await sha256Hex(deviceToken);
+
+      const { data, error } = await supabase.rpc('rpc_start_kds_tv_pairing', {
+        p_pairing_id: pairingId,
+        p_pairing_type: pairingType,
+        p_pairing_secret: pairingSecret,
+        p_token_hash: '\\x' + tokenHashHex
+      });
+      if (error) throw error;
+      if (!data || data.success !== true) {
+        const reasons = {
+          invalid_request: 'Os dados do pareamento foram recusados.',
+          pairing_capacity_reached: 'Há muitos pareamentos pendentes. Tente novamente mais tarde.'
+        };
+        throw new Error(reasons[data && data.reason] || 'Não foi possível criar o pareamento.');
+      }
+
+      $('pairId').textContent = pairingId;
+      $('qrMode').classList.toggle('hidden', pairingType !== 'qr');
+      $('pinMode').classList.toggle('hidden', pairingType !== 'pin');
+      if (pairingType === 'pin') {
+        $('pinValue').textContent = pairingSecret;
+      } else if (window.QRCode) {
+        new QRCode($('qr'), {
+          text: JSON.stringify({ pairing_id: pairingId, secret: pairingSecret }),
+          width: 230,
+          height: 230,
+          colorDark: '#0b1220',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        $('qr').textContent = 'Biblioteca de QR indisponível. Atualize a página ou escolha PIN.';
+      }
+
+      $('pairStatus').textContent = 'Aguardando aprovação no KDS…';
+      setConnection('', 'Aguardando aprovação');
+      pollPairing(pairingId, deviceToken);
+    } catch (error) {
+      console.error('Erro ao iniciar pareamento da TV:', error);
+      $('pairStatus').textContent = error && error.message ? error.message : 'Falha ao iniciar o pareamento.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Gerar novo código';
+    }
+  }
+
+  async function pollPairing(pairingId, deviceToken) {
+    try {
+      const { data, error } = await supabase.rpc('rpc_get_kds_tv_pairing_status', {
+        p_pairing_id: pairingId
+      });
+      if (error) throw error;
+      const status = data && data.status;
+
+      if (status === 'approved') {
+        stopPairPolling();
+        localStorage.setItem(TOKEN_STORAGE_KEY, deviceToken);
+        $('pairStatus').textContent = 'Pareamento aprovado. Conectando…';
+        await loadFeed(true);
+        return;
+      }
+      if (status === 'expired' || status === 'locked' || status === 'invalid') {
+        stopPairPolling();
+        $('pairStatus').textContent = status === 'expired'
+          ? 'Código expirado. Gere um novo pareamento.'
+          : 'Este código não pode mais ser utilizado. Gere um novo pareamento.';
+        return;
+      }
+      $('pairStatus').textContent = 'Aguardando aprovação no KDS…';
+    } catch (error) {
+      console.error('Erro ao consultar pareamento:', error);
+      $('pairStatus').textContent = 'Sem resposta do servidor. Tentando novamente…';
+    }
+    pairPollTimer = setTimeout(() => pollPairing(pairingId, deviceToken), PAIR_POLL_MS);
+  }
+
+  function addText(parent, tag, className, value) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    node.textContent = value == null ? '' : String(value);
+    parent.appendChild(node);
+    return node;
+  }
+
+  function statusLabel(status) {
+    const labels = {
+      new: 'NOVO', received: 'RECEBIDO', preparing: 'EM PREPARO',
+      ready: 'PRONTO', finished: 'FINALIZADO', completed: 'CONCLUÍDO'
+    };
+    return labels[status] || String(status || 'PEDIDO').toUpperCase();
+  }
+
+  function renderOrders(orders) {
+    const root = $('orders');
+    root.replaceChildren();
+    if (!Array.isArray(orders) || orders.length === 0) {
+      addText(root, 'div', 'empty', 'Nenhum pedido em andamento no momento.');
+      return;
+    }
+
+    orders.forEach(order => {
+      const card = document.createElement('article');
+      card.className = 'order ' + (order.status === 'preparing' ? 'preparing' : order.status === 'ready' ? 'ready' : '');
+      const head = document.createElement('div');
+      head.className = 'order-head';
+      addText(head, 'div', 'order-number', '#' + (order.displayId || order.id || '—'));
+      addText(head, 'div', 'status-tag', statusLabel(order.status));
+      card.appendChild(head);
+
+      const metaParts = [];
+      if (order.origin) metaParts.push(String(order.origin));
+      if (order.time) metaParts.push(String(order.time));
+      addText(card, 'div', 'order-meta', metaParts.join(' • '));
+
+      const items = document.createElement('div');
+      items.className = 'items';
+      if (Array.isArray(order.items) && order.items.length) {
+        order.items.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'item';
+          addText(row, 'span', '', item && item.name ? item.name : 'Item');
+          addText(row, 'span', 'qty', '× ' + (item && item.quantity != null ? item.quantity : 1));
+          items.appendChild(row);
+        });
+      } else {
+        addText(items, 'div', 'order-meta', 'Itens não informados');
+      }
+      card.appendChild(items);
+      root.appendChild(card);
+    });
+  }
+
+  async function loadFeed(initial) {
+    if (feedBusy || !supabase) return;
+    feedBusy = true;
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) {
+      feedBusy = false;
+      showPairScreen('TV ainda não pareada');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('rpc_get_kds_tv_feed', {
+        p_device_token: token
+      });
+      if (error) throw error;
+
+      if (!data || data.authorized !== true) {
+        if (data && (data.reason === 'revoked' || data.reason === 'invalid_token')) {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          showPairScreen(data.reason === 'revoked' ? 'Dispositivo revogado' : 'Credencial inválida');
+          $('pairStatus').textContent = data.reason === 'revoked'
+            ? 'Este dispositivo foi revogado pelo estabelecimento. Faça um novo pareamento.'
+            : 'A credencial local não é válida. Faça um novo pareamento.';
+          return;
+        }
+        throw new Error(data && data.reason === 'store_unavailable'
+          ? 'O estabelecimento está indisponível no momento.'
+          : 'A televisão não foi autorizada.');
+      }
+
+      currentOrders = Array.isArray(data.orders) ? data.orders : [];
+      renderOrders(currentOrders);
+      $('profileLabel').textContent = data.profile === 'kitchen'
+        ? 'Perfil Cozinha'
+        : 'Perfil Público';
+      $('pairScreen').classList.add('hidden');
+      $('feedScreen').classList.remove('hidden');
+      setConnection('online', 'Conectado');
+    } catch (error) {
+      console.error('Erro ao carregar pedidos da TV:', error);
+      setConnection('offline', 'Sem conexão — tentando reconectar');
+      if (initial) {
+        $('pairScreen').classList.remove('hidden');
+        $('feedScreen').classList.add('hidden');
+        $('pairResult').classList.add('visible');
+        $('pairStatus').textContent = 'A TV foi pareada, mas não conseguiu carregar os pedidos. Verifique a conexão e tente novamente.';
+      }
+    } finally {
+      feedBusy = false;
+      if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
+        feedTimer = setTimeout(() => loadFeed(false), POLL_MS);
+      }
+    }
+  }
+
+  $('startPair').addEventListener('click', startPairing);
+  $('fullscreenBtn').addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (error) {
+      console.warn('Tela cheia indisponível:', error);
+    }
+  });
+
+  async function boot() {
+    if (!supabase) {
+      showPairScreen('Não foi possível carregar o serviço de conexão');
+      $('pairStatus').textContent = 'O serviço Supabase não carregou. Verifique a internet e atualize a página.';
+      return;
+    }
+    if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
+      $('pairScreen').classList.add('hidden');
+      $('feedScreen').classList.remove('hidden');
+      await loadFeed(true);
+    } else {
+      showPairScreen('TV ainda não pareada');
+    }
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

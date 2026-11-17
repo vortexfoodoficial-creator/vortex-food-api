@@ -181,6 +181,52 @@ async function vortexResolveStoreIdForWrite() {
   return { storeId, error: null };
 }
 
+// Captura o custo unitário no momento da venda para que alterações futuras
+// no catálogo não reescrevam artificialmente o lucro de vendas antigas.
+async function dbEnrichSaleItemsWithCosts(items) {
+  const sourceItems = Array.isArray(items) ? items : [];
+  let recipes = [];
+  let products = [];
+  try {
+    const [recipeData, catalogData] = await Promise.all([dbFetchRecipes(), dbFetchCatalog()]);
+    recipes = Array.isArray(recipeData) ? recipeData : [];
+    products = catalogData && Array.isArray(catalogData.products) ? catalogData.products : [];
+  } catch (error) {
+    console.warn('Não foi possível consultar custos para registrar a venda:', error);
+  }
+
+  const parseCost = value => {
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
+    if (value == null || value === '') return null;
+    let normalized = String(value).trim().replace(/[^0-9,.-]/g, '');
+    if (normalized.includes(',')) normalized = normalized.replace(/\./g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
+  const normalizeName = value => String(value || '').trim().toLowerCase();
+
+  return sourceItems.map(item => {
+    const productId = String(item.productId || item.product_id || item.id || '');
+    const name = normalizeName(item.name || item.title);
+    const existingCost = parseCost(item.unitCost ?? item.costAtSale ?? item.cost_at_sale);
+    const recipe = recipes.find(r => productId && String(r.productId || r.product_id || '') === productId)
+      || recipes.find(r => name && normalizeName(r.productName || r.name) === name);
+    const product = products.find(p => productId && String(p.id) === productId)
+      || products.find(p => name && normalizeName(p.name) === name);
+    const recipeCost = recipe ? parseCost(recipe.totalCost ?? recipe.cost ?? recipe.unitCost) : null;
+    const productCost = product ? parseCost(product.cost ?? product.costPrice ?? product.custo ?? product.unitCost ?? product.totalCost) : null;
+    const unitCost = existingCost ?? recipeCost ?? productCost;
+    const enriched = { ...item };
+    if (productId) enriched.productId = productId;
+    if (unitCost != null) {
+      enriched.unitCost = unitCost;
+      enriched.costAtSale = unitCost;
+      enriched.costSource = existingCost != null ? 'existing_snapshot' : recipeCost != null ? 'technical_sheet' : 'catalog';
+    }
+    return enriched;
+  });
+}
+
 // Vendas
 async function dbSaveSale(saleData) {
   const supabase = getSupabase();
@@ -203,7 +249,7 @@ async function dbSaveSale(saleData) {
     financial_status: saleData.financialStatus || saleData.financial_status || 'paid',
     date: saleData.date || new Date().toISOString().split('T')[0],
     time: saleData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    items: saleData.items || [],
+    items: await dbEnrichSaleItemsWithCosts(saleData.items),
     updated_at: new Date().toISOString()
   };
 
@@ -219,7 +265,7 @@ async function dbSaveSale(saleData) {
     localStorage.setItem('vortex_sales_history', JSON.stringify(localHistory));
   } catch(e) {}
 
-  return { data, error };
+  return { data, error, items: record.items };
 }
 
 async function dbFetchSales() {

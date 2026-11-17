@@ -592,6 +592,7 @@
       const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
       const channelLabel = `Balcão (${selectedConsumptionType})`;
       const saleItems = pdvCart.map(item => ({
+        productId: item.id || item.productId || item.product_id || null,
         name: item.name,
         price: Number(item.price) || 0,
         qty: Number(item.qty) || 1,

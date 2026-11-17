@@ -507,7 +507,10 @@
         : '';
       const cleanName = itemName.trim().toLowerCase();
       const positiveCost = value => {
-        const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(',', '.'));
+        if (value == null || value === '') return 0;
+        let normalized = typeof value === 'number' ? String(value) : String(value).trim().replace(/[^0-9,.-]/g, '');
+        if (normalized.includes(',')) normalized = normalized.replace(/\\./g, '').replace(',', '.');
+        const parsed = Number(normalized);
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
       };
       const localRecipes = (() => { try { return JSON.parse(localStorage.getItem('vortex_recipes_catalog') || '[]'); } catch (error) { return []; } })();
@@ -830,45 +833,51 @@
     }
 
     function renderProductsPerformance(sales) {
-      let prodMap = {};
+      const prodMap = {};
       sales.forEach(s => {
-        if (s.status !== 'cancelled' && s.items && Array.isArray(s.items)) {
-          s.items.forEach(i => {
-            let name = i.name || 'Produto sem nome';
-            if (!prodMap[name]) prodMap[name] = { qty: 0, total: 0, price: i.price || 0 };
-            prodMap[name].qty += (i.qty || 1);
-            prodMap[name].total += ((i.price || 0) * (i.qty || 1));
+        if (s.status !== 'cancelled' && Array.isArray(s.items)) {
+          s.items.forEach(item => {
+            const name = item.name || item.title || 'Produto sem nome';
+            const qty = Number(item.qty || item.quantity || 1) || 1;
+            const unitPrice = Number(item.price || 0) || 0;
+            const unitCost = getProductCostFromCardapio(item);
+            if (!prodMap[name]) prodMap[name] = { qty: 0, total: 0, costTotal: 0, hasCost: true };
+            prodMap[name].qty += qty;
+            prodMap[name].total += unitPrice * qty;
+            if (unitCost > 0) prodMap[name].costTotal += unitCost * qty;
+            else prodMap[name].hasCost = false;
           });
         }
       });
 
       const tbody = document.getElementById('tblProductsPerformance');
       tbody.innerHTML = '';
-
-      let prods = Object.keys(prodMap);
-      if (prods.length === 0) {
+      const names = Object.keys(prodMap);
+      if (names.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum produto vendido no período.</td></tr>`;
         return;
       }
 
-      prods.forEach(p => {
-        let qty = prodMap[p].qty;
-        let total = prodMap[p].total;
-        let unitPrice = qty > 0 ? total / qty : 0;
-        
-        let unitCmv = getProductCostFromCardapio(p);
-        if (unitCmv === 0 && unitPrice > 0) unitCmv = unitPrice * 0.50;
-
-        let marginPercent = unitPrice > 0 ? (((unitPrice - unitCmv) / unitPrice) * 100).toFixed(1) : 0;
-        let giroStatus = qty > 10 ? `<span style="color:var(--success);">🔥 Alto Giro</span>` : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;
+      names.forEach(name => {
+        const product = prodMap[name];
+        const qty = product.qty;
+        const total = product.total;
+        const unitPrice = qty > 0 ? total / qty : 0;
+        const unitCost = product.hasCost && qty > 0 ? product.costTotal / qty : null;
+        const marginPercent = unitCost != null && unitPrice > 0
+          ? (((unitPrice - unitCost) / unitPrice) * 100).toFixed(1) + '%'
+          : 'Custo não cadastrado';
+        const giroStatus = qty > 10
+          ? `<span style="color:var(--success);">🔥 Alto Giro</span>`
+          : `<span style="color:var(--warning);">⚠️ Baixo Giro</span>`;
 
         tbody.innerHTML += `
           <tr class="product-row">
-            <td><strong>${p}</strong></td>
+            <td><strong>${name}</strong></td>
             <td>${qty} un.</td>
             <td>R$ ${formatFloatToCurrency(unitPrice)}</td>
-            <td>R$ ${formatFloatToCurrency(unitCmv)}</td>
-            <td style="color:var(--info); font-weight:bold;">${marginPercent}%</td>
+            <td>${unitCost == null ? '—' : 'R$ ' + formatFloatToCurrency(unitCost)}</td>
+            <td style="color:var(--info); font-weight:bold;">${marginPercent}</td>
             <td style="color:var(--success); font-weight:bold;">R$ ${formatFloatToCurrency(total)}</td>
             <td>${giroStatus}</td>
           </tr>

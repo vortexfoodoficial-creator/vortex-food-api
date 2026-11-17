@@ -135,6 +135,16 @@
     .btn-tv-pairing { background: var(--primary); color: #fff; border: 0; border-radius: 9px; padding: 9px 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
     .btn-tv-pairing:hover { background: var(--primary-hover); }
     .tv-pairing-card { max-width: 560px; }
+    .tv-device-list { display:flex; flex-direction:column; gap:9px; margin:14px 0; }
+    .tv-device-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-main); }
+    .tv-device-info { min-width:0; display:flex; flex-direction:column; gap:4px; }
+    .tv-device-meta { color:var(--text-muted); font-size:.78rem; }
+    .tv-device-status { font-size:.75rem; font-weight:800; }
+    .tv-device-status.online { color:var(--success); } .tv-device-status.offline { color:var(--warning); }
+    .tv-device-revoke { border:1px solid var(--danger); color:var(--danger); background:transparent; padding:7px 10px; border-radius:8px; font-weight:700; cursor:pointer; }
+    .tv-device-empty { padding:14px; text-align:center; color:var(--text-muted); border:1px dashed var(--border); border-radius:10px; font-size:.85rem; }
+    .tv-pairing-form { border-top:1px solid var(--border); margin-top:16px; padding-top:14px; }
+
     .tv-pairing-card h2 { font-size: 1.2rem; margin-bottom: 8px; }
     .tv-pairing-help { color: var(--text-muted); font-size: .86rem; line-height: 1.45; margin-bottom: 16px; }
     .tv-pairing-field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
@@ -288,13 +298,14 @@
 
   <div class="modal-overlay" id="tvPairingModal">
     <div class="custom-modal-card tv-pairing-card">
-      <h2>📺 Parear televisão do KDS</h2>
-      <p class="tv-pairing-help">
-        Na TV, escolha QR Code ou PIN. Para QR Code, use o leitor abaixo.
-        Para PIN, informe o ID do pareamento e o PIN exibidos na televisão.
-        O código expira em cinco minutos e só pode ser usado uma vez.
-      </p>
+      <h2>📺 Televisões do estabelecimento</h2>
+      <p class="tv-pairing-help">Veja as televisões vinculadas a este estabelecimento. Para adicionar uma nova, abra a página da TV e gere um QR Code ou PIN.</p>
+      <div id="tvDeviceList" class="tv-device-list" aria-live="polite"><div class="tv-device-empty">Carregando televisões…</div></div>
+      <button type="button" class="btn-modal-primary" id="btnShowTvPairingForm">＋ Adicionar televisão</button>
 
+      <div id="tvPairingForm" class="tv-pairing-form" hidden>
+      <h3 style="font-size:1rem;margin-bottom:8px;">Adicionar televisão</h3>
+      <p class="tv-pairing-help">Na página aberta na TV, gere um QR Code ou PIN. Depois leia o QR Code aqui ou informe os dados manualmente.</p>
       <div class="tv-pairing-field">
         <label for="tvPairingDeviceName">Nome da televisão</label>
         <input id="tvPairingDeviceName" type="text" maxlength="80" value="TV da cozinha" placeholder="Ex.: TV balcão">
@@ -329,8 +340,12 @@
       </div>
 
       <div class="tv-pairing-actions">
-        <button type="button" class="btn-modal-secondary" id="btnCloseTvPairing">Cancelar</button>
+        <button type="button" class="btn-modal-secondary" id="btnCancelTvPairingForm">Voltar</button>
         <button type="button" class="btn-modal-primary" id="btnApproveTvPairing">Aprovar pareamento</button>
+      </div>
+      </div>
+      <div style="margin-top:14px;">
+        <button type="button" class="btn-modal-secondary" id="btnCloseTvPairing">Fechar</button>
       </div>
     </div>
   </div>
@@ -817,9 +832,85 @@
       if (status) status.textContent = message;
     }
 
+    async function kdsTvLoadDevices() {
+      const root = document.getElementById('tvDeviceList');
+      root.replaceChildren();
+      const supabase = getSupabase();
+      if (!supabase) {
+        root.textContent = 'Conexão com Supabase indisponível.';
+        return;
+      }
+      try {
+        const storeId = await vortexGetCurrentStoreId();
+        if (!storeId) throw new Error('Estabelecimento ativo não identificado.');
+        const { data, error } = await supabase.rpc('rpc_list_kds_tv_devices', { p_store_id: storeId });
+        if (error) throw error;
+        if (!data || data.success !== true || !Array.isArray(data.devices)) {
+          throw new Error('Não foi possível carregar as televisões.');
+        }
+        if (!data.devices.length) {
+          const empty = document.createElement('div');
+          empty.className = 'tv-device-empty';
+          empty.textContent = 'Nenhuma televisão cadastrada. Clique em “Adicionar televisão” para conectar a primeira.';
+          root.appendChild(empty);
+          return;
+        }
+        data.devices.forEach(device => {
+          const row = document.createElement('div');
+          row.className = 'tv-device-row';
+          const info = document.createElement('div');
+          info.className = 'tv-device-info';
+          const name = document.createElement('strong');
+          name.textContent = device.device_name || 'Televisão';
+          const meta = document.createElement('span');
+          meta.className = 'tv-device-meta';
+          meta.textContent = (device.profile === 'kitchen' ? 'Perfil Cozinha' : 'Perfil Público') +
+            ' · ' + (device.last_seen_at ? 'Última comunicação: ' + new Date(device.last_seen_at).toLocaleString('pt-BR') : 'Ainda sem comunicação');
+          const status = document.createElement('span');
+          status.className = 'tv-device-status ' + (device.connection_status === 'connected' ? 'online' : 'offline');
+          status.textContent = device.connection_status === 'connected' ? '● Conectada recentemente' : '● Sem comunicação recente';
+          info.append(name, meta, status);
+          const revoke = document.createElement('button');
+          revoke.type = 'button';
+          revoke.className = 'tv-device-revoke';
+          revoke.textContent = 'Revogar';
+          revoke.addEventListener('click', () => kdsTvRevokeDevice(device.id, device.device_name));
+          row.append(info, revoke);
+          root.appendChild(row);
+        });
+      } catch (error) {
+        console.error('Falha ao listar TVs:', error);
+        const message = document.createElement('div');
+        message.className = 'tv-device-empty';
+        message.textContent = error && error.message ? error.message : 'Não foi possível carregar as televisões.';
+        root.appendChild(message);
+      }
+    }
+
+    async function kdsTvRevokeDevice(deviceId, deviceName) {
+      if (!confirm('Revogar a televisão "' + (deviceName || 'Televisão') + '"? Ela perderá o acesso aos pedidos.')) return;
+      try {
+        const supabase = getSupabase();
+        const storeId = await vortexGetCurrentStoreId();
+        if (!supabase || !storeId) throw new Error('Conexão ou estabelecimento indisponível.');
+        const { data, error } = await supabase.rpc('rpc_revoke_kds_tv_device', {
+          p_store_id: storeId,
+          p_device_id: deviceId
+        });
+        if (error) throw error;
+        if (!data || data.success !== true) throw new Error('A televisão não foi encontrada ou já está revogada.');
+        await kdsTvLoadDevices();
+        showNoticeModal('Televisão revogada', 'A TV "' + (deviceName || 'Televisão') + '" perdeu o acesso ao painel.', '🔒');
+      } catch (error) {
+        console.error('Falha ao revogar TV:', error);
+        alert(error && error.message ? error.message : 'Não foi possível revogar a televisão.');
+      }
+    }
+
     function kdsTvOpenPairingModal() {
       document.getElementById('tvPairingModal').classList.add('active');
-      kdsTvSetPairingStatus('Aguardando o código da televisão.');
+      document.getElementById('tvPairingForm').hidden = true;
+      kdsTvLoadDevices();
     }
 
     function kdsTvStopQrScanner() {
@@ -967,7 +1058,11 @@
           throw new Error(reasons[result.data && result.data.reason] || 'Não foi possível aprovar o pareamento.');
         }
 
-        kdsTvClosePairingModal();
+        document.getElementById('tvPairingForm').hidden = true;
+        document.getElementById('tvPairingId').value = '';
+        document.getElementById('tvPairingSecret').value = '';
+        kdsTvSetPairingStatus('Televisão autorizada com sucesso.');
+        await kdsTvLoadDevices();
         showNoticeModal(
           'Televisão pareada!',
           'A TV "' + result.data.device_name + '" foi vinculada ao estabelecimento com o perfil ' +
@@ -985,6 +1080,14 @@
 
     document.getElementById('btnOpenTvPairing').addEventListener('click', kdsTvOpenPairingModal);
     document.getElementById('btnCloseTvPairing').addEventListener('click', kdsTvClosePairingModal);
+    document.getElementById('btnShowTvPairingForm').addEventListener('click', () => {
+      document.getElementById('tvPairingForm').hidden = false;
+      kdsTvSetPairingStatus('Gere um código na televisão e leia o QR Code ou informe o PIN.');
+    });
+    document.getElementById('btnCancelTvPairingForm').addEventListener('click', () => {
+      kdsTvStopQrScanner();
+      document.getElementById('tvPairingForm').hidden = true;
+    });
     document.getElementById('btnStartTvQrScan').addEventListener('click', kdsTvStartQrScanner);
     document.getElementById('btnApproveTvPairing').addEventListener('click', kdsTvApprovePairing);
 

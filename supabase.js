@@ -631,7 +631,9 @@ async function dbFetchFinancialEntries() {
   if (!supabase) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
   const { data, error } = await supabase.from('vortex_financial').select('*').eq('store_id', storeId);
   if (error) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  return data || [];
+  const entries = Array.isArray(data) ? data : [];
+  try { localStorage.setItem('vortex_financial_entries', JSON.stringify(entries)); } catch (storageError) {}
+  return entries;
 }
 
 async function dbFetchCatalog() {

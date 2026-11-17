@@ -301,7 +301,7 @@ async function dbFetchSales() {
 
   const mapped = data.map(item => ({
     id: item.id,
-    displayId: item.display_id || item.displayId || item.code || (/^(pdv_|deliv_|mesa_)/i.test(String(item.id || '')) ? null : item.id),
+    displayId: (() => { const candidate = item.display_id || item.displayId || item.code || null; if (candidate && !/^(pdv_|deliv_|mesa_)/i.test(String(candidate))) return candidate; return /^(pdv_|deliv_|mesa_)/i.test(String(item.id || '')) ? null : item.id; })(),
     client: item.client,
     channel: item.channel,
     total: parseFloat(item.total) || 0,

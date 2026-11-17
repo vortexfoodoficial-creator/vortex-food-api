@@ -573,8 +573,15 @@
       }
       const localOrders = readLocalKdsOrders();
       const knownOrders = mergeKdsOrders(kdsOrdersCache || [], localOrders);
-      const todayOrders = knownOrders.filter(order => (order.date || '').split('T')[0] === dateStr);
-      const visibleNumbers = todayOrders.map(order => parseInt(order.displayId || order.displayid || order.id, 10))
+      const localSalesForNumbering = (() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem('vortex_sales_history') || '[]');
+          return Array.isArray(saved) ? saved : [];
+        } catch (e) { return []; }
+      })();
+      const numberingRecords = [...knownOrders, ...localSalesForNumbering];
+      const todayOrders = numberingRecords.filter(order => (order.date || '').split('T')[0] === dateStr);
+      const visibleNumbers = todayOrders.map(order => parseInt(order.displayId || order.display_id || order.displayid || order.id, 10))
         .filter(number => Number.isSafeInteger(number) && number > 0);
       const displayOrderNumber = visibleNumbers.length > 0 ? Math.max(...visibleNumbers) + 1 : 1;
       const technicalOrderId = 'pdv_' + (window.crypto && typeof window.crypto.randomUUID === 'function'

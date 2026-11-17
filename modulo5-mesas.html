@@ -429,8 +429,19 @@
 
     function mergeKdsOrders(remoteOrders, localOrders) {
       const byId = new Map();
-      (Array.isArray(remoteOrders) ? remoteOrders : []).forEach(o => { if (o && o.id != null) byId.set(String(o.id), o); });
-      (Array.isArray(localOrders) ? localOrders : []).forEach(o => { if (o && o.id != null) byId.set(String(o.id), o); });
+      (Array.isArray(remoteOrders) ? remoteOrders : []).forEach(o => {
+        if (o && o.id != null) byId.set(String(o.id), o);
+      });
+      (Array.isArray(localOrders) ? localOrders : []).forEach(o => {
+        if (!o || o.id == null) return;
+        const key = String(o.id);
+        const remote = byId.get(key) || {};
+        byId.set(key, {
+          ...remote,
+          ...o,
+          displayId: o.displayId || o.displayid || remote.displayId || remote.displayid || null
+        });
+      });
       return Array.from(byId.values());
     }
 

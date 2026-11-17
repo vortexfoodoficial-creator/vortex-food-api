@@ -629,7 +629,7 @@
         observation,
         status: 'new',
         cloudSyncPending: true,
-        code: cleanOrderId
+        code: String(displayOrderNumber)
       };
 
       // Persistência local e atualização da tela acontecem antes da rede.
@@ -678,15 +678,15 @@
             document.getElementById('noticeDesc').textContent = `Pedido #${displayOrderNumber} (${selectedConsumptionType}) sincronizado com a nuvem e enviado para a Cozinha.`;
           }
         } else {
-          console.error(`Falha ao sincronizar a venda #${cleanOrderId}:`, errors);
+          console.error(`Falha ao sincronizar a venda #${displayOrderNumber}:`, errors);
           if (isSameSaleNotice) {
             document.getElementById('noticeIcon').innerText = '⚠️';
             document.getElementById('noticeTitle').innerText = 'Sincronização pendente';
-            document.getElementById('noticeDesc').textContent = `O pedido #${cleanOrderId} está salvo neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e o esquema do Supabase. Detalhe: ${errors.map(error => error.message || String(error)).join('; ')}`;
+            document.getElementById('noticeDesc').textContent = `O pedido #${displayOrderNumber} está salvo neste dispositivo, mas a sincronização com a nuvem falhou. Verifique a conexão e o esquema do Supabase. Detalhe: ${errors.map(error => error.message || String(error)).join('; ')}`;
           }
         }
       }).catch(error => {
-        console.error(`Erro inesperado ao sincronizar a venda #${cleanOrderId}:`, error);
+        console.error(`Erro inesperado ao sincronizar a venda #${displayOrderNumber}:`, error);
       });
     }
 

@@ -313,7 +313,7 @@ async function dbSaveKdsOrderMinimal(orderData) {
   const resolved = await vortexResolveStoreIdForWrite();
   if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
   const record = {
-    store_id: resolved.storeId, id: String(orderData.id), origin: orderData.origin || 'Balcão',
+    store_id: resolved.storeId, id: String(orderData.id), displayId: orderData.displayId || orderData.displayid || null, origin: orderData.origin || 'Balcão',
     client: orderData.client || 'Cliente Balcão', address: orderData.address || '',
     payment: orderData.payment || 'Dinheiro', time: orderData.time || '',
     date: orderData.date || new Date().toISOString().slice(0, 10),

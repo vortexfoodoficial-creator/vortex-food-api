@@ -1005,8 +1005,9 @@
       }
 
       catalogProducts.forEach(p => {
+        const safeProductId = encodeURIComponent(String(p.id ?? ''));
         grid.innerHTML += `
-          <div class="mini-menu-card" onclick="addToDeliveryCart('${p.name.replace(/'/g, "\\'")}', ${p.price})">
+          <div class="mini-menu-card" onclick="addToDeliveryCart('${p.name.replace(/'/g, "\\'")}', ${p.price}, decodeURIComponent('${safeProductId}'))">
             <div class="mini-menu-title">${p.name}</div>
             <div class="mini-menu-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
           </div>
@@ -1014,10 +1015,10 @@
       });
     }
 
-    function addToDeliveryCart(name, price) {
-      const existing = deliveryCart.find(i => i.name === name);
+    function addToDeliveryCart(name, price, productId = null) {
+      const existing = deliveryCart.find(i => i.name === name && String(i.productId || '') === String(productId || ''));
       if (existing) existing.qty += 1;
-      else deliveryCart.push({ name, price, qty: 1 });
+      else deliveryCart.push({ productId: productId || null, name, price, qty: 1 });
       renderDeliveryCart();
     }
 

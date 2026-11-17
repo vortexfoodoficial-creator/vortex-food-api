@@ -856,7 +856,7 @@
           `<button class="btn-secondary" style="font-size:0.7rem; padding:3px 8px; background:var(--danger); color:#fff;" onclick="assignOrderToCourier('${o.id}', '')">Desvincular ❌</button>` :
           `<button class="btn-action" style="background:var(--success); color:#fff; padding:6px 12px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:0.8rem;" onclick="assignOrderToCourier('${o.id}', '${selectedCourier}')">Atribuir Motoboy ✅</button>`;
 
-        const visibleNum = o.displayId || o.id;
+        const visibleNum = getVisibleDeliveryOrderNumber(o);
         container.innerHTML += `
           <div class="suggestion-item-row">
             <div style="font-size:0.85rem; flex:1;">
@@ -899,7 +899,7 @@
       saveLocalKdsOrders(kdsOrders);
       renderActiveDeliveryOrders(kdsOrders, true);
       runSmartRouteOptimization();
-      const visibleNum = order.displayId || orderId;
+      const visibleNum = getVisibleDeliveryOrderNumber(order);
       if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${visibleNum} foi vinculado a ${courierName}.`, '🛵');
       else showNoticeModal('Entrega Desvinculada', `O pedido #${visibleNum} foi desvinculado.`, 'ℹ️');
     }
@@ -939,7 +939,7 @@
       saveLocalKdsOrders(kdsOrders);
       closeEditCourierModal();
       renderActiveDeliveryOrders(kdsOrders, true);
-      const visibleNum = order.displayId || orderId;
+      const visibleNum = getVisibleDeliveryOrderNumber(order);
       showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${visibleNum} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
     }
 
@@ -948,7 +948,7 @@
       let history = JSON.parse(localStorage.getItem('vortex_courier_history')) || [];
       let routeStatusText = o.status === 'finished' ? 'Entregue / Concluído ✅' : 'Em Rota de Entrega 🛵';
 
-      const visibleNum = o.displayId || o.id;
+      const visibleNum = getVisibleDeliveryOrderNumber(o);
       const historyItem = {
         id: 'hist_' + Date.now(),
         orderId: visibleNum,
@@ -1343,6 +1343,13 @@
       }
     }
 
+    function getVisibleDeliveryOrderNumber(order) {
+      const id = String(order && order.id || '');
+      const display = order && (order.displayId || order.displayid || order.display_id || order.code);
+      if (display != null && String(display).trim() && String(display) !== id) return String(display);
+      return /^(pdv_|deliv_|mesa_)/i.test(id) ? '—' : (id || '—');
+    }
+
     function renderActiveDeliveryOrders(kdsOrders, force = false) {
       const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
       const canDispatch = permissions.includes('delivery.dispatch');
@@ -1373,7 +1380,7 @@
       }
 
       const cardsHtml = deliveryOrders.map(o => {
-        const visibleNum = o.displayId || o.id;
+        const visibleNum = getVisibleDeliveryOrderNumber(o);
         let statusClass = 'status-new';
         let statusText = 'Em Espera';
         let actionAreaHtml = '';
@@ -1487,7 +1494,7 @@
       saveLocalKdsOrders(kdsOrders);
       recordCourierHistory(order);
       renderActiveDeliveryOrders(kdsOrders, true);
-      const visibleNum = order.displayId || orderId;
+      const visibleNum = getVisibleDeliveryOrderNumber(order);
       showNoticeModal('Pedido Despachado!', `O pedido #${visibleNum} foi enviado para rota.`, '🚀');
     }
 
@@ -1561,7 +1568,7 @@
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!o) return;
 
-      const visibleNum = o.displayId || o.id;
+      const visibleNum = getVisibleDeliveryOrderNumber(o);
       const storeSettings = JSON.parse(localStorage.getItem('vortex_store_settings')) || { storeName: 'MEU ESTABELECIMENTO' };
       const itemsHtml = o.items ? o.items.map(i => `<tr><td>${i.qty}x ${i.name}</td><td style="text-align:right;">R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}</td></tr>`).join('') : '';
 

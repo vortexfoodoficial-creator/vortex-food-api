@@ -176,12 +176,18 @@
 
   async function startPairing() {
     if (!supabase) {
-      $('pairStatus').textContent = 'Não foi possível carregar a conexão com o servidor. Atualize a página.';
+      $('pairResult').classList.add('visible');
+      $('pairStatus').textContent = 'Não foi possível carregar a conexão com o servidor. Verifique a internet e atualize a página.';
       return;
     }
     if (!window.isSecureContext || !crypto.subtle || !crypto.getRandomValues) {
       $('pairStatus').textContent = 'Este navegador precisa estar em uma conexão HTTPS segura para parear a TV.';
       $('pairResult').classList.add('visible');
+      return;
+    }
+    if ($('pairType').value === 'qr' && !window.QRCode) {
+      $('pairResult').classList.add('visible');
+      $('pairStatus').textContent = 'A biblioteca de QR Code não carregou. Selecione PIN de 6 dígitos e tente novamente.';
       return;
     }
 
@@ -293,6 +299,12 @@
     return labels[status] || String(status || 'PEDIDO').toUpperCase();
   }
 
+  function formatOrderDate(value) {
+    if (!value) return '';
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(String(value));
+    return match ? match[3] + '/' + match[2] : String(value);
+  }
+
   function renderOrders(orders) {
     const root = $('orders');
     root.replaceChildren();
@@ -312,6 +324,8 @@
 
       const metaParts = [];
       if (order.origin) metaParts.push(String(order.origin));
+      const orderDate = formatOrderDate(order.date);
+      if (orderDate) metaParts.push(orderDate);
       if (order.time) metaParts.push(String(order.time));
       addText(card, 'div', 'order-meta', metaParts.join(' • '));
 
@@ -401,6 +415,7 @@
   async function boot() {
     if (!supabase) {
       showPairScreen('Não foi possível carregar o serviço de conexão');
+      $('pairResult').classList.add('visible');
       $('pairStatus').textContent = 'O serviço Supabase não carregou. Verifique a internet e atualize a página.';
       return;
     }

@@ -399,6 +399,7 @@ AS $function$
 DECLARE
   v_order_id text;
   v_display_id text;
+  v_code text;
   v_origin text;
   v_total numeric;
   v_items jsonb;
@@ -423,6 +424,7 @@ BEGIN
 
   v_order_id := NULLIF(BTRIM(p_order->>'id'),'');
   v_display_id := NULLIF(BTRIM(COALESCE(p_order->>'displayId',p_order->>'displayid')),'');
+  v_code := NULLIF(BTRIM(COALESCE(p_order->>'code',p_order->>'displayId',p_order->>'displayid')),'');
   v_origin := COALESCE(NULLIF(BTRIM(p_order->>'origin'),''),'Balcão');
   v_total := COALESCE(NULLIF(p_order->>'total','')::numeric,0);
   v_items := COALESCE(p_order->'items','[]'::jsonb);
@@ -469,7 +471,7 @@ BEGIN
   ) VALUES (
     p_store_id,v_order_id,left(v_origin,80),v_client,v_address,v_payment,
     v_cashgiven,v_change,v_time,v_date,v_items,v_total,v_observation,
-    v_status,'',v_display_id,now()
+    v_status,COALESCE(v_code,''),v_display_id,now()
   )
   ON CONFLICT (store_id,id) DO NOTHING;
 
@@ -498,6 +500,12 @@ BEGIN
        AND v_display_id IS NOT NULL THEN
       UPDATE public.vortex_kds_orders
       SET "displayId"=v_display_id
+      WHERE store_id=p_store_id AND id=v_order_id;
+    END IF;
+    IF (v_existing.code IS NULL OR BTRIM(v_existing.code)='')
+       AND v_code IS NOT NULL THEN
+      UPDATE public.vortex_kds_orders
+      SET code=v_code
       WHERE store_id=p_store_id AND id=v_order_id;
     END IF;
 

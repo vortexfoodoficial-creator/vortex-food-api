@@ -385,7 +385,7 @@ async function dbSaveKdsOrderMinimal(orderData) {
     payment: orderData.payment || 'Dinheiro', time: orderData.time || '',
     date: orderData.date || new Date().toISOString().slice(0, 10),
     items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
-    observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.id)
+    observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.displayId || orderData.displayid || orderData.id)
   };
   const { data, error } = await supabase.rpc('rpc_create_kds_order', { p_store_id: resolved.storeId, p_order: record });
   try {

@@ -135,6 +135,16 @@
     .btn-tv-pairing { background: var(--primary); color: #fff; border: 0; border-radius: 9px; padding: 9px 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
     .btn-tv-pairing:hover { background: var(--primary-hover); }
     .tv-pairing-card { max-width: 560px; }
+    /* Conteúdo do pareamento pode exceder a altura disponível em celulares. */
+    #tvPairingModal { overflow-y: auto; align-items: flex-start; }
+    #tvPairingModal .tv-pairing-card {
+      max-height: calc(100vh - 30px);
+      max-height: calc(100dvh - 30px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin: auto 0;
+    }
+    #tvPairingModal .tv-pairing-form { padding-bottom: 4px; }
     .tv-device-list { display:flex; flex-direction:column; gap:9px; margin:14px 0; }
     .tv-device-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-main); }
     .tv-device-info { min-width:0; display:flex; flex-direction:column; gap:4px; }
@@ -160,6 +170,9 @@
     @media (max-width: 520px) {
       .header-right-tools { width: 100%; justify-content: space-between; }
       .tv-pairing-row { grid-template-columns: 1fr; }
+      #tvPairingModal { padding: 10px; }
+      #tvPairingModal .tv-pairing-card { max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); padding: 18px; }
+      #tvPairingModal .tv-pairing-actions { flex-direction: column; }
     }
 
     @media (max-width: 768px) {

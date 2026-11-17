@@ -628,7 +628,10 @@
         : '';
       const cleanName = itemName.trim().toLowerCase();
       const positiveCost = value => {
-        const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(',', '.'));
+        if (value == null || value === '') return 0;
+        let normalized = typeof value === 'number' ? String(value) : String(value).trim().replace(/[^0-9,.-]/g, '');
+        if (normalized.includes(',')) normalized = normalized.replace(/\\./g, '').replace(',', '.');
+        const parsed = Number(normalized);
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
       };
       const recipe = localCache.recipes.find(f => productId && String(f.productId || f.product_id || '') === productId)

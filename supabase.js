@@ -216,12 +216,12 @@ async function dbEnrichSaleItemsWithCosts(items) {
   }
 
   const parseCost = value => {
-    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
+    if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
     if (value == null || value === '') return null;
     let normalized = String(value).trim().replace(/[^0-9,.-]/g, '');
-    if (normalized.includes(',')) normalized = normalized.replace(/\./g, '').replace(',', '.');
+    if (normalized.includes(',')) normalized = normalized.replace(/\\./g, '').replace(',', '.');
     const parsed = Number(normalized);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   };
   const normalizeName = value => String(value || '').trim().toLowerCase();
 

@@ -1168,18 +1168,25 @@
     }
 
     // Função para calcular o próximo número de exibição simples (#1, #2, #3...) sem alterar chaves técnicas
-    function getNextGlobalOrderNumber() {
+    async function getNextGlobalOrderNumber() {
+      if (typeof dbGetNextOrderDisplayNumber === 'function') {
+        try {
+          const result = await dbGetNextOrderDisplayNumber('delivery');
+          const serverNumber = Number(result && result.displayId);
+          if (!result.error && Number.isSafeInteger(serverNumber) && serverNumber > 0) return serverNumber;
+        } catch (error) {
+          console.warn('Numeração central indisponível; usando fallback local.', error);
+        }
+      }
       try {
-        let allNumbers = [];
         const kds = JSON.parse(localStorage.getItem('vortex_kds_orders') || '[]');
-        kds.forEach(o => {
-          let num = parseInt(o.displayId || o.displayid, 10);
-          if (!isNaN(num)) allNumbers.push(num);
-        });
-        if (allNumbers.length === 0) return 1;
-        return Math.max(...allNumbers) + 1;
-      } catch (e) {
-        return Math.floor(1 + Math.random() * 90);
+        const sales = JSON.parse(localStorage.getItem('vortex_sales_history') || '[]');
+        const allNumbers = [...(Array.isArray(kds) ? kds : []), ...(Array.isArray(sales) ? sales : [])]
+          .map(item => parseInt(item.displayId || item.display_id || item.displayid || item.code || item.id, 10))
+          .filter(number => Number.isSafeInteger(number) && number > 0);
+        return allNumbers.length ? Math.max(...allNumbers) + 1 : 1;
+      } catch (error) {
+        return 1;
       }
     }
 
@@ -1232,7 +1239,7 @@
       const technicalId = 'deliv_' + (window.crypto && typeof window.crypto.randomUUID === 'function'
         ? window.crypto.randomUUID()
         : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + '_' + Math.random().toString(36).slice(2));
-      const displaySeqNumber = getNextGlobalOrderNumber();
+      const displaySeqNumber = await getNextGlobalOrderNumber();
 
       const newSaleRecord = {
         store_id: window.VORTEX_ACTIVE_STORE_ID,

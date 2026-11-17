@@ -301,7 +301,7 @@
 
   function formatOrderDate(value) {
     if (!value) return '';
-    const match = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(String(value));
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
     return match ? match[3] + '/' + match[2] : String(value);
   }
 

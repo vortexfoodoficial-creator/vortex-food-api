@@ -696,9 +696,19 @@ async function dbFetchCustomers() {
 }
 
 async function dbFetchRecipes() {
-  // As fichas técnicas ainda não possuem tabela própria no banco auditado.
-  // O armazenamento local já está separado por estabelecimento.
-  return JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
+  // A nuvem é a fonte principal das fichas técnicas; o cache é específico
+  // do estabelecimento/usuário e serve apenas como contingência offline.
+  const cloud = await dbFetchStoreDocument('recipes');
+  if (Array.isArray(cloud)) {
+    try { localStorage.setItem('vortex_recipes_catalog', JSON.stringify(cloud)); } catch (error) {}
+    return cloud;
+  }
+  try {
+    const cached = JSON.parse(localStorage.getItem('vortex_recipes_catalog') || '[]');
+    return Array.isArray(cached) ? cached : [];
+  } catch (error) {
+    return [];
+  }
 }
 
 /* Documentos JSON separados por estabelecimento para módulos sem tabela própria. */

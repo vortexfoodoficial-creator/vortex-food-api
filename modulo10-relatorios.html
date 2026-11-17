@@ -713,7 +713,9 @@
         // Padroniza o ID amigável do pedido (se for DELV-xxx ou timestamp longo, exibe de forma curta ou limpa)
         let rawId = String(s.id || 'N/A');
         let displayOrderId = s.displayId || s.display_id || s.displayid || rawId;
-        if (displayOrderId === rawId && /^(pdv_|deliv_|mesa_)/i.test(rawId)) displayOrderId = '—';
+        if (/^(pdv_|deliv_|mesa_)/i.test(String(displayOrderId || ''))) {
+          displayOrderId = /^(pdv_|deliv_|mesa_)/i.test(rawId) ? '—' : rawId;
+        }
         if (displayOrderId === rawId && rawId.startsWith('DELV-')) {
           // Extrai os dígitos finais do timestamp do delivery para parecer um número sequencial amigável
           let digitsOnly = rawId.replace(/\D/g, '');

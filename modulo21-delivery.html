@@ -1354,7 +1354,7 @@
     function getVisibleDeliveryOrderNumber(order) {
       const id = String(order && order.id || '');
       const display = order && (order.displayId || order.displayid || order.display_id || order.code);
-      if (display != null && String(display).trim() && String(display) !== id) return String(display);
+      if (display != null && String(display).trim() && String(display) !== id && !/^(pdv_|deliv_|mesa_)/i.test(String(display))) return String(display);
       return /^(pdv_|deliv_|mesa_)/i.test(id) ? '—' : (id || '—');
     }
 

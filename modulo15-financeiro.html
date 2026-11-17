@@ -619,20 +619,23 @@
       return true;
     }
 
-    function getProductCostFromCardapio(productName) {
-      const fichas = localCache.recipes;
-      const fichaMatch = fichas.find(f => f.productName && f.productName.toLowerCase() === productName.toLowerCase());
-      if (fichaMatch && fichaMatch.totalCost) {
-        return parseFloat(fichaMatch.totalCost) || 0;
-      }
-
-      const cardapio = localCache.products;
-      const prodMatch = cardapio.find(p => p.name && p.name.toLowerCase() === productName.toLowerCase());
-      if (prodMatch) {
-        return parseFloat(prodMatch.cost || prodMatch.costPrice || prodMatch.custo || 0);
-      }
-
-      return 0; // CMV transparente caso não informado
+    function getProductCostFromCardapio(item) {
+      const itemName = typeof item === 'string' ? item : String(item?.name || item?.title || '');
+      const productId = typeof item === 'object' && item
+        ? String(item.productId || item.product_id || item.id || '')
+        : '';
+      const cleanName = itemName.trim().toLowerCase();
+      const positiveCost = value => {
+        const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(',', '.'));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+      };
+      const recipe = localCache.recipes.find(f => productId && String(f.productId || f.product_id || '') === productId)
+        || localCache.recipes.find(f => cleanName && String(f.productName || f.name || '').trim().toLowerCase() === cleanName);
+      const recipeCost = recipe && positiveCost(recipe.totalCost ?? recipe.cost ?? recipe.unitCost);
+      if (recipeCost) return recipeCost;
+      const product = localCache.products.find(p => productId && String(p.id) === productId)
+        || localCache.products.find(p => cleanName && String(p.name || '').trim().toLowerCase() === cleanName);
+      return product ? positiveCost(product.cost ?? product.costPrice ?? product.custo ?? product.unitCost ?? product.totalCost) : 0;
     }
 
     function openEntryModal() { 
@@ -950,7 +953,7 @@
             s.items.forEach(i => {
               let qty = i.qty || i.quantity || 1;
               let itemName = i.name || i.title || '';
-              let unitCost = getProductCostFromCardapio(itemName);
+              let unitCost = getProductCostFromCardapio(i);
               totalCmv += (unitCost * qty);
             });
           }
@@ -1003,8 +1006,10 @@
       });
 
       // Cálculos Matemáticos DRE rigorosos
-      const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels + manualIncome);
-      const grossMargin = Math.max(0, netSales - totalCmv);
+      // As vendas canceladas já foram excluídas de grossSales; não subtrair novamente.
+      // Valores negativos são mantidos para revelar prejuízo real.
+      const netSales = grossSales - totalDiscounts + manualIncome;
+      const grossMargin = netSales - totalCmv;
       const netProfit = grossMargin - manualExpenses;
       const profitMarginPct = netSales > 0 ? ((netProfit / netSales) * 100).toFixed(1) : '0.0';
 

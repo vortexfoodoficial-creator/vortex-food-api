@@ -583,7 +583,14 @@
       const todayOrders = numberingRecords.filter(order => (order.date || '').split('T')[0] === dateStr);
       const visibleNumbers = todayOrders.map(order => parseInt(order.displayId || order.display_id || order.displayid || order.id, 10))
         .filter(number => Number.isSafeInteger(number) && number > 0);
-      const displayOrderNumber = visibleNumbers.length > 0 ? Math.max(...visibleNumbers) + 1 : 1;
+      let displayOrderNumber = null;
+      if (typeof dbGetNextOrderDisplayNumber === 'function') {
+        const numberResult = await dbGetNextOrderDisplayNumber('pdv');
+        if (!numberResult.error && numberResult.displayId) displayOrderNumber = Number(numberResult.displayId);
+      }
+      if (!Number.isSafeInteger(displayOrderNumber) || displayOrderNumber <= 0) {
+        displayOrderNumber = visibleNumbers.length > 0 ? Math.max(...visibleNumbers) + 1 : 1;
+      }
       const technicalOrderId = 'pdv_' + (window.crypto && typeof window.crypto.randomUUID === 'function'
         ? window.crypto.randomUUID()
         : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + '_' + Math.random().toString(36).slice(2));

@@ -179,7 +179,10 @@ BEGIN
   END IF;
 
   IF v_origin IN ('mesa','mesas','comanda','tables') THEN
-    IF NOT public.vortex_user_has_permission(p_store_id,'tables.open') THEN
+    IF NOT (
+      public.vortex_user_has_permission(p_store_id,'tables.open')
+      OR public.vortex_user_has_permission(p_store_id,'tables.close')
+    ) THEN
       RAISE EXCEPTION 'Seu perfil não pode abrir comandas ou enviar pedidos de mesa.';
     END IF;
   ELSIF v_origin IN ('delivery','entrega') THEN

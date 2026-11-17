@@ -428,6 +428,21 @@
     }
   }
 
+  // Ao voltar a ficar online ou retornar à aba, tenta reutilizar a credencial existente.
+  // Não inicia um novo pareamento nem descarta o último painel renderizado.
+  window.addEventListener('online', () => {
+    if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
+      stopFeedPolling();
+      loadFeed(false);
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && localStorage.getItem(TOKEN_STORAGE_KEY)) {
+      stopFeedPolling();
+      loadFeed(false);
+    }
+  });
+
   boot();
 })();
 </script>

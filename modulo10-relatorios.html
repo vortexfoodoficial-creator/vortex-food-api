@@ -499,6 +499,8 @@
     }
 
     function getProductCostFromCardapio(item) {
+      const snapshotCost = item && typeof item === 'object' ? Number(item.unitCost ?? item.costAtSale ?? item.cost_at_sale) : 0;
+      if (Number.isFinite(snapshotCost) && snapshotCost > 0) return snapshotCost;
       const itemName = typeof item === 'string' ? item : String(item?.name || item?.title || '');
       const productId = typeof item === 'object' && item
         ? String(item.productId || item.product_id || item.id || '')

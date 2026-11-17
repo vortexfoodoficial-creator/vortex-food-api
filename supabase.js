@@ -192,6 +192,7 @@ async function dbSaveSale(saleData) {
   const record = {
     store_id: storeId,
     id: String(saleData.id),
+    display_id: saleData.displayId ?? saleData.display_id ?? null,
     client: saleData.client || 'Cliente Balcão',
     channel: saleData.channel || 'pdv',
     total: parseFloat(saleData.total) || 0,
@@ -233,6 +234,7 @@ async function dbFetchSales() {
 
   const mapped = data.map(item => ({
     id: item.id,
+    displayId: item.display_id || item.displayId || item.id,
     client: item.client,
     channel: item.channel,
     total: parseFloat(item.total) || 0,

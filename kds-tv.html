@@ -368,7 +368,10 @@
       card.className = 'order ' + (order.status === 'preparing' ? 'preparing' : order.status === 'ready' ? 'ready' : '');
       const head = document.createElement('div');
       head.className = 'order-head';
-      addText(head, 'div', 'order-number', '#' + (order.displayId || order.id || '—'));
+      const visibleOrderNumber = order.displayId && String(order.displayId) !== String(order.id)
+        ? order.displayId
+        : (/^(pdv_|deliv_|mesa_)/i.test(String(order.id || '')) ? '—' : (order.displayId || order.id || '—'));
+      addText(head, 'div', 'order-number', '#' + visibleOrderNumber);
       addText(head, 'div', 'status-tag', statusLabel(order.status));
       card.appendChild(head);
 

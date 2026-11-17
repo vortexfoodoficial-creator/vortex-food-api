@@ -431,7 +431,7 @@
         price.className = 'catalog-item-price';
         price.textContent = `R$ ${Number(product.price || 0).toFixed(2).replace('.', ',')}`;
         card.append(name, price);
-        const addProduct = () => addToPdvCart(product.name, Number(product.price) || 0, product.category || 'Geral');
+        const addProduct = () => addToPdvCart(product.name, Number(product.price) || 0, product.category || 'Geral', product.id);
         card.addEventListener('click', addProduct);
         card.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -444,10 +444,10 @@
       grid.appendChild(fragment);
     }
 
-    function addToPdvCart(name, price, category) {
-      const existing = pdvCart.find(i => i.name === name);
+    function addToPdvCart(name, price, category, productId = null) {
+      const existing = pdvCart.find(i => i.name === name && String(i.productId || '') === String(productId || ''));
       if (existing) existing.qty += 1;
-      else pdvCart.push({ name, price, qty: 1, category: category || 'Geral' });
+      else pdvCart.push({ productId: productId || null, name, price, qty: 1, category: category || 'Geral' });
       renderPdvCart();
     }
 

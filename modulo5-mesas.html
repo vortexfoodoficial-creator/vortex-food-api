@@ -876,10 +876,12 @@
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,
         status: 'finished', date: dateStr, time: timeStr, items: currentData.sentItems
       };
+      let savedSaleItems = newSaleRecord.items;
       try {
         if (typeof dbSaveSale !== 'function') throw new Error('Rotina segura de gravação de vendas não disponível.');
         const result = await dbSaveSale(newSaleRecord);
         if (!result || result.error) throw (result && result.error) || new Error('A venda não foi confirmada na nuvem.');
+        if (Array.isArray(result.items)) savedSaleItems = result.items;
       } catch (err) {
         console.error('Erro ao salvar venda da mesa no Supabase:', err);
         let history = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -892,7 +894,7 @@
         return;
       }
       let history = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-      const confirmed = { ...newSaleRecord, cloudSyncPending: false };
+      const confirmed = { ...newSaleRecord, items: savedSaleItems, cloudSyncPending: false };
       const idx = history.findIndex(s => String(s.id) === String(confirmed.id));
       if (idx >= 0) history[idx] = { ...history[idx], ...confirmed }; else history.unshift(confirmed);
       localStorage.setItem('vortex_sales_history', JSON.stringify(history));

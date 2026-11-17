@@ -618,7 +618,9 @@
       let cardsHtml = '';
       filteredOrders.forEach(order => {
         let visibleDisplayId = order.displayId || order.displayid || order.code || order.id;
-        if (String(visibleDisplayId) === String(order.id) && /^(pdv_|deliv_|mesa_)/i.test(String(order.id))) visibleDisplayId = '—';
+        if (/^(pdv_|deliv_|mesa_)/i.test(String(visibleDisplayId || ''))) {
+          visibleDisplayId = /^(pdv_|deliv_|mesa_)/i.test(String(order.id || '')) ? '—' : order.id;
+        }
         let statusClass = `status-${order.status || 'received'}`;
         let statusLabel = '';
         if (order.status === 'new' || order.status === 'received') statusLabel = '🟡 NOVO';

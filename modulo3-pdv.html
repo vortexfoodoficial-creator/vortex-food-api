@@ -573,9 +573,14 @@
       }
       const localOrders = readLocalKdsOrders();
       const knownOrders = mergeKdsOrders(kdsOrdersCache || [], localOrders);
-      const todayOrders = knownOrders.filter(order => (order.date || '').split('T')[0] === dateStr && !isNaN(parseInt(order.id, 10)));
-      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(order => parseInt(order.id, 10))) + 1 : 1;
-      const cleanOrderId = String(nextSeqNumber);
+      const todayOrders = knownOrders.filter(order => (order.date || '').split('T')[0] === dateStr);
+      const visibleNumbers = todayOrders.map(order => parseInt(order.displayId || order.displayid || order.id, 10))
+        .filter(number => Number.isSafeInteger(number) && number > 0);
+      const displayOrderNumber = visibleNumbers.length > 0 ? Math.max(...visibleNumbers) + 1 : 1;
+      const technicalOrderId = 'pdv_' + (window.crypto && typeof window.crypto.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + '_' + Math.random().toString(36).slice(2));
+      const cleanOrderId = technicalOrderId;
 
       const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
       const channelLabel = `Balcão (${selectedConsumptionType})`;
@@ -588,6 +593,7 @@
 
       const newSaleRecord = {
         id: cleanOrderId,
+        displayId: displayOrderNumber,
         client: clientName,
         channel: channelLabel,
         total,
@@ -605,6 +611,7 @@
 
       const newKdsOrder = {
         id: cleanOrderId,
+        displayId: displayOrderNumber,
         origin: channelLabel,
         client: clientName,
         address: selectedConsumptionType,
@@ -650,7 +657,7 @@
       renderPdvCart();
 
       activePdvSyncId = cleanOrderId;
-      showNoticeModal('Venda registrada!', `Pedido #${cleanOrderId} salvo neste dispositivo. Sincronizando com a nuvem...`, '⏳');
+      showNoticeModal('Venda registrada!', `Pedido #${displayOrderNumber} salvo neste dispositivo. Sincronizando com a nuvem...`, '⏳');
 
       // As duas gravações são independentes e executadas em paralelo.
       const syncSale = (async () => {
@@ -664,11 +671,11 @@
         const modal = document.getElementById('noticeModal');
         const isSameSaleNotice = activePdvSyncId === cleanOrderId && modal && modal.classList.contains('active');
         if (errors.length === 0) {
-          console.info(`Venda #${cleanOrderId} sincronizada com o Supabase.`);
+          console.info(`Venda #${displayOrderNumber} sincronizada com o Supabase.`);
           if (isSameSaleNotice) {
             document.getElementById('noticeIcon').innerText = '🚀';
             document.getElementById('noticeTitle').innerText = 'Venda realizada!';
-            document.getElementById('noticeDesc').textContent = `Pedido #${cleanOrderId} (${selectedConsumptionType}) sincronizado com a nuvem e enviado para a Cozinha.`;
+            document.getElementById('noticeDesc').textContent = `Pedido #${displayOrderNumber} (${selectedConsumptionType}) sincronizado com a nuvem e enviado para a Cozinha.`;
           }
         } else {
           console.error(`Falha ao sincronizar a venda #${cleanOrderId}:`, errors);

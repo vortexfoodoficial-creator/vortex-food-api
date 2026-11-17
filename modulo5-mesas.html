@@ -649,6 +649,27 @@
       return `${year}-${month}-${day}`;
     }
 
+    function getNextTableDisplayNumber(orders, dateStr) {
+      let sales = [];
+      try {
+        const parsed = JSON.parse(localStorage.getItem('vortex_sales_history') || '[]');
+        if (Array.isArray(parsed)) sales = parsed;
+      } catch (error) {}
+      const all = [...(Array.isArray(orders) ? orders : []), ...sales];
+      const numbers = all
+        .filter(item => String(item.date || '').split('T')[0] === dateStr)
+        .map(item => parseInt(item.displayId || item.display_id || item.displayid || item.code || item.id, 10))
+        .filter(value => Number.isSafeInteger(value) && value > 0);
+      return numbers.length ? Math.max(...numbers) + 1 : 1;
+    }
+
+    function createTableTechnicalOrderId() {
+      const uuid = window.crypto && typeof window.crypto.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + '_' + Math.random().toString(36).slice(2);
+      return 'mesa_' + uuid;
+    }
+
     async function submitTableOrderToKds() {
       if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('tables.open')) {
         showNoticeModal('Acesso restrito', 'Seu perfil não pode abrir comandas ou enviar pedidos de mesa.', '🔒');
@@ -668,14 +689,22 @@
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       let localOrders = readLocalKdsOrders();
-      let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [] };
+      try {
+        if (typeof dbFetchKdsOrders === 'function') {
+          const remoteOrders = await dbFetchKdsOrders();
+          localOrders = mergeKdsOrders(remoteOrders, localOrders);
+        }
+      } catch (error) {
+        console.warn('Não foi possível atualizar os pedidos antes de gerar o número de mesa:', error);
+      }
+      let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [], displayIds: [] };
 
-      const todayOrders = localOrders.filter(o => (o.date || '').split('T')[0] === dateStr && !isNaN(parseInt(o.id, 10)));
-      const nextSeqNumber = todayOrders.length > 0 ? Math.max(...todayOrders.map(o => parseInt(o.id, 10))) + 1 : 1;
-      const newOrderId = String(nextSeqNumber);
+      const displayOrderNumber = getNextTableDisplayNumber(localOrders, dateStr);
+      const newOrderId = createTableTechnicalOrderId();
 
       let targetOrder = {
         id: newOrderId,
+        displayId: displayOrderNumber,
         origin: `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`,
         client: clientName,
         address: 'Consumo Local',
@@ -688,13 +717,15 @@
         date: dateStr,
         dateFormatted: now.toLocaleDateString('pt-BR'),
         time: timeStr,
-        code: newOrderId
+        code: String(displayOrderNumber)
       };
 
       localOrders.unshift(targetOrder);
 
       if (!currentData.orderIds) currentData.orderIds = [];
+      if (!currentData.displayIds) currentData.displayIds = [];
       currentData.orderIds.push(newOrderId);
+      currentData.displayIds.push(displayOrderNumber);
 
       let combinedSentItems = [...(currentData.sentItems || [])];
       tempCart.forEach(newItem => {
@@ -712,7 +743,8 @@
         client: clientName,
         sentItems: combinedSentItems,
         totalAccumulated: accumulatedTotal,
-        orderIds: currentData.orderIds
+        orderIds: currentData.orderIds,
+        displayIds: currentData.displayIds
       };
 
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
@@ -720,14 +752,14 @@
 
       closeMesaModal();
       renderMesas();
-      showNoticeModal('Pedido Adicional Enviado!', `Novo lote de pedidos #${newOrderId} enviado para a Cozinha com sucesso!`, '👨‍🍳');
+      showNoticeModal('Pedido Adicional Enviado!', `Novo lote de pedidos #${displayOrderNumber} enviado para a Cozinha.`, '👨‍🍳');
 
       try {
         const syncResult = await saveTableKdsOrderToCloud(targetOrder);
         if (syncResult && syncResult.error) throw syncResult.error;
       } catch (err) {
         console.error('Erro ao salvar KDS mesa no Supabase:', err);
-        showNoticeModal('Sincronização pendente', `O pedido #${newOrderId} continua salvo nesta mesa, mas não foi confirmado na nuvem. Motivo: ${err.message || String(err)}`, '⚠️');
+        showNoticeModal('Sincronização pendente', `O pedido #${displayOrderNumber} continua salvo nesta mesa, mas não foi confirmado na nuvem. Motivo: ${err.message || String(err)}`, '⚠️');
       }
     }
 
@@ -819,10 +851,15 @@
       const now = new Date();
       const dateStr = getLocalDateStr(now);
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : '1';
+      const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : createTableTechnicalOrderId();
+      const localOrdersForDisplay = readLocalKdsOrders();
+      const primaryDisplayId = (currentData.displayIds && currentData.displayIds.length ? currentData.displayIds[0] : null)
+        || (localOrdersForDisplay.find(order => String(order.id) === String(primaryOrderId)) || {}).displayId
+        || null;
       const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
       const newSaleRecord = {
         id: primaryOrderId,
+        displayId: primaryDisplayId,
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
         channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,

@@ -442,7 +442,7 @@ async function dbFetchKdsOrders() {
     observation: item.observation,
     status: item.status || 'received',
     financialStatus: item.financial_status || 'paid',
-    code: '',
+    code: item.code || '',
     displayId: item.displayId || item.displayid || null,
     courier: item.courier || '',
     courier_member_id: item.courier_member_id || null,

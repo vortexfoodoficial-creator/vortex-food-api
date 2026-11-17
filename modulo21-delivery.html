@@ -1229,7 +1229,9 @@
       const todayDateStr = getLocalDateStr(now);
       const dateFormatted = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const technicalId = 'deliv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const technicalId = 'deliv_' + (window.crypto && typeof window.crypto.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + '_' + Math.random().toString(36).slice(2));
       const displaySeqNumber = getNextGlobalOrderNumber();
 
       const newSaleRecord = {

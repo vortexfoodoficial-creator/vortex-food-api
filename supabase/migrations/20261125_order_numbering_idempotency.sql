@@ -572,6 +572,72 @@ BEGIN
           NULLIF(o."displayId",''),
           NULLIF(o.code,''),
           CASE WHEN o.id ~ '^[0-9]{1,18}
+        ),
+        'status',o.status,
+        'date',o.date,
+        'time',o.time,
+        'origin',o.origin,
+        'observation',CASE WHEN v_profile='kitchen' THEN NULLIF(left(COALESCE(o.observation,''),500),'') ELSE NULL END,
+        'items',
+          COALESCE((
+            SELECT jsonb_agg(
+              CASE WHEN v_profile='kitchen' THEN
+                jsonb_build_object(
+                  'name',left(COALESCE(NULLIF(x.value->>'name',''),'Item'),160),
+                  'quantity',
+                    CASE jsonb_typeof(x.value->'qty')
+                      WHEN 'number' THEN x.value->'qty'
+                      WHEN 'string' THEN to_jsonb(left(x.value->>'qty',12))
+                      ELSE '1'::jsonb
+                    END,
+                  'category',left(COALESCE(x.value->>'category',''),80)
+                )
+              ELSE
+                jsonb_build_object(
+                  'name',left(COALESCE(NULLIF(x.value->>'name',''),'Item'),160),
+                  'quantity',
+                    CASE jsonb_typeof(x.value->'qty')
+                      WHEN 'number' THEN x.value->'qty'
+                      WHEN 'string' THEN to_jsonb(left(x.value->>'qty',12))
+                      ELSE '1'::jsonb
+                    END
+                )
+              END
+              ORDER BY x.ordinality
+            )
+            FROM jsonb_array_elements(
+              CASE WHEN jsonb_typeof(o.items)='array' THEN o.items ELSE '[]'::jsonb END
+            ) WITH ORDINALITY AS x(value,ordinality)
+            WHERE jsonb_typeof(x.value)='object'
+          ),'[]'::jsonb)
+      )
+      ORDER BY o.date DESC NULLS LAST,o.time DESC NULLS LAST,o.updated_at DESC NULLS LAST
+    ),
+    '[]'::jsonb
+  )
+  INTO v_orders
+  FROM (
+    SELECT id,"displayId",code,status,date,time,origin,observation,items,updated_at
+    FROM public.vortex_kds_orders
+    WHERE store_id=v_store_id
+      AND COALESCE(status,'') NOT IN ('finished','completed','cancelled')
+    ORDER BY date DESC NULLS LAST,time DESC NULLS LAST,updated_at DESC NULLS LAST
+    LIMIT 100
+  ) AS o;
+
+  RETURN jsonb_build_object(
+    'authorized',true,
+    'profile',v_profile,
+    'orders',v_orders,
+    'server_time',now()
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_get_kds_tv_feed(text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_get_kds_tv_feed(text) TO anon,authenticated;
+
+COMMIT;
  THEN o.id ELSE '—' END
         ),
         'status',o.status,

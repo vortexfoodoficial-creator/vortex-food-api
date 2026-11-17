@@ -498,32 +498,28 @@
       loadReportsData();
     }
 
-    function getProductCostFromCardapio(productName) {
-      if (!productName) return 0;
-      const cleanName = productName.trim().toLowerCase();
+    function getProductCostFromCardapio(item) {
+      const itemName = typeof item === 'string' ? item : String(item?.name || item?.title || '');
+      const productId = typeof item === 'object' && item
+        ? String(item.productId || item.product_id || item.id || '')
+        : '';
+      const cleanName = itemName.trim().toLowerCase();
+      const positiveCost = value => {
+        const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(',', '.'));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+      };
+      const localRecipes = (() => { try { return JSON.parse(localStorage.getItem('vortex_recipes_catalog') || '[]'); } catch (error) { return []; } })();
+      const recipes = [...(Array.isArray(cloudRecipes) ? cloudRecipes : []), ...(Array.isArray(localRecipes) ? localRecipes : [])];
+      const recipe = recipes.find(r => productId && String(r.productId || r.product_id || '') === productId)
+        || recipes.find(r => cleanName && String(r.productName || r.name || '').trim().toLowerCase() === cleanName);
+      const recipeCost = recipe && positiveCost(recipe.totalCost ?? recipe.cost ?? recipe.unitCost);
+      if (recipeCost) return recipeCost;
 
-      const recipes = cloudRecipes.length > 0 ? cloudRecipes : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
-      const recMatch = recipes.find(r => r.productName && r.productName.trim().toLowerCase() === cleanName);
-      if (recMatch) {
-        let val = parseFloat(recMatch.totalCost ?? recMatch.cost ?? 0);
-        if (val > 0) return val;
-      }
-
-      const fichas = cloudFichas.length > 0 ? cloudFichas : (JSON.parse(localStorage.getItem('vortex_fichas_tecnicas')) || []);
-      const fichaMatch = fichas.find(f => f.name && f.name.trim().toLowerCase() === cleanName);
-      if (fichaMatch) {
-        let val = parseFloat(fichaMatch.totalCost ?? fichaMatch.custo ?? fichaMatch.cost ?? fichaMatch.unitCost ?? 0);
-        if (val > 0) return val;
-      }
-
-      const cardapio = cloudCardapio.length > 0 ? cloudCardapio : (JSON.parse(localStorage.getItem('vortex_cardapio_produtos') || localStorage.getItem('vortex_products_catalog')) || []);
-      const prodMatch = cardapio.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
-      if (prodMatch) {
-        let val = parseFloat(prodMatch.costPrice ?? prodMatch.cost ?? prodMatch.custo ?? prodMatch.unitCost ?? prodMatch.priceCost ?? 0);
-        if (val > 0) return val;
-      }
-
-      return 0;
+      const localProducts = (() => { try { return JSON.parse(localStorage.getItem('vortex_products_catalog') || localStorage.getItem('vortex_cardapio_produtos') || '[]'); } catch (error) { return []; } })();
+      const products = [...(Array.isArray(cloudCardapio) ? cloudCardapio : []), ...(Array.isArray(localProducts) ? localProducts : [])];
+      const product = products.find(p => productId && String(p.id) === productId)
+        || products.find(p => cleanName && String(p.name || '').trim().toLowerCase() === cleanName);
+      return product ? positiveCost(product.cost ?? product.costPrice ?? product.custo ?? product.unitCost ?? product.totalCost ?? product.priceCost) : 0;
     }
 
     function getFilteredSales() {
@@ -608,14 +604,17 @@
       }
 
       try {
-        const [salesData, recipesData] = await Promise.all([
+        const [salesData, recipesData, catalogData, expensesData] = await Promise.all([
           typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]),
-          typeof dbFetchStoreDocument === 'function' ? dbFetchStoreDocument('recipes') : Promise.resolve(null)
+          typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([]),
+          typeof dbFetchCatalog === 'function' ? dbFetchCatalog() : Promise.resolve({ products: [] }),
+          typeof dbFetchFinancialEntries === 'function' ? dbFetchFinancialEntries() : Promise.resolve([])
         ]);
         if (Array.isArray(salesData)) cloudSales = salesData;
         if (Array.isArray(recipesData)) cloudRecipes = recipesData;
-        // Produtos, fichas legadas e despesas permanecem no cache local por loja
-        // até possuírem tabelas próprias com políticas de isolamento.
+        if (catalogData && Array.isArray(catalogData.products)) cloudCardapio = catalogData.products;
+        if (Array.isArray(expensesData)) cloudExpenses = expensesData;
+        try { cloudFichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas') || '[]'); } catch (error) { cloudFichas = []; }
       } catch (err) {
         console.warn('Aviso: Utilizando dados locais da loja devido a falha na nuvem:', err);
       }
@@ -645,18 +644,13 @@
           if (s.items && Array.isArray(s.items)) {
             s.items.forEach(i => {
               let qty = parseFloat(i.qty) || 1;
-              let unitCost = getProductCostFromCardapio(i.name);
+              let unitCost = getProductCostFromCardapio(i);
               totalCmvReal += (unitCost * qty);
             });
-          } else {
-            totalCmvReal += (val * 0.50);
           }
         }
       });
 
-      const netSales = Math.max(0, grossSales - totalDiscounts - totalCancels);
-      const grossMargin = Math.max(0, netSales - totalCmvReal);
-      
       let totalOperatingExpenses = 0;
       let manualIncome = 0;
 
@@ -673,7 +667,11 @@
         }
       });
 
-      const adjustedNetSales = netSales + manualIncome;
+      // Vendas canceladas já foram excluídas de grossSales; não devem ser subtraídas novamente.
+      // Mantemos valores negativos para mostrar prejuízo em vez de mascará-lo como zero.
+      const netSales = grossSales - totalDiscounts + manualIncome;
+      const grossMargin = netSales - totalCmvReal;
+      const adjustedNetSales = netSales;
       const netProfit = grossMargin - totalOperatingExpenses;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
@@ -709,8 +707,9 @@
         
         // Padroniza o ID amigável do pedido (se for DELV-xxx ou timestamp longo, exibe de forma curta ou limpa)
         let rawId = String(s.id || 'N/A');
-        let displayOrderId = rawId;
-        if (rawId.startsWith('DELV-')) {
+        let displayOrderId = s.displayId || s.display_id || s.displayid || rawId;
+        if (displayOrderId === rawId && /^(pdv_|deliv_|mesa_)/i.test(rawId)) displayOrderId = '—';
+        if (displayOrderId === rawId && rawId.startsWith('DELV-')) {
           // Extrai os dígitos finais do timestamp do delivery para parecer um número sequencial amigável
           let digitsOnly = rawId.replace(/\D/g, '');
           displayOrderId = digitsOnly.length > 4 ? digitsOnly.slice(-4) : rawId;

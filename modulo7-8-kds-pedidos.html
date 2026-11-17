@@ -350,6 +350,20 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="tvRevokeConfirmModal">
+    <div class="custom-modal-card" style="text-align:center;">
+      <div style="font-size:2.8rem; margin-bottom:10px;">🔒</div>
+      <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px;">Revogar televisão?</div>
+      <div id="tvRevokeConfirmText" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">
+        A televisão perderá imediatamente o acesso ao painel.
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn-modal-secondary" onclick="kdsTvCloseRevokeConfirm()">Voltar</button>
+        <button type="button" class="btn-modal-danger" id="btnConfirmTvRevoke" onclick="kdsTvConfirmRevoke()">Sim, revogar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="noticeModal">
     <div class="custom-modal-card" style="text-align:center;">
       <div style="font-size:3rem; margin-bottom:12px;" id="noticeIcon">🎉</div>
@@ -887,23 +901,46 @@
       }
     }
 
-    async function kdsTvRevokeDevice(deviceId, deviceName) {
-      if (!confirm('Revogar a televisão "' + (deviceName || 'Televisão') + '"? Ela perderá o acesso aos pedidos.')) return;
+    let kdsTvPendingRevoke = null;
+
+    function kdsTvRevokeDevice(deviceId, deviceName) {
+      kdsTvPendingRevoke = { deviceId, deviceName: deviceName || 'Televisão' };
+      document.getElementById('tvRevokeConfirmText').textContent =
+        'A TV "' + kdsTvPendingRevoke.deviceName + '" perderá imediatamente o acesso aos pedidos. Deseja continuar?';
+      document.getElementById('tvRevokeConfirmModal').classList.add('active');
+    }
+
+    function kdsTvCloseRevokeConfirm() {
+      kdsTvPendingRevoke = null;
+      document.getElementById('tvRevokeConfirmModal').classList.remove('active');
+    }
+
+    async function kdsTvConfirmRevoke() {
+      if (!kdsTvPendingRevoke) return;
+      const pending = kdsTvPendingRevoke;
+      const button = document.getElementById('btnConfirmTvRevoke');
+      button.disabled = true;
+      button.textContent = 'Revogando…';
       try {
         const supabase = getSupabase();
         const storeId = await vortexGetCurrentStoreId();
         if (!supabase || !storeId) throw new Error('Conexão ou estabelecimento indisponível.');
         const { data, error } = await supabase.rpc('rpc_revoke_kds_tv_device', {
           p_store_id: storeId,
-          p_device_id: deviceId
+          p_device_id: pending.deviceId
         });
         if (error) throw error;
         if (!data || data.success !== true) throw new Error('A televisão não foi encontrada ou já está revogada.');
+        kdsTvCloseRevokeConfirm();
         await kdsTvLoadDevices();
-        showNoticeModal('Televisão revogada', 'A TV "' + (deviceName || 'Televisão') + '" perdeu o acesso ao painel.', '🔒');
+        showNoticeModal('Televisão revogada', 'A TV "' + pending.deviceName + '" perdeu o acesso ao painel.', '🔒');
       } catch (error) {
         console.error('Falha ao revogar TV:', error);
-        alert(error && error.message ? error.message : 'Não foi possível revogar a televisão.');
+        kdsTvCloseRevokeConfirm();
+        showNoticeModal('Não foi possível revogar', error && error.message ? error.message : 'Tente novamente.', '⚠️');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Sim, revogar';
       }
     }
 

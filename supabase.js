@@ -181,6 +181,26 @@ async function vortexResolveStoreIdForWrite() {
   return { storeId, error: null };
 }
 
+// Solicita ao banco o próximo número amigável, com contador atômico por loja/dia.
+// Enquanto a migração correspondente não for aplicada, os módulos usam seu fallback local.
+async function dbGetNextOrderDisplayNumber(origin) {
+  const supabase = getSupabase();
+  if (!supabase) return { displayId: null, error: new Error('Supabase não inicializado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) {
+    return { displayId: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  }
+  const { data, error } = await supabase.rpc('rpc_next_order_display_number', {
+    p_store_id: resolved.storeId,
+    p_origin: String(origin || 'pdv')
+  });
+  if (error) return { displayId: null, error };
+  const displayId = data && data.success === true ? data.display_id : null;
+  return displayId != null && String(displayId).trim()
+    ? { displayId: String(displayId), error: null }
+    : { displayId: null, error: new Error('O servidor não retornou um número de pedido válido.') };
+}
+
 // Captura o custo unitário no momento da venda para que alterações futuras
 // no catálogo não reescrevam artificialmente o lucro de vendas antigas.
 async function dbEnrichSaleItemsWithCosts(items) {
@@ -229,8 +249,9 @@ async function dbEnrichSaleItemsWithCosts(items) {
 
 // Vendas
 async function dbSaveSale(saleData) {
+  const enrichedSaleItems = await dbEnrichSaleItemsWithCosts(saleData.items);
   const supabase = getSupabase();
-  if (!supabase) return { error: 'Supabase não inicializado' };
+  if (!supabase) return { error: 'Supabase não inicializado', items: enrichedSaleItems };
   const resolvedStore = await vortexResolveStoreIdForWrite();
   if (resolvedStore.error || !resolvedStore.storeId) return { error: resolvedStore.error || new Error('Estabelecimento ativo não identificado.') };
   const storeId = resolvedStore.storeId;
@@ -249,7 +270,7 @@ async function dbSaveSale(saleData) {
     financial_status: saleData.financialStatus || saleData.financial_status || 'paid',
     date: saleData.date || new Date().toISOString().split('T')[0],
     time: saleData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    items: await dbEnrichSaleItemsWithCosts(saleData.items),
+    items: enrichedSaleItems,
     updated_at: new Date().toISOString()
   };
 

@@ -571,8 +571,7 @@ BEGIN
         'displayId',COALESCE(
           NULLIF(o."displayId",''),
           NULLIF(o.code,''),
-          CASE WHEN o.id ~ '^[0-9]{1,18}
-        ),
+          CASE WHEN o.id ~ '^[0-9]{1,18}$' THEN o.id ELSE '—' END
         'status',o.status,
         'date',o.date,
         'time',o.time,

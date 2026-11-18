@@ -378,4 +378,149 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_cancel_kds_item(text,text,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_cancel_kds_item(text,text,text,text) TO authenticated;
 
+
+-- A baixa automática ignora itens cancelados antes do consumo.
+CREATE OR REPLACE FUNCTION public.rpc_consume_stock_for_order_secure(p_store_id uuid,p_order_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_order public.vortex_kds_orders%ROWTYPE;
+  v_recipes jsonb;
+  v_order_item jsonb;
+  v_recipe jsonb;
+  v_ingredient jsonb;
+  v_product_id text;
+  v_product_name text;
+  v_stock_id text;
+  v_stock_name text;
+  v_stock_unit text;
+  v_order_qty numeric;
+  v_ingredient_qty numeric;
+  v_required_qty numeric;
+  v_item_index integer := 0;
+  v_ingredient_index integer;
+  v_idempotency text;
+  v_inserted integer;
+  v_total integer := 0;
+BEGIN
+  IF auth.uid() IS NULL OR NOT (
+    public.vortex_user_has_permission(p_store_id,'kds.update_status')
+    OR public.vortex_user_has_permission(p_store_id,'stock.consume')
+  ) THEN
+    RAISE EXCEPTION 'Seu perfil não pode iniciar o consumo automático de estoque.';
+  END IF;
+
+  SELECT * INTO v_order
+  FROM public.vortex_kds_orders
+  WHERE store_id=p_store_id AND id=p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_order.status<>'preparing' THEN
+    RAISE EXCEPTION 'O consumo só pode ser processado para um pedido confirmado em preparo.';
+  END IF;
+
+  SELECT data INTO v_recipes
+  FROM public.vortex_store_documents
+  WHERE store_id=p_store_id AND document_key='recipes';
+
+  IF jsonb_typeof(v_recipes) IS DISTINCT FROM 'array' THEN
+    RETURN jsonb_build_object('success',true,'skipped',true,'reason','no_recipes');
+  END IF;
+
+  FOR v_order_item IN SELECT value FROM jsonb_array_elements(COALESCE(v_order.items,'[]'::jsonb))
+  LOOP
+    -- Itens cancelados antes da baixa não podem consumir ingredientes.
+    IF COALESCE(v_order_item->>'status','active')='cancelled' THEN
+      v_item_index := v_item_index+1;
+      CONTINUE;
+    END IF;
+    v_product_id := COALESCE(v_order_item->>'id',v_order_item->>'productId');
+    v_product_name := COALESCE(v_order_item->>'name',v_order_item->>'title','');
+    v_order_qty := COALESCE(NULLIF(v_order_item->>'qty','')::numeric,NULLIF(v_order_item->>'quantity','')::numeric,1);
+    IF v_order_qty<=0 THEN
+      RAISE EXCEPTION 'Quantidade inválida em um item do pedido.';
+    END IF;
+
+    SELECT value INTO v_recipe
+    FROM jsonb_array_elements(v_recipes)
+    WHERE (v_product_id IS NOT NULL AND value->>'productId'=v_product_id)
+       OR (COALESCE(value->>'productName','')<>'' AND lower(value->>'productName')=lower(v_product_name))
+    LIMIT 1;
+
+    IF v_recipe IS NULL OR jsonb_typeof(v_recipe->'ingredients') IS DISTINCT FROM 'array' THEN
+      v_item_index := v_item_index + 1;
+      CONTINUE;
+    END IF;
+
+    v_ingredient_index := 0;
+    FOR v_ingredient IN SELECT value FROM jsonb_array_elements(v_recipe->'ingredients')
+    LOOP
+      v_stock_id := COALESCE(v_ingredient->>'insumoId',v_ingredient->>'ingredientId');
+      v_stock_name := COALESCE(v_ingredient->>'name','');
+      v_ingredient_qty := NULLIF(v_ingredient->>'qty','')::numeric;
+
+      IF v_ingredient_qty IS NULL OR v_ingredient_qty<=0 THEN
+        RAISE EXCEPTION 'Ficha técnica contém quantidade de ingrediente inválida.';
+      END IF;
+
+      SELECT id,unit INTO v_stock_id,v_stock_unit
+      FROM public.vortex_stock_items
+      WHERE store_id=p_store_id
+        AND (
+          (v_stock_id IS NOT NULL AND id=v_stock_id)
+          OR (v_stock_name<>'' AND lower(name)=lower(v_stock_name))
+        )
+      LIMIT 1
+      FOR UPDATE;
+
+      IF v_stock_id IS NOT NULL THEN
+        v_required_qty := v_ingredient_qty*v_order_qty;
+        IF (v_ingredient->>'unit' IN ('g','ml')) AND (v_stock_unit IN ('kg','l')) THEN
+          v_required_qty := v_required_qty/1000;
+        END IF;
+
+        v_idempotency := left(
+          'consumption_'||p_order_id||'_item_'||v_item_index||'_ing_'||v_stock_id,180
+        );
+
+        INSERT INTO public.vortex_stock_movements(
+          store_id,id,order_id,item_id,item_name,type,qty,reason,idempotency_key,created_at
+        ) VALUES (
+          p_store_id,
+          'mov_'||replace(gen_random_uuid()::text,'-',''),
+          p_order_id,
+          v_stock_id,
+          left(COALESCE(v_stock_name,v_stock_id),160),
+          'consumption',
+          v_required_qty,
+          left('Consumo automático - Pedido #'||p_order_id||' ('||v_product_name||')',300),
+          v_idempotency,
+          now()
+        )
+        ON CONFLICT (store_id,idempotency_key) DO NOTHING;
+
+        GET DIAGNOSTICS v_inserted = ROW_COUNT;
+        IF v_inserted>0 THEN
+          UPDATE public.vortex_stock_items
+          SET qty=GREATEST(0,COALESCE(qty,0)-v_required_qty),updated_at=now()
+          WHERE store_id=p_store_id AND id=v_stock_id;
+          v_total := v_total+1;
+        END IF;
+      END IF;
+
+      v_ingredient_index := v_ingredient_index+1;
+    END LOOP;
+    v_item_index := v_item_index+1;
+  END LOOP;
+
+  RETURN jsonb_build_object('success',true,'skipped',v_total=0,'movements',v_total);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_consume_stock_for_order_secure(uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_consume_stock_for_order_secure(uuid,text) TO authenticated;
+
 COMMIT;

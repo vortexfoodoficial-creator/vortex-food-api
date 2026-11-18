@@ -509,6 +509,12 @@ async function dbGetDeliveryDispatchRoutes() {
   return await vortexDeliveryRpc('rpc_get_delivery_dispatch_routes', { p_store_id: storeId });
 }
 
+async function dbGetDeliveryDispatchCouriers() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_delivery_dispatch_couriers', { p_store_id: storeId });
+}
+
 async function dbTransferDeliveryRoute(routeId, newCourierUserId) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -539,6 +545,7 @@ async function dbCancelDeliveryRoute(routeId, reason) {
 window.VortexDelivery = {
   createRoute: dbCreateDeliveryRoute,
   fetchDispatchRoutes: dbGetDeliveryDispatchRoutes,
+  fetchDispatchCouriers: dbGetDeliveryDispatchCouriers,
   transferRoute: dbTransferDeliveryRoute,
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,

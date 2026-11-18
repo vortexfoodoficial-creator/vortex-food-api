@@ -565,7 +565,16 @@
         try {
           const cloudCarts = await dbFetchTableCarts();
           if (!cloudCarts.error && cloudCarts.data) {
+            const localCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
             tableCarts = cloudCarts.data;
+            const localPending = localCarts[activeTableId];
+            if (localPending && localPending.cloudSyncPending) {
+              tableCarts[activeTableId] = localPending;
+              const retry = await dbSaveTableCart(activeTableId, localPending);
+              if (!retry.error) {
+                tableCarts[activeTableId].cloudSyncPending = false;
+              }
+            }
             localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
             renderMesas();
           }
@@ -801,8 +810,12 @@
         if (typeof dbSaveTableCart !== 'function') throw new Error('Rotina de sincronização da comanda não disponível.');
         const cartSync = await dbSaveTableCart(activeTableId, tableCarts[activeTableId]);
         if (cartSync && cartSync.error) throw cartSync.error;
+        tableCarts[activeTableId].cloudSyncPending = false;
+        localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       } catch (err) {
         console.error('Erro ao salvar KDS/comanda da mesa no Supabase:', err);
+        if (tableCarts[activeTableId]) tableCarts[activeTableId].cloudSyncPending = true;
+        localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
         showNoticeModal('Sincronização pendente', `O pedido #${displayOrderNumber} e a comanda continuam preservados neste dispositivo, mas a sincronização completa na nuvem não foi confirmada. Motivo: ${err.message || String(err)}`, '⚠️');
       }
     }
@@ -1108,11 +1121,25 @@
         showNoticeModal('Sincronização de mesas pendente', 'Não foi possível confirmar a quantidade de mesas na nuvem. Os QR Codes públicos podem ficar indisponíveis até restabelecer a conexão.', '⚠️');
       }
       if (typeof dbFetchTableCarts === 'function') {
+        const localCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
         const cartResult = await dbFetchTableCarts();
         if (!cartResult.error && cartResult.data) {
           tableCarts = cartResult.data;
+          // Migra com segurança comandas antigas que só existiam neste dispositivo.
+          for (const [tableNumber, localCart] of Object.entries(localCarts)) {
+            if (!tableCarts[tableNumber] || localCart.cloudSyncPending) {
+              const saved = await dbSaveTableCart(Number(tableNumber), localCart);
+              if (!saved.error) {
+                tableCarts[tableNumber] = { ...localCart, cloudSyncPending: false };
+              } else {
+                tableCarts[tableNumber] = { ...localCart, cloudSyncPending: true };
+                console.warn('Comanda local aguardando sincronização:', tableNumber, saved.error);
+              }
+            }
+          }
           localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
         } else if (cartResult.error) {
+          tableCarts = localCarts;
           console.warn('Comandas da nuvem indisponíveis; mantendo cache local:', cartResult.error);
         }
       }

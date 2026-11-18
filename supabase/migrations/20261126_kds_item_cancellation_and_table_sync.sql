@@ -178,7 +178,7 @@ BEGIN
     RAISE EXCEPTION 'Autenticação necessária para cancelar item.';
   END IF;
   IF COALESCE(NULLIF(BTRIM(p_order_id),''),'')='' OR COALESCE(NULLIF(BTRIM(p_item_id),''),'')=''
-     OR p_billing_action NOT IN ('charge','waive') THEN
+     OR COALESCE(p_billing_action,'') NOT IN ('charge','waive') THEN
     RAISE EXCEPTION 'Pedido, item ou decisão de cobrança inválidos.';
   END IF;
 
@@ -239,7 +239,7 @@ BEGIN
     FROM public.vortex_stock_movements
     WHERE store_id=v_store_id
       AND order_id=p_order_id
-      AND idempotency_key LIKE 'consumption_'||p_order_id||'_item_'||v_item_index||'_ing_%'
+      AND position('consumption_'||p_order_id||'_item_'||v_item_index||'_ing_' in idempotency_key)=1
   ) INTO v_stock_consumed;
   v_stock_disposition := CASE WHEN v_stock_consumed THEN 'waste_after_consumption' ELSE 'not_consumed' END;
 
@@ -330,6 +330,27 @@ BEGIN
         FROM jsonb_array_elements(v_updated_items) AS e(value)
         WHERE COALESCE(value->>'billingStatus','charge')<>'waive'
       ),
+      status=CASE
+        WHEN NOT EXISTS (
+          SELECT 1 FROM jsonb_array_elements(v_updated_items) AS e(value)
+          WHERE COALESCE(value->>'status','active')<>'cancelled'
+        ) THEN 'cancelled'
+        ELSE status
+      END,
+      cancellation_reason=CASE
+        WHEN NOT EXISTS (
+          SELECT 1 FROM jsonb_array_elements(v_updated_items) AS e(value)
+          WHERE COALESCE(value->>'status','active')<>'cancelled'
+        ) THEN 'Todos os itens foram cancelados individualmente.'
+        ELSE cancellation_reason
+      END,
+      cancelled_at=CASE
+        WHEN NOT EXISTS (
+          SELECT 1 FROM jsonb_array_elements(v_updated_items) AS e(value)
+          WHERE COALESCE(value->>'status','active')<>'cancelled'
+        ) THEN now()
+        ELSE cancelled_at
+      END,
       updated_at=now(),
       updated_by=auth.uid()
   WHERE store_id=v_store_id AND id=p_order_id;

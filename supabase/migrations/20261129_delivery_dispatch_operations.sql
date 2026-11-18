@@ -53,7 +53,7 @@ BEGIN
     jsonb_build_object(
       'id',r.id,'status',r.status,'route_version',r.route_version,
       'courier_user_id',r.courier_user_id,
-      'courier_name',COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy'),
+      'courier_name',COALESCE(NULLIF(cm.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy'),
       'assigned_at',r.assigned_at,'started_at',r.started_at,
       'completed_at',r.completed_at,'cancelled_at',r.cancelled_at,
       'presence_status',COALESCE(cp.status,'unavailable'),
@@ -84,6 +84,7 @@ BEGIN
   INTO v_result
   FROM public.vortex_delivery_routes r
   JOIN auth.users u ON u.id=r.courier_user_id
+  LEFT JOIN public.vortex_store_members cm ON cm.store_id=r.store_id AND cm.user_id=r.courier_user_id
   LEFT JOIN public.vortex_delivery_courier_presence cp
     ON cp.store_id=r.store_id AND cp.courier_user_id=r.courier_user_id
   LEFT JOIN LATERAL (
@@ -119,7 +120,7 @@ BEGIN
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'user_id',m.user_id,
-    'name',COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy'),
+    'name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy'),
     'phone',COALESCE(u.phone,u.raw_user_meta_data->>'phone',''),
     'presence_status',COALESCE(cp.status,'unavailable'),
     'presence_updated_at',cp.updated_at,
@@ -128,7 +129,7 @@ BEGIN
   ) ORDER BY
     CASE COALESCE(cp.status,'unavailable')
       WHEN 'available' THEN 0 WHEN 'in_route' THEN 1 WHEN 'paused' THEN 2 ELSE 3 END,
-    COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy')
+    COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy')
   ),'[]'::jsonb)
   INTO v_result
   FROM public.vortex_store_members m
@@ -178,7 +179,7 @@ BEGIN
     RAISE EXCEPTION 'A rota já pertence a este motoboy.';
   END IF;
 
-  SELECT COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy')
+  SELECT COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy')
   INTO v_new_name
   FROM auth.users u
   JOIN public.vortex_store_members m ON m.user_id=u.id
@@ -280,6 +281,12 @@ BEGIN
       occurrence_notes=CASE WHEN COALESCE(p_notes,'')='' THEN occurrence_notes ELSE left(p_notes,1000) END,
       updated_at=now()
   WHERE store_id=p_store_id AND id=v_stop.id;
+
+  IF p_resolution='returned' THEN
+    UPDATE public.vortex_kds_orders
+    SET courier_member_id=NULL,courier='',updated_at=now()
+    WHERE store_id=p_store_id AND id=p_order_id;
+  END IF;
 
   INSERT INTO public.vortex_delivery_route_events(
     store_id,route_id,stop_id,order_id,actor_user_id,event_type,details

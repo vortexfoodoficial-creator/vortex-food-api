@@ -99,7 +99,7 @@ BEGIN
   LEFT JOIN public.vortex_delivery_courier_presence cp
     ON cp.store_id=r.store_id AND cp.courier_user_id=r.courier_user_id
   LEFT JOIN LATERAL (
-    SELECT count(*)::integer AS stop_count,
+    SELECT count(*) FILTER (WHERE s.status<>'cancelled')::integer AS stop_count,
       count(*) FILTER (WHERE s.status='delivered')::integer AS delivered_count,
       count(*) FILTER (WHERE s.status='occurrence')::integer AS occurrence_count,
       count(*) FILTER (WHERE s.status='returned')::integer AS returned_count

@@ -576,13 +576,18 @@ async function dbCancelKdsItem(orderId, itemId, reason, billingAction) {
     const localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
     const updatedOrders = localOrders.map(order => {
       if (String(order.id) !== String(orderId)) return order;
+      const updatedItems = (order.items || []).map(item =>
+        String(item.itemId || item.item_id) === String(itemId)
+          ? { ...item, status: 'cancelled', billingStatus: billingAction === 'waive' ? 'waive' : 'charge', cancellationReason: reason, cancelledAt: new Date().toISOString() }
+          : item
+      );
       return {
         ...order,
-        items: (order.items || []).map(item =>
-          String(item.itemId || item.item_id) === String(itemId)
-            ? { ...item, status: 'cancelled', billingStatus: billingAction === 'waive' ? 'waive' : 'charge', cancellationReason: reason, cancelledAt: new Date().toISOString() }
-            : item
-        )
+        items: updatedItems,
+        total: updatedItems.reduce((sum,item) => item.billingStatus === 'waive'
+          ? sum
+          : sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1)),0),
+        status: updatedItems.length && updatedItems.every(item => item.status === 'cancelled') ? 'cancelled' : order.status
       };
     });
     localStorage.setItem('vortex_kds_orders', JSON.stringify(updatedOrders));

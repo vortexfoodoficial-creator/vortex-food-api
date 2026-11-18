@@ -353,6 +353,8 @@
       </div>
 
       <button type="button" class="btn-modal-secondary" id="btnStartTvQrScan">📷 Ler QR Code pela câmera</button>
+      <button type="button" class="btn-modal-secondary" id="btnConnectTvCast">📡 Encontrar TV pelo Wi-Fi (Google Cast)</button>
+      <p class="tv-pairing-help">A busca automática funciona em TVs e dispositivos com Chromecast integrado ou Google Cast, na mesma rede Wi-Fi. Para outras Smart TVs, continue usando QR Code ou PIN.</p>
       <div class="tv-pairing-scanner" id="tvPairingScanner">
         <video id="tvPairingVideo" playsinline muted></video>
       </div>
@@ -398,6 +400,13 @@
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js?v=20261126-item-cancel-2"></script>
+  <script>
+    window.__onGCastApiAvailable = function(isAvailable) {
+      window.VORTEX_CAST_API_AVAILABLE = isAvailable === true;
+      window.dispatchEvent(new Event('vortex-cast-api-ready'));
+    };
+  </script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 
   <script>
     let activeFilter = 'all';
@@ -930,6 +939,15 @@
     let kdsTvScanning = false;
     let kdsTvBarcodeDetector = null;
 
+    // Substituir pelo App ID de 8 caracteres criado no Google Cast SDK Developer Console.
+    // O ID é público; não inserir chaves privadas ou credenciais do Supabase aqui.
+    const VORTEX_KDS_CAST_APP_ID = 'CONFIGURE_CAST_APP_ID';
+    const VORTEX_KDS_CAST_NAMESPACE = 'urn:x-cast:com.vortexfood.kds';
+    let kdsTvCastSession = null;
+    let kdsTvCastMessageListener = null;
+    let kdsTvCastPairingConfig = null;
+    const kdsTvCastApprovalsInFlight = new Set();
+
     function kdsTvSetPairingStatus(message) {
       const status = document.getElementById('tvPairingStatus');
       if (status) status.textContent = message;
@@ -1135,6 +1153,141 @@
       }
     }
 
+    async function kdsTvConnectWithGoogleCast() {
+      const status = document.getElementById('tvPairingStatus');
+      const appId = String(VORTEX_KDS_CAST_APP_ID || '').trim();
+      if (!/^[A-F0-9]{8}$/i.test(appId)) {
+        kdsTvSetPairingStatus('A busca por Wi-Fi ainda precisa ser ativada: falta cadastrar o aplicativo Vortex no Google Cast Developer Console e inserir o App ID.');
+        return;
+      }
+      if (!window.cast || !window.cast.framework || !window.chrome || !window.chrome.cast) {
+        kdsTvSetPairingStatus('Este navegador não oferece Google Cast Web Sender. Use o Chrome no Android ou computador compatível, ou continue pelo QR Code/PIN.');
+        return;
+      }
+
+      const deviceName = document.getElementById('tvPairingDeviceName').value.trim();
+      const profile = document.getElementById('tvPairingProfile').value;
+      if (!deviceName || deviceName.length > 80 || !['public', 'kitchen'].includes(profile)) {
+        kdsTvSetPairingStatus('Informe um nome de TV e um perfil válido antes de procurar dispositivos.');
+        return;
+      }
+
+      const button = document.getElementById('btnConnectTvCast');
+      button.disabled = true;
+      button.textContent = 'Procurando televisões…';
+      kdsTvSetPairingStatus('Abrindo a busca de televisões Google Cast na mesma rede Wi-Fi…');
+      kdsTvCastPairingConfig = { deviceName, profile };
+
+      try {
+        const castContext = window.cast.framework.CastContext.getInstance();
+        castContext.setOptions({
+          receiverApplicationId: appId,
+          autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+
+        if (!castContext.getCurrentSession()) {
+          await castContext.requestSession();
+        }
+
+        const session = castContext.getCurrentSession();
+        if (!session) throw new Error('Nenhuma televisão Google Cast foi selecionada.');
+
+        kdsTvCastSession = session;
+        if (kdsTvCastMessageListener) {
+          try { session.removeMessageListener(VORTEX_KDS_CAST_NAMESPACE, kdsTvCastMessageListener); } catch (removeError) {}
+        }
+        kdsTvCastMessageListener = function(namespace, rawMessage) {
+          kdsTvHandleCastPairingMessage(session, rawMessage);
+        };
+        session.addMessageListener(VORTEX_KDS_CAST_NAMESPACE, kdsTvCastMessageListener);
+        await session.sendMessage(VORTEX_KDS_CAST_NAMESPACE, { type: 'START_PAIRING' });
+        kdsTvSetPairingStatus('Televisão encontrada. Solicitando autorização segura para este estabelecimento…');
+      } catch (error) {
+        console.error('Falha ao conectar pelo Google Cast:', error);
+        const message = String(error && (error.description || error.message || error.code) || '');
+        kdsTvSetPairingStatus(/cancel/i.test(message)
+          ? 'Busca cancelada. Nenhuma televisão foi vinculada.'
+          : (message || 'Não foi possível iniciar a conexão Google Cast. Verifique se a TV está na mesma rede Wi-Fi.'));
+      } finally {
+        button.disabled = false;
+        button.textContent = '📡 Encontrar TV pelo Wi-Fi (Google Cast)';
+      }
+    }
+
+    async function kdsTvHandleCastPairingMessage(session, rawMessage) {
+      let message = rawMessage;
+      if (typeof rawMessage === 'string') {
+        try { message = JSON.parse(rawMessage); } catch (error) { return; }
+      }
+      if (!message || typeof message !== 'object') return;
+
+      if (message.type === 'DEVICE_ALREADY_PAIRED') {
+        kdsTvSetPairingStatus('Esta televisão já possui uma credencial salva. Se ela pertence a outro estabelecimento, revogue o vínculo anterior e limpe os dados do site na TV antes de reutilizá-la.');
+        return;
+      }
+      if (message.type !== 'PAIRING_REQUEST') return;
+
+      const pairingId = String(message.pairing_id || '');
+      const secret = String(message.secret || '');
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pairingId)
+        || !/^[0-9a-f]{64}$/i.test(secret)) {
+        kdsTvSetPairingStatus('A televisão enviou um pedido de pareamento inválido. Reinicie a conexão.');
+        return;
+      }
+      if (kdsTvCastApprovalsInFlight.has(pairingId)) return;
+      kdsTvCastApprovalsInFlight.add(pairingId);
+
+      try {
+        const config = kdsTvCastPairingConfig;
+        if (!config) throw new Error('A configuração de pareamento não está mais disponível. Feche e tente novamente.');
+        const supabase = getSupabase();
+        const storeId = await vortexGetCurrentStoreId();
+        if (!supabase || !storeId) throw new Error('Conexão ou estabelecimento ativo indisponível.');
+
+        kdsTvSetPairingStatus('Autorizando a televisão com segurança…');
+        const result = await supabase.rpc('rpc_approve_kds_tv_pairing', {
+          p_store_id: storeId,
+          p_pairing_id: pairingId,
+          p_pairing_secret: secret,
+          p_device_name: config.deviceName,
+          p_profile: config.profile
+        });
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) {
+          const reasons = {
+            invalid_code: 'O pedido de pareamento não foi validado.',
+            expired: 'O pedido de pareamento expirou. Tente novamente.',
+            attempts_exceeded: 'O limite de tentativas foi atingido. Tente novamente.',
+            already_approved: 'Este pedido já foi utilizado.'
+          };
+          throw new Error(reasons[result.data && result.data.reason] || 'Não foi possível autorizar a televisão.');
+        }
+
+        try {
+          await session.sendMessage(VORTEX_KDS_CAST_NAMESPACE, {
+            type: 'PAIRING_APPROVED',
+            pairing_id: pairingId
+          });
+        } catch (messageError) {
+          console.warn('A TV foi autorizada, mas não recebeu a confirmação pelo canal Cast:', messageError);
+        }
+
+        kdsTvSetPairingStatus('Televisão autorizada! A tela está conectando ao painel…');
+        await kdsTvLoadDevices();
+        showNoticeModal(
+          'Televisão pareada!',
+          'A TV "' + result.data.device_name + '" foi vinculada ao estabelecimento pelo Google Cast com o perfil ' +
+            (result.data.profile === 'kitchen' ? 'Cozinha' : 'Público') + '.',
+          '📺'
+        );
+      } catch (error) {
+        console.error('Falha ao aprovar pareamento Google Cast:', error);
+        kdsTvSetPairingStatus(error && error.message ? error.message : 'Não foi possível autorizar a televisão.');
+      } finally {
+        kdsTvCastApprovalsInFlight.delete(pairingId);
+      }
+    }
+
     async function kdsTvApprovePairing() {
       const button = document.getElementById('btnApproveTvPairing');
       const pairingId = document.getElementById('tvPairingId').value.trim();
@@ -1215,6 +1368,7 @@
       document.getElementById('tvPairingForm').hidden = true;
     });
     document.getElementById('btnStartTvQrScan').addEventListener('click', kdsTvStartQrScanner);
+    document.getElementById('btnConnectTvCast').addEventListener('click', kdsTvConnectWithGoogleCast);
     document.getElementById('btnApproveTvPairing').addEventListener('click', kdsTvApprovePairing);
 
     setInterval(() => {

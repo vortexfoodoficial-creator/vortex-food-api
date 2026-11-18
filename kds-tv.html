@@ -512,6 +512,13 @@
       const message = event && event.data;
       if (!message || typeof message !== 'object') return;
 
+      if (message.type === 'HELLO') {
+        if (castReceiverContext && castReceiverContext.isSystemReady()) {
+          castReceiverContext.sendCustomMessage(CAST_NAMESPACE, event.senderId, { type: 'RECEIVER_READY' });
+        }
+        return;
+      }
+
       if (message.type === 'START_PAIRING') {
         if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
           castReceiverContext.sendCustomMessage(CAST_NAMESPACE, event.senderId, {
@@ -538,6 +545,11 @@
       setConnection('', 'TV pronta — aguardando conexão do celular');
       if (!localStorage.getItem(TOKEN_STORAGE_KEY)) {
         showPairScreen('Aguardando conexão pelo celular');
+      }
+      try {
+        castReceiverContext.sendCustomMessage(CAST_NAMESPACE, undefined, { type: 'RECEIVER_READY' });
+      } catch (error) {
+        console.warn('Aguardando o celular iniciar o handshake Cast:', error);
       }
     });
     castReceiverContext.start();

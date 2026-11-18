@@ -954,7 +954,7 @@
       localStorage.setItem('vortex_vendas_hoje', sales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       let kdsOrders = readLocalKdsOrders();
       kdsOrders.forEach(o => {
-        if (currentData.orderIds && currentData.orderIds.includes(String(o.id))) {
+        if (currentData.orderIds && currentData.orderIds.includes(String(o.id)) && o.status !== 'cancelled') {
           o.status = 'finished'; o.payMethod = payment;
           o.amountPaid = payment === 'Dinheiro' ? rawCashGiven : total; o.changeValue = changeVal;
         }
@@ -964,6 +964,8 @@
       try {
         if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
         for (const id of (currentData.orderIds || [])) {
+          const linkedOrder = kdsOrders.find(order => String(order.id) === String(id));
+          if (linkedOrder && linkedOrder.status === 'cancelled') continue;
           const result = await dbUpdateKdsOrder(id, { status: 'finished' });
           if (result && result.error) throw result.error;
         }

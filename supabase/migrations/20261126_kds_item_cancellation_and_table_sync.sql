@@ -4,7 +4,6 @@ BEGIN;
 
 -- Comandas de mesa persistidas por estabelecimento.
 -- Não migra nem apaga os caches locais existentes; o cliente fará a sincronização controlada.
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.vortex_table_carts (
   store_id uuid NOT NULL REFERENCES public.vortex_stores(id) ON DELETE CASCADE,
@@ -123,8 +122,7 @@ REVOKE ALL ON FUNCTION public.rpc_save_table_cart(integer,jsonb) FROM PUBLIC, an
 GRANT EXECUTE ON FUNCTION public.rpc_save_table_cart(integer,jsonb) TO authenticated;
 
 -- Cancelamento individual de itens do KDS com vínculo à comanda de mesa.
--- Itens sem itemId (pedidos históricos) permanecem no fluxo de cancelamento integral.
-BEGIN;
+-- Pedidos históricos sem itemId são preservados e não recebem cancelamento individual automático.
 
 CREATE TABLE IF NOT EXISTS public.vortex_order_item_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

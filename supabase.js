@@ -249,7 +249,7 @@ async function dbEnrichSaleItemsWithCosts(items) {
 
 // Vendas
 async function dbSaveSale(saleData) {
-  const enrichedSaleItems = await dbEnrichSaleItemsWithCosts(saleData.items);
+  const enrichedSaleItems = (await dbEnrichSaleItemsWithCosts(saleData.items)).map((item,index) => ({ ...item, itemId: item.itemId || item.item_id || (String(saleData.id) + '_item_' + (index + 1)) }));
   const supabase = getSupabase();
   if (!supabase) return { error: 'Supabase não inicializado', items: enrichedSaleItems };
   const resolvedStore = await vortexResolveStoreIdForWrite();

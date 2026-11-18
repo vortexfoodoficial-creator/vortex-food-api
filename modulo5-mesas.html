@@ -1059,7 +1059,7 @@
       let kdsOrders = readLocalKdsOrders();
       const mesaOrderIds = Array.from(new Set((currentData.orderIds || []).map(id => String(id))));
       kdsOrders.forEach(o => {
-        const isMesaOrder = /^Mesa\\s/i.test(String(o.origin || ''));
+        const isMesaOrder = /^Mesa\s/i.test(String(o.origin || ''));
         if (isMesaOrder && mesaOrderIds.includes(String(o.id)) && o.status !== 'cancelled') {
           o.status = 'finished'; o.payMethod = payment;
           o.amountPaid = payment === 'Dinheiro' ? Number(newSaleRecord.amountPaid) || total : total;
@@ -1072,7 +1072,7 @@
         if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
         for (const id of mesaOrderIds) {
           const linkedOrder = kdsOrders.find(order => String(order.id) === String(id));
-          if (!linkedOrder || !/^Mesa\\s/i.test(String(linkedOrder.origin || '')) || linkedOrder.status === 'cancelled') continue;
+          if (!linkedOrder || !/^Mesa\s/i.test(String(linkedOrder.origin || '')) || linkedOrder.status === 'cancelled') continue;
           const result = await dbUpdateKdsOrder(id, { status: 'finished' });
           if (result && result.error) throw result.error;
         }

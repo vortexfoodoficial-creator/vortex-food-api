@@ -585,23 +585,28 @@
       let monthlyGoal = 15000;
       let totalTables = 10;
       let tableCarts = {};
+      let cloudTableCarts = null;
       let clientsLoyalty = {};
 
       const now = Date.now();
       if (forceRefresh || now - dashCache.lastFetched > 30000 || dashCache.sales.length === 0) {
         try {
           // Carregamento paralelo simultâneo otimizado (Promise.all)
-          const [salesRes, kdsRes, recipesRes, catalogRes] = await Promise.all([
+          const [salesRes, kdsRes, recipesRes, catalogRes, tableCartsRes] = await Promise.all([
             typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] }),
             typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : Promise.resolve({ data: [] }),
             typeof dbFetchRecipesResult === 'function' ? dbFetchRecipesResult() : Promise.resolve({ data: [] }),
-            typeof dbFetchCatalogResult === 'function' ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } })
+            typeof dbFetchCatalogResult === 'function' ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } }),
+            typeof dbFetchTableCarts === 'function' ? dbFetchTableCarts() : Promise.resolve({ data: null, error: new Error('Consulta de comandas indisponível.') })
           ]);
 
           dashCache.sales = (salesRes && salesRes.data && salesRes.data.length > 0) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
           dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
           dashCache.recipes = (recipesRes && recipesRes.data && recipesRes.data.length > 0) ? recipesRes.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
           dashCache.products = (catalogRes && catalogRes.data && catalogRes.data.products && catalogRes.data.products.length > 0) ? catalogRes.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
+          cloudTableCarts = tableCartsRes && !tableCartsRes.error && tableCartsRes.data && typeof tableCartsRes.data === 'object'
+            ? tableCartsRes.data
+            : null;
           dashCache.lastFetched = now;
         } catch (e) {
           console.warn('Erro ao buscar dados do Supabase, recorrendo ao cache local.', e);
@@ -617,7 +622,10 @@
       sidebarLogoUrl = localStorage.getItem('vortex_store_logo') || '';
       monthlyGoal = parseFloat(localStorage.getItem('vortex_monthly_goal')) || 15000;
       totalTables = parseInt(localStorage.getItem('vortex_total_tables')) || 10;
-      tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      // A nuvem é a fonte principal das comandas; o cache local é fallback.
+      tableCarts = cloudTableCarts !== null
+        ? cloudTableCarts
+        : (JSON.parse(localStorage.getItem('vortex_table_carts')) || {});
       clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
 
       const salesHistory = dashCache.sales.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
@@ -658,9 +666,11 @@
 
       let occupiedCount = 0;
       Object.keys(tableCarts).forEach(k => {
-        if (tableCarts[k] && tableCarts[k].items && tableCarts[k].items.length > 0) {
-          occupiedCount++;
-        }
+        const cart = tableCarts[k];
+        const hasSentItems = cart && Array.isArray(cart.sentItems) && cart.sentItems.length > 0;
+        const hasLegacyItems = cart && Array.isArray(cart.items) && cart.items.length > 0;
+        const hasAccumulatedTotal = cart && Number(cart.totalAccumulated) > 0;
+        if (hasSentItems || hasLegacyItems || hasAccumulatedTotal) occupiedCount++;
       });
       const tablesPercent = Math.round((occupiedCount / totalTables) * 100) || 0;
       const totalClientsCount = Object.keys(clientsLoyalty).length;

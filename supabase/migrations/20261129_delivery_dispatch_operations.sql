@@ -62,6 +62,17 @@ BEGIN
       'delivered_count',COALESCE(stats.delivered_count,0),
       'occurrence_count',COALESCE(stats.occurrence_count,0),
       'returned_count',COALESCE(stats.returned_count,0),
+      'events',COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'event_type',recent.event_type,'created_at',recent.created_at,'details',recent.details
+        ) ORDER BY recent.created_at DESC)
+        FROM (
+          SELECT e.event_type,e.created_at,e.details
+          FROM public.vortex_delivery_route_events e
+          WHERE e.store_id=r.store_id AND e.route_id=r.id
+          ORDER BY e.created_at DESC LIMIT 10
+        ) recent
+      ),'[]'::jsonb),
       'stops',COALESCE((
         SELECT jsonb_agg(jsonb_build_object(
           'stop_id',s.id,'order_id',s.order_id,

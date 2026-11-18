@@ -65,6 +65,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
+  <cast-media-player id="vortexCastMediaPlayer" aria-hidden="true" style="position:fixed;left:-10000px;top:-10000px;width:1px;height:1px;opacity:0;pointer-events:none;"></cast-media-player>
   <div class="topbar">
     <div class="brand">VORTEX <span>FOOD</span></div>
     <div class="connection"><i class="dot" id="connectionDot"></i><span id="connectionText">Aguardando conexão</span></div>
@@ -125,6 +126,8 @@
   const FEED_CACHE_KEY = 'vortex_kds_tv_last_feed_v1';
   const POLL_MS = 5000;
   const PAIR_POLL_MS = 1800;
+  const CAST_NAMESPACE = 'urn:x-cast:com.vortexfood.kds';
+  const isCastReceiverMode = new URLSearchParams(window.location.search).get('cast_receiver') === '1';
 
   const $ = id => document.getElementById(id);
   const supabase = window.supabase && window.supabase.createClient
@@ -137,6 +140,8 @@
   let feedTimer = null;
   let feedBusy = false;
   let currentOrders = [];
+  let castReceiverContext = null;
+  let castPairingStarted = false;
 
   function setConnection(state, message) {
     $('connectionDot').className = 'dot ' + (state || '');
@@ -223,7 +228,9 @@
     setConnection('', message || 'Aguardando pareamento');
   }
 
-  async function startPairing() {
+  async function startPairing(options = {}) {
+    const castMode = options.castMode === true;
+    const castSenderId = options.senderId || undefined;
     if (!supabase) {
       $('pairResult').classList.add('visible');
       $('pairStatus').textContent = 'Não foi possível carregar a conexão com o servidor. Verifique a internet e atualize a página.';
@@ -234,7 +241,7 @@
       $('pairResult').classList.add('visible');
       return;
     }
-    if ($('pairType').value === 'qr' && !window.QRCode) {
+    if (!castMode && $('pairType').value === 'qr' && !window.QRCode) {
       $('pairResult').classList.add('visible');
       $('pairStatus').textContent = 'A biblioteca de QR Code não carregou. Selecione PIN de 6 dígitos e tente novamente.';
       return;
@@ -250,7 +257,7 @@
 
     try {
       const pairingId = makeUuid();
-      const pairingType = $('pairType').value;
+      const pairingType = castMode ? 'qr' : $('pairType').value;
       const pairingSecret = pairingType === 'pin'
         ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0')
         : randomHex(32);
@@ -273,11 +280,11 @@
       }
 
       $('pairId').textContent = pairingId;
-      $('qrMode').classList.toggle('hidden', pairingType !== 'qr');
-      $('pinMode').classList.toggle('hidden', pairingType !== 'pin');
-      if (pairingType === 'pin') {
+      $('qrMode').classList.toggle('hidden', castMode || pairingType !== 'qr');
+      $('pinMode').classList.toggle('hidden', castMode || pairingType !== 'pin');
+      if (!castMode && pairingType === 'pin') {
         $('pinValue').textContent = pairingSecret;
-      } else if (window.QRCode) {
+      } else if (!castMode && window.QRCode) {
         new QRCode($('qr'), {
           text: JSON.stringify({ pairing_id: pairingId, secret: pairingSecret }),
           width: 230,
@@ -286,12 +293,23 @@
           colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M
         });
-      } else {
+      } else if (!castMode) {
         $('qr').textContent = 'Biblioteca de QR indisponível. Atualize a página ou escolha PIN.';
       }
 
-      $('pairStatus').textContent = 'Aguardando aprovação no KDS…';
-      setConnection('', 'Aguardando aprovação');
+      if (castMode) {
+        if (!castReceiverContext || !castSenderId) throw new Error('O canal seguro com o celular não está disponível. Reconecte a televisão.');
+        $('pairStatus').textContent = 'TV encontrada. Aguardando autorização pelo celular…';
+        setConnection('', 'Aguardando autorização do celular');
+        castReceiverContext.sendCustomMessage(CAST_NAMESPACE, castSenderId, {
+          type: 'PAIRING_REQUEST',
+          pairing_id: pairingId,
+          secret: pairingSecret
+        });
+      } else {
+        $('pairStatus').textContent = 'Aguardando aprovação no KDS…';
+        setConnection('', 'Aguardando aprovação');
+      }
       pollPairing(pairingId, deviceToken);
     } catch (error) {
       console.error('Erro ao iniciar pareamento da TV:', error);
@@ -470,19 +488,96 @@
     }
   });
 
+  function loadCastReceiverSdk() {
+    if (window.cast && window.cast.framework && window.cast.framework.CastReceiverContext) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Não foi possível carregar o Google Cast Receiver.'));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function initCastReceiver() {
+    await loadCastReceiverSdk();
+    if (!window.cast || !window.cast.framework || !window.cast.framework.CastReceiverContext) {
+      throw new Error('Este dispositivo não iniciou uma sessão Google Cast válida.');
+    }
+
+    castReceiverContext = window.cast.framework.CastReceiverContext.getInstance();
+    castReceiverContext.addCustomMessageListener(CAST_NAMESPACE, event => {
+      const message = event && event.data;
+      if (!message || typeof message !== 'object') return;
+
+      if (message.type === 'START_PAIRING') {
+        if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
+          castReceiverContext.sendCustomMessage(CAST_NAMESPACE, event.senderId, {
+            type: 'DEVICE_ALREADY_PAIRED'
+          });
+          return;
+        }
+        if (castPairingStarted) return;
+        castPairingStarted = true;
+        $('pairResult').classList.add('visible');
+        $('pairStatus').textContent = 'Solicitação recebida. Criando autorização segura…';
+        startPairing({ castMode: true, senderId: event.senderId }).catch(error => {
+          console.error('Falha ao iniciar pareamento pelo Cast:', error);
+          $('pairStatus').textContent = error && error.message ? error.message : 'Não foi possível iniciar o pareamento.';
+        });
+      }
+
+      if (message.type === 'PAIRING_APPROVED') {
+        $('pairStatus').textContent = 'Autorização confirmada. Conectando ao painel…';
+      }
+    });
+
+    castReceiverContext.addEventListener(window.cast.framework.system.EventType.READY, () => {
+      setConnection('', 'TV pronta — aguardando conexão do celular');
+      if (!localStorage.getItem(TOKEN_STORAGE_KEY)) {
+        showPairScreen('Aguardando conexão pelo celular');
+      }
+    });
+    castReceiverContext.start();
+  }
+
   async function boot() {
+    if (isCastReceiverMode) {
+      const pairTypeField = document.getElementById('pairType')?.closest('.field');
+      if (pairTypeField) pairTypeField.hidden = true;
+      const startButton = $('startPair');
+      if (startButton) startButton.hidden = true;
+      const pairIntro = document.querySelector('#pairScreen .panel > p');
+      if (pairIntro) pairIntro.textContent = 'Esta televisão foi aberta pelo Google Cast. Confirme a autorização no painel Vortex do celular.';
+    }
     if (!supabase) {
       showPairScreen('Não foi possível carregar o serviço de conexão');
       $('pairResult').classList.add('visible');
       $('pairStatus').textContent = 'O serviço Supabase não carregou. Verifique a internet e atualize a página.';
       return;
     }
+    if (isCastReceiverMode) {
+      try {
+        await initCastReceiver();
+      } catch (error) {
+        console.error('Falha ao iniciar o receptor Google Cast:', error);
+        showPairScreen('Não foi possível iniciar a conexão Google Cast');
+        $('pairResult').classList.add('visible');
+        $('pairStatus').textContent = error && error.message ? error.message : 'Atualize a conexão e tente novamente.';
+        return;
+      }
+    }
+
     if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
       $('pairScreen').classList.add('hidden');
       $('feedScreen').classList.remove('hidden');
       await loadFeed(true);
-    } else {
+    } else if (!isCastReceiverMode) {
       showPairScreen('TV ainda não pareada');
+    } else {
+      showPairScreen('Aguardando conexão pelo celular');
     }
   }
 

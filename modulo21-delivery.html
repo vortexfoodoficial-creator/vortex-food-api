@@ -6,7 +6,7 @@
   <title>Vortex Food - Delivery & Logística Inteligente</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js?v=29ab2e5"></script>
+  <script src="supabase.js?v=20261128-delivery-routes-1"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -353,8 +353,9 @@
       <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px; color:var(--primary);" id="smartRouteModalTitle">🚀 Sugestão de Rotas</div>
       <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;" id="smartRouteSubtitle">Pedidos prontos ordenados da menor distância até a mais longe, partindo do estabelecimento.</div>
       
-      <div id="smartRouteListContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 15px;"></div>
-
+      <div id="smartRouteListContainer" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+      <button id="createCourierRouteButton" class="btn-action" style="display:none; width:100%; background:var(--primary); color:#fff; padding:12px; border-radius:9px; border:none; font-weight:bold; cursor:pointer; margin-bottom:12px;" onclick="createOptimizedCourierRoute()">🛵 Criar rota e enviar ao motoboy</button>
+      <div id="routeCodeResults" style="display:none; max-height:300px; overflow-y:auto; margin-bottom:12px;"></div>
       <button class="btn-secondary" style="width:100%; text-align:center;" onclick="closeSmartRouteModal()">Fechar Janela</button>
     </div>
   </div>
@@ -844,6 +845,20 @@
         currentRefHouse = nextMetrics.houseNum || currentRefHouse;
       }
 
+      window.vortexOptimizedDeliveryRoute = optimizedRoute.slice();
+      window.vortexSelectedCourierForRoute = selectedCourier;
+      const selectedCourierRecord = getUnifiedCouriers().find(item =>
+        String(item.name || '').trim().toLowerCase() === String(selectedCourier || '').trim().toLowerCase()
+      );
+      const routeButton = document.getElementById('createCourierRouteButton');
+      const codeResults = document.getElementById('routeCodeResults');
+      if (routeButton) {
+        routeButton.style.display = selectedCourierRecord && selectedCourierRecord.authUserId ? 'block' : 'none';
+        routeButton.disabled = false;
+        routeButton.textContent = '🛵 Criar rota e enviar ao motoboy';
+      }
+      if (codeResults) { codeResults.style.display = 'none'; codeResults.innerHTML = ''; }
+
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
       document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong>`;
 
@@ -870,6 +885,88 @@
       });
 
       document.getElementById('smartRouteModal').classList.add('active');
+    }
+
+    function escapeDeliveryHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[char]));
+    }
+
+    async function createOptimizedCourierRoute() {
+      const optimized = Array.isArray(window.vortexOptimizedDeliveryRoute) ? window.vortexOptimizedDeliveryRoute : [];
+      const courierName = window.vortexSelectedCourierForRoute || '';
+      const courier = getUnifiedCouriers().find(item =>
+        String(item.name || '').trim().toLowerCase() === String(courierName).trim().toLowerCase()
+      );
+      if (!courier || !courier.authUserId) {
+        showNoticeModal('Conta individual necessária', 'Para receber uma rota no Painel do Motoboy, o entregador precisa ter uma conta individual ativa com perfil Entregador no módulo Equipe.', 'ℹ️');
+        return;
+      }
+      if (!optimized.length) {
+        showNoticeModal('Rota vazia', 'Não há pedidos na sequência otimizada para atribuir.', '⚠️');
+        return;
+      }
+
+      const eligible = optimized.filter(order =>
+        !order.courier_member_id || String(order.courier_member_id) === String(courier.authUserId)
+      );
+      const blocked = optimized.length - eligible.length;
+      if (!eligible.length) {
+        showNoticeModal('Pedidos já atribuídos', 'Todos os pedidos desta sugestão já estão vinculados a outro motoboy. Atualize a lista e tente novamente.', '⚠️');
+        return;
+      }
+
+      const button = document.getElementById('createCourierRouteButton');
+      if (button) { button.disabled = true; button.textContent = 'Criando rota...'; }
+      try {
+        const created = await window.VortexDelivery.createRoute(
+          courier.authUserId,
+          eligible.map(order => String(order.id))
+        );
+        if (created.error) throw created.error;
+        if (!created.data || created.data.success !== true || !created.data.route_id) {
+          throw new Error(created.data && created.data.message || 'O servidor não confirmou a criação da rota.');
+        }
+
+        const codesResult = await window.VortexDelivery.getRouteCodes(created.data.route_id);
+        if (codesResult.error) throw new Error('A rota foi criada, mas não foi possível consultar os códigos para compartilhar: ' + codesResult.error.message);
+        const codes = Array.isArray(codesResult.data) ? codesResult.data : [];
+        const resultHost = document.getElementById('routeCodeResults');
+        const orderNumbers = eligible.map(order => '#' + getVisibleDeliveryOrderNumber(order)).join(', ');
+
+        if (resultHost) {
+          resultHost.style.display = 'block';
+          resultHost.innerHTML = `
+            <div style="padding:12px; border:1px solid var(--success); background:rgba(34,197,94,.08); border-radius:10px; margin-bottom:12px;">
+              <strong style="color:var(--success);">✓ Rota criada e enviada!</strong>
+              <div style="font-size:.82rem; margin-top:5px;">Motoboy: <strong>${escapeDeliveryHtml(courier.name)}</strong></div>
+              <div style="font-size:.78rem; color:var(--text-muted); margin-top:3px;">Pedidos: ${escapeDeliveryHtml(orderNumbers)}</div>
+              ${blocked ? '<div style="font-size:.76rem; color:var(--warning); margin-top:5px;">' + blocked + ' pedido(s) já atribuídos a outro motoboy ficaram fora desta rota.</div>' : ''}
+            </div>
+            <div style="font-size:.84rem; font-weight:bold; margin:8px 0;">Códigos para compartilhar com os clientes</div>
+            ${codes.map(item => {
+              const digits = String(item.customer_phone || '').replace(/\D/g,'');
+              const whatsapp = digits ? (digits.length <= 11 ? '55' + digits : digits) : '';
+              const message = 'Olá, ' + (item.customer_name || 'tudo bem?') + '! Para confirmar o recebimento do pedido #' + (item.display_id || item.order_id) + ', informe ao motoboy este código de 6 dígitos: ' + item.code + '.';
+              const link = whatsapp ? 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(message) : '';
+              return `
+                <div style="padding:10px; border:1px solid var(--border); background:var(--bg-main); border-radius:9px; margin-bottom:8px;">
+                  <div style="font-size:.82rem;"><strong>#${escapeDeliveryHtml(item.display_id || item.order_id)}</strong> · ${escapeDeliveryHtml(item.customer_name || 'Cliente')}</div>
+                  <div style="font-size:1.35rem; font-weight:900; letter-spacing:.18em; color:var(--primary); margin:7px 0;">${escapeDeliveryHtml(item.code || '------')}</div>
+                  ${link ? '<a class="btn-secondary" style="display:block; text-align:center; padding:8px; border-radius:7px; color:var(--text-main); text-decoration:none;" target="_blank" rel="noopener" href="' + escapeDeliveryHtml(link) + '">Enviar código pelo WhatsApp ↗</a>' : '<div style="font-size:.75rem; color:var(--text-muted);">Telefone do cliente não disponível.</div>'}
+                </div>`;
+            }).join('')}
+            <p style="font-size:.74rem; color:var(--text-muted); margin-top:8px;">O código é exclusivo do cliente. Não compartilhe o código com o motoboy.</p>`;
+          }
+        window.vortexOptimizedDeliveryRoute = [];
+        if (button) button.style.display = 'none';
+        showNoticeModal('Rota enviada ao motoboy', 'A rota foi criada com segurança. Compartilhe os códigos com os clientes antes das entregas.', '🛵');
+        await loadActiveOrders();
+      } catch (error) {
+        if (button) { button.disabled = false; button.textContent = 'Tentar criar rota novamente'; }
+        showNoticeModal('Não foi possível criar a rota', error.message || 'O servidor recusou a atribuição.', '⚠️');
+      }
     }
 
     function closeSmartRouteModal() {

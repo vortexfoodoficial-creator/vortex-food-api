@@ -334,7 +334,7 @@ BEGIN
           'display_id',o."displayId",
           'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
           'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\(([^()]*)\)$'))[1],''),
-          'address',o.address,'payment_method',o.payment,
+          'address',o.address,'items',o.items,'payment_method',o.payment,
           'amount_due',o.total,'cash_given',o.cashgiven,'change',o.change,
           'observation',o.observation,'order_status',o.status,
           'order_date',o.date,'order_time',o.time

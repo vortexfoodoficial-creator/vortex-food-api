@@ -116,7 +116,7 @@ BEGIN
   -- Libera temporariamente as posições para permitir qualquer permutação sem colidir com a constraint UNIQUE.
   UPDATE public.vortex_delivery_route_stops
   SET sequence_number=sequence_number+1000,updated_at=now()
-  WHERE store_id=p_store_id AND route_id=p_route_id AND status='assigned';
+  WHERE store_id=p_store_id AND route_id=p_route_id;
 
   FOREACH v_order_id IN ARRAY p_order_ids LOOP
     v_sequence:=v_sequence+1;

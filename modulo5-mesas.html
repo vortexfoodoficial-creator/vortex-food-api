@@ -826,6 +826,11 @@
 
     async function openPaymentModal() {
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      const localCartBeforeRefresh = tableCarts[activeTableId];
+      if (localCartBeforeRefresh && localCartBeforeRefresh.cloudSyncPendingDelete) {
+        showNoticeModal('Liberação pendente', 'Esta mesa já teve o pagamento registrado e aguarda confirmação da liberação na nuvem.', '⚠️');
+        return;
+      }
       if (typeof dbFetchTableCarts === 'function') {
         const latestCarts = await dbFetchTableCarts();
         if (latestCarts.error) {
@@ -833,6 +838,14 @@
           return;
         }
         tableCarts = latestCarts.data || {};
+        if (localCartBeforeRefresh && localCartBeforeRefresh.cloudSyncPending) {
+          const retry = await dbSaveTableCart(activeTableId, localCartBeforeRefresh);
+          if (retry.error) {
+            showNoticeModal('Sincronização pendente', 'A comanda local ainda não foi confirmada na nuvem. O pagamento foi bloqueado para evitar divergência.', '⚠️');
+            return;
+          }
+          tableCarts[activeTableId] = { ...localCartBeforeRefresh, cloudSyncPending: false };
+        }
         localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       }
       let currentData = tableCarts[activeTableId];
@@ -913,6 +926,11 @@
         return;
       }
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      const localCartBeforeRefresh = tableCarts[activeTableId];
+      if (localCartBeforeRefresh && localCartBeforeRefresh.cloudSyncPendingDelete) {
+        showNoticeModal('Liberação pendente', 'Esta mesa já teve o pagamento registrado e aguarda confirmação da liberação na nuvem.', '⚠️');
+        return;
+      }
       if (typeof dbFetchTableCarts === 'function') {
         const latestCarts = await dbFetchTableCarts();
         if (latestCarts.error) {
@@ -920,6 +938,14 @@
           return;
         }
         tableCarts = latestCarts.data || {};
+        if (localCartBeforeRefresh && localCartBeforeRefresh.cloudSyncPending) {
+          const retry = await dbSaveTableCart(activeTableId, localCartBeforeRefresh);
+          if (retry.error) {
+            showNoticeModal('Sincronização pendente', 'A comanda local ainda não foi confirmada na nuvem. O fechamento foi bloqueado para evitar divergência.', '⚠️');
+            return;
+          }
+          tableCarts[activeTableId] = { ...localCartBeforeRefresh, cloudSyncPending: false };
+        }
         localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       }
       let currentData = tableCarts[activeTableId];

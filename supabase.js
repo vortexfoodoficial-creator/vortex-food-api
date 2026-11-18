@@ -515,6 +515,29 @@ async function dbGetDeliveryDispatchCouriers() {
   return await vortexDeliveryRpc('rpc_get_delivery_dispatch_couriers', { p_store_id: storeId });
 }
 
+async function dbUpdateDeliveryRouteStops(routeId, expectedVersion, orderIds) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_update_delivery_route_stops', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || ''),
+    p_expected_version: Number(expectedVersion),
+    p_order_ids: Array.isArray(orderIds) ? orderIds.map(String) : []
+  });
+}
+
+async function dbSetDeliveryStopDeadline(routeId, orderId, expectedVersion, promisedAt) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_set_delivery_stop_deadline', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || ''),
+    p_order_id: String(orderId || ''),
+    p_expected_version: Number(expectedVersion),
+    p_promised_delivery_at: promisedAt || null
+  });
+}
+
 async function dbTransferDeliveryRoute(routeId, newCourierUserId) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -547,6 +570,8 @@ window.VortexDelivery = {
   fetchDispatchRoutes: dbGetDeliveryDispatchRoutes,
   fetchDispatchCouriers: dbGetDeliveryDispatchCouriers,
   transferRoute: dbTransferDeliveryRoute,
+  updateRouteStops: dbUpdateDeliveryRouteStops,
+  setStopDeadline: dbSetDeliveryStopDeadline,
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,
   fetchMyRoutes: dbFetchMyDeliveryRoutes,

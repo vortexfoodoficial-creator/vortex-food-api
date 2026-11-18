@@ -159,7 +159,7 @@ BEGIN
      OR cardinality(p_order_ids) < 1
      OR cardinality(p_order_ids) > 20
      OR array_position(p_order_ids,NULL) IS NOT NULL
-     OR EXISTS (SELECT 1 FROM unnest(p_order_ids) x GROUP BY x HAVING count(*) > 1) THEN
+     OR EXISTS (SELECT 1 FROM unnest(p_order_ids) AS u(order_id) GROUP BY u.order_id HAVING count(*) > 1) THEN
     RAISE EXCEPTION 'Selecione um motoboy e entre 1 e 20 pedidos diferentes.';
   END IF;
 
@@ -308,6 +308,7 @@ AS $function$
 DECLARE
   v_route public.vortex_delivery_routes%ROWTYPE;
   v_stop_count integer;
+  v_invalid_count integer;
 BEGIN
   IF auth.uid() IS NULL
      OR NOT public.vortex_user_has_permission(p_store_id,'delivery.route_start') THEN
@@ -329,12 +330,16 @@ BEGIN
 
   SELECT count(*) INTO v_stop_count
   FROM public.vortex_delivery_route_stops s
+  WHERE s.store_id=p_store_id AND s.route_id=p_route_id AND s.status='assigned';
+
+  SELECT count(*) INTO v_invalid_count
+  FROM public.vortex_delivery_route_stops s
   JOIN public.vortex_kds_orders o ON o.store_id=s.store_id AND o.id=s.order_id
   WHERE s.store_id=p_store_id AND s.route_id=p_route_id
-    AND s.status='assigned' AND o.status NOT IN ('finished','cancelled');
+    AND s.status='assigned' AND o.status IN ('finished','cancelled');
 
-  IF v_stop_count=0 THEN
-    RAISE EXCEPTION 'Esta rota não possui entregas pendentes válidas.';
+  IF v_stop_count=0 OR v_invalid_count>0 THEN
+    RAISE EXCEPTION 'Esta rota não possui entregas pendentes válidas. Atualize a rota com o estabelecimento.';
   END IF;
 
   UPDATE public.vortex_delivery_routes
@@ -384,7 +389,7 @@ BEGIN
     RAISE EXCEPTION 'Seu perfil não pode registrar ocorrências.';
   END IF;
 
-  IF p_occurrence_type NOT IN ('customer_absent','wrong_address','no_response','customer_refused','other')
+  IF p_occurrence_type IS NULL OR p_occurrence_type NOT IN ('customer_absent','wrong_address','no_response','customer_refused','other')
      OR length(COALESCE(p_notes,''))>1000 THEN
     RAISE EXCEPTION 'Tipo ou descrição da ocorrência inválidos.';
   END IF;
@@ -441,7 +446,7 @@ BEGIN
     RAISE EXCEPTION 'Somente um motoboy ativo pode alterar a própria disponibilidade.';
   END IF;
 
-  IF p_status NOT IN ('available','paused','unavailable') THEN
+  IF p_status IS NULL OR p_status NOT IN ('available','paused','unavailable') THEN
     RAISE EXCEPTION 'Situação de disponibilidade inválida.';
   END IF;
 
@@ -480,7 +485,6 @@ DECLARE
   v_courier_member_id uuid;
   v_route_id uuid;
   v_stop_id uuid;
-  v_route_status text;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'delivery.confirm') THEN
     RAISE EXCEPTION 'Seu perfil não pode confirmar entregas.';
@@ -561,11 +565,6 @@ BEGIN
       p_store_id,v_route_id,v_stop_id,p_order_id,auth.uid(),'delivery_confirmed',
       jsonb_build_object('confirmed_at',now(),'method','customer_code')
     );
-
-    SELECT status INTO v_route_status
-    FROM public.vortex_delivery_routes
-    WHERE store_id=p_store_id AND id=v_route_id
-    FOR UPDATE;
 
     IF NOT EXISTS (
       SELECT 1 FROM public.vortex_delivery_route_stops

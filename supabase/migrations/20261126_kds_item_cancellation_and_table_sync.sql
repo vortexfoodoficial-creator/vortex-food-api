@@ -165,7 +165,6 @@ DECLARE
   v_items jsonb;
   v_updated_items jsonb;
   v_sale_items jsonb;
-  v_sale_item jsonb;
   v_sale_subtotal numeric(14,2);
   v_sale_discount numeric(14,2);
   v_sale_total numeric(14,2);
@@ -283,11 +282,6 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'O item não possui vínculo seguro com a venda financeira. Nenhuma alteração foi aplicada.';
     END IF;
-
-    SELECT value INTO v_sale_item
-    FROM jsonb_array_elements(COALESCE(v_updated_items,'[]'::jsonb)) AS e(value)
-    WHERE COALESCE(value->>'itemId',value->>'item_id')=p_item_id
-    LIMIT 1;
 
     SELECT COALESCE(jsonb_agg(
       CASE

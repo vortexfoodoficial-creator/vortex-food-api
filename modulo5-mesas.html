@@ -929,10 +929,12 @@
         console.warn('Venda salva, mas não foi possível atualizar todos os pedidos KDS:', err);
         kdsUpdateWarning = ' A venda foi salva, mas a atualização de um ou mais pedidos na cozinha ficou pendente: ' + (err.message || String(err));
       }
-      delete tableCarts[activeTableId];
+      const closedTableId = activeTableId;
+      delete tableCarts[closedTableId];
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       closePaymentModal(); closeMesaModal(); renderMesas();
-      showNoticeModal(kdsUpdateWarning ? 'Conta Fechada com Aviso' : 'Conta Fechada!', `A Mesa ${activeTableId} foi paga e salva na nuvem. A mesa foi liberada com sucesso!${kdsUpdateWarning}`, kdsUpdateWarning ? '⚠️' : '✅');
+      const closedTableLabel = closedTableId < 10 ? '0' + closedTableId : closedTableId;
+      showNoticeModal(kdsUpdateWarning ? 'Conta Fechada com Aviso' : 'Conta Fechada!', `A Mesa ${closedTableLabel} foi paga e salva na nuvem. A mesa foi liberada com sucesso!${kdsUpdateWarning}`, kdsUpdateWarning ? '⚠️' : '✅');
     }
 
     function escapeRequestText(value) {

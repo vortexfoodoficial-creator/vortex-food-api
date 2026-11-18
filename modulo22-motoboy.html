@@ -115,7 +115,7 @@
           <div class="brand-sub">Painel do Motoboy</div>
         </div>
       </div>
-      <button class="icon-btn" type="button" onclick="refreshRoutes()" aria-label="Atualizar rotas">↻</button>
+      <div style="display:flex;gap:8px"><button class="icon-btn" type="button" onclick="refreshRoutes()" aria-label="Atualizar rotas">↻</button><button class="icon-btn" type="button" onclick="signOutCourier()" aria-label="Sair da conta">⇥</button></div>
     </header>
 
     <section class="welcome">
@@ -473,6 +473,24 @@
         showToast(error.message || 'Não foi possível carregar suas rotas.', true);
       } finally {
         refreshInProgress = false;
+      }
+    }
+
+    async function signOutCourier() {
+      openModal(
+        'Sair da conta?',
+        '<p>Você será desconectado do painel do motoboy.</p>',
+        '<button class="btn btn-secondary" type="button" onclick="closeModal()">Continuar aqui</button><button class="btn btn-primary" type="button" onclick="confirmCourierSignOut()">Sair</button>',
+        '↗'
+      );
+    }
+
+    async function confirmCourierSignOut() {
+      try {
+        await window.VortexAuth.signOut();
+        window.location.replace('login.html');
+      } catch (error) {
+        showToast(error.message || 'Não foi possível sair da conta.', true);
       }
     }
 

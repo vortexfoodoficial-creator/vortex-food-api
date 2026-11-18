@@ -449,6 +449,20 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="dispatchActionModal">
+    <div class="custom-modal-card">
+      <div class="card-title"><span id="dispatchActionTitle">Confirmar operação</span><button class="btn-secondary" type="button" onclick="closeDispatchActionModal()">✕</button></div>
+      <p id="dispatchActionDescription" style="font-size:.86rem;color:var(--text-muted);margin-bottom:12px;"></p>
+      <div class="form-group"><label for="dispatchActionNotes">Observação / motivo</label>
+        <textarea id="dispatchActionNotes" rows="3" maxlength="500" style="width:100%;background:var(--bg-main);border:1px solid var(--border);color:var(--text-main);border-radius:8px;padding:10px;resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" type="button" style="flex:1;" onclick="closeDispatchActionModal()">Voltar</button>
+        <button class="btn-modal-primary" id="dispatchActionConfirmButton" type="button" style="flex:1;margin-top:0;" onclick="confirmDispatchAction()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let deliveryCart = [];
     let rawCashGiven = 0;
@@ -1079,27 +1093,56 @@
       } catch (error) { showNoticeModal('Falha na transferência',error.message || 'Não foi possível transferir a rota.','⚠️'); }
     }
 
-    async function resolveDispatchOccurrence(routeId,orderId,resolution) {
-      const label = resolution === 'retry' ? 'tentar novamente' : 'registrar o retorno';
-      if (!window.confirm('Confirmar que deseja ' + label + ' este pedido?')) return;
-      try {
-        const result = await window.VortexDelivery.resolveOccurrence(routeId,orderId,resolution,'');
-        if (result.error) throw result.error;
-        showNoticeModal('Ocorrência atualizada',resolution === 'retry' ? 'A parada voltou para a lista de execução do motoboy.' : 'O retorno foi registrado. O pedido não foi marcado como entregue.','✅');
-        await loadDispatchRoutes();
-      } catch (error) { showNoticeModal('Não foi possível resolver',error.message || 'Tente novamente.','⚠️'); }
+    let dispatchPendingAction = null;
+
+    function openDispatchActionModal(type,routeId,orderId) {
+      dispatchPendingAction = {type,routeId,orderId};
+      document.getElementById('dispatchActionTitle').textContent =
+        type === 'cancel' ? 'Cancelar rota não iniciada' : type === 'retry' ? 'Tentar entrega novamente' : 'Registrar retorno ao estabelecimento';
+      document.getElementById('dispatchActionDescription').textContent =
+        type === 'cancel' ? 'Os pedidos serão desvinculados e ficarão disponíveis para nova organização. Informe o motivo.' :
+        type === 'retry' ? 'A parada voltará para a execução do motoboy.' :
+        'A parada será encerrada como retorno. O pedido não será marcado como entregue.';
+      document.getElementById('dispatchActionNotes').value = '';
+      document.getElementById('dispatchActionNotes').placeholder = type === 'cancel' ? 'Motivo obrigatório (mínimo 3 caracteres)' : 'Observação opcional...';
+      document.getElementById('dispatchActionModal').classList.add('active');
     }
 
-    async function cancelDispatchRoute(routeId) {
-      const reason = window.prompt('Motivo do cancelamento da rota (mínimo 3 caracteres):');
-      if (reason === null) return;
+    function closeDispatchActionModal() {
+      document.getElementById('dispatchActionModal').classList.remove('active');
+      dispatchPendingAction = null;
+    }
+
+    async function confirmDispatchAction() {
+      if (!dispatchPendingAction) return;
+      const action = dispatchPendingAction;
+      const notes = document.getElementById('dispatchActionNotes').value.trim();
+      const button = document.getElementById('dispatchActionConfirmButton');
+      if (action.type === 'cancel' && notes.length < 3) {
+        showNoticeModal('Informe o motivo','Digite pelo menos 3 caracteres para justificar o cancelamento.','⚠️');
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Processando...';
       try {
-        const result = await window.VortexDelivery.cancelRoute(routeId,reason);
+        const result = action.type === 'cancel'
+          ? await window.VortexDelivery.cancelRoute(action.routeId,notes)
+          : await window.VortexDelivery.resolveOccurrence(action.routeId,action.orderId,action.type,notes);
         if (result.error) throw result.error;
-        showNoticeModal('Rota cancelada','Os pedidos foram desvinculados da rota e continuam disponíveis para nova organização.','✅');
+        closeDispatchActionModal();
+        if (action.type === 'cancel') {
+          showNoticeModal('Rota cancelada','Os pedidos foram desvinculados da rota e continuam disponíveis para nova organização.','✅');
+          await loadActiveOrders();
+        } else {
+          showNoticeModal('Ocorrência atualizada',action.type === 'retry' ? 'A parada voltou para a execução do motoboy.' : 'O retorno foi registrado. O pedido não foi marcado como entregue.','✅');
+        }
         await loadDispatchRoutes();
-        await loadActiveOrders();
-      } catch (error) { showNoticeModal('Não foi possível cancelar',error.message || 'Tente novamente.','⚠️'); }
+      } catch (error) {
+        showNoticeModal('Operação não concluída',error.message || 'Não foi possível concluir a operação.','⚠️');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Confirmar';
+      }
     }
 
     function closeSmartRouteModal() {

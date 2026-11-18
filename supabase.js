@@ -349,7 +349,7 @@ async function dbSaveKdsOrder(orderData) {
     time: orderData.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     date: orderData.date || new Date().toISOString().split('T')[0],
     dateformatted: orderData.dateFormatted || orderData.dateformatted || new Date().toLocaleDateString('pt-BR'),
-    items: orderData.items || [],
+    items: Array.isArray(orderData.items) ? orderData.items.map((item,index) => ({ ...item, itemId: item.itemId || item.item_id || (String(orderData.id) + '_item_' + (index + 1)) })) : [],
     total: parseFloat(orderData.total) || 0,
     observation: orderData.observation || '',
     status: orderData.status || 'received',
@@ -384,7 +384,7 @@ async function dbSaveKdsOrderMinimal(orderData) {
     client: orderData.client || 'Cliente Balcão', address: orderData.address || '',
     payment: orderData.payment || 'Dinheiro', time: orderData.time || '',
     date: orderData.date || new Date().toISOString().slice(0, 10),
-    items: Array.isArray(orderData.items) ? orderData.items : [], total: Number(orderData.total) || 0,
+    items: Array.isArray(orderData.items) ? orderData.items.map((item,index) => ({ ...item, itemId: item.itemId || item.item_id || (String(orderData.id) + '_item_' + (index + 1)) })) : [], total: Number(orderData.total) || 0,
     observation: orderData.observation || '', status: orderData.status || 'new', code: orderData.code || String(orderData.displayId || orderData.displayid || orderData.id)
   };
   const { data, error } = await supabase.rpc('rpc_create_kds_order', { p_store_id: resolved.storeId, p_order: record });
@@ -554,6 +554,47 @@ function updateLocalCachesAfterCancel(orderId, reason, timestamp) {
     kds = kds.map(k => String(k.id) === String(orderId) ? { ...k, status: 'cancelled', cancellationReason: reason, cancelledAt: timestamp } : k);
     localStorage.setItem('vortex_kds_orders', JSON.stringify(kds));
   } catch (e) {}
+}
+
+// Cancelamento individual de item: atualização transacional no KDS e na comanda.
+async function dbCancelKdsItem(orderId, itemId, reason, billingAction) {
+  const supabase = getSupabase();
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { success: false, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  if (!supabase) return { success: false, error: new Error('Conexão com o servidor indisponível.') };
+
+  const { data, error } = await supabase.rpc('rpc_cancel_kds_item', {
+    p_order_id: String(orderId),
+    p_item_id: String(itemId),
+    p_reason: String(reason || 'Cancelado no KDS'),
+    p_billing_action: billingAction === 'waive' ? 'waive' : 'charge'
+  });
+  if (error) return { success: false, error };
+  if (!data || data.success !== true) return { success: false, error: new Error((data && data.message) || 'O banco não confirmou o cancelamento do item.') };
+
+  try {
+    const localOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+    const updatedOrders = localOrders.map(order => {
+      if (String(order.id) !== String(orderId)) return order;
+      return {
+        ...order,
+        items: (order.items || []).map(item =>
+          String(item.itemId || item.item_id) === String(itemId)
+            ? { ...item, status: 'cancelled', billingStatus: billingAction === 'waive' ? 'waive' : 'charge', cancellationReason: reason, cancelledAt: new Date().toISOString() }
+            : item
+        )
+      };
+    });
+    localStorage.setItem('vortex_kds_orders', JSON.stringify(updatedOrders));
+  } catch (cacheError) {
+    console.warn('Não foi possível atualizar o cache local do KDS:', cacheError);
+  }
+
+  const carts = await dbFetchTableCarts();
+  if (!carts.error && carts.data) {
+    try { localStorage.setItem('vortex_table_carts', JSON.stringify(carts.data)); } catch (cacheError) {}
+  }
+  return { success: true, data };
 }
 
 // Estoque Helpers

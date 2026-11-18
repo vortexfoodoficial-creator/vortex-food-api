@@ -244,6 +244,9 @@
         <button class="btn-secondary" type="button" onclick="loadDispatchRoutes()">↻ Atualizar</button>
       </div>
       <div id="dispatchRoutesSummary" style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;">Carregando rotas...</div>
+      <div style="font-size:.82rem;font-weight:800;margin:12px 0 8px;">Disponibilidade da equipe</div>
+      <div id="dispatchCouriersList" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><span style="font-size:.78rem;color:var(--text-muted);">Carregando motoboys...</span></div>
+      <div style="font-size:.82rem;font-weight:800;margin:12px 0 8px;">Rotas e entregas</div>
       <div id="dispatchRoutesList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;">
         <div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Aguardando dados do servidor...</div>
       </div>
@@ -1015,9 +1018,25 @@
       if (dispatchRoutesFetchInFlight || !window.VortexDelivery?.fetchDispatchRoutes) return;
       dispatchRoutesFetchInFlight = true;
       try {
-        const result = await window.VortexDelivery.fetchDispatchRoutes();
+        const [result,courierResult] = await Promise.all([
+          window.VortexDelivery.fetchDispatchRoutes(),
+          window.VortexDelivery.fetchDispatchCouriers()
+        ]);
         if (result.error) throw result.error;
+        if (courierResult.error) throw courierResult.error;
         dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
+        const courierHost = document.getElementById('dispatchCouriersList');
+        const dispatchCouriers = Array.isArray(courierResult.data) ? courierResult.data : [];
+        if (courierHost) courierHost.innerHTML = dispatchCouriers.length ? dispatchCouriers.map(courier => {
+          const status = courier.presence_status || 'unavailable';
+          const label = status === 'available' ? 'Disponível' : status === 'in_route' ? 'Em rota' : status === 'paused' ? 'Pausado' : 'Indisponível';
+          const color = status === 'available' ? 'var(--success)' : status === 'in_route' ? 'var(--primary)' : 'var(--text-muted)';
+          return '<div style="border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:145px;background:var(--bg-main);">' +
+            '<div style="font-size:.8rem;font-weight:800;">' + escapeDeliveryHtml(courier.name || 'Motoboy') + '</div>' +
+            '<div style="font-size:.72rem;color:' + color + ';margin-top:3px;">● ' + label + '</div>' +
+            (courier.route_status ? '<div style="font-size:.68rem;color:var(--text-muted);margin-top:2px;">' + (courier.route_status === 'assigned' ? 'Aguardando saída' : 'Rota iniciada') + '</div>' : '') +
+            '</div>';
+        }).join('') : '<span style="font-size:.78rem;color:var(--text-muted);">Nenhuma conta de motoboy ativa cadastrada na equipe.</span>';
         const active = dispatchRoutesCache.filter(r => ['assigned','in_route'].includes(r.status));
         const occurrences = active.reduce((n,r) => n + Number(r.occurrence_count || 0),0);
         if (summary) summary.textContent = active.length + ' rota(s) ativa(s) · ' +

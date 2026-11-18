@@ -81,6 +81,7 @@ BEGIN
     AND COALESCE(o.origin,'') ILIKE '%Delivery%'
     AND o.status NOT IN ('finished','cancelled')
     AND (o.courier_member_id IS NULL OR o.courier_member_id=v_route.courier_user_id)
+    AND (COALESCE(o.courier,'')='' OR o.courier=v_courier_name)
     AND NOT EXISTS (
       SELECT 1 FROM public.vortex_delivery_route_stops other_stop
       JOIN public.vortex_delivery_routes other_route

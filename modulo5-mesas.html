@@ -561,6 +561,10 @@
       document.getElementById('modalMesaTitle').innerText = `Mesa ${mesaNum < 10 ? '0' + mesaNum : mesaNum}`;
 
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      if (tableCarts[mesaNum] && tableCarts[mesaNum].cloudSyncPendingDelete) {
+        showNoticeModal('Liberação pendente', 'O pagamento já foi registrado, mas a liberação desta mesa ainda aguarda confirmação da nuvem. Mantenha a mesa sem novos pedidos até a sincronização ser concluída.', '⚠️');
+        return;
+      }
       if (typeof dbFetchTableCarts === 'function') {
         try {
           const cloudCarts = await dbFetchTableCarts();
@@ -974,18 +978,26 @@
         kdsUpdateWarning = ' A venda foi salva, mas a atualização de um ou mais pedidos na cozinha ficou pendente: ' + (err.message || String(err));
       }
       const closedTableId = activeTableId;
+      let cloudCartReleased = false;
       try {
         if (typeof dbSaveTableCart !== 'function') throw new Error('Rotina de liberação da comanda não disponível.');
         const cartDelete = await dbSaveTableCart(closedTableId, null);
         if (cartDelete && cartDelete.error) throw cartDelete.error;
+        cloudCartReleased = true;
       } catch (cartError) {
         kdsUpdateWarning += ' A venda foi salva, mas a liberação da comanda na nuvem ficou pendente: ' + (cartError.message || String(cartError));
       }
-      delete tableCarts[closedTableId];
+      if (cloudCartReleased) {
+        delete tableCarts[closedTableId];
+      } else if (tableCarts[closedTableId]) {
+        tableCarts[closedTableId].cloudSyncPendingDelete = true;
+      }
       localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       closePaymentModal(); closeMesaModal(); renderMesas();
       const closedTableLabel = closedTableId < 10 ? '0' + closedTableId : closedTableId;
-      showNoticeModal(kdsUpdateWarning ? 'Conta Fechada com Aviso' : 'Conta Fechada!', `A Mesa ${closedTableLabel} foi paga e salva na nuvem. A mesa foi liberada com sucesso!${kdsUpdateWarning}`, kdsUpdateWarning ? '⚠️' : '✅');
+      showNoticeModal(kdsUpdateWarning ? 'Conta Fechada com Aviso' : 'Conta Fechada!', cloudCartReleased
+        ? `A Mesa ${closedTableLabel} foi paga e liberada com sucesso!${kdsUpdateWarning}`
+        : `A Mesa ${closedTableLabel} foi paga, mas permanece bloqueada até a nuvem confirmar sua liberação.${kdsUpdateWarning}`, kdsUpdateWarning ? '⚠️' : '✅');
     }
 
     function escapeRequestText(value) {
@@ -1127,8 +1139,19 @@
         const cartResult = await dbFetchTableCarts();
         if (!cartResult.error && cartResult.data) {
           tableCarts = cartResult.data;
-          // Migra com segurança comandas antigas que só existiam neste dispositivo.
+          // Retenta liberações que foram pagas localmente, mas não confirmadas na nuvem.
           for (const [tableNumber, localCart] of Object.entries(localCarts)) {
+            if (localCart.cloudSyncPendingDelete) {
+              const deleted = await dbSaveTableCart(Number(tableNumber), null);
+              if (!deleted.error) {
+                delete tableCarts[tableNumber];
+              } else {
+                tableCarts[tableNumber] = localCart;
+                console.warn('Liberação de mesa aguardando sincronização:', tableNumber, deleted.error);
+              }
+              continue;
+            }
+            // Migra com segurança comandas antigas que só existiam neste dispositivo.
             if (!tableCarts[tableNumber] || localCart.cloudSyncPending) {
               const saved = await dbSaveTableCart(Number(tableNumber), localCart);
               if (!saved.error) {

@@ -457,7 +457,7 @@ async function dbConfirmDeliveryCode(orderId, code) {
   return await vortexDeliveryRpc('rpc_confirm_delivery_code', {
     p_store_id: storeId,
     p_order_id: String(orderId || ''),
-    p_code: String(code || '').replace(/\\D/g, '')
+    p_code: String(code || '').replace(/\D/g, '')
   });
 }
 

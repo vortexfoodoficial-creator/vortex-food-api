@@ -866,9 +866,11 @@ async function dbSaveTableCart(tableNumber, cartData) {
   if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
   const resolved = await vortexResolveStoreIdForWrite();
   if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  const cartPayload = cartData == null ? null : { ...cartData };
+  if (cartPayload) delete cartPayload.cloudSyncPending;
   const { data, error } = await supabase.rpc('rpc_save_table_cart', {
     p_table_number: Number(tableNumber),
-    p_cart: cartData == null ? null : cartData
+    p_cart: cartPayload
   });
   return { data, error };
 }

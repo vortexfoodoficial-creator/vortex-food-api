@@ -804,6 +804,29 @@ async function dbFetchStoreDocument(documentKey) {
   return data;
 }
 
+// Comandas de mesa: persistência central por estabelecimento.
+async function dbFetchTableCarts() {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  const { data, error } = await supabase.rpc('rpc_get_table_carts');
+  if (error) return { data: null, error };
+  return { data: data && typeof data === 'object' ? data : {}, error: null };
+}
+
+async function dbSaveTableCart(tableNumber, cartData) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Supabase não inicializado.') };
+  const resolved = await vortexResolveStoreIdForWrite();
+  if (resolved.error || !resolved.storeId) return { data: null, error: resolved.error || new Error('Estabelecimento ativo não identificado.') };
+  const { data, error } = await supabase.rpc('rpc_save_table_cart', {
+    p_table_number: Number(tableNumber),
+    p_cart: cartData == null ? null : cartData
+  });
+  return { data, error };
+}
+
 async function dbSavePublicQrEnabled(enabled) {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Supabase não inicializado') };

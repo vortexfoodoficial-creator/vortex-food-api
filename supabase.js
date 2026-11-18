@@ -488,6 +488,12 @@ async function dbReportDeliveryOccurrence(routeId, orderId, occurrenceType, note
   });
 }
 
+async function dbGetDeliveryCourierPresence() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_my_delivery_courier_presence', { p_store_id: storeId });
+}
+
 async function dbSetDeliveryCourierPresence(status) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -504,6 +510,7 @@ window.VortexDelivery = {
   confirmDeliveryCode: dbConfirmDeliveryCode,
   startRoute: dbStartDeliveryRoute,
   reportOccurrence: dbReportDeliveryOccurrence,
+  getPresence: dbGetDeliveryCourierPresence,
   setPresence: dbSetDeliveryCourierPresence
 };
 

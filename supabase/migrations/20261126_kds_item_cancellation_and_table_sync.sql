@@ -160,9 +160,15 @@ DECLARE
   v_store_id uuid;
   v_membership_count integer;
   v_order public.vortex_kds_orders%ROWTYPE;
+  v_sale public.vortex_sales_history%ROWTYPE;
   v_item jsonb;
   v_items jsonb;
   v_updated_items jsonb;
+  v_sale_items jsonb;
+  v_sale_item jsonb;
+  v_sale_subtotal numeric(14,2);
+  v_sale_discount numeric(14,2);
+  v_sale_total numeric(14,2);
   v_cart jsonb;
   v_sent_items jsonb;
   v_table_number integer;
@@ -259,6 +265,73 @@ BEGIN
   ),'[]'::jsonb)
   INTO v_updated_items
   FROM jsonb_array_elements(v_items) WITH ORDINALITY AS e(value,ordinality);
+
+  -- Se já existe uma venda pendente associada ao pedido, mantém o financeiro
+  -- alinhado. Venda já paga não pode ser reduzida sem um estorno registrado.
+  SELECT * INTO v_sale
+  FROM public.vortex_sales_history
+  WHERE store_id=v_store_id AND id=p_order_id
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF p_billing_action='waive' AND v_sale.financial_status='paid' THEN
+      RAISE EXCEPTION 'Esta venda já foi paga. Para retirar o item do valor recebido, registre um estorno no Financeiro.';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements(COALESCE(v_sale.items,'[]'::jsonb)) AS e(value)
+      WHERE COALESCE(value->>'itemId',value->>'item_id')=p_item_id
+    ) THEN
+      RAISE EXCEPTION 'O item não possui vínculo seguro com a venda financeira. Nenhuma alteração foi aplicada.';
+    END IF;
+
+    SELECT value INTO v_sale_item
+    FROM jsonb_array_elements(COALESCE(v_updated_items,'[]'::jsonb)) AS e(value)
+    WHERE COALESCE(value->>'itemId',value->>'item_id')=p_item_id
+    LIMIT 1;
+
+    SELECT COALESCE(jsonb_agg(
+      CASE
+        WHEN COALESCE(e.value->>'itemId',e.value->>'item_id')=p_item_id THEN
+          e.value || jsonb_build_object(
+            'status','cancelled',
+            'billingStatus',p_billing_action,
+            'cancellationReason',left(COALESCE(p_reason,'Cancelado no KDS'),300),
+            'cancelledAt',now(),
+            'cancelledBy',auth.uid()
+          )
+        ELSE e.value
+      END ORDER BY e.ordinality
+    ),'[]'::jsonb)
+    INTO v_sale_items
+    FROM jsonb_array_elements(COALESCE(v_sale.items,'[]'::jsonb)) WITH ORDINALITY AS e(value,ordinality)
+    WHERE p_billing_action<>'waive'
+       OR COALESCE(e.value->>'itemId',e.value->>'item_id')<>p_item_id;
+
+    IF v_sale.financial_status='paid' THEN
+      v_sale_subtotal := COALESCE(v_sale.subtotal,v_sale.total,0);
+      v_sale_discount := COALESCE(v_sale.discount,0);
+      v_sale_total := COALESCE(v_sale.total,0);
+    ELSE
+      SELECT COALESCE(SUM(
+        COALESCE(NULLIF(value->>'total','')::numeric,
+          COALESCE(NULLIF(value->>'price','')::numeric,0)
+          * COALESCE(NULLIF(value->>'qty','')::numeric,NULLIF(value->>'quantity','')::numeric,1))
+      ),0)
+      INTO v_sale_subtotal
+      FROM jsonb_array_elements(v_sale_items) AS e(value);
+      v_sale_discount := LEAST(COALESCE(v_sale.discount,0),v_sale_subtotal);
+      v_sale_total := GREATEST(0,v_sale_subtotal-v_sale_discount);
+    END IF;
+
+    UPDATE public.vortex_sales_history
+    SET items=v_sale_items,
+        subtotal=v_sale_subtotal,
+        discount=v_sale_discount,
+        total=v_sale_total,
+        updated_at=now(),
+        updated_by=auth.uid()
+    WHERE store_id=v_store_id AND id=p_order_id;
+  END IF;
 
   IF COALESCE(v_order.origin,'') ILIKE '%Mesa%' THEN
     v_table_number := NULLIF(regexp_replace(v_order.origin,'[^0-9]','','g'),'')::integer;

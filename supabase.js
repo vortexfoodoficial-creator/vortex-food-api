@@ -499,7 +499,9 @@ async function dbSetDeliveryCourierPresence(status) {
 
 window.VortexDelivery = {
   createRoute: dbCreateDeliveryRoute,
-  fetchMyRoutes: dbFetchMyDeliveryRoutes,\n  getRouteCodes: dbGetDeliveryRouteCodes,\n  confirmDeliveryCode: dbConfirmDeliveryCode,
+  fetchMyRoutes: dbFetchMyDeliveryRoutes,
+  getRouteCodes: dbGetDeliveryRouteCodes,
+  confirmDeliveryCode: dbConfirmDeliveryCode,
   startRoute: dbStartDeliveryRoute,
   reportOccurrence: dbReportDeliveryOccurrence,
   setPresence: dbSetDeliveryCourierPresence
@@ -1990,6 +1992,10 @@ function vortexRequireAuthenticatedPage() {
           return;
         }
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        if (currentPage === 'modulo22-motoboy.html' && window.VORTEX_AUTH_CONTEXT?.profile_key !== 'delivery') {
+          window.location.replace('modulo21-delivery.html');
+          return;
+        }
         if (window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery' && currentPage !== 'modulo22-motoboy.html') {
           window.location.replace('modulo22-motoboy.html');
           return;

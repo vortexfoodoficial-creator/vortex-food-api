@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Vortex Food | Painel do Motoboy</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js?v=20261128-motoboy-1"></script>
+  <style>
+    :root {
+      --bg-main:#0f172a; --bg-card:#1e293b; --bg-soft:#172337;
+      --text-main:#f8fafc; --text-muted:#94a3b8; --primary:#f97316;
+      --primary-hover:#ea580c; --border:#334155; --success:#22c55e;
+      --danger:#ef4444; --warning:#eab308; --info:#38bdf8;
+      --shadow:0 16px 45px rgba(0,0,0,.25);
+    }
+    body.light-theme {
+      --bg-main:#f1f5f9; --bg-card:#fff; --bg-soft:#f8fafc;
+      --text-main:#0f172a; --text-muted:#64748b; --border:#cbd5e1;
+      --shadow:0 16px 45px rgba(15,23,42,.12);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+    body{min-height:100vh;background:var(--bg-main);color:var(--text-main);transition:background .2s,color .2s}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .app-shell{width:min(100%,760px);margin:0 auto;padding:16px 14px calc(30px + env(safe-area-inset-bottom))}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 16px;border-bottom:1px solid var(--border);margin-bottom:16px}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .brand-mark{width:42px;height:42px;display:grid;place-items:center;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.35);border-radius:13px;font-size:22px}
+    .brand-title{font-weight:900;letter-spacing:.02em;font-size:1.05rem}
+    .brand-sub{font-size:.75rem;color:var(--text-muted);margin-top:2px}
+    .icon-btn{width:42px;height:42px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);color:var(--text-main);font-size:18px}
+    .welcome{margin:14px 2px 18px}
+    .welcome h1{font-size:1.45rem;line-height:1.2}
+    .welcome p{color:var(--text-muted);font-size:.88rem;margin-top:6px}
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .card-title{font-size:1rem;font-weight:800}
+    .muted{color:var(--text-muted)}
+    .small{font-size:.78rem}
+    .presence-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .presence-select{flex:1;min-width:160px;padding:11px 12px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border);border-radius:11px}
+    .btn{border:0;border-radius:11px;padding:12px 14px;font-weight:800;font-size:.88rem;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-hover)}
+    .btn-secondary{background:var(--bg-soft);color:var(--text-main);border:1px solid var(--border)}
+    .btn-success{background:var(--success);color:#052e16}
+    .btn-danger{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.35)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .btn-block{width:100%}
+    .route-banner{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .route-id{font-size:1.05rem;font-weight:900}
+    .status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
+    .status-assigned{background:rgba(56,189,248,.13);color:var(--info)}
+    .status-in_route{background:rgba(249,115,22,.15);color:var(--primary)}
+    .status-completed{background:rgba(34,197,94,.13);color:var(--success)}
+    .status-occurrence{background:rgba(234,179,8,.13);color:var(--warning)}
+    .route-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    .meta-tile{padding:11px;border-radius:12px;background:var(--bg-soft);border:1px solid var(--border)}
+    .meta-label{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;font-weight:800;letter-spacing:.04em}
+    .meta-value{font-size:.9rem;font-weight:800;margin-top:5px}
+    .progress-wrap{height:8px;border-radius:20px;background:var(--bg-main);overflow:hidden;margin:14px 0 5px}
+    .progress-bar{height:100%;width:0;background:var(--success);border-radius:20px;transition:width .25s}
+    .stop-list{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+    .stop-card{background:var(--bg-soft);border:1px solid var(--border);border-radius:16px;padding:14px;position:relative}
+    .stop-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .stop-number{width:30px;height:30px;border-radius:10px;background:rgba(249,115,22,.15);color:var(--primary);display:grid;place-items:center;font-weight:900;flex:none}
+    .stop-name{font-weight:900;font-size:.98rem;line-height:1.3}
+    .stop-order{font-size:.76rem;color:var(--primary);font-weight:800;margin-top:3px}
+    .stop-address{font-size:.84rem;line-height:1.45;margin:12px 0 10px;color:var(--text-main);white-space:pre-wrap;overflow-wrap:anywhere}
+    .stop-details{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .detail{padding:9px;border:1px solid var(--border);border-radius:10px}
+    .detail-label{font-size:.66rem;color:var(--text-muted);text-transform:uppercase;font-weight:800}
+    .detail-value{font-size:.82rem;font-weight:800;margin-top:4px;overflow-wrap:anywhere}
+    .items{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);font-size:.8rem;color:var(--text-muted);line-height:1.55}
+    .stop-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .stop-actions .btn{padding:11px 8px;font-size:.8rem}
+    .stop-actions .wide{grid-column:1/-1}
+    .empty{text-align:center;padding:30px 18px}
+    .empty-icon{font-size:2rem;margin-bottom:10px}
+    .empty h3{font-size:1rem}
+    .empty p{font-size:.82rem;color:var(--text-muted);line-height:1.5;margin-top:7px}
+    .history-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--border)}
+    .history-item:first-of-type{border-top:0}
+    .history-title{font-size:.86rem;font-weight:800}
+    .history-meta{font-size:.73rem;color:var(--text-muted);margin-top:4px}
+    .modal-backdrop{display:none;position:fixed;inset:0;z-index:500;background:rgba(2,6,23,.78);align-items:center;justify-content:center;padding:16px}
+    .modal-backdrop.active{display:flex}
+    .modal{width:min(100%,430px);max-height:88vh;overflow:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:var(--shadow)}
+    .modal-icon{font-size:2rem;margin-bottom:8px}
+    .modal h2{font-size:1.12rem}
+    .modal p{color:var(--text-muted);font-size:.85rem;line-height:1.5;margin-top:8px}
+    .modal-actions{display:flex;gap:9px;margin-top:16px}
+    .modal-actions .btn{flex:1}
+    .field{margin-top:14px}
+    .field label{display:block;font-size:.76rem;font-weight:800;color:var(--text-muted);margin-bottom:6px}
+    .field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:11px;background:var(--bg-main);color:var(--text-main);outline:none}
+    .field textarea{min-height:90px;resize:vertical}
+    .code-field{text-align:center;letter-spacing:.35em;font-size:1.5rem;font-weight:900}
+    .toast{position:fixed;z-index:700;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;width:min(calc(100% - 28px),460px);padding:13px 15px;border-radius:13px;background:var(--bg-card);border:1px solid var(--border);box-shadow:var(--shadow);font-size:.85rem;font-weight:700;transition:all .2s}
+    .toast.active{opacity:1;transform:translate(-50%,0)}
+    .toast.error{border-color:var(--danger)}
+    .footer{text-align:center;color:var(--text-muted);font-size:.72rem;padding:16px 0 4px}
+    @media(min-width:620px){.app-shell{padding:22px 20px 40px}.welcome h1{font-size:1.65rem}.card{padding:20px}.stop-card{padding:17px}}
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">🌪️</div>
+        <div>
+          <div class="brand-title">VORTEX <span style="color:var(--primary)">FOOD</span></div>
+          <div class="brand-sub">Painel do Motoboy</div>
+        </div>
+      </div>
+      <button class="icon-btn" type="button" onclick="refreshRoutes()" aria-label="Atualizar rotas">↻</button>
+    </header>
+
+    <section class="welcome">
+      <h1>Olá, <span id="courierName">motoboy</span> 👋</h1>
+      <p id="storeName">Suas entregas e rotas em um só lugar.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">Minha disponibilidade</div>
+        <span class="small muted" id="presenceFeedback">Status operacional</span>
+      </div>
+      <div class="presence-row">
+        <select class="presence-select" id="presenceSelect" aria-label="Minha disponibilidade">
+          <option value="available">🟢 Disponível</option>
+          <option value="paused">🟡 Em pausa</option>
+          <option value="unavailable">⚫ Indisponível</option>
+        </select>
+        <button class="btn btn-secondary" id="savePresenceButton" type="button" onclick="savePresence()">Salvar</button>
+      </div>
+    </section>
+
+    <section class="card" id="activeRouteCard">
+      <div class="card-head">
+        <div class="card-title">Minha rota</div>
+        <span class="small muted" id="lastUpdate">Carregando...</span>
+      </div>
+      <div id="activeRouteContent">
+        <div class="empty">
+          <div class="empty-icon">🛵</div>
+          <h3>Buscando suas entregas</h3>
+          <p>Assim que o estabelecimento atribuir uma rota, ela aparecerá aqui automaticamente.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="historyCard">
+      <div class="card-head">
+        <div class="card-title">Histórico recente</div>
+        <span class="small muted">Últimos 30 dias</span>
+      </div>
+      <div id="historyContent"><p class="small muted">Carregando histórico...</p></div>
+    </section>
+
+    <footer class="footer">VORTEX FOOD · Operação de entregas</footer>
+  </main>
+
+  <div class="modal-backdrop" id="appModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <section class="modal">
+      <div class="modal-icon" id="modalIcon">ℹ️</div>
+      <h2 id="modalTitle">Atenção</h2>
+      <div id="modalBody"></div>
+      <div class="modal-actions" id="modalActions"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    document.body.classList.toggle('light-theme', localStorage.getItem('vortex_theme') === 'light');
+
+    let deliveryRoutes = [];
+    let activeRouteId = null;
+    let refreshInProgress = false;
+    let currentStoreName = '';
+    let currentCourierName = '';
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[char]));
+    }
+
+    function money(value) {
+      return (Number(value) || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    }
+
+    function dateTime(value) {
+      if (!value) return 'Não informado';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? 'Não informado' : date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    }
+
+    function showToast(message, isError) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.toggle('error', !!isError);
+      toast.classList.add('active');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('active'), 3200);
+    }
+
+    function openModal(title, bodyHtml, buttons, icon) {
+      document.getElementById('modalTitle').textContent = title || 'Atenção';
+      document.getElementById('modalIcon').textContent = icon || 'ℹ️';
+      document.getElementById('modalBody').innerHTML = bodyHtml || '';
+      document.getElementById('modalActions').innerHTML = buttons || '';
+      document.getElementById('appModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('appModal').classList.remove('active');
+      document.getElementById('modalBody').innerHTML = '';
+      document.getElementById('modalActions').innerHTML = '';
+    }
+
+    function statusLabel(status) {
+      return ({
+        assigned:'Aguardando saída',
+        in_route:'Em rota',
+        completed:'Concluída',
+        cancelled:'Cancelada',
+        occurrence:'Com ocorrência',
+        delivered:'Entregue',
+        in_progress:'Em andamento'
+      })[status] || 'Em atualização';
+    }
+
+    function routeStatusClass(status) {
+      return 'status-' + String(status || 'assigned').replace(/[^a-z_]/g,'');
+    }
+
+    function routeStopCount(route) {
+      return Array.isArray(route.stops) ? route.stops.length : 0;
+    }
+
+    function renderHistory(routes) {
+      const history = routes.filter(route => ['completed','cancelled'].includes(route.status));
+      const host = document.getElementById('historyContent');
+      if (!history.length) {
+        host.innerHTML = '<p class="small muted">Suas rotas concluídas aparecerão aqui.</p>';
+        return;
+      }
+      host.innerHTML = history.slice(0,8).map(route => {
+        const done = (route.stops || []).filter(stop => stop.stop_status === 'delivered').length;
+        return `
+          <div class="history-item">
+            <div>
+              <div class="history-title">Rota · ${escapeHtml(String(route.id).slice(0,8).toUpperCase())}</div>
+              <div class="history-meta">${dateTime(route.started_at || route.assigned_at)} · ${done}/${routeStopCount(route)} entregas</div>
+            </div>
+            <span class="status-pill status-${escapeHtml(route.status)}">${statusLabel(route.status)}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderActiveRoute(route) {
+      const host = document.getElementById('activeRouteContent');
+      if (!route) {
+        host.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🛵</div>
+            <h3>Nenhuma rota ativa</h3>
+            <p>Você está sem entregas atribuídas no momento. Esta tela será atualizada quando o estabelecimento enviar uma rota.</p>
+          </div>`;
+        return;
+      }
+
+      const stops = Array.isArray(route.stops) ? route.stops : [];
+      const completed = stops.filter(stop => stop.stop_status === 'delivered').length;
+      const progress = stops.length ? Math.round(completed / stops.length * 100) : 0;
+      const canStart = route.status === 'assigned';
+      const stopMarkup = stops.map(stop => renderStop(route, stop)).join('');
+
+      host.innerHTML = `
+        <div class="route-banner">
+          <div>
+            <div class="route-id">Rota #${escapeHtml(String(route.id).slice(0,8).toUpperCase())}</div>
+            <div class="small muted" style="margin-top:5px">Atribuída em ${dateTime(route.assigned_at)}</div>
+          </div>
+          <span class="status-pill ${routeStatusClass(route.status)}">${statusLabel(route.status)}</span>
+        </div>
+        <div class="route-meta">
+          <div class="meta-tile"><div class="meta-label">Paradas</div><div class="meta-value">${stops.length}</div></div>
+          <div class="meta-tile"><div class="meta-label">Entregues</div><div class="meta-value">${completed} de ${stops.length}</div></div>
+          <div class="meta-tile"><div class="meta-label">Saída real</div><div class="meta-value">${route.started_at ? dateTime(route.started_at) : 'Ainda não iniciada'}</div></div>
+          <div class="meta-tile"><div class="meta-label">Progresso</div><div class="meta-value">${progress}%</div></div>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:${progress}%"></div></div>
+        ${canStart ? '<button class="btn btn-primary btn-block" type="button" onclick="confirmStartRoute()">▶ Iniciar minha rota</button>' : ''}
+        <div class="stop-list">${stopMarkup || '<p class="small muted">Esta rota ainda não possui paradas.</p>'}</div>`;
+    }
+
+    function renderStop(route, stop) {
+      const status = stop.stop_status || 'assigned';
+      const isPending = ['in_progress','occurrence'].includes(status);
+      const items = Array.isArray(stop.items) ? stop.items : [];
+      const itemText = items.length ? items.map(item => {
+        const qty = Number(item.qty || item.quantity || 1);
+        return escapeHtml(qty + '× ' + (item.name || item.title || 'Item'));
+      }).join('<br>') : 'Itens não informados';
+      const display = stop.display_id || stop.order_id;
+      const phone = String(stop.customer_phone || '').replace(/[^0-9+]/g,'');
+      const address = String(stop.address || '');
+      const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address);
+      const waze = 'https://waze.com/ul?q=' + encodeURIComponent(address) + '&navigate=yes';
+      const occurrence = status === 'occurrence'
+        ? '<div class="small" style="color:var(--warning);margin-top:9px">⚠️ ' + escapeHtml(stop.occurrence_notes || statusLabel(status)) + '</div>'
+        : '';
+      const promised = stop.promised_delivery_at ? dateTime(stop.promised_delivery_at) : 'Não informado';
+
+      return `
+        <article class="stop-card">
+          <div class="stop-top">
+            <div style="display:flex;gap:10px;align-items:flex-start;min-width:0">
+              <div class="stop-number">${escapeHtml(stop.sequence_number)}</div>
+              <div style="min-width:0">
+                <div class="stop-name">${escapeHtml(stop.customer_name || 'Cliente')}</div>
+                <div class="stop-order">Pedido #${escapeHtml(display)}</div>
+              </div>
+            </div>
+            <span class="status-pill ${status === 'delivered' ? 'status-completed' : status === 'occurrence' ? 'status-occurrence' : 'status-in_route'}">${statusLabel(status)}</span>
+          </div>
+          <div class="stop-address">📍 ${escapeHtml(address || 'Endereço não informado')}</div>
+          <div class="stop-details">
+            <div class="detail"><div class="detail-label">Pagamento</div><div class="detail-value">${escapeHtml(stop.payment_method || 'Não informado')}</div></div>
+            <div class="detail"><div class="detail-label">Cobrar</div><div class="detail-value">${money(stop.amount_due)}</div></div>
+            <div class="detail"><div class="detail-label">Troco informado</div><div class="detail-value">${stop.payment_method === 'Dinheiro' ? money(stop.change) : 'Não se aplica'}</div></div>
+            <div class="detail"><div class="detail-label">Prazo prometido</div><div class="detail-value">${escapeHtml(promised)}</div></div>
+          </div>
+          <div class="items"><strong>Itens do pedido</strong><br>${itemText}</div>
+          ${stop.observation ? '<div class="small muted" style="margin-top:9px">Observação: ' + escapeHtml(stop.observation) + '</div>' : ''}
+          ${occurrence}
+          <div class="stop-actions">
+            <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(maps)}')">🗺️ Google Maps</button>
+            <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
+            ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
+            ${isPending ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
+            ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}
+          </div>
+        </article>`;
+    }
+
+    function openNavigation(url) {
+      try { window.open(url, '_blank', 'noopener'); }
+      catch (error) { showToast('Não foi possível abrir o aplicativo de navegação.', true); }
+    }
+
+    function confirmStartRoute() {
+      openModal(
+        'Iniciar rota?',
+        '<p>Ao iniciar, o horário real de saída será registrado e os pedidos desta rota passarão para “Em rota”.</p>',
+        '<button class="btn btn-secondary" type="button" onclick="closeModal()">Voltar</button><button class="btn btn-primary" id="confirmStartButton" type="button" onclick="startActiveRoute()">Iniciar agora</button>',
+        '🛵'
+      );
+    }
+
+    async function startActiveRoute() {
+      if (!activeRouteId) return;
+      const button = document.getElementById('confirmStartButton');
+      if (button) { button.disabled = true; button.textContent = 'Iniciando...'; }
+      try {
+        const result = await window.VortexDelivery.startRoute(activeRouteId);
+        if (result.error) throw result.error;
+        closeModal();
+        showToast('Rota iniciada. Boa entrega!');
+        await refreshRoutes();
+      } catch (error) {
+        if (button) { button.disabled = false; button.textContent = 'Iniciar agora'; }
+        showToast(error.message || 'Não foi possível iniciar a rota.', true);
+      }
+    }
+
+    function openCodeModal(orderId, displayId) {
+      openModal(
+        'Confirmar entrega',
+        '<p>Peça ao cliente o código de seis dígitos e digite abaixo. A entrega só será concluída após a validação.</p><div class="field"><label for="deliveryCodeInput">Código do cliente · Pedido #' + escapeHtml(displayId) + '</label><input id="deliveryCodeInput" class="code-field" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"></div>',
+        '<button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button><button class="btn btn-success" id="confirmCodeButton" type="button" onclick="submitDeliveryCode(\'' + escapeHtml(orderId) + '\')">Validar código</button>',
+        '🔐'
+      );
+      const input = document.getElementById('deliveryCodeInput');
+      if (input) input.focus();
+    }
+
+    async function submitDeliveryCode(orderId) {
+      const input = document.getElementById('deliveryCodeInput');
+      const code = String(input && input.value || '').replace(/\D/g,'');
+      if (code.length !== 6) { showToast('Digite os seis números do código.', true); return; }
+      const button = document.getElementById('confirmCodeButton');
+      if (button) { button.disabled = true; button.textContent = 'Validando...'; }
+      try {
+        const result = await window.VortexDelivery.confirmDeliveryCode(orderId,code);
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) throw new Error(result.data && result.data.message || 'Código incorreto ou indisponível.');
+        closeModal();
+        showToast('Entrega confirmada com sucesso!');
+        await refreshRoutes();
+      } catch (error) {
+        if (button) { button.disabled = false; button.textContent = 'Validar código'; }
+        showToast(error.message || 'Não foi possível validar o código.', true);
+      }
+    }
+
+    function openOccurrenceModal(routeId, orderId, displayId) {
+      openModal(
+        'Informar ocorrência',
+        '<p>Registre o que aconteceu. O pedido continuará pendente e não será marcado como entregue.</p>' +
+        '<div class="field"><label for="occurrenceType">Motivo · Pedido #' + escapeHtml(displayId) + '</label><select id="occurrenceType"><option value="customer_absent">Cliente ausente</option><option value="wrong_address">Endereço incorreto</option><option value="no_response">Cliente não responde</option><option value="customer_refused">Cliente recusou o pedido</option><option value="other">Outro motivo</option></select></div>' +
+        '<div class="field"><label for="occurrenceNotes">Detalhes (opcional)</label><textarea id="occurrenceNotes" maxlength="1000" placeholder="Descreva brevemente o que aconteceu..."></textarea></div>',
+        '<button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="sendOccurrenceButton" type="button" onclick="submitOccurrence(\'' + escapeHtml(routeId) + '\',\'' + escapeHtml(orderId) + '\')">Enviar ocorrência</button>',
+        '⚠️'
+      );
+    }
+
+    async function submitOccurrence(routeId, orderId) {
+      const type = document.getElementById('occurrenceType').value;
+      const notes = document.getElementById('occurrenceNotes').value.trim();
+      const button = document.getElementById('sendOccurrenceButton');
+      if (button) { button.disabled = true; button.textContent = 'Enviando...'; }
+      try {
+        const result = await window.VortexDelivery.reportOccurrence(routeId,orderId,type,notes);
+        if (result.error) throw result.error;
+        closeModal();
+        showToast('Ocorrência registrada. O pedido continua pendente.');
+        await refreshRoutes();
+      } catch (error) {
+        if (button) { button.disabled = false; button.textContent = 'Enviar ocorrência'; }
+        showToast(error.message || 'Não foi possível registrar a ocorrência.', true);
+      }
+    }
+
+    async function savePresence() {
+      const select = document.getElementById('presenceSelect');
+      const button = document.getElementById('savePresenceButton');
+      button.disabled = true;
+      button.textContent = 'Salvando...';
+      try {
+        const result = await window.VortexDelivery.setPresence(select.value);
+        if (result.error) throw result.error;
+        document.getElementById('presenceFeedback').textContent = 'Atualizado agora';
+        showToast('Disponibilidade atualizada.');
+      } catch (error) {
+        showToast(error.message || 'Não foi possível atualizar sua disponibilidade.', true);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Salvar';
+      }
+    }
+
+    async function refreshRoutes() {
+      if (refreshInProgress || !window.VortexDelivery) return;
+      refreshInProgress = true;
+      const refreshLabel = document.getElementById('lastUpdate');
+      if (refreshLabel) refreshLabel.textContent = 'Atualizando...';
+      try {
+        const result = await window.VortexDelivery.fetchMyRoutes();
+        if (result.error) throw result.error;
+        deliveryRoutes = Array.isArray(result.data) ? result.data : [];
+        const active = deliveryRoutes.find(route => ['assigned','in_route'].includes(route.status)) || null;
+        activeRouteId = active ? active.id : null;
+        renderActiveRoute(active);
+        renderHistory(deliveryRoutes);
+        if (refreshLabel) refreshLabel.textContent = 'Atualizado ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      } catch (error) {
+        if (refreshLabel) refreshLabel.textContent = 'Falha na atualização';
+        showToast(error.message || 'Não foi possível carregar suas rotas.', true);
+      } finally {
+        refreshInProgress = false;
+      }
+    }
+
+    async function initializeMotoboyPanel() {
+      try {
+        const context = await window.VortexAuth.getCurrentStoreContext();
+        if (!context || context.error || !context.store) throw (context && context.error) || new Error('Não foi possível validar sua conta.');
+        const auth = window.VORTEX_AUTH_CONTEXT || {};
+        currentCourierName = auth.display_name || 'motoboy';
+        currentStoreName = context.store.name || context.store.store_name || 'Seu estabelecimento';
+        document.getElementById('courierName').textContent = currentCourierName;
+        document.getElementById('storeName').textContent = currentStoreName;
+        await refreshRoutes();
+        window.setInterval(refreshRoutes,15000);
+      } catch (error) {
+        showToast(error.message || 'Não foi possível abrir o painel do motoboy.', true);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded',initializeMotoboyPanel);
+  </script>
+</body>
+</html>

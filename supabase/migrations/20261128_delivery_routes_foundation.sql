@@ -529,6 +529,34 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.rpc_get_my_delivery_courier_presence(p_store_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_status text;
+BEGIN
+  IF auth.uid() IS NULL
+     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.presence_update')
+     OR NOT EXISTS (
+       SELECT 1 FROM public.vortex_store_members
+       WHERE store_id=p_store_id AND user_id=auth.uid()
+         AND status='active' AND profile_key='delivery'
+     ) THEN
+    RAISE EXCEPTION 'Somente um motoboy ativo pode consultar a própria disponibilidade.';
+  END IF;
+
+  SELECT status INTO v_status
+  FROM public.vortex_delivery_courier_presence
+  WHERE store_id=p_store_id AND courier_user_id=auth.uid();
+
+  RETURN jsonb_build_object('status',COALESCE(v_status,'available'));
+END;
+$function$;
+
 -- 10) Atualização da disponibilidade somente da própria conta de motoboy.
 CREATE OR REPLACE FUNCTION public.rpc_set_delivery_courier_presence(
   p_store_id uuid,
@@ -697,6 +725,7 @@ REVOKE ALL ON FUNCTION public.rpc_get_my_delivery_routes(uuid) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.rpc_get_delivery_route_codes(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.rpc_start_delivery_route(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.rpc_report_delivery_occurrence(uuid,uuid,text,text,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.rpc_get_my_delivery_courier_presence(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.rpc_set_delivery_courier_presence(uuid,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.rpc_confirm_delivery_code(uuid,text,text) FROM PUBLIC, anon;
 
@@ -705,6 +734,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_my_delivery_routes(uuid) TO authenticat
 GRANT EXECUTE ON FUNCTION public.rpc_get_delivery_route_codes(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_start_delivery_route(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_report_delivery_occurrence(uuid,uuid,text,text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_get_my_delivery_courier_presence(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_set_delivery_courier_presence(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_confirm_delivery_code(uuid,text,text) TO authenticated;
 

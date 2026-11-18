@@ -301,6 +301,14 @@
         </select>
         <input type="text" id="cancelReasonCustomInput" class="cancel-reason-input" placeholder="Descreva o motivo..." style="display:none;">
       </div>
+      <div id="cancelBillingActionWrap" style="display:none; margin-bottom:12px;">
+        <label style="font-size:0.78rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Como tratar o valor deste item?</label>
+        <select id="cancelBillingAction" class="cancel-reason-select">
+          <option value="charge">Manter cobrança na conta</option>
+          <option value="waive">Retirar da conta (cortesia/perda)</option>
+        </select>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">Se o preparo já consumiu ingredientes, o estoque será registrado como perda, sem devolver automaticamente os insumos.</div>
+      </div>
 
       <div style="display:flex; gap:10px; margin-top:15px;">
         <button class="btn-modal-secondary" onclick="closeConfirmCancelModal()">Voltar</button>
@@ -393,6 +401,7 @@
   <script>
     let activeFilter = 'all';
     let pendingCancelOrderId = null;
+    let pendingCancelItemId = null;
     let lastKnownNewOrdersCount = -1;
     let isRefreshingKds = false;
 
@@ -629,20 +638,9 @@
         else if (order.status === 'finished' || order.status === 'completed') statusLabel = '🏁 FINALIZADO';
         else if (order.status === 'cancelled') statusLabel = '🔴 CANCELADO';
 
-        let itemsHtml = (order.items || []).map(i => `
-          <div class="item-row">
-            <span>${i.qty || i.quantity || 1}x ${i.name || i.title || 'Item'}</span>
-            <span>R$ ${(((i.price || 0) * (i.qty || i.quantity || 1))).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
-          </div>
-        `).join('');
-
-        let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
-        let cancelInfoHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:4px;">Motivo: ${order.cancellationReason}</div>` : '';
-        
         const isTableOrder = String(order.origin || '').toLowerCase().includes('mesa');
         let isCancelled = order.status === 'cancelled';
         let isFinished = order.status === 'finished' || order.status === 'completed';
-
         const currentPermissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
         const canUpdateStatus = currentPermissions.includes('kds.update_status');
         const canCancelKds = isTableOrder
@@ -650,6 +648,29 @@
           : (String(order.origin || '').toLowerCase().includes('delivery')
               ? (currentPermissions.includes('delivery.manage') || currentPermissions.includes('pdv.cancel'))
               : (currentPermissions.includes('kds.cancel') || currentPermissions.includes('pdv.cancel')));
+
+        let itemsHtml = (order.items || []).map(i => {
+          const qty = Number(i.qty || i.quantity || 1);
+          const itemTotal = (Number(i.price) || 0) * qty;
+          const itemCancelled = i.status === 'cancelled';
+          const billingStatus = i.billingStatus || 'charge';
+          const itemLabel = itemCancelled
+            ? (billingStatus === 'waive' ? ' • CANCELADO / CORTESIA' : ' • CANCELADO / COBRAR')
+            : '';
+          const itemButton = canCancelKds && !isCancelled && !isFinished && !itemCancelled && (i.itemId || i.item_id)
+            ? `<button class="btn-action-kds btn-cancel" style="padding:3px 7px; margin-left:6px; font-size:0.68rem;" onclick="askCancelOrderItem('${order.id}','${i.itemId || i.item_id}')">Cancelar item</button>`
+            : '';
+          return `
+            <div class="item-row" style="${itemCancelled ? 'opacity:0.65;text-decoration:line-through;' : ''}">
+              <span>${qty}x ${i.name || i.title || 'Item'}${itemLabel}</span>
+              <span>R$ ${itemTotal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}${itemButton}</span>
+            </div>
+            ${itemCancelled && i.cancellationReason ? `<div style="font-size:0.7rem;color:var(--danger);">Motivo: ${i.cancellationReason}</div>` : ''}
+          `;
+        }).join('');
+
+        let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
+        let cancelInfoHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:4px;">Motivo: ${order.cancellationReason}</div>` : '';
         let actionsHtml = '';
         if (!isCancelled && !isFinished) {
           if (canUpdateStatus && (order.status === 'new' || order.status === 'received')) {
@@ -734,6 +755,8 @@
     }
 
     function askCancelOrder(id) {
+      pendingCancelItemId = null;
+      document.getElementById('cancelBillingActionWrap').style.display = 'none';
       pendingCancelOrderId = id;
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));
@@ -752,6 +775,23 @@
       document.getElementById('confirmCancelModal').classList.add('active');
     }
 
+    function askCancelOrderItem(orderId, itemId) {
+      pendingCancelOrderId = orderId;
+      pendingCancelItemId = itemId;
+      const orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const order = orders.find(o => String(o.id) === String(orderId));
+      const item = order && (order.items || []).find(i => String(i.itemId || i.item_id) === String(itemId));
+      const itemName = item ? (item.name || item.title || 'Item') : 'Item';
+      document.getElementById('confirmCancelText').innerHTML = `Cancelar somente <strong>${itemName}</strong> do pedido #${order ? (order.displayId || orderId) : orderId}?`;
+      document.getElementById('cancelReasonSelect').value = 'Cliente desistiu';
+      document.getElementById('cancelReasonCustomInput').style.display = 'none';
+      document.getElementById('cancelReasonCustomInput').value = '';
+      document.getElementById('cancelBillingAction').value = 'charge';
+      document.getElementById('cancelBillingActionWrap').style.display = 'block';
+      document.getElementById('btnConfirmCancelAction').innerText = 'Confirmar cancelamento do item';
+      document.getElementById('confirmCancelModal').classList.add('active');
+    }
+
     function checkCustomReason(selectEl) {
       const customInput = document.getElementById('cancelReasonCustomInput');
       if (selectEl.value === 'Outro motivo') {
@@ -765,6 +805,9 @@
 
     function closeConfirmCancelModal() {
       pendingCancelOrderId = null;
+      pendingCancelItemId = null;
+      document.getElementById('cancelBillingActionWrap').style.display = 'none';
+      document.getElementById('btnConfirmCancelAction').innerText = 'Sim, Cancelar Pedido';
       document.getElementById('confirmCancelModal').classList.remove('active');
     }
 
@@ -776,7 +819,25 @@
         reason = customInput.value.trim() || 'Outro motivo (não especificado)';
       }
 
+      const itemIdToCancel = pendingCancelItemId;
+      const billingAction = document.getElementById('cancelBillingAction').value;
       closeConfirmCancelModal();
+
+      if (itemIdToCancel) {
+        try {
+          if (typeof dbCancelKdsItem !== 'function') throw new Error('Rotina de cancelamento individual não disponível.');
+          const result = await dbCancelKdsItem(id, itemIdToCancel, reason, billingAction);
+          if (!result || result.success !== true) throw (result && result.error) || new Error('O banco não confirmou o cancelamento do item.');
+          renderKds();
+          showNoticeModal('Item cancelado', billingAction === 'waive'
+            ? 'O item foi retirado da conta da mesa. Se já houve consumo de ingredientes, ele permanece registrado como perda.'
+            : 'O item foi cancelado na cozinha, mas continuará sendo cobrado na conta.', '✅');
+          refreshKdsData();
+        } catch (itemError) {
+          showNoticeModal('Cancelamento não confirmado', itemError.message || 'O item foi preservado e não foi cancelado.', '⚠️');
+        }
+        return;
+      }
 
       let orders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
       let order = orders.find(o => String(o.id) === String(id));

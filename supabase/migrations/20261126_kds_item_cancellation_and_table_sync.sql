@@ -43,7 +43,11 @@ BEGIN
   IF v_count<>1 OR v_store_id IS NULL THEN
     RAISE EXCEPTION 'Não foi possível identificar uma única loja ativa.';
   END IF;
-  IF NOT public.vortex_user_has_permission(v_store_id,'tables.view') THEN
+  IF NOT (
+    public.vortex_user_has_permission(v_store_id,'tables.view')
+    OR public.vortex_user_has_permission(v_store_id,'tables.open')
+    OR public.vortex_user_has_permission(v_store_id,'tables.close')
+  ) THEN
     RAISE EXCEPTION 'Seu perfil não pode consultar comandas de mesa.';
   END IF;
 

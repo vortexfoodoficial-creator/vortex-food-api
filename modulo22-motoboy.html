@@ -503,6 +503,10 @@
         currentStoreName = context.store.name || context.store.store_name || 'Seu estabelecimento';
         document.getElementById('courierName').textContent = currentCourierName;
         document.getElementById('storeName').textContent = currentStoreName;
+        const presence = await window.VortexDelivery.getPresence();
+        if (!presence.error && presence.data && presence.data.status) {
+          document.getElementById('presenceSelect').value = presence.data.status;
+        }
         await refreshRoutes();
         window.setInterval(refreshRoutes,15000);
       } catch (error) {

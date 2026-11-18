@@ -1140,7 +1140,8 @@
           const availableToAdd = editableStops ? readLocalKdsOrders().filter(order =>
             order.origin && String(order.origin).includes('Delivery') && order.status === 'ready' &&
             !routeOrderIds.includes(String(order.id)) &&
-            (!order.courier_member_id || String(order.courier_member_id) === String(route.courier_user_id))
+            (!order.courier_member_id || String(order.courier_member_id) === String(route.courier_user_id)) &&
+            (!order.courier || String(order.courier) === String(route.courier_name))
           ) : [];
           const eventNames = {
             route_assigned:'Rota atribuída',route_started:'Saída registrada',

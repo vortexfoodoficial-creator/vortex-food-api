@@ -304,6 +304,7 @@
       <div id="cancelBillingActionWrap" style="display:none; margin-bottom:12px;">
         <label style="font-size:0.78rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Como tratar o valor deste item?</label>
         <select id="cancelBillingAction" class="cancel-reason-select">
+          <option value="" disabled selected>Selecione como tratar o valor</option>
           <option value="charge">Manter cobrança na conta</option>
           <option value="waive">Retirar da conta (cortesia/perda)</option>
         </select>
@@ -791,7 +792,7 @@
       document.getElementById('cancelReasonSelect').value = 'Cliente desistiu';
       document.getElementById('cancelReasonCustomInput').style.display = 'none';
       document.getElementById('cancelReasonCustomInput').value = '';
-      document.getElementById('cancelBillingAction').value = 'charge';
+      document.getElementById('cancelBillingAction').value = '';
       document.getElementById('cancelBillingActionWrap').style.display = 'block';
       const btnConfirmItem = document.getElementById('btnConfirmCancelAction');
       btnConfirmItem.innerText = 'Confirmar cancelamento do item';
@@ -828,6 +829,10 @@
 
       const itemIdToCancel = pendingCancelItemId;
       const billingAction = document.getElementById('cancelBillingAction').value;
+      if (itemIdToCancel && !billingAction) {
+        showNoticeModal('Decisão necessária', 'Escolha se o item continuará sendo cobrado ou será retirado da conta.', '⚠️');
+        return;
+      }
       closeConfirmCancelModal();
 
       if (itemIdToCancel) {

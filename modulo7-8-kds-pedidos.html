@@ -946,6 +946,7 @@
     let kdsTvCastSession = null;
     let kdsTvCastMessageListener = null;
     let kdsTvCastPairingConfig = null;
+    let kdsTvCastStartRequested = false;
     const kdsTvCastApprovalsInFlight = new Set();
 
     function kdsTvSetPairingStatus(message) {
@@ -1193,6 +1194,7 @@
         if (!session) throw new Error('Nenhuma televisão Google Cast foi selecionada.');
 
         kdsTvCastSession = session;
+        kdsTvCastStartRequested = false;
         if (kdsTvCastMessageListener) {
           try { session.removeMessageListener(VORTEX_KDS_CAST_NAMESPACE, kdsTvCastMessageListener); } catch (removeError) {}
         }
@@ -1200,8 +1202,14 @@
           kdsTvHandleCastPairingMessage(session, rawMessage);
         };
         session.addMessageListener(VORTEX_KDS_CAST_NAMESPACE, kdsTvCastMessageListener);
-        await session.sendMessage(VORTEX_KDS_CAST_NAMESPACE, { type: 'START_PAIRING' });
-        kdsTvSetPairingStatus('Televisão encontrada. Solicitando autorização segura para este estabelecimento…');
+        kdsTvSetPairingStatus('Televisão encontrada. Aguardando a tela Vortex ficar pronta…');
+        // HELLO permite recuperar o handshake mesmo se o evento READY ocorrer
+        // antes de o celular registrar o listener de mensagens.
+        try {
+          await session.sendMessage(VORTEX_KDS_CAST_NAMESPACE, { type: 'HELLO' });
+        } catch (helloError) {
+          console.warn('O receptor ainda não respondeu ao HELLO inicial; aguardando READY:', helloError);
+        }
       } catch (error) {
         console.error('Falha ao conectar pelo Google Cast:', error);
         const message = String(error && (error.description || error.message || error.code) || '');
@@ -1221,6 +1229,19 @@
       }
       if (!message || typeof message !== 'object') return;
 
+      if (message.type === 'RECEIVER_READY') {
+        if (!kdsTvCastStartRequested) {
+          kdsTvCastStartRequested = true;
+          try {
+            await session.sendMessage(VORTEX_KDS_CAST_NAMESPACE, { type: 'START_PAIRING' });
+            kdsTvSetPairingStatus('TV encontrada. Solicitando autorização segura para este estabelecimento…');
+          } catch (error) {
+            kdsTvCastStartRequested = false;
+            kdsTvSetPairingStatus('A TV foi encontrada, mas não respondeu ao início do pareamento. Tente novamente.');
+          }
+        }
+        return;
+      }
       if (message.type === 'DEVICE_ALREADY_PAIRED') {
         kdsTvSetPairingStatus('Esta televisão já possui uma credencial salva. Se ela pertence a outro estabelecimento, revogue o vínculo anterior e limpe os dados do site na TV antes de reutilizá-la.');
         return;

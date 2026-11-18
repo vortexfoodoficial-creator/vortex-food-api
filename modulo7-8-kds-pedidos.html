@@ -671,6 +671,9 @@
 
         let obsHtml = order.observation ? `<div class="order-obs">📝 <strong>Obs:</strong> ${order.observation}</div>` : '';
         let cancelInfoHtml = (order.status === 'cancelled' && order.cancellationReason) ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:4px;">Motivo: ${order.cancellationReason}</div>` : '';
+        if (isTableOrder && (order.items || []).some(item => !(item.itemId || item.item_id))) {
+          cancelInfoHtml += '<div style="font-size:0.72rem;color:var(--warning);margin-top:5px;">Pedido antigo sem vínculo individual dos itens. O cancelamento automático foi bloqueado para evitar divergência na conta; confira a comanda antes de qualquer ajuste.</div>';
+        }
         let actionsHtml = '';
         if (!isCancelled && !isFinished) {
           if (canUpdateStatus && (order.status === 'new' || order.status === 'received')) {
@@ -682,7 +685,7 @@
           }
           actionsHtml += `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
           const hasStableItemIds = (order.items || []).length > 0 && (order.items || []).every(item => !!(item.itemId || item.item_id));
-          if (canCancelKds && (!isTableOrder || !hasStableItemIds)) {
+          if (canCancelKds && !isTableOrder) {
             actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
           }
         } else {

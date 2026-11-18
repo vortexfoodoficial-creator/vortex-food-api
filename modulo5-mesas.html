@@ -724,6 +724,13 @@
         return;
       }
 
+      // Preserve o número real da mesa: closeMesaModal() limpa activeTableId.
+      const targetTableNumber = Number(activeTableId);
+      if (!Number.isInteger(targetTableNumber) || targetTableNumber < 1 || targetTableNumber > 200) {
+        showNoticeModal('Mesa inválida', 'Não foi possível identificar o número desta mesa. Nenhum novo vínculo foi enviado à nuvem.', '⚠️');
+        return;
+      }
+
       const clientName = document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`;
       const observation = document.getElementById('tableObsInput').value.trim();
       const incrementalTotal = tempCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
@@ -812,13 +819,13 @@
         const syncResult = await saveTableKdsOrderToCloud(targetOrder);
         if (syncResult && syncResult.error) throw syncResult.error;
         if (typeof dbSaveTableCart !== 'function') throw new Error('Rotina de sincronização da comanda não disponível.');
-        const cartSync = await dbSaveTableCart(activeTableId, tableCarts[activeTableId]);
+        const cartSync = await dbSaveTableCart(targetTableNumber, tableCarts[targetTableNumber]);
         if (cartSync && cartSync.error) throw cartSync.error;
-        tableCarts[activeTableId].cloudSyncPending = false;
+        tableCarts[targetTableNumber].cloudSyncPending = false;
         localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
       } catch (err) {
         console.error('Erro ao salvar KDS/comanda da mesa no Supabase:', err);
-        if (tableCarts[activeTableId]) tableCarts[activeTableId].cloudSyncPending = true;
+        if (tableCarts[targetTableNumber]) tableCarts[targetTableNumber].cloudSyncPending = true;
         localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
         showNoticeModal('Sincronização pendente', `O pedido #${displayOrderNumber} e a comanda continuam preservados neste dispositivo, mas a sincronização completa na nuvem não foi confirmada. Motivo: ${err.message || String(err)}`, '⚠️');
       }

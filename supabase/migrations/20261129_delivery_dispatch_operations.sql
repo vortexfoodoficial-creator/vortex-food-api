@@ -14,6 +14,8 @@ SET module_key=EXCLUDED.module_key,action_key=EXCLUDED.action_key,
 
 INSERT INTO public.vortex_profile_permissions(profile_key,permission_key,allowed)
 VALUES
+  ('owner','delivery.dispatch_view',true),
+  ('owner','delivery.dispatch_manage',true),
   ('administrator','delivery.dispatch_view',true),
   ('administrator','delivery.dispatch_manage',true),
   ('manager','delivery.dispatch_view',true),
@@ -94,6 +96,50 @@ BEGIN
   ) stats ON true
   WHERE r.store_id=p_store_id
     AND (r.status IN ('assigned','in_route') OR r.assigned_at>now()-interval '30 days');
+
+  RETURN v_result;
+END;
+$function$;
+
+-- Disponibilidade de todos os motoboys ativos do estabelecimento, mesmo sem rota.
+CREATE OR REPLACE FUNCTION public.rpc_get_delivery_dispatch_couriers(p_store_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL
+     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.dispatch_view') THEN
+    RAISE EXCEPTION 'Seu perfil não pode visualizar a disponibilidade dos motoboys.';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'user_id',m.user_id,
+    'name',COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy'),
+    'phone',COALESCE(u.phone,u.raw_user_meta_data->>'phone',''),
+    'presence_status',COALESCE(cp.status,'unavailable'),
+    'presence_updated_at',cp.updated_at,
+    'active_route_id',r.id,
+    'route_status',r.status
+  ) ORDER BY
+    CASE COALESCE(cp.status,'unavailable')
+      WHEN 'available' THEN 0 WHEN 'in_route' THEN 1 WHEN 'paused' THEN 2 ELSE 3 END,
+    COALESCE(NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy')
+  ),'[]'::jsonb)
+  INTO v_result
+  FROM public.vortex_store_members m
+  JOIN auth.users u ON u.id=m.user_id
+  LEFT JOIN public.vortex_delivery_courier_presence cp
+    ON cp.store_id=m.store_id AND cp.courier_user_id=m.user_id
+  LEFT JOIN public.vortex_delivery_routes r
+    ON r.store_id=m.store_id AND r.courier_user_id=m.user_id
+    AND r.status IN ('assigned','in_route')
+  WHERE m.store_id=p_store_id AND m.status='active'
+    AND m.profile_key='delivery';
 
   RETURN v_result;
 END;
@@ -325,11 +371,13 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_get_delivery_dispatch_routes(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.rpc_get_delivery_dispatch_couriers(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.rpc_transfer_delivery_route(uuid,uuid,uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.rpc_resolve_delivery_occurrence(uuid,uuid,text,text,text) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.rpc_cancel_delivery_route(uuid,uuid,text) FROM PUBLIC,anon;
 
 GRANT EXECUTE ON FUNCTION public.rpc_get_delivery_dispatch_routes(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_get_delivery_dispatch_couriers(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_transfer_delivery_route(uuid,uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_resolve_delivery_occurrence(uuid,uuid,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_cancel_delivery_route(uuid,uuid,text) TO authenticated;

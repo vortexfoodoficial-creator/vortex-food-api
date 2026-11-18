@@ -503,8 +503,45 @@ async function dbSetDeliveryCourierPresence(status) {
   });
 }
 
+async function dbGetDeliveryDispatchRoutes() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_delivery_dispatch_routes', { p_store_id: storeId });
+}
+
+async function dbTransferDeliveryRoute(routeId, newCourierUserId) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_transfer_delivery_route', {
+    p_store_id: storeId, p_route_id: String(routeId || ''),
+    p_new_courier_user_id: String(newCourierUserId || '')
+  });
+}
+
+async function dbResolveDeliveryOccurrence(routeId, orderId, resolution, notes) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_resolve_delivery_occurrence', {
+    p_store_id: storeId, p_route_id: String(routeId || ''),
+    p_order_id: String(orderId || ''), p_resolution: String(resolution || ''),
+    p_notes: String(notes || '')
+  });
+}
+
+async function dbCancelDeliveryRoute(routeId, reason) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_cancel_delivery_route', {
+    p_store_id: storeId, p_route_id: String(routeId || ''), p_reason: String(reason || '')
+  });
+}
+
 window.VortexDelivery = {
   createRoute: dbCreateDeliveryRoute,
+  fetchDispatchRoutes: dbGetDeliveryDispatchRoutes,
+  transferRoute: dbTransferDeliveryRoute,
+  resolveOccurrence: dbResolveDeliveryOccurrence,
+  cancelRoute: dbCancelDeliveryRoute,
   fetchMyRoutes: dbFetchMyDeliveryRoutes,
   getRouteCodes: dbGetDeliveryRouteCodes,
   confirmDeliveryCode: dbConfirmDeliveryCode,

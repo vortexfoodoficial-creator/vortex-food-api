@@ -1135,7 +1135,8 @@
           const stops = Array.isArray(route.stops) ? route.stops : [];
           const events = Array.isArray(route.events) ? route.events.slice(0,5) : [];
           const editableStops = canManage && route.status === 'assigned';
-          const routeOrderIds = stops.map(stop => String(stop.order_id));
+          const routeOrderIds = stops.filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status)).map(stop => String(stop.order_id));
+          const activeAssignedStops = stops.filter(stop => stop.status === 'assigned');
           const availableToAdd = editableStops ? readLocalKdsOrders().filter(order =>
             order.origin && String(order.origin).includes('Delivery') && order.status === 'ready' &&
             !routeOrderIds.includes(String(order.id)) &&
@@ -1144,7 +1145,7 @@
           const eventNames = {
             route_assigned:'Rota atribuída',route_started:'Saída registrada',
             delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
-            route_transferred:'Rota transferida',occurrence_retry:'Nova tentativa autorizada',
+            route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_deadline_updated:'Prazo de entrega atualizado',occurrence_retry:'Nova tentativa autorizada',
             delivery_returned:'Pedido retornou',route_cancelled:'Rota cancelada'
           };
           const activeRoute = ['assigned','in_route'].includes(route.status);
@@ -1174,11 +1175,11 @@
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'returned\')">Registrar retorno</button></div>'
                 : '';
               const deadlineEditable = canManage && ['assigned','in_route'].includes(route.status) && ['assigned','in_progress','occurrence'].includes(stop.status);
-              const stopIndex = stops.findIndex(item => String(item.order_id) === String(stop.order_id));
+              const stopIndex = activeAssignedStops.findIndex(item => String(item.order_id) === String(stop.order_id));
               const stopControls = editableStops && stop.status === 'assigned'
                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
-                  '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===stops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
+                  '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===activeAssignedStops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
                   '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
               const deadlineEditor = deadlineEditable
                 ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">' +

@@ -420,6 +420,72 @@ async function dbUpdateKdsOrder(orderId, updates) {
   return { data, error };
 }
 
+// ============================================================
+// OPERAÇÃO DE ROTAS E PAINEL DO MOTOBOY
+// As mutações são sempre validadas por RPC no banco; localStorage
+// não é fonte de verdade para atribuições, saídas ou entregas.
+// ============================================================
+async function vortexDeliveryRpc(rpcName, params) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  return await supabase.rpc(rpcName, params || {});
+}
+
+async function dbCreateDeliveryRoute(courierUserId, orderIds) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  if (!Array.isArray(orderIds) || !orderIds.length) return { data: null, error: new Error('Selecione ao menos um pedido.') };
+  return await vortexDeliveryRpc('rpc_create_delivery_route', {
+    p_store_id: storeId,
+    p_courier_user_id: String(courierUserId || ''),
+    p_order_ids: orderIds.map(id => String(id))
+  });
+}
+
+async function dbFetchMyDeliveryRoutes() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_my_delivery_routes', { p_store_id: storeId });
+}
+
+async function dbStartDeliveryRoute(routeId) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_start_delivery_route', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || '')
+  });
+}
+
+async function dbReportDeliveryOccurrence(routeId, orderId, occurrenceType, notes) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_report_delivery_occurrence', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || ''),
+    p_order_id: String(orderId || ''),
+    p_occurrence_type: String(occurrenceType || ''),
+    p_notes: String(notes || '')
+  });
+}
+
+async function dbSetDeliveryCourierPresence(status) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_set_delivery_courier_presence', {
+    p_store_id: storeId,
+    p_status: String(status || '')
+  });
+}
+
+window.VortexDelivery = {
+  createRoute: dbCreateDeliveryRoute,
+  fetchMyRoutes: dbFetchMyDeliveryRoutes,
+  startRoute: dbStartDeliveryRoute,
+  reportOccurrence: dbReportDeliveryOccurrence,
+  setPresence: dbSetDeliveryCourierPresence
+};
+
 async function dbFetchKdsOrders() {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
@@ -1375,7 +1441,8 @@ const VORTEX_PAGE_PERMISSION_MAP = {
   'modulo17-caixa-turno.html': 'cash.view',
   'modulo18-crm.html': 'crm.view',
   'modulo19-fiscal.html': 'fiscal.view',
-  'modulo21-delivery.html': 'delivery.view',
+  'modulo21-delivery.html': 'delivery.manage',
+  'modulo22-motoboy.html': 'delivery.route_view',
   'modulo-configuracoes.html': 'settings.view',
   'modulo-dados-estabelecimento.html': 'settings.view',
   'modulo-minha-conta.html': 'dashboard.view',
@@ -1904,6 +1971,10 @@ function vortexRequireAuthenticatedPage() {
           return;
         }
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        if (window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery' && currentPage !== 'modulo22-motoboy.html') {
+          window.location.replace('modulo22-motoboy.html');
+          return;
+        }
         const requiredPermission = VORTEX_PAGE_PERMISSION_MAP[currentPage];
         if (requiredPermission && !vortexPermissionHas(requiredPermission)) {
           window.location.replace('index.html?blocked=' + encodeURIComponent(requiredPermission));

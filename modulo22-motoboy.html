@@ -460,10 +460,15 @@
       const refreshLabel = document.getElementById('lastUpdate');
       if (refreshLabel) refreshLabel.textContent = 'Atualizando...';
       try {
+        const previousRoutes = deliveryRoutes;
         const result = await window.VortexDelivery.fetchMyRoutes();
         if (result.error) throw result.error;
         deliveryRoutes = Array.isArray(result.data) ? result.data : [];
         const active = deliveryRoutes.find(route => ['assigned','in_route'].includes(route.status)) || null;
+        const previousActive = previousRoutes.find(route => String(route.id) === String(active && active.id));
+        if (active && previousActive && Number(active.route_version || 1) !== Number(previousActive.route_version || 1)) {
+          showToast('O estabelecimento atualizou sua rota. Confira a sequência e os prazos das entregas.');
+        }
         activeRouteId = active ? active.id : null;
         renderActiveRoute(active);
         renderHistory(deliveryRoutes);

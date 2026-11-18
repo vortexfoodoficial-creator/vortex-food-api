@@ -1108,6 +1108,14 @@
       document.getElementById('dispatchActionModal').classList.add('active');
     }
 
+    function resolveDispatchOccurrence(routeId,orderId,resolution) {
+      openDispatchActionModal(resolution,routeId,orderId);
+    }
+
+    function cancelDispatchRoute(routeId) {
+      openDispatchActionModal('cancel',routeId,'');
+    }
+
     function closeDispatchActionModal() {
       document.getElementById('dispatchActionModal').classList.remove('active');
       dispatchPendingAction = null;

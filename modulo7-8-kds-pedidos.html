@@ -793,7 +793,9 @@
       document.getElementById('cancelReasonCustomInput').value = '';
       document.getElementById('cancelBillingAction').value = 'charge';
       document.getElementById('cancelBillingActionWrap').style.display = 'block';
-      document.getElementById('btnConfirmCancelAction').innerText = 'Confirmar cancelamento do item';
+      const btnConfirmItem = document.getElementById('btnConfirmCancelAction');
+      btnConfirmItem.innerText = 'Confirmar cancelamento do item';
+      btnConfirmItem.onclick = function() { confirmCancelOrder(orderId); };
       document.getElementById('confirmCancelModal').classList.add('active');
     }
 

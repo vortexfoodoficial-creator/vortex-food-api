@@ -150,7 +150,8 @@
         }
         showMessage('Login realizado. Abrindo o Vortex Food...' + emailSyncWarning, emailSyncWarning ? 'error' : 'success');
         loginButton.textContent = 'Acesso confirmado';
-        window.setTimeout(function() { window.location.href = 'index.html'; }, 700);
+        const destination = account.data?.profile_key === 'delivery' ? 'modulo22-motoboy.html' : 'index.html';
+        window.setTimeout(function() { window.location.href = destination; }, 700);
       } catch (error) {
         showMessage(error && error.message ? error.message : 'Não foi possível entrar. Confira seus dados e tente novamente.', 'error');
         loginButton.disabled = false;
@@ -219,7 +220,8 @@
         if (permissions.error) throw permissions.error;
         showMessage('Acesso ativado com sucesso. Abrindo sua área de trabalho...', 'success');
         invitePasswordButton.textContent = 'Acesso ativado';
-        window.setTimeout(function() { window.location.href = 'index.html'; }, 700);
+        const destination = permissions.data?.profile_key === 'delivery' ? 'modulo22-motoboy.html' : 'index.html';
+        window.setTimeout(function() { window.location.href = destination; }, 700);
       } catch (error) {
         showMessage(error && error.message ? error.message : 'Não foi possível ativar o convite. Solicite um novo convite ao proprietário.', 'error');
         invitePasswordButton.disabled = false;

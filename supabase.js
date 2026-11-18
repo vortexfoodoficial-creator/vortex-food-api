@@ -442,6 +442,25 @@ async function dbCreateDeliveryRoute(courierUserId, orderIds) {
   });
 }
 
+async function dbGetDeliveryRouteCodes(routeId) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_delivery_route_codes', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || '')
+  });
+}
+
+async function dbConfirmDeliveryCode(orderId, code) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_confirm_delivery_code', {
+    p_store_id: storeId,
+    p_order_id: String(orderId || ''),
+    p_code: String(code || '').replace(/\\D/g, '')
+  });
+}
+
 async function dbFetchMyDeliveryRoutes() {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -480,7 +499,7 @@ async function dbSetDeliveryCourierPresence(status) {
 
 window.VortexDelivery = {
   createRoute: dbCreateDeliveryRoute,
-  fetchMyRoutes: dbFetchMyDeliveryRoutes,
+  fetchMyRoutes: dbFetchMyDeliveryRoutes,\n  getRouteCodes: dbGetDeliveryRouteCodes,\n  confirmDeliveryCode: dbConfirmDeliveryCode,
   startRoute: dbStartDeliveryRoute,
   reportOccurrence: dbReportDeliveryOccurrence,
   setPresence: dbSetDeliveryCourierPresence

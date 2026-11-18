@@ -584,7 +584,14 @@
       const sentText = document.getElementById('alreadySentItemsText');
       if (currentData.sentItems && currentData.sentItems.length > 0) {
         sentBox.style.display = 'block';
-        sentText.innerHTML = currentData.sentItems.map(i => `${i.qty}x ${i.name} (R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')})`).join(', ');
+        sentText.innerHTML = currentData.sentItems.map(i => {
+          const qty = Number(i.qty || i.quantity || 1);
+          const lineTotal = (Number(i.price) || 0) * qty;
+          const cancelledLabel = i.status === 'cancelled'
+            ? (i.billingStatus === 'waive' ? ' <strong style="color:var(--danger);">(CANCELADO / CORTESIA)</strong>' : ' <strong style="color:var(--warning);">(CANCELADO / COBRAR)</strong>')
+            : '';
+          return `${qty}x ${i.name || i.title || 'Item'} (R$ ${lineTotal.toFixed(2).replace('.', ',')})${cancelledLabel}`;
+        }).join(', ');
       } else {
         sentBox.style.display = 'none';
         sentText.innerHTML = '';
@@ -809,7 +816,10 @@
         return;
       }
 
-      const total = currentData.totalAccumulated;
+      const total = currentData.sentItems.reduce((sum, item) => {
+        return item.billingStatus === 'waive' ? sum : sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1));
+      }, 0);
+      currentData.totalAccumulated = total;
       document.getElementById('payMesaTitle').innerText = `Mesa ${activeTableId < 10 ? '0' + activeTableId : activeTableId}`;
       document.getElementById('payTotalDisplay').innerText = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
 
@@ -879,7 +889,8 @@
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
       let currentData = tableCarts[activeTableId];
       if (!currentData) return;
-      const total = currentData.totalAccumulated;
+      const billableItems = (currentData.sentItems || []).filter(item => item.billingStatus !== 'waive');
+      const total = billableItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1)), 0);
       const payment = document.getElementById('tablePaymentMethod').value;
       if (payment === 'Dinheiro' && rawCashGiven < total) {
         showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total.', '⚠️');
@@ -900,7 +911,7 @@
         client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
         channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
         amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,
-        status: 'finished', date: dateStr, time: timeStr, items: currentData.sentItems
+        status: 'finished', date: dateStr, time: timeStr, items: billableItems
       };
       let savedSaleItems = newSaleRecord.items;
       try {

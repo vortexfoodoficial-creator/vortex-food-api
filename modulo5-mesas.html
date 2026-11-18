@@ -485,7 +485,7 @@
 
       for (let i = 1; i <= totalTablesCount; i++) {
         let tData = tableCarts[i];
-        let isOccupied = tData && tData.totalAccumulated && tData.totalAccumulated > 0;
+        let isOccupied = !!(tData && ((Number(tData.totalAccumulated) || 0) > 0 || (Array.isArray(tData.sentItems) && tData.sentItems.length > 0)));
         let totalVal = isOccupied ? tData.totalAccumulated : 0;
 
         grid.innerHTML += `

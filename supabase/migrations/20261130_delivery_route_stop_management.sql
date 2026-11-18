@@ -150,8 +150,8 @@ BEGIN
     jsonb_build_object(
       'previous_order_ids',COALESCE(v_previous_ids,'{}'::text[]),
       'new_order_ids',p_order_ids,
-      'added_order_ids',ARRAY(SELECT x FROM unnest(p_order_ids) x WHERE NOT (x=ANY(COALESCE(v_previous_ids,'{}'::text[])))),
-      'removed_order_ids',ARRAY(SELECT x FROM unnest(COALESCE(v_previous_ids,'{}'::text[])) x WHERE NOT (x=ANY(p_order_ids)))
+      'added_order_ids',ARRAY(SELECT added.order_id FROM unnest(p_order_ids) AS added(order_id) WHERE NOT (added.order_id=ANY(COALESCE(v_previous_ids,'{}'::text[])))),
+      'removed_order_ids',ARRAY(SELECT removed.order_id FROM unnest(COALESCE(v_previous_ids,'{}'::text[])) AS removed(order_id) WHERE NOT (removed.order_id=ANY(p_order_ids)))
     )
   );
 

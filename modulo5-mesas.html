@@ -749,6 +749,10 @@
         console.warn('Não foi possível atualizar os pedidos antes de gerar o número de mesa:', error);
       }
       let currentData = tableCarts[activeTableId] || { sentItems: [], orderIds: [], displayIds: [] };
+      if (currentData.pendingSale) {
+        showNoticeModal('Fechamento em andamento', 'Esta comanda já possui um fechamento iniciado e aguardando confirmação. Conclua ou confirme o pagamento pendente antes de enviar novos itens.', '⚠️');
+        return;
+      }
 
       let displayOrderNumber = null;
       if (typeof dbGetNextOrderDisplayNumber === 'function') {
@@ -962,33 +966,74 @@
         return;
       }
       const billableItems = (currentData.sentItems || []).filter(item => item.billingStatus !== 'waive');
-      const total = billableItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1)), 0);
-      const payment = document.getElementById('tablePaymentMethod').value;
-      if (payment === 'Dinheiro' && rawCashGiven < total) {
-        showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total.', '⚠️');
-        return;
+      let newSaleRecord = currentData.pendingSale || null;
+
+      if (!newSaleRecord) {
+        const total = billableItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1)), 0);
+        const payment = document.getElementById('tablePaymentMethod').value;
+        if (payment === 'Dinheiro' && rawCashGiven < total) {
+          showNoticeModal('Valor Insuficiente', 'O valor em dinheiro informado é menor que o total.', '⚠️');
+          return;
+        }
+
+        const now = new Date();
+        const dateStr = getLocalDateStr(now);
+        const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        // ID da venda é independente dos IDs dos lotes KDS, inclusive em comandas antigas.
+        const saleId = createTableTechnicalOrderId().replace(/^mesa_/, 'mesa_sale_');
+        const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : null;
+        const localOrdersForDisplay = readLocalKdsOrders();
+        const primaryDisplayId = (currentData.displayIds && currentData.displayIds.length ? currentData.displayIds[0] : null)
+          || (localOrdersForDisplay.find(order => String(order.id) === String(primaryOrderId)) || {}).displayId
+          || null;
+        const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
+        let saleItemsSnapshot = billableItems;
+        try {
+          if (typeof dbEnrichSaleItemsWithCosts === 'function') {
+            saleItemsSnapshot = await dbEnrichSaleItemsWithCosts(billableItems);
+          }
+        } catch (enrichError) {
+          showNoticeModal('Não foi possível preparar a venda', 'Os itens e a comanda foram preservados. Tente novamente quando os dados de custo estiverem disponíveis. Motivo: ' + (enrichError.message || String(enrichError)), '⚠️');
+          return;
+        }
+        saleItemsSnapshot = saleItemsSnapshot.map((item, index) => ({
+          ...item,
+          itemId: item.itemId || item.item_id || (saleId + '_item_' + (index + 1))
+        }));
+
+        newSaleRecord = {
+          id: saleId,
+          displayId: primaryDisplayId,
+          client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
+          channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
+          amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,
+          status: 'finished', date: dateStr, time: timeStr, items: saleItemsSnapshot
+        };
+
+        // Persiste o snapshot antes da RPC: tentativas seguintes reutilizam o mesmo ID,
+        // data, hora, pagamento e itens, preservando a idempotência.
+        currentData.pendingSale = newSaleRecord;
+        tableCarts[activeTableId] = currentData;
+        localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
+        try {
+          if (typeof dbSaveTableCart !== 'function') throw new Error('Rotina de sincronização da comanda não disponível.');
+          const pendingCartSync = await dbSaveTableCart(activeTableId, currentData);
+          if (pendingCartSync && pendingCartSync.error) throw pendingCartSync.error;
+        } catch (persistError) {
+          currentData.cloudSyncPending = true;
+          localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
+          showNoticeModal('Fechamento bloqueado', 'Não foi possível salvar na nuvem o identificador seguro do fechamento. Nenhuma venda foi enviada. A comanda foi preservada neste dispositivo. Motivo: ' + (persistError.message || String(persistError)), '⚠️');
+          return;
+        }
       }
-      const now = new Date();
-      const dateStr = getLocalDateStr(now);
-      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const primaryOrderId = currentData.orderIds && currentData.orderIds.length ? currentData.orderIds[0] : createTableTechnicalOrderId();
-      const localOrdersForDisplay = readLocalKdsOrders();
-      const primaryDisplayId = (currentData.displayIds && currentData.displayIds.length ? currentData.displayIds[0] : null)
-        || (localOrdersForDisplay.find(order => String(order.id) === String(primaryOrderId)) || {}).displayId
-        || null;
-      const changeVal = payment === 'Dinheiro' && rawCashGiven > total ? rawCashGiven - total : 0;
-      const newSaleRecord = {
-        id: primaryOrderId,
-        displayId: primaryDisplayId,
-        client: document.getElementById('tableClientNameInput').value.trim() || `Mesa ${activeTableId}`,
-        channel: `Mesa ${activeTableId}`, total, subtotal: total, discount: 0, pay_method: payment,
-        amountPaid: payment === 'Dinheiro' ? rawCashGiven : total, changeValue: changeVal,
-        status: 'finished', date: dateStr, time: timeStr, items: billableItems
-      };
+
+      const total = Number(newSaleRecord.total) || 0;
+      const payment = newSaleRecord.pay_method || newSaleRecord.payMethod || 'PIX';
+      const changeVal = Number(newSaleRecord.changeValue) || 0;
       let savedSaleItems = newSaleRecord.items;
       try {
         if (typeof dbSaveSale !== 'function') throw new Error('Rotina segura de gravação de vendas não disponível.');
-        const result = await dbSaveSale(newSaleRecord);
+        const result = await dbSaveSale({ ...newSaleRecord, itemsAlreadyEnriched: true });
         if (!result || result.error) throw (result && result.error) || new Error('A venda não foi confirmada na nuvem.');
         if (Array.isArray(result.items)) savedSaleItems = result.items;
       } catch (err) {
@@ -999,7 +1044,7 @@
         if (idx >= 0) history[idx] = { ...history[idx], ...pending }; else history.unshift(pending);
         localStorage.setItem('vortex_sales_history', JSON.stringify(history));
         const detail = err && err.message ? err.message : String(err);
-        showNoticeModal('Venda salva no dispositivo', `Não foi possível confirmar a venda da Mesa ${activeTableId} na nuvem. A mesa continua aberta e os itens foram preservados. Tente fechar novamente quando a conexão voltar. Motivo: ${detail}`, '⚠️');
+        showNoticeModal('Venda salva no dispositivo', `Não foi possível confirmar a venda da Mesa ${activeTableId} na nuvem. A mesa continua aberta e os itens foram preservados. O fechamento poderá ser retomado com o mesmo identificador. Motivo: ${detail}`, '⚠️');
         return;
       }
       let history = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
@@ -1012,19 +1057,22 @@
       sales += total;
       localStorage.setItem('vortex_vendas_hoje', sales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       let kdsOrders = readLocalKdsOrders();
+      const mesaOrderIds = Array.from(new Set((currentData.orderIds || []).map(id => String(id))));
       kdsOrders.forEach(o => {
-        if (currentData.orderIds && currentData.orderIds.includes(String(o.id)) && o.status !== 'cancelled') {
+        const isMesaOrder = /^Mesa\\s/i.test(String(o.origin || ''));
+        if (isMesaOrder && mesaOrderIds.includes(String(o.id)) && o.status !== 'cancelled') {
           o.status = 'finished'; o.payMethod = payment;
-          o.amountPaid = payment === 'Dinheiro' ? rawCashGiven : total; o.changeValue = changeVal;
+          o.amountPaid = payment === 'Dinheiro' ? Number(newSaleRecord.amountPaid) || total : total;
+          o.changeValue = changeVal;
         }
       });
       localStorage.setItem('vortex_kds_orders', JSON.stringify(kdsOrders));
       let kdsUpdateWarning = '';
       try {
         if (typeof dbUpdateKdsOrder !== 'function') throw new Error('Rotina central de atualização do KDS não disponível.');
-        for (const id of (currentData.orderIds || [])) {
+        for (const id of mesaOrderIds) {
           const linkedOrder = kdsOrders.find(order => String(order.id) === String(id));
-          if (linkedOrder && linkedOrder.status === 'cancelled') continue;
+          if (!linkedOrder || !/^Mesa\\s/i.test(String(linkedOrder.origin || '')) || linkedOrder.status === 'cancelled') continue;
           const result = await dbUpdateKdsOrder(id, { status: 'finished' });
           if (result && result.error) throw result.error;
         }

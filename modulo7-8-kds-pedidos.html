@@ -681,7 +681,10 @@
             actionsHtml += `<button class="btn-action-kds btn-finish" onclick="updateOrderStatus('${order.id}', 'finished')">🎯 Finalizar / Entregar</button>`;
           }
           actionsHtml += `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
-          if (canCancelKds) actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
+          const hasStableItemIds = (order.items || []).length > 0 && (order.items || []).every(item => !!(item.itemId || item.item_id));
+          if (canCancelKds && (!isTableOrder || !hasStableItemIds)) {
+            actionsHtml += `<button class="btn-action-kds btn-cancel" onclick="askCancelOrder('${order.id}')">❌ Cancelar Pedido</button>`;
+          }
         } else {
           actionsHtml = `<button class="btn-action-kds btn-print" onclick="printOrderTicket('${order.id}')">🖨️ Imprimir Comanda</button>`;
         }

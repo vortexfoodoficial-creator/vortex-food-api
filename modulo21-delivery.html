@@ -1052,6 +1052,13 @@
         const couriers = getUnifiedCouriers().filter(c => c.authUserId);
         host.innerHTML = dispatchRoutesCache.map(route => {
           const stops = Array.isArray(route.stops) ? route.stops : [];
+          const events = Array.isArray(route.events) ? route.events.slice(0,5) : [];
+          const eventNames = {
+            route_assigned:'Rota atribuída',route_started:'Saída registrada',
+            delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
+            route_transferred:'Rota transferida',occurrence_retry:'Nova tentativa autorizada',
+            delivery_returned:'Pedido retornou',route_cancelled:'Rota cancelada'
+          };
           const activeRoute = ['assigned','in_route'].includes(route.status);
           const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';
           const statusColor = route.status === 'in_route' ? 'var(--primary)' : route.status === 'assigned' ? 'var(--info)' : 'var(--text-muted)';
@@ -1085,6 +1092,11 @@
                 (stop.occurrence_notes ? '<div style="color:var(--warning);margin-top:3px;">' + escapeDeliveryHtml(stop.occurrence_type || 'Ocorrência') + ': ' + escapeDeliveryHtml(stop.occurrence_notes) + '</div>' : '') +
                 occurrenceActions + '</div>';
             }).join('') +
+            (events.length ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:.72rem;"><strong>Histórico recente</strong>' +
+              events.map(event => '<div style="color:var(--text-muted);margin-top:4px;">' +
+                escapeDeliveryHtml(eventNames[event.event_type] || event.event_type) + ' · ' + dispatchDate(event.created_at) +
+                (event.details && event.details.reason ? ' · ' + escapeDeliveryHtml(event.details.reason) : '') +
+                '</div>').join('') + '</div>' : '') +
             (canManage && activeRoute ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;">Transferir rota para outro motoboy</label>' +
               '<div style="display:flex;gap:6px;"><select id="transferCourier_' + escapeDeliveryHtml(route.id) + '" style="min-width:0;flex:1;"><option value="">Selecione...</option>' + courierOptions + '</select>' +

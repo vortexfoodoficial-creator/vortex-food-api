@@ -1006,6 +1006,87 @@
       return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
     }
 
+    function dispatchDateTimeLocal(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = n => String(n).padStart(2,'0');
+      return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) +
+        'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    async function saveDispatchStopDeadline(routeId,orderId) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      const input = document.getElementById('deadline_' + routeId + '_' + orderId);
+      if (!route || !input) return;
+      const value = input.value ? new Date(input.value) : null;
+      if (value && Number.isNaN(value.getTime())) {
+        showNoticeModal('Prazo inválido','Confira a data e o horário informados.','⚠️');
+        return;
+      }
+      try {
+        const result = await window.VortexDelivery.setStopDeadline(
+          routeId,orderId,route.route_version,value ? value.toISOString() : null
+        );
+        if (result.error) throw result.error;
+        showNoticeModal('Prazo atualizado','O motoboy receberá a atualização na próxima sincronização.','✅');
+        await loadDispatchRoutes();
+      } catch (error) {
+        showNoticeModal('Não foi possível salvar o prazo',error.message || 'Atualize a central e tente novamente.','⚠️');
+        await loadDispatchRoutes();
+      }
+    }
+
+    async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      if (!route) return;
+      try {
+        const result = await window.VortexDelivery.updateRouteStops(routeId,route.route_version,orderIds);
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) throw new Error('O servidor não confirmou a alteração.');
+        showNoticeModal('Rota atualizada',successMessage,'✅');
+        await loadDispatchRoutes();
+        await loadActiveOrders();
+      } catch (error) {
+        showNoticeModal('Não foi possível atualizar a rota',error.message || 'A rota pode ter sido alterada por outra pessoa. Atualize e tente novamente.','⚠️');
+        await loadDispatchRoutes();
+      }
+    }
+
+    async function addDispatchStop(routeId) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      const select = document.getElementById('addStop_' + routeId);
+      if (!route || !select || !select.value) {
+        showNoticeModal('Selecione um pedido','Escolha um pedido pronto para adicionar à rota.','⚠️');
+        return;
+      }
+      const ids = (route.stops || []).filter(stop => stop.status === 'assigned').map(stop => String(stop.order_id));
+      ids.push(String(select.value));
+      await submitDispatchStopOrder(routeId,ids,'O pedido foi incluído no final da sequência.');
+    }
+
+    async function removeDispatchStop(routeId,orderId) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      if (!route) return;
+      const ids = (route.stops || []).filter(stop => stop.status === 'assigned' && String(stop.order_id) !== String(orderId)).map(stop => String(stop.order_id));
+      if (!ids.length) {
+        showNoticeModal('Rota precisa de uma parada','Para retirar o último pedido, cancele a rota não iniciada.','⚠️');
+        return;
+      }
+      await submitDispatchStopOrder(routeId,ids,'O pedido foi retirado da rota e voltou a ficar disponível para despacho.');
+    }
+
+    async function moveDispatchStop(routeId,orderId,delta) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      if (!route || route.status !== 'assigned') return;
+      const ids = (route.stops || []).filter(stop => stop.status === 'assigned').map(stop => String(stop.order_id));
+      const index = ids.indexOf(String(orderId));
+      const next = index + Number(delta);
+      if (index < 0 || next < 0 || next >= ids.length) return;
+      [ids[index],ids[next]] = [ids[next],ids[index]];
+      await submitDispatchStopOrder(routeId,ids,'A nova sequência foi salva e será sincronizada com o motoboy.');
+    }
+
     async function loadDispatchRoutes() {
       const host = document.getElementById('dispatchRoutesList');
       const summary = document.getElementById('dispatchRoutesSummary');
@@ -1053,6 +1134,13 @@
         host.innerHTML = dispatchRoutesCache.map(route => {
           const stops = Array.isArray(route.stops) ? route.stops : [];
           const events = Array.isArray(route.events) ? route.events.slice(0,5) : [];
+          const editableStops = canManage && route.status === 'assigned';
+          const routeOrderIds = stops.map(stop => String(stop.order_id));
+          const availableToAdd = editableStops ? readLocalKdsOrders().filter(order =>
+            order.origin && String(order.origin).includes('Delivery') && order.status === 'ready' &&
+            !routeOrderIds.includes(String(order.id)) &&
+            (!order.courier_member_id || String(order.courier_member_id) === String(route.courier_user_id))
+          ) : [];
           const eventNames = {
             route_assigned:'Rota atribuída',route_started:'Saída registrada',
             delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
@@ -1085,13 +1173,33 @@
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'retry\')">Tentar novamente</button>' +
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'returned\')">Registrar retorno</button></div>'
                 : '';
+              const deadlineEditable = canManage && ['assigned','in_route'].includes(route.status) && ['assigned','in_progress','occurrence'].includes(stop.status);
+              const stopIndex = stops.findIndex(item => String(item.order_id) === String(stop.order_id));
+              const stopControls = editableStops && stop.status === 'assigned'
+                ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
+                  '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
+                  '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===stops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
+                  '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
+              const deadlineEditor = deadlineEditable
+                ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">' +
+                  '<label style="font-size:.7rem;color:var(--text-muted);" for="deadline_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '">Prazo prometido</label>' +
+                  '<input type="datetime-local" id="deadline_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '" value="' + dispatchDateTimeLocal(stop.promised_delivery_at) + '" style="min-width:0;max-width:190px;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg-card);color:var(--text-main);font-size:.72rem;">' +
+                  '<button class="btn-secondary" type="button" onclick="saveDispatchStopDeadline(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Salvar prazo</button></div>'
+                : (stop.promised_delivery_at ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Prazo: ' + dispatchDate(stop.promised_delivery_at) + '</div>' : '');
               return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
                 '<div><strong>#' + escapeDeliveryHtml(stop.display_id || stop.order_id) + '</strong> · ' +
                 escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +
                 '<div style="color:var(--text-muted);margin-top:3px;">' + escapeDeliveryHtml(stop.address || 'Endereço não informado') + '</div>' +
                 (stop.occurrence_notes ? '<div style="color:var(--warning);margin-top:3px;">' + escapeDeliveryHtml(stop.occurrence_type || 'Ocorrência') + ': ' + escapeDeliveryHtml(stop.occurrence_notes) + '</div>' : '') +
-                occurrenceActions + '</div>';
+                deadlineEditor + stopControls + occurrenceActions + '</div>';
             }).join('') +
+            (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
+              '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +
+              '<div style="display:flex;gap:6px;"><select id="addStop_' + escapeDeliveryHtml(route.id) + '" style="min-width:0;flex:1;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--bg-card);color:var(--text-main);">' +
+              '<option value="">Selecione um pedido...</option>' + availableToAdd.map(order =>
+                '<option value="' + escapeDeliveryHtml(order.id) + '">#' + escapeDeliveryHtml(getVisibleDeliveryOrderNumber(order)) + ' · ' + escapeDeliveryHtml(order.client || 'Cliente') + '</option>'
+              ).join('') + '</select><button class="btn-secondary" type="button" onclick="addDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\')">Adicionar</button></div>' +
+              '<div style="font-size:.68rem;color:var(--text-muted);margin-top:5px;">A sequência pode ser ajustada antes de iniciar a rota.</div></div>' : '') +
             (events.length ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:.72rem;"><strong>Histórico recente</strong>' +
               events.map(event => '<div style="color:var(--text-muted);margin-top:4px;">' +
                 escapeDeliveryHtml(eventNames[event.event_type] || event.event_type) + ' · ' + dispatchDate(event.created_at) +

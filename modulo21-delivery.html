@@ -238,6 +238,18 @@
       <div id="couriersListSummary" style="font-size: 0.85rem; color: var(--text-muted);">Nenhum entregador ativo no momento.</div>
     </div>
 
+    <section class="card-box" id="dispatchRoutesPanel" style="margin-top:18px;">
+      <div class="card-title">
+        <span>📍 Central de Operações das Rotas</span>
+        <button class="btn-secondary" type="button" onclick="loadDispatchRoutes()">↻ Atualizar</button>
+      </div>
+      <div id="dispatchRoutesSummary" style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;">Carregando rotas...</div>
+      <div id="dispatchRoutesList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;">
+        <div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Aguardando dados do servidor...</div>
+      </div>
+      <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">A central mostra apenas dados operacionais. Valores financeiros completos não são disponibilizados aqui.</div>
+    </section>
+
     <div class="delivery-grid">
       <div class="card-box">
         <div class="card-title">🛵 Lançar Pedido para Entrega</div>
@@ -966,6 +978,128 @@
         if (button) { button.disabled = false; button.textContent = 'Tentar criar rota novamente'; }
         showNoticeModal('Não foi possível criar a rota', error.message || 'O servidor recusou a atribuição.', '⚠️');
       }
+    }
+
+    let dispatchRoutesFetchInFlight = false;
+    let dispatchRoutesCache = [];
+
+    function dispatchDate(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    }
+
+    async function loadDispatchRoutes() {
+      const host = document.getElementById('dispatchRoutesList');
+      const summary = document.getElementById('dispatchRoutesSummary');
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('delivery.dispatch_view')) {
+        const panel = document.getElementById('dispatchRoutesPanel');
+        if (panel) panel.style.display = 'none';
+        return;
+      }
+      if (dispatchRoutesFetchInFlight || !window.VortexDelivery?.fetchDispatchRoutes) return;
+      dispatchRoutesFetchInFlight = true;
+      try {
+        const result = await window.VortexDelivery.fetchDispatchRoutes();
+        if (result.error) throw result.error;
+        dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
+        const active = dispatchRoutesCache.filter(r => ['assigned','in_route'].includes(r.status));
+        const occurrences = active.reduce((n,r) => n + Number(r.occurrence_count || 0),0);
+        if (summary) summary.textContent = active.length + ' rota(s) ativa(s) · ' +
+          active.reduce((n,r) => n + Number(r.stop_count || 0),0) + ' parada(s) · ' +
+          occurrences + ' ocorrência(s) pendente(s) · Atualizado ' +
+          new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        if (!host) return;
+        if (!dispatchRoutesCache.length) {
+          host.innerHTML = '<div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Nenhuma rota ativa ou concluída nos últimos 30 dias.</div>';
+          return;
+        }
+        const canManage = permissions.includes('delivery.dispatch_manage');
+        const couriers = getUnifiedCouriers().filter(c => c.authUserId);
+        host.innerHTML = dispatchRoutesCache.map(route => {
+          const stops = Array.isArray(route.stops) ? route.stops : [];
+          const activeRoute = ['assigned','in_route'].includes(route.status);
+          const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';
+          const statusColor = route.status === 'in_route' ? 'var(--primary)' : route.status === 'assigned' ? 'var(--info)' : 'var(--text-muted)';
+          const elapsed = route.started_at ? Math.max(0,Math.floor((Date.now()-new Date(route.started_at).getTime())/60000)) : null;
+          const courierOptions = couriers.filter(c => String(c.authUserId) !== String(route.courier_user_id)).map(c =>
+            '<option value="' + escapeDeliveryHtml(c.authUserId) + '">' + escapeDeliveryHtml(c.name) + '</option>'
+          ).join('');
+          return '<article style="border:1px solid var(--border);background:var(--bg-main);border-radius:12px;padding:13px;">' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
+              '<div><strong style="color:var(--primary);">Rota ' + escapeDeliveryHtml(String(route.id).slice(0,8).toUpperCase()) + '</strong>' +
+              '<div style="font-size:.84rem;margin-top:4px;">🛵 ' + escapeDeliveryHtml(route.courier_name || 'Motoboy') + '</div></div>' +
+              '<span style="font-size:.72rem;font-weight:800;color:' + statusColor + ';">' + statusText + '</span></div>' +
+            '<div style="font-size:.76rem;color:var(--text-muted);margin:8px 0;">Disponibilidade: ' + escapeDeliveryHtml(route.presence_status || 'unavailable') +
+              ' · ' + Number(route.delivered_count || 0) + '/' + Number(route.stop_count || 0) + ' entregues' +
+              (elapsed !== null && route.status === 'in_route' ? ' · ' + elapsed + ' min desde a saída' : '') + '</div>' +
+            '<div style="font-size:.76rem;color:var(--text-muted);margin-bottom:8px;">Atribuída: ' + dispatchDate(route.assigned_at) +
+              (route.started_at ? ' · Saída: ' + dispatchDate(route.started_at) : '') + '</div>' +
+            stops.map(stop => {
+              const stopLabel = stop.status === 'delivered' ? 'Entregue' : stop.status === 'occurrence' ? 'Ocorrência' :
+                stop.status === 'returned' ? 'Retornado' : stop.status === 'cancelled' ? 'Cancelado' :
+                stop.status === 'in_progress' ? 'Em andamento' : 'Pendente';
+              const occurrenceActions = canManage && stop.status === 'occurrence' && route.status === 'in_route'
+                ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;">' +
+                  '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'retry\')">Tentar novamente</button>' +
+                  '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'returned\')">Registrar retorno</button></div>'
+                : '';
+              return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
+                '<div><strong>#' + escapeDeliveryHtml(stop.display_id || stop.order_id) + '</strong> · ' +
+                escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +
+                '<div style="color:var(--text-muted);margin-top:3px;">' + escapeDeliveryHtml(stop.address || 'Endereço não informado') + '</div>' +
+                (stop.occurrence_notes ? '<div style="color:var(--warning);margin-top:3px;">' + escapeDeliveryHtml(stop.occurrence_type || 'Ocorrência') + ': ' + escapeDeliveryHtml(stop.occurrence_notes) + '</div>' : '') +
+                occurrenceActions + '</div>';
+            }).join('') +
+            (canManage && activeRoute ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
+              '<label style="display:block;font-size:.72rem;margin-bottom:5px;">Transferir rota para outro motoboy</label>' +
+              '<div style="display:flex;gap:6px;"><select id="transferCourier_' + escapeDeliveryHtml(route.id) + '" style="min-width:0;flex:1;"><option value="">Selecione...</option>' + courierOptions + '</select>' +
+              '<button class="btn-secondary" type="button" onclick="transferDispatchRoute(\'' + escapeDeliveryHtml(route.id) + '\')">Transferir</button></div>' +
+              (route.status === 'assigned' ? '<button class="btn-secondary" type="button" style="margin-top:7px;color:var(--danger);" onclick="cancelDispatchRoute(\'' + escapeDeliveryHtml(route.id) + '\')">Cancelar rota não iniciada</button>' : '') +
+            '</div>' : '') +
+          '</article>';
+        }).join('');
+      } catch (error) {
+        if (summary) summary.textContent = 'Não foi possível atualizar a central: ' + (error.message || 'erro de conexão');
+      } finally {
+        dispatchRoutesFetchInFlight = false;
+      }
+    }
+
+    async function transferDispatchRoute(routeId) {
+      const select = document.getElementById('transferCourier_' + routeId);
+      if (!select || !select.value) { showNoticeModal('Selecione o motoboy','Escolha uma conta ativa para receber a rota.','⚠️'); return; }
+      try {
+        const result = await window.VortexDelivery.transferRoute(routeId,select.value);
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) throw new Error('O servidor não confirmou a transferência.');
+        showNoticeModal('Rota transferida','A sequência e o histórico foram preservados. O novo motoboy receberá a rota na próxima sincronização.','✅');
+        await loadDispatchRoutes();
+      } catch (error) { showNoticeModal('Falha na transferência',error.message || 'Não foi possível transferir a rota.','⚠️'); }
+    }
+
+    async function resolveDispatchOccurrence(routeId,orderId,resolution) {
+      const label = resolution === 'retry' ? 'tentar novamente' : 'registrar o retorno';
+      if (!window.confirm('Confirmar que deseja ' + label + ' este pedido?')) return;
+      try {
+        const result = await window.VortexDelivery.resolveOccurrence(routeId,orderId,resolution,'');
+        if (result.error) throw result.error;
+        showNoticeModal('Ocorrência atualizada',resolution === 'retry' ? 'A parada voltou para a lista de execução do motoboy.' : 'O retorno foi registrado. O pedido não foi marcado como entregue.','✅');
+        await loadDispatchRoutes();
+      } catch (error) { showNoticeModal('Não foi possível resolver',error.message || 'Tente novamente.','⚠️'); }
+    }
+
+    async function cancelDispatchRoute(routeId) {
+      const reason = window.prompt('Motivo do cancelamento da rota (mínimo 3 caracteres):');
+      if (reason === null) return;
+      try {
+        const result = await window.VortexDelivery.cancelRoute(routeId,reason);
+        if (result.error) throw result.error;
+        showNoticeModal('Rota cancelada','Os pedidos foram desvinculados da rota e continuam disponíveis para nova organização.','✅');
+        await loadDispatchRoutes();
+        await loadActiveOrders();
+      } catch (error) { showNoticeModal('Não foi possível cancelar',error.message || 'Tente novamente.','⚠️'); }
     }
 
     function closeSmartRouteModal() {
@@ -1742,6 +1876,8 @@
       await loadStoreSettings();
       renderCatalog();
       loadActiveOrders();
+      await loadDispatchRoutes();
+      window.setInterval(loadDispatchRoutes,15000);
     };
   </script>
 </body>

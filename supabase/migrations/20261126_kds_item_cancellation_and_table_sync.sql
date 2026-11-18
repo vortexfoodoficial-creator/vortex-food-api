@@ -273,6 +273,9 @@ BEGIN
   FOR UPDATE;
 
   IF FOUND THEN
+    IF v_sale.status='cancelled' OR v_sale.financial_status='reversed' THEN
+      RAISE EXCEPTION 'Esta venda já foi cancelada ou estornada. O item não pode receber outro ajuste automático.';
+    END IF;
     IF p_billing_action='waive' AND v_sale.financial_status='paid' THEN
       RAISE EXCEPTION 'Esta venda já foi paga. Para retirar o item do valor recebido, registre um estorno no Financeiro.';
     END IF;

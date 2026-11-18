@@ -824,8 +824,17 @@
       }
     }
 
-    function openPaymentModal() {
+    async function openPaymentModal() {
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      if (typeof dbFetchTableCarts === 'function') {
+        const latestCarts = await dbFetchTableCarts();
+        if (latestCarts.error) {
+          showNoticeModal('Não foi possível atualizar a conta', 'A nuvem não confirmou a situação atual da comanda. Nenhum pagamento foi iniciado. Motivo: ' + (latestCarts.error.message || String(latestCarts.error)), '⚠️');
+          return;
+        }
+        tableCarts = latestCarts.data || {};
+        localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
+      }
       let currentData = tableCarts[activeTableId];
 
       if (!currentData || !currentData.sentItems || currentData.sentItems.length === 0) {
@@ -904,8 +913,21 @@
         return;
       }
       tableCarts = JSON.parse(localStorage.getItem('vortex_table_carts')) || {};
+      if (typeof dbFetchTableCarts === 'function') {
+        const latestCarts = await dbFetchTableCarts();
+        if (latestCarts.error) {
+          showNoticeModal('Fechamento bloqueado', 'Não foi possível confirmar a comanda atual na nuvem. A conta foi preservada e nenhum novo registro de venda foi criado. Motivo: ' + (latestCarts.error.message || String(latestCarts.error)), '⚠️');
+          return;
+        }
+        tableCarts = latestCarts.data || {};
+        localStorage.setItem('vortex_table_carts', JSON.stringify(tableCarts));
+      }
       let currentData = tableCarts[activeTableId];
       if (!currentData) return;
+      if (currentData.cloudSyncPendingDelete) {
+        showNoticeModal('Liberação pendente', 'Esta mesa já teve o pagamento registrado e aguarda confirmação da liberação na nuvem.', '⚠️');
+        return;
+      }
       const billableItems = (currentData.sentItems || []).filter(item => item.billingStatus !== 'waive');
       const total = billableItems.reduce((sum, item) => sum + ((Number(item.price) || 0) * Number(item.qty || item.quantity || 1)), 0);
       const payment = document.getElementById('tablePaymentMethod').value;

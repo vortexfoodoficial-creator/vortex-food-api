@@ -257,7 +257,7 @@
       <button class="top-action-btn" style="background:#ef4444;" onclick="openUpsellModal()">⭐ Item Upsell</button>
       <button class="top-action-btn" style="background:#f97316;" onclick="openComplementsModal()">📋 Complementos</button>
       <button class="top-action-btn" style="background:#64748b;" onclick="openTrashModal()">🗑️ Excluídos</button>
-      <button class="top-action-btn" style="background:#8b5cf6;" onclick="location.href='modulo12-estoque.html'">📦 Estoque</button>
+      <button class="top-action-btn" style="background:#8b5cf6;" onclick="location.href=window.VortexAuth.tabUrl('modulo12-estoque.html')">📦 Estoque</button>
       <button class="top-action-btn" style="background:#6366f1;" onclick="openReorderModal()">↕️ Ordenar</button>
       <button class="top-action-btn" style="background:#eab308; color:#0f172a;" onclick="filterHighlights()">⭐ Destaques</button>
     </div>
@@ -545,8 +545,8 @@
   </div>
 
   <!-- SDK do Supabase e Conexão Central -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+  <script src="supabase.js?v=20261119-tab-auth-isolation-6"></script>
 
   <script>
     let rawPrice = 0;

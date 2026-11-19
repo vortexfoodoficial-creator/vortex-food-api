@@ -576,6 +576,17 @@ async function dbCancelDeliveryRoute(routeId, reason) {
   });
 }
 
+async function dbSetDeliveryStopDistance(routeId, orderId, distanceKm) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_set_delivery_stop_distance', {
+    p_store_id: storeId,
+    p_route_id: String(routeId || ''),
+    p_order_id: String(orderId || ''),
+    p_distance_km: Number(distanceKm)
+  });
+}
+
 async function dbGetDeliveryHistory(startDate, endDate, ownOnly) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -625,7 +636,8 @@ window.VortexDelivery = {
   setPresence: dbSetDeliveryCourierPresence,
   fetchHistory: dbGetDeliveryHistory,
   savePaymentRules: dbSaveDeliveryCourierPaymentRules,
-  getPaymentRules: dbGetDeliveryCourierPaymentRules
+  getPaymentRules: dbGetDeliveryCourierPaymentRules,
+  setStopDistance: dbSetDeliveryStopDistance
 };
 
 async function dbFetchKdsOrders() {

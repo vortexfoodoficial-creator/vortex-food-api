@@ -266,6 +266,10 @@ BEGIN
         FROM public.vortex_delivery_route_stops s
         JOIN public.vortex_kds_orders o ON o.store_id=s.store_id AND o.id=s.order_id
         WHERE s.store_id=r.store_id AND s.route_id=r.id
+          AND (s.status IN ('assigned','in_progress','occurrence')
+            OR (s.status='delivered'
+              AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
+              AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))
       ),'[]'::jsonb)
     ) ORDER BY r.assigned_at DESC
   ),'[]'::jsonb)
@@ -367,6 +371,7 @@ BEGIN
     'order_id',s.order_id,'display_id',o."displayId",
     'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
+    'distance_km',s.distance_km,
     'courier_payment_amount',s.courier_payment_amount,
     'courier_payment_rule_label',s.courier_payment_rule_label,
     'route_id',s.route_id,'status',s.status
@@ -499,8 +504,13 @@ BEGIN
   LEFT JOIN public.vortex_delivery_courier_presence cp
     ON cp.store_id=r.store_id AND cp.courier_user_id=r.courier_user_id
   LEFT JOIN LATERAL (
-    SELECT count(*) FILTER (WHERE s.status<>'cancelled')::integer AS stop_count,
-      count(*) FILTER (WHERE s.status='delivered')::integer AS delivered_count,
+    SELECT count(*) FILTER (WHERE s.status IN ('assigned','in_progress','occurrence')
+        OR (s.status='delivered'
+          AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
+          AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))::integer AS stop_count,
+      count(*) FILTER (WHERE s.status='delivered'
+        AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
+        AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo'))::integer AS delivered_count,
       count(*) FILTER (WHERE s.status='occurrence')::integer AS occurrence_count,
       count(*) FILTER (WHERE s.status='returned')::integer AS returned_count
     FROM public.vortex_delivery_route_stops s

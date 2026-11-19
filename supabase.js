@@ -104,9 +104,11 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
 })();
 
 function getVortexTabAuthStorageKey() {
-  const storageKeyName = 'vortex_auth_tab_storage_key';
-  const windowNamePrefix = 'vortex-food-tab-auth:';
-  const storageKeyPrefix = 'vortex-food-auth-';
+  const storageKeyName = 'vortex_auth_tab_storage_key_v2';
+  const legacyStorageKeyName = 'vortex_auth_tab_storage_key';
+  const windowNamePrefix = 'vortex-food-tab-auth-v2:';
+  const storageKeyPrefix = 'vortex-food-auth-v2-';
+  const legacyStorageKeyPrefix = 'vortex-food-auth-';
   const createId = function() {
     return window.crypto && typeof window.crypto.randomUUID === 'function'
       ? window.crypto.randomUUID()
@@ -115,26 +117,31 @@ function getVortexTabAuthStorageKey() {
 
   try {
     let tabId = window.sessionStorage.getItem(storageKeyName) || '';
-    // Migra a chave antiga, que era armazenada já com o prefixo do Supabase.
-    if (tabId.startsWith(storageKeyPrefix)) tabId = tabId.slice(storageKeyPrefix.length);
     if (!tabId && typeof window.name === 'string' && window.name.startsWith(windowNamePrefix)) {
       tabId = window.name.slice(windowNamePrefix.length);
     }
+    // A versão v2 gera uma identidade nova em cada aba existente, mesmo que
+    // duas abas tenham herdado a mesma chave antiga ao serem duplicadas.
     if (!tabId) tabId = createId();
 
     window.sessionStorage.setItem(storageKeyName, tabId);
-    // window.name é uma segunda cópia da identidade e pode sobreviver à restauração
-    // da aba pelo navegador mesmo quando o sessionStorage não é recuperado.
-    if (!window.name || window.name.startsWith(windowNamePrefix)) {
+    if (!window.name || window.name.startsWith('vortex-food-tab-auth:') || window.name.startsWith(windowNamePrefix)) {
       window.name = windowNamePrefix + tabId;
     }
+
+    const legacyValue = window.sessionStorage.getItem(legacyStorageKeyName) || '';
+    let legacyStorageKey = legacyValue;
+    if (legacyStorageKey && !legacyStorageKey.startsWith(legacyStorageKeyPrefix)) {
+      legacyStorageKey = legacyStorageKeyPrefix + legacyStorageKey;
+    }
+    window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY = legacyStorageKey || null;
+
     return storageKeyPrefix + tabId;
   } catch (error) {
-    // Se o armazenamento da aba estiver indisponível, não reutiliza uma chave global.
+    window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY = null;
     return storageKeyPrefix + createId();
   }
 }
-
 function getSupabase() {
   if (window.supabaseClient) return window.supabaseClient;
 
@@ -143,7 +150,10 @@ function getSupabase() {
     // Migra a sessão da versão anterior (sessionStorage) para o armazenamento
     // persistente da mesma aba, sem misturar as chaves de outras abas.
     try {
-      const previousTabSession = window.sessionStorage.getItem(tabStorageKey);
+      const legacyTabStorageKey = window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY;
+      const previousTabSession = legacyTabStorageKey
+        ? window.sessionStorage.getItem(legacyTabStorageKey)
+        : null;
       if (previousTabSession && window.localStorage.getItem(tabStorageKey) === null) {
         window.localStorage.setItem(tabStorageKey, previousTabSession);
       }

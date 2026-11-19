@@ -25,6 +25,18 @@ ALTER TABLE public.vortex_delivery_route_stops
 ALTER TABLE public.vortex_delivery_route_stops
   VALIDATE CONSTRAINT vortex_delivery_route_stops_courier_payment_amount_check;
 
+-- Recupera a autoria histórica quando o próprio motoboy confirmou o código
+-- e o evento antigo registrou a conta autenticada como ator. Não inventa valores.
+UPDATE public.vortex_delivery_route_stops s
+SET delivered_by_user_id=e.actor_user_id
+FROM public.vortex_delivery_route_events e
+JOIN public.vortex_store_members m
+  ON m.store_id=e.store_id AND m.user_id=e.actor_user_id AND m.profile_key='delivery'
+WHERE s.store_id=e.store_id AND s.route_id=e.route_id
+  AND s.order_id=e.order_id AND s.status='delivered'
+  AND s.delivered_by_user_id IS NULL
+  AND e.event_type='delivery_confirmed';
+
 CREATE INDEX IF NOT EXISTS vortex_delivery_route_stops_delivered_at_idx
   ON public.vortex_delivery_route_stops(store_id,delivered_at DESC)
   WHERE status='delivered';
@@ -88,7 +100,7 @@ BEGIN
   INSERT INTO public.vortex_delivery_courier_payment_rules(
     store_id,mode,fixed_amount,neighborhood_rates,updated_by,updated_at
   ) VALUES (
-    p_store_id,p_mode,CASE WHEN p_mode='fixed' THEN p_fixed_amount ELSE NULL END,
+    p_store_id,p_mode,CASE WHEN p_mode IN ('fixed','per_km') THEN p_fixed_amount ELSE NULL END,
     v_rates,auth.uid(),now()
   )
   ON CONFLICT (store_id) DO UPDATE SET
@@ -240,8 +252,7 @@ BEGIN
           'occurrence_type',s.occurrence_type,'occurrence_notes',s.occurrence_notes,
           'promised_delivery_at',s.promised_delivery_at,'started_at',s.started_at,'delivered_at',s.delivered_at,
           'distance_km',s.distance_km,
-          'distance_km',s.distance_km,
-    'courier_payment_amount',s.courier_payment_amount,
+          'courier_payment_amount',s.courier_payment_amount,
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
           'display_id',o."displayId",

@@ -794,7 +794,30 @@
         localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
         closeStaffInviteModal();
         renderStaffTable();
-        showCustomAlert('Não foi possível enviar o convite', error.message || 'Verifique a conexão e tente novamente. Consulte os registros da função invite-staff no Supabase se o problema persistir.', '⚠️');
+
+        // FunctionsHttpError pode ocultar a mensagem JSON retornada pela Edge Function.
+        // Lê somente o corpo da resposta, sem expor tokens ou cabeçalhos da sessão.
+        let inviteErrorMessage = error && error.message ? error.message : '';
+        const errorResponse = error && error.context;
+        if (errorResponse && typeof errorResponse.clone === 'function') {
+          try {
+            const responseCopy = errorResponse.clone();
+            let responseBody = null;
+            try { responseBody = await responseCopy.json(); }
+            catch (_) {
+              try { responseBody = { error: await responseCopy.text() }; } catch (_) {}
+            }
+            const serverMessage = responseBody && (responseBody.error || responseBody.message || responseBody.msg);
+            if (serverMessage) inviteErrorMessage = String(serverMessage);
+          } catch (readError) {
+            console.warn('Não foi possível ler o detalhe da resposta invite-staff:', readError);
+          }
+        }
+        showCustomAlert(
+          'Não foi possível enviar o convite',
+          inviteErrorMessage || 'Verifique a conexão e tente novamente. Consulte os registros da função invite-staff no Supabase se o problema persistir.',
+          '⚠️'
+        );
       }
     }
 

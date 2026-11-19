@@ -268,8 +268,8 @@ BEGIN
         WHERE s.store_id=r.store_id AND s.route_id=r.id
           AND (s.status IN ('assigned','in_progress','occurrence')
             OR (s.status='delivered'
-              AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
-              AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))
+              AND s.delivered_at >= (((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo'))
+              AND s.delivered_at < (((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))
       ),'[]'::jsonb)
     ) ORDER BY r.assigned_at DESC
   ),'[]'::jsonb)
@@ -506,11 +506,11 @@ BEGIN
   LEFT JOIN LATERAL (
     SELECT count(*) FILTER (WHERE s.status IN ('assigned','in_progress','occurrence')
         OR (s.status='delivered'
-          AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
-          AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))::integer AS stop_count,
+          AND s.delivered_at >= (((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo'))
+          AND s.delivered_at < (((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))::integer AS stop_count,
       count(*) FILTER (WHERE s.status='delivered'
-        AND s.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
-        AND s.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo'))::integer AS delivered_count,
+        AND s.delivered_at >= (((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo'))
+        AND s.delivered_at < (((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo'))::integer AS delivered_count,
       count(*) FILTER (WHERE s.status='occurrence')::integer AS occurrence_count,
       count(*) FILTER (WHERE s.status='returned')::integer AS returned_count
     FROM public.vortex_delivery_route_stops s
@@ -521,8 +521,8 @@ BEGIN
       SELECT 1 FROM public.vortex_delivery_route_stops today_stop
       WHERE today_stop.store_id=r.store_id AND today_stop.route_id=r.id
         AND today_stop.status='delivered'
-        AND today_stop.delivered_at >= (CURRENT_DATE::timestamp AT TIME ZONE 'America/Sao_Paulo')
-        AND today_stop.delivered_at < ((CURRENT_DATE+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')
+        AND today_stop.delivered_at >= (((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo'))
+        AND today_stop.delivered_at < (((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')
     ));
   RETURN v_result;
 END;

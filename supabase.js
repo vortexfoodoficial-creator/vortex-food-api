@@ -125,9 +125,12 @@ function getVortexTabAuthStorageKey() {
     if (!tabId) tabId = createId();
 
     window.sessionStorage.setItem(storageKeyName, tabId);
-    if (!window.name || window.name.startsWith('vortex-food-tab-auth:') || window.name.startsWith(windowNamePrefix)) {
-      window.name = windowNamePrefix + tabId;
-    }
+    // O identificador precisa ser recuperável mesmo quando o navegador restaura
+    // a aba sem restaurar o sessionStorage. window.name acompanha a navegação
+    // entre páginas da mesma origem e funciona como segunda cópia persistente.
+    // Não há outro uso de window.name no Vortex Food; portanto, mantemos aqui
+    // exclusivamente a identidade desta aba.
+    window.name = windowNamePrefix + tabId;
 
     const legacyValue = window.sessionStorage.getItem(legacyStorageKeyName) || '';
     let legacyStorageKey = legacyValue;

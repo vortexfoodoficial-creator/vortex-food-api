@@ -250,7 +250,7 @@
       <div id="dispatchRoutesList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;max-height:560px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;">
         <div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Aguardando dados do servidor...</div>
       </div>
-      <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">A central mostra apenas dados operacionais. Valores financeiros completos não são disponibilizados aqui.</div>
+      <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">A central mostra dados operacionais e a remuneração das entregas. Os demais dados financeiros permanecem restritos.</div>
     </section>
 
     <div class="delivery-grid">
@@ -1164,7 +1164,7 @@
           new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
         if (!host) return;
         if (!dispatchRoutesCache.length) {
-          host.innerHTML = '<div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Nenhuma rota ativa ou concluída nos últimos 30 dias.</div>';
+          host.innerHTML = '<div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Nenhuma rota ativa ou entrega concluída hoje.</div>';
           return;
         }
         const canManage = permissions.includes('delivery.dispatch_manage');
@@ -1240,7 +1240,9 @@
                 '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Valor da entrega: ' +
                 (stop.courier_payment_amount == null ? '<strong style="color:var(--warning);">Valor não definido</strong>' :
                   '<strong style="color:var(--success);">' + Number(stop.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</strong>') +
-                '</div>' + distanceEditor + deadlineEditor + stopControls + occurrenceActions + '</div>';
+                '</div>' +
+                (stop.distance_km != null ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Distância registrada: ' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div>' : '') +
+                distanceEditor + deadlineEditor + stopControls + occurrenceActions + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +

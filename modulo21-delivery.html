@@ -1017,6 +1017,7 @@
 
     let dispatchRoutesFetchInFlight = false;
     let dispatchRoutesCache = [];
+    let dispatchCourierPaymentMode = 'fixed';
 
     function dispatchDate(value) {
       if (!value) return '—';
@@ -1031,6 +1032,22 @@
       const pad = n => String(n).padStart(2,'0');
       return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) +
         'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    async function saveDispatchStopDistance(routeId,orderId) {
+      const input = document.getElementById('distance_' + routeId + '_' + orderId);
+      if (!input || !input.value) {
+        showNoticeModal('Informe a distância','Digite a distância desta entrega em quilômetros.','⚠️');
+        return;
+      }
+      try {
+        const result = await window.VortexDelivery.setStopDistance(routeId,orderId,Number(input.value));
+        if (result.error) throw result.error;
+        showNoticeModal('Distância e remuneração atualizadas','Valor calculado: ' + Number(result.data.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '. O motoboy verá a atualização na próxima sincronização.','✅');
+        await loadDispatchRoutes();
+      } catch (error) {
+        showNoticeModal('Não foi possível salvar a distância',error.message || 'Confira a distância e tente novamente.','⚠️');
+      }
     }
 
     async function saveDispatchStopDeadline(routeId,orderId) {
@@ -1117,12 +1134,15 @@
       if (dispatchRoutesFetchInFlight || !window.VortexDelivery?.fetchDispatchRoutes) return;
       dispatchRoutesFetchInFlight = true;
       try {
-        const [result,courierResult] = await Promise.all([
+        const [result,courierResult,paymentRulesResult] = await Promise.all([
           window.VortexDelivery.fetchDispatchRoutes(),
-          window.VortexDelivery.fetchDispatchCouriers()
+          window.VortexDelivery.fetchDispatchCouriers(),
+          window.VortexDelivery.getPaymentRules()
         ]);
         if (result.error) throw result.error;
         if (courierResult.error) throw courierResult.error;
+        if (paymentRulesResult.error) throw paymentRulesResult.error;
+        dispatchCourierPaymentMode = paymentRulesResult.data?.mode || 'fixed';
         dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
         const courierHost = document.getElementById('dispatchCouriersList');
         const dispatchCouriers = Array.isArray(courierResult.data) ? courierResult.data : [];
@@ -1200,6 +1220,12 @@
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
                   '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===activeAssignedStops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
                   '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
+              const distanceEditor = canManage && dispatchCourierPaymentMode === 'per_km' &&
+                ['assigned','in_route'].includes(route.status) && ['assigned','in_progress','occurrence'].includes(stop.status)
+                ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">' +
+                  '<label style="font-size:.7rem;color:var(--text-muted);" for="distance_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '">Distância (km)</label>' +
+                  '<input type="number" min="0.1" max="500" step="0.1" id="distance_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '" value="' + (stop.distance_km == null ? '' : Number(stop.distance_km)) + '" placeholder="Ex.: 4,5" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg-card);color:var(--text-main);font-size:.72rem;">' +
+                  '<button class="btn-secondary" type="button" onclick="saveDispatchStopDistance(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Calcular valor</button></div>' : '';
               const deadlineEditor = deadlineEditable
                 ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">' +
                   '<label style="font-size:.7rem;color:var(--text-muted);" for="deadline_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '">Prazo prometido</label>' +
@@ -1214,7 +1240,7 @@
                 '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Valor da entrega: ' +
                 (stop.courier_payment_amount == null ? '<strong style="color:var(--warning);">Valor não definido</strong>' :
                   '<strong style="color:var(--success);">' + Number(stop.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</strong>') +
-                '</div>' + deadlineEditor + stopControls + occurrenceActions + '</div>';
+                '</div>' + distanceEditor + deadlineEditor + stopControls + occurrenceActions + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +

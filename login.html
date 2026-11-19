@@ -82,8 +82,8 @@
     <div id="message" role="status" aria-live="polite"></div>
     <div class="foot">Acesso protegido pelo Supabase Auth</div>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+  <script src="supabase.js?v=20261119-tab-auth-isolation-6"></script>
   <script>
     const loginSection = document.getElementById('loginSection');
     const recoverySection = document.getElementById('recoverySection');
@@ -98,6 +98,9 @@
     const recoveryButton = document.getElementById('recoveryButton');
     const newPasswordButton = document.getElementById('newPasswordButton');
     const message = document.getElementById('message');
+
+    // Um login explícito sempre recebe uma identidade nova, inclusive em aba duplicada.
+    window.VortexAuth.prepareLoginTab();
 
     function showMessage(text, type) {
       message.className = type || '';
@@ -151,7 +154,7 @@
         showMessage('Login realizado. Abrindo o Vortex Food...' + emailSyncWarning, emailSyncWarning ? 'error' : 'success');
         loginButton.textContent = 'Acesso confirmado';
         const destination = account.data?.profile_key === 'delivery' ? 'modulo22-motoboy.html' : 'index.html';
-        window.setTimeout(function() { window.location.href = destination; }, 700);
+        window.setTimeout(function() { window.location.href = window.VortexAuth.tabUrl(destination); }, 700);
       } catch (error) {
         showMessage(error && error.message ? error.message : 'Não foi possível entrar. Confira seus dados e tente novamente.', 'error');
         loginButton.disabled = false;

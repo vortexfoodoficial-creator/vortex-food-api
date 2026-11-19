@@ -103,42 +103,68 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   };
 })();
 
+function getVortexTabAuthStorageKey() {
+  const storageKeyName = 'vortex_auth_tab_storage_key';
+  const windowNamePrefix = 'vortex-food-tab-auth:';
+  const storageKeyPrefix = 'vortex-food-auth-';
+  const createId = function() {
+    return window.crypto && typeof window.crypto.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
+  };
+
+  try {
+    let tabId = window.sessionStorage.getItem(storageKeyName) || '';
+    // Migra a chave antiga, que era armazenada já com o prefixo do Supabase.
+    if (tabId.startsWith(storageKeyPrefix)) tabId = tabId.slice(storageKeyPrefix.length);
+    if (!tabId && typeof window.name === 'string' && window.name.startsWith(windowNamePrefix)) {
+      tabId = window.name.slice(windowNamePrefix.length);
+    }
+    if (!tabId) tabId = createId();
+
+    window.sessionStorage.setItem(storageKeyName, tabId);
+    // window.name é uma segunda cópia da identidade e pode sobreviver à restauração
+    // da aba pelo navegador mesmo quando o sessionStorage não é recuperado.
+    if (!window.name || window.name.startsWith(windowNamePrefix)) {
+      window.name = windowNamePrefix + tabId;
+    }
+    return storageKeyPrefix + tabId;
+  } catch (error) {
+    // Se o armazenamento da aba estiver indisponível, não reutiliza uma chave global.
+    return storageKeyPrefix + createId();
+  }
+}
+
 function getSupabase() {
-  if (window.supabaseClient) {
-    return window.supabaseClient;
-  }
+  if (window.supabaseClient) return window.supabaseClient;
+
   if (window.supabase && typeof window.supabase.createClient === 'function') {
-    // Cada aba mantém sua própria sessão. localStorage compartilhado fazia o login
-    // do motoboy substituir a sessão do proprietário (e vice-versa) em outra aba.
-    // localStorage mantém o token após fechar o navegador; a chave exclusiva da aba mantém contas separadas.
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: window.sessionStorage,
-        // O Supabase Auth também usa BroadcastChannel para sincronizar eventos entre abas.
-        // Uma chave exclusiva por aba impede que o logout de uma conta seja propagado à outra.
-        storageKey: (function getTabAuthStorageKey() {
-          const keyName = 'vortex_auth_tab_storage_key';
-          try {
-            let key = window.sessionStorage.getItem(keyName);
-            if (!key) {
-              const id = window.crypto && typeof window.crypto.randomUUID === 'function'
-                ? window.crypto.randomUUID()
-                : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-              key = 'vortex-food-auth-' + id;
-              window.sessionStorage.setItem(keyName, key);
-            }
-            return key;
-          } catch (error) {
-            return 'vortex-food-auth-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-          }
-        })()
-      }
-    });
+    const tabStorageKey = getVortexTabAuthStorageKey();
+    const nativeBroadcastChannel = window.BroadcastChannel;
+
+    try {
+      // O Supabase Auth transmite SIGNED_IN/SIGNED_OUT para clientes com o mesmo
+      // storageKey. Desativamos esse canal somente durante a criação do cliente:
+      // as sessões do proprietário e do Motoboy são independentes por definição.
+      // Outros recursos do navegador continuam podendo usar BroadcastChannel.
+      if (typeof nativeBroadcastChannel === 'function') window.BroadcastChannel = undefined;
+
+      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: tabStorageKey
+        }
+      });
+    } finally {
+      if (typeof nativeBroadcastChannel === 'function') window.BroadcastChannel = nativeBroadcastChannel;
+    }
+
     return window.supabaseClient;
   }
+
   console.warn('SDK do Supabase ainda não foi carregado pelo navegador.');
   return null;
 }

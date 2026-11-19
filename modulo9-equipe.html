@@ -540,7 +540,7 @@
         const actions = [];
         if (canManage) actions.push(`<button class="btn-secondary" onclick="editStaff('${staffEscape(m.id)}')">✏️ Editar</button>`);
         if (canConfigure && m.authUserId) actions.push(`<button class="btn-secondary" onclick="openPermissionsModal('${staffEscape(m.authUserId)}')">🔐 Permissões</button>`);
-        if (canInvite && !m.authUserId && m.email && isAtivo) actions.push(`<button class="btn-action" onclick="sendStaffInvite('${staffEscape(m.id)}')">✉️ Convidar</button>`);
+        if (canInvite && !m.authUserId && isAtivo) actions.push(`<button class="btn-action" onclick="sendStaffInvite('${staffEscape(m.id)}')">✉️ Enviar convite</button>`);
         if (canManage && m.authUserId) {
           const actionLabel = isAtivo ? 'Desativar' : 'Reativar';
           actions.push(`<button class="btn-danger" onclick="confirmDeleteStaff('${staffEscape(m.id)}')">${actionLabel}</button>`);
@@ -706,13 +706,7 @@
       }
 
       localStorage.removeItem('vortex_team_sync_pending');
-      if (email && !newRecord.authUserId && currentStaffPermissions().includes('team.invite')) {
-        await sendStaffInvite(newRecord.id);
-      } else if (email && !newRecord.authUserId) {
-        showCustomAlert('Cadastro salvo', 'O colaborador foi cadastrado. O envio do convite exige permissão de Proprietário ou Administrador.', 'ℹ️');
-      } else {
-        showCustomAlert('Sucesso', 'Dados do colaborador salvos e sincronizados com a Logística!', '✅');
-      }
+      showCustomAlert('Cadastro salvo', 'Os dados do colaborador foram salvos e sincronizados. Nenhum convite foi enviado automaticamente. Quando desejar, use “Enviar convite” na lista de funcionários.', '✅');
     }
 
     async function sendStaffInvite(id) {

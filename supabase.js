@@ -103,88 +103,114 @@ const SUPABASE_ANON_KEY = 'sb_publishable_r3Ob9dbgz52-_ziLLe9-_w_wvimzPkk';
   };
 })();
 
-function getVortexTabAuthStorageKey() {
-  const storageKeyName = 'vortex_auth_tab_storage_key_v2';
-  const legacyStorageKeyName = 'vortex_auth_tab_storage_key';
-  const windowNamePrefix = 'vortex-food-tab-auth-v2:';
-  const storageKeyPrefix = 'vortex-food-auth-v2-';
-  const legacyStorageKeyPrefix = 'vortex-food-auth-';
-  const createId = function() {
-    return window.crypto && typeof window.crypto.randomUUID === 'function'
-      ? window.crypto.randomUUID()
-      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
-  };
-
-  try {
-    let tabId = window.sessionStorage.getItem(storageKeyName) || '';
-    if (!tabId && typeof window.name === 'string' && window.name.startsWith(windowNamePrefix)) {
-      tabId = window.name.slice(windowNamePrefix.length);
-    }
-    // A versão v2 gera uma identidade nova em cada aba existente, mesmo que
-    // duas abas tenham herdado a mesma chave antiga ao serem duplicadas.
-    if (!tabId) tabId = createId();
-
-    window.sessionStorage.setItem(storageKeyName, tabId);
-    // O identificador precisa ser recuperável mesmo quando o navegador restaura
-    // a aba sem restaurar o sessionStorage. window.name acompanha a navegação
-    // entre páginas da mesma origem e funciona como segunda cópia persistente.
-    // Não há outro uso de window.name no Vortex Food; portanto, mantemos aqui
-    // exclusivamente a identidade desta aba.
-    window.name = windowNamePrefix + tabId;
-
-    const legacyValue = window.sessionStorage.getItem(legacyStorageKeyName) || '';
-    let legacyStorageKey = legacyValue;
-    if (legacyStorageKey && !legacyStorageKey.startsWith(legacyStorageKeyPrefix)) {
-      legacyStorageKey = legacyStorageKeyPrefix + legacyStorageKey;
-    }
-    window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY = legacyStorageKey || null;
-
-    return storageKeyPrefix + tabId;
-  } catch (error) {
-    window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY = null;
-    return storageKeyPrefix + createId();
-  }
+function vortexCreateTabAuthId() {
+  return window.crypto && typeof window.crypto.randomUUID === 'function'
+    ? window.crypto.randomUUID()
+    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
 }
+
+function vortexWriteTabAuthId(tabId) {
+  const id = String(tabId || '').trim();
+  if (!/^[A-Za-z0-9_-]{16,80}$/.test(id)) throw new Error('Identificador de aba inválido.');
+  window.__VORTEX_TAB_AUTH_ID = id;
+  try { window.sessionStorage.setItem('vortex_auth_tab_storage_key_v3', id); } catch (error) {}
+  // Mantém uma cópia de recuperação legada, mas a URL é a fonte persistente
+  // principal e acompanha a aba durante navegação e restauração do navegador.
+  try { window.name = 'vortex-food-tab-auth-v3:' + id; } catch (error) {}
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('vf_tab') !== id) {
+      url.searchParams.set('vf_tab', id);
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    }
+  } catch (error) {
+    console.warn('Não foi possível persistir a identidade desta aba na URL:', error);
+  }
+  return id;
+}
+
+function getVortexTabAuthStorageKey() {
+  const storageKeyPrefix = 'vortex-food-auth-v3-';
+  let tabId = '';
+  try {
+    const url = new URL(window.location.href);
+    const urlId = url.searchParams.get('vf_tab') || '';
+    const sessionId = window.sessionStorage.getItem('vortex_auth_tab_storage_key_v3') || '';
+    const namePrefix = 'vortex-food-tab-auth-v3:';
+    const nameId = typeof window.name === 'string' && window.name.startsWith(namePrefix)
+      ? window.name.slice(namePrefix.length)
+      : '';
+    // A URL sobrevive à restauração de abas e é a fonte de verdade.
+    // sessionStorage/window.name servem apenas como recuperação em URLs antigas.
+    tabId = /^[A-Za-z0-9_-]{16,80}$/.test(urlId) ? urlId
+      : /^[A-Za-z0-9_-]{16,80}$/.test(sessionId) ? sessionId
+      : /^[A-Za-z0-9_-]{16,80}$/.test(nameId) ? nameId
+      : vortexCreateTabAuthId();
+  } catch (error) {
+    tabId = vortexCreateTabAuthId();
+  }
+  vortexWriteTabAuthId(tabId);
+  return storageKeyPrefix + tabId;
+}
+
+function vortexRotateTabAuthIdentity() {
+  // Login sempre começa com uma identidade nova. Isso impede que uma aba
+  // duplicada, que herdou a URL de outra conta, sobrescreva a sessão original.
+  if (window.supabaseClient) {
+    throw new Error('A identidade desta aba já foi inicializada. Abra o login em uma aba independente.');
+  }
+  const id = vortexCreateTabAuthId();
+  vortexWriteTabAuthId(id);
+  return id;
+}
+
+function vortexTabUrl(target) {
+  const url = new URL(String(target || ''), window.location.href);
+  if (url.origin === window.location.origin && window.__VORTEX_TAB_AUTH_ID) {
+    url.searchParams.set('vf_tab', window.__VORTEX_TAB_AUTH_ID);
+  }
+  return url.href;
+}
+
+function vortexInstallTabNavigation() {
+  if (window.__VORTEX_TAB_NAVIGATION_INSTALLED) return;
+  window.__VORTEX_TAB_NAVIGATION_INSTALLED = true;
+  document.addEventListener('click', function(event) {
+    const target = event.target;
+    const anchor = target && typeof target.closest === 'function' ? target.closest('a[href]') : null;
+    if (!anchor || anchor.hasAttribute('download')) return;
+    const rawHref = anchor.getAttribute('href') || '';
+    if (!rawHref || rawHref.startsWith('#') || /^(?:mailto:|tel:|javascript:)/i.test(rawHref)) return;
+    try {
+      const url = new URL(rawHref, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (window.__VORTEX_TAB_AUTH_ID) {
+        url.searchParams.set('vf_tab', window.__VORTEX_TAB_AUTH_ID);
+        anchor.href = url.href;
+      }
+    } catch (error) {}
+  }, true);
+}
+
+// Inicializa a identidade antes dos módulos registrarem seus próprios eventos.
+// O parâmetro vf_tab mantém a sessão ligada à aba mesmo após fechar/reabrir o Brave.
+const VORTEX_TAB_AUTH_STORAGE_KEY = getVortexTabAuthStorageKey();
+vortexInstallTabNavigation();
+
 function getSupabase() {
   if (window.supabaseClient) return window.supabaseClient;
 
   if (window.supabase && typeof window.supabase.createClient === 'function') {
-    const tabStorageKey = getVortexTabAuthStorageKey();
-    // Migra a sessão da versão anterior (sessionStorage) para o armazenamento
-    // persistente da mesma aba, sem misturar as chaves de outras abas.
-    try {
-      const legacyTabStorageKey = window.__VORTEX_LEGACY_TAB_AUTH_STORAGE_KEY;
-      const previousTabSession = legacyTabStorageKey
-        ? window.sessionStorage.getItem(legacyTabStorageKey)
-        : null;
-      if (previousTabSession && window.localStorage.getItem(tabStorageKey) === null) {
-        window.localStorage.setItem(tabStorageKey, previousTabSession);
+    const tabStorageKey = VORTEX_TAB_AUTH_STORAGE_KEY;
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        storageKey: tabStorageKey
       }
-    } catch (migrationError) {
-      console.warn('Não foi possível migrar automaticamente a sessão desta aba:', migrationError);
-    }
-    const nativeBroadcastChannel = window.BroadcastChannel;
-
-    try {
-      // O Supabase Auth transmite SIGNED_IN/SIGNED_OUT para clientes com o mesmo
-      // storageKey. Desativamos esse canal somente durante a criação do cliente:
-      // as sessões do proprietário e do Motoboy são independentes por definição.
-      // Outros recursos do navegador continuam podendo usar BroadcastChannel.
-      if (typeof nativeBroadcastChannel === 'function') window.BroadcastChannel = undefined;
-
-      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: window.localStorage,
-          storageKey: tabStorageKey
-        }
-      });
-    } finally {
-      if (typeof nativeBroadcastChannel === 'function') window.BroadcastChannel = nativeBroadcastChannel;
-    }
-
+    });
     return window.supabaseClient;
   }
 
@@ -1622,6 +1648,8 @@ async function vortexUpdatePassword(newPassword) {
 }
 
 window.VortexAuth = {
+  prepareLoginTab: vortexRotateTabAuthIdentity,
+  tabUrl: vortexTabUrl,
   signIn: vortexSignIn,
   signUp: vortexSignUp,
   completeStoreRegistration: vortexCompleteStoreRegistration,
@@ -2117,7 +2145,7 @@ async function vortexSwitchUser() {
     window.alert('Não foi possível encerrar a sessão. Tente novamente.');
     return;
   }
-  window.location.href = 'login.html?switch=1';
+  window.location.href = vortexTabUrl('login.html?switch=1');
 }
 
 function vortexRequireAuthenticatedPage() {
@@ -2157,7 +2185,7 @@ function vortexRequireAuthenticatedPage() {
 
   // Evita exibir a página enquanto a sessão é validada.
   document.documentElement.style.visibility = 'hidden';
-  const loginUrl = new URL('login.html', window.location.href).href;
+  const loginUrl = vortexTabUrl('login.html');
   const supabase = getSupabase();
 
   if (!supabase) {
@@ -2193,16 +2221,16 @@ function vortexRequireAuthenticatedPage() {
         }
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
         if (currentPage === 'modulo22-motoboy.html' && window.VORTEX_AUTH_CONTEXT?.profile_key !== 'delivery') {
-          window.location.replace('modulo21-delivery.html');
+          window.location.replace(vortexTabUrl('modulo21-delivery.html'));
           return;
         }
         if (window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery' && currentPage !== 'modulo22-motoboy.html') {
-          window.location.replace('modulo22-motoboy.html');
+          window.location.replace(vortexTabUrl('modulo22-motoboy.html'));
           return;
         }
         const requiredPermission = VORTEX_PAGE_PERMISSION_MAP[currentPage];
         if (requiredPermission && !vortexPermissionHas(requiredPermission)) {
-          window.location.replace('index.html?blocked=' + encodeURIComponent(requiredPermission));
+          window.location.replace(vortexTabUrl('index.html?blocked=' + encodeURIComponent(requiredPermission)));
           return;
         }
         vortexRenderEmployeeChrome(window.VORTEX_AUTH_CONTEXT);

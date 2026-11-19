@@ -117,7 +117,24 @@ function getSupabase() {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storage: window.sessionStorage,
-        storageKey: 'vortex-food-auth-session'
+        // O Supabase Auth também usa BroadcastChannel para sincronizar eventos entre abas.
+        // Uma chave exclusiva por aba impede que o logout de uma conta seja propagado à outra.
+        storageKey: (function getTabAuthStorageKey() {
+          const keyName = 'vortex_auth_tab_storage_key';
+          try {
+            let key = window.sessionStorage.getItem(keyName);
+            if (!key) {
+              const id = window.crypto && typeof window.crypto.randomUUID === 'function'
+                ? window.crypto.randomUUID()
+                : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+              key = 'vortex-food-auth-' + id;
+              window.sessionStorage.setItem(keyName, key);
+            }
+            return key;
+          } catch (error) {
+            return 'vortex-food-auth-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+          }
+        })()
       }
     });
     return window.supabaseClient;

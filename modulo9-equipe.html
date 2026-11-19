@@ -357,6 +357,28 @@
     </div>
   </div>
 
+  <!-- MODAL NATIVO DE ENVIO DE CONVITE -->
+  <div class="modal-overlay" id="inviteStaffModal">
+    <div class="custom-modal-card" style="max-width:500px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <div style="width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:rgba(249,115,22,.15);font-size:1.35rem;">✉️</div>
+        <div><div style="font-size:1.12rem;font-weight:800;">Enviar convite de acesso</div>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:3px;" id="inviteStaffName">Colaborador</div></div>
+      </div>
+      <p style="font-size:.86rem;color:var(--text-muted);line-height:1.55;margin-bottom:16px;">
+        Este convite permitirá que o funcionário confirme o endereço de e-mail, crie sua própria senha e ative o acesso à loja no Vortex Food. O acesso seguirá a função e as permissões definidas pelo proprietário ou por um gerente autorizado.
+      </p>
+      <input type="hidden" id="inviteStaffRecordId">
+      <div class="form-group"><label for="inviteStaffEmail">E-mail que receberá o convite*</label>
+        <input type="email" class="form-input" id="inviteStaffEmail" placeholder="funcionario@email.com" autocomplete="email" maxlength="254">
+        <small style="display:block;color:var(--text-muted);margin-top:6px;">Confira o endereço antes de confirmar. O convite só será enviado depois da sua confirmação.</small>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeStaffInviteModal()">Cancelar</button>
+        <button class="btn-action" id="confirmStaffInviteButton" style="flex:1;justify-content:center;" onclick="confirmStaffInvite()">Confirmar e enviar convite</button>
+      </div>
+    </div>
+  </div>
   <!-- MODAL ALERTA / CONFIRMAÇÃO -->
   <div class="modal-overlay" id="customAlertModal">
     <div class="custom-modal-card" style="text-align: center; max-width: 380px;">
@@ -709,28 +731,72 @@
       showCustomAlert('Cadastro salvo', 'Os dados do colaborador foram salvos e sincronizados. Nenhum convite foi enviado automaticamente. Quando desejar, use “Enviar convite” na lista de funcionários.', '✅');
     }
 
-    async function sendStaffInvite(id) {
+    function sendStaffInvite(id) {
       const member = staffMembers.find(m => String(m.id) === String(id));
-      if (!member || !member.email || member.authUserId) return;
+      if (!member || member.authUserId || (member.status || 'ativo') !== 'ativo') return;
       if (!currentStaffPermissions().includes('team.invite')) {
         showCustomAlert('Acesso restrito', 'Seu perfil não pode enviar convites para contas individuais.', '🔒');
         return;
       }
+      document.getElementById('inviteStaffRecordId').value = String(member.id);
+      document.getElementById('inviteStaffEmail').value = member.email || '';
+      document.getElementById('inviteStaffName').textContent = member.name || 'Colaborador';
+      document.getElementById('inviteStaffModal').classList.add('active');
+      setTimeout(() => document.getElementById('inviteStaffEmail').focus(), 80);
+    }
+
+    function closeStaffInviteModal() {
+      document.getElementById('inviteStaffModal').classList.remove('active');
+      const button = document.getElementById('confirmStaffInviteButton');
+      button.disabled = false;
+      button.textContent = 'Confirmar e enviar convite';
+    }
+
+    async function confirmStaffInvite() {
+      const id = document.getElementById('inviteStaffRecordId').value;
+      const member = staffMembers.find(m => String(m.id) === String(id));
+      const email = document.getElementById('inviteStaffEmail').value.trim().toLowerCase();
+      const button = document.getElementById('confirmStaffInviteButton');
+      if (!member || member.authUserId || (member.status || 'ativo') !== 'ativo') {
+        closeStaffInviteModal();
+        showCustomAlert('Convite indisponível', 'Este cadastro não está mais disponível para convite. Atualize a lista e tente novamente.', '⚠️');
+        return;
+      }
+      if (!currentStaffPermissions().includes('team.invite')) {
+        closeStaffInviteModal();
+        showCustomAlert('Acesso restrito', 'Seu perfil não pode enviar convites para contas individuais.', '🔒');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+        showCustomAlert('E-mail necessário', 'Informe um endereço de e-mail válido para enviar o convite.', '✉️');
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Salvando e-mail...';
       try {
-        const result = await window.VortexAuth.inviteStaff(member.id, member.email, member.profileKey || profileForJobRole(member.role));
+        member.email = email;
+        localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+        if (typeof dbSaveStoreDocument !== 'function') throw new Error('Sincronização com a nuvem indisponível.');
+        const saved = await dbSaveStoreDocument('staff', staffMembers);
+        if (!saved || saved.error) throw (saved && saved.error) || new Error('Não foi possível salvar o e-mail do funcionário na nuvem.');
+        button.textContent = 'Enviando convite...';
+        const result = await window.VortexAuth.inviteStaff(member.id, email, member.profileKey || profileForJobRole(member.role));
         if (result.error) throw result.error;
         if (!result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'O servidor não confirmou o convite.');
         member.authUserId = result.data.user_id;
         member.invitationStatus = 'pending';
         member.invitedAt = new Date().toISOString();
         localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+        closeStaffInviteModal();
         renderStaffTable();
-        showCustomAlert(result.data.existing_account ? 'Conta já existente' : 'Convite enviado', result.data.message || 'O acesso ficará bloqueado até a ativação.', result.data.existing_account ? 'ℹ️' : '✅');
+        showCustomAlert(result.data.existing_account ? 'Conta já existente' : 'Convite enviado', result.data.message || 'O acesso seguirá a função e as permissões configuradas para este funcionário.', result.data.existing_account ? 'ℹ️' : '✅');
       } catch (error) {
-        showCustomAlert('Não foi possível convidar', error.message || 'Verifique o e-mail e tente novamente.', '⚠️');
+        localStorage.setItem('vortex_team_members', JSON.stringify(staffMembers));
+        closeStaffInviteModal();
+        renderStaffTable();
+        showCustomAlert('Não foi possível enviar o convite', error.message || 'Verifique a conexão e tente novamente. Consulte os registros da função invite-staff no Supabase se o problema persistir.', '⚠️');
       }
     }
-
 
     function confirmDeleteStaff(id) {
       const member = staffMembers.find(m => String(m.id) === String(id));

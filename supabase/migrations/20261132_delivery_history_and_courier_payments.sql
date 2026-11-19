@@ -7,8 +7,15 @@ BEGIN;
 
 ALTER TABLE public.vortex_delivery_route_stops
   ADD COLUMN IF NOT EXISTS delivered_by_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS distance_km numeric(8,2),
   ADD COLUMN IF NOT EXISTS courier_payment_amount numeric(12,2),
   ADD COLUMN IF NOT EXISTS courier_payment_rule_label text;
+
+ALTER TABLE public.vortex_delivery_route_stops
+  ADD CONSTRAINT vortex_delivery_route_stops_distance_km_check CHECK (distance_km IS NULL OR distance_km BETWEEN 0 AND 500) NOT VALID;
+
+ALTER TABLE public.vortex_delivery_route_stops
+  VALIDATE CONSTRAINT vortex_delivery_route_stops_distance_km_check;
 
 ALTER TABLE public.vortex_delivery_route_stops
   ADD CONSTRAINT vortex_delivery_route_stops_courier_payment_amount_check
@@ -28,7 +35,7 @@ CREATE INDEX IF NOT EXISTS vortex_delivery_route_stops_delivered_by_idx
 
 CREATE TABLE IF NOT EXISTS public.vortex_delivery_courier_payment_rules (
   store_id uuid PRIMARY KEY REFERENCES public.vortex_stores(id) ON DELETE CASCADE,
-  mode text NOT NULL DEFAULT 'fixed' CHECK (mode IN ('fixed','neighborhood')),
+  mode text NOT NULL DEFAULT 'fixed' CHECK (mode IN ('fixed','neighborhood','per_km')),
   fixed_amount numeric(12,2),
   neighborhood_rates jsonb NOT NULL DEFAULT '[]'::jsonb,
   updated_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -60,13 +67,13 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'settings.manage') THEN
     RAISE EXCEPTION 'Seu perfil não pode alterar a remuneração dos entregadores.';
   END IF;
-  IF p_mode NOT IN ('fixed','neighborhood')
+  IF p_mode NOT IN ('fixed','neighborhood','per_km')
      OR jsonb_typeof(v_rates)<>'array'
      OR jsonb_array_length(v_rates)>200
      OR (p_fixed_amount IS NOT NULL AND (p_fixed_amount<0 OR p_fixed_amount>10000)) THEN
     RAISE EXCEPTION 'Configuração de remuneração inválida.';
   END IF;
-  IF p_mode='fixed' AND p_fixed_amount IS NULL THEN
+  IF p_mode IN ('fixed','per_km') AND p_fixed_amount IS NULL THEN
     RAISE EXCEPTION 'Informe o valor fixo por entrega.';
   END IF;
   FOR v_item IN SELECT value FROM jsonb_array_elements(v_rates) LOOP
@@ -165,6 +172,14 @@ BEGIN
   IF v_mode='fixed' THEN
     NEW.courier_payment_amount:=v_fixed;
     NEW.courier_payment_rule_label:=CASE WHEN v_fixed IS NULL THEN NULL ELSE 'Valor fixo por entrega' END;
+  ELSIF v_mode='per_km' THEN
+    IF NEW.distance_km IS NULL THEN
+      NEW.courier_payment_amount:=NULL;
+      NEW.courier_payment_rule_label:=NULL;
+    ELSE
+      NEW.courier_payment_amount:=round(v_fixed*NEW.distance_km,2);
+      NEW.courier_payment_rule_label:='Por quilômetro · ' || NEW.distance_km::text || ' km';
+    END IF;
   ELSIF v_mode='neighborhood' THEN
     SELECT o.address INTO v_address
     FROM public.vortex_kds_orders o
@@ -224,7 +239,9 @@ BEGIN
           'sequence_number',s.sequence_number,'stop_status',s.status,
           'occurrence_type',s.occurrence_type,'occurrence_notes',s.occurrence_notes,
           'promised_delivery_at',s.promised_delivery_at,'started_at',s.started_at,'delivered_at',s.delivered_at,
-          'courier_payment_amount',s.courier_payment_amount,
+          'distance_km',s.distance_km,
+          'distance_km',s.distance_km,
+    'courier_payment_amount',s.courier_payment_amount,
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
           'display_id',o."displayId",
@@ -246,6 +263,65 @@ BEGIN
   WHERE r.store_id=p_store_id AND r.courier_user_id=auth.uid()
     AND r.status IN ('assigned','in_route');
   RETURN v_result;
+END;
+$function$;
+
+-- Distância informada pelo despacho para remuneração por quilômetro.
+-- O servidor calcula e congela o valor; o navegador nunca envia o pagamento calculado.
+CREATE OR REPLACE FUNCTION public.rpc_set_delivery_stop_distance(
+  p_store_id uuid,p_route_id uuid,p_order_id text,p_distance_km numeric
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_route public.vortex_delivery_routes%ROWTYPE;
+  v_rate numeric(12,2);
+  v_amount numeric(12,2);
+  v_stop_id uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.vortex_user_has_permission(p_store_id,'delivery.dispatch_manage') THEN
+    RAISE EXCEPTION 'Seu perfil não pode informar a distância desta entrega.';
+  END IF;
+  IF p_distance_km IS NULL OR p_distance_km<=0 OR p_distance_km>500 THEN
+    RAISE EXCEPTION 'Informe uma distância maior que zero e de até 500 km.';
+  END IF;
+  SELECT * INTO v_route FROM public.vortex_delivery_routes
+  WHERE store_id=p_store_id AND id=p_route_id AND status IN ('assigned','in_route')
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'A rota não está ativa.'; END IF;
+
+  SELECT fixed_amount INTO v_rate
+  FROM public.vortex_delivery_courier_payment_rules
+  WHERE store_id=p_store_id AND mode='per_km';
+  IF NOT FOUND OR v_rate IS NULL THEN
+    RAISE EXCEPTION 'A remuneração por quilômetro não está configurada neste estabelecimento.';
+  END IF;
+
+  v_amount:=round(v_rate*p_distance_km,2);
+  UPDATE public.vortex_delivery_route_stops
+  SET distance_km=round(p_distance_km,2),
+      courier_payment_amount=v_amount,
+      courier_payment_rule_label='Por quilômetro · ' || round(p_distance_km,2)::text || ' km',
+      updated_at=now()
+  WHERE store_id=p_store_id AND route_id=p_route_id
+    AND order_id=p_order_id AND status IN ('assigned','in_progress','occurrence')
+  RETURNING id INTO v_stop_id;
+  IF v_stop_id IS NULL THEN RAISE EXCEPTION 'Entrega ativa não encontrada nesta rota.'; END IF;
+
+  UPDATE public.vortex_delivery_routes
+  SET route_version=route_version+1,updated_at=now()
+  WHERE store_id=p_store_id AND id=p_route_id;
+
+  INSERT INTO public.vortex_delivery_route_events(
+    store_id,route_id,stop_id,order_id,actor_user_id,event_type,details
+  ) VALUES (
+    p_store_id,p_route_id,v_stop_id,p_order_id,auth.uid(),'delivery_distance_updated',
+    jsonb_build_object('distance_km',round(p_distance_km,2),'courier_payment_amount',v_amount)
+  );
+  RETURN jsonb_build_object('success',true,'distance_km',round(p_distance_km,2),'courier_payment_amount',v_amount);
 END;
 $function$;
 
@@ -389,6 +465,7 @@ BEGIN
           'occurrence_type',s.occurrence_type,'occurrence_notes',s.occurrence_notes,
           'occurrence_at',s.occurrence_at,'promised_delivery_at',s.promised_delivery_at,
           'started_at',s.started_at,'delivered_at',s.delivered_at,
+          'distance_km',s.distance_km,
           'courier_payment_amount',s.courier_payment_amount,
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
@@ -538,6 +615,8 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.rpc_set_delivery_stop_distance(uuid,uuid,text,numeric) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.rpc_set_delivery_stop_distance(uuid,uuid,text,numeric) TO authenticated;
 REVOKE ALL ON FUNCTION public.rpc_save_delivery_courier_payment_rules(uuid,text,numeric,jsonb) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.rpc_get_delivery_courier_payment_rules(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.rpc_get_my_delivery_history(uuid,date,date) FROM PUBLIC,anon;

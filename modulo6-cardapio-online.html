@@ -265,14 +265,14 @@ header.top-header{
         <nav class="sidebar-menu">
             <div class="menu-group-label">Operação & Salão</div>
             <div class="menu-item active">📱 Módulo 6: Cardápio Online</div>
-            <div class="menu-item" onclick="window.location.href='modulo5-mesas.html'">🍽️ Módulo 5: Mesas</div>
-            <div class="menu-item" onclick="window.location.href='modulo4-caixa.html'">💰 Módulo 4: Caixa</div>
-            <div class="menu-item" onclick="window.location.href='modulo3-pdv.html'">🖥️ Módulo 3: PDV Caixa</div>
-            <div class="menu-item" onclick="window.location.href='modulo2-cardapio.html'">🍔 Módulo 2: Cardápio</div>
-            <div class="menu-item" onclick="window.location.href='modulo-configuracoes.html'">⚙️ Configurações do Sistema</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo5-mesas.html')">🍽️ Módulo 5: Mesas</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo4-caixa.html')">💰 Módulo 4: Caixa</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo3-pdv.html')">🖥️ Módulo 3: PDV Caixa</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo2-cardapio.html')">🍔 Módulo 2: Cardápio</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo-configuracoes.html')">⚙️ Configurações do Sistema</div>
             
             <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href='dashboard.html'">📊 Voltar ao Dashboard</div>
+            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('dashboard.html')">📊 Voltar ao Dashboard</div>
         </nav>
     </aside>
 
@@ -349,8 +349,8 @@ header.top-header{
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js?v=20261119-tab-auth-isolation-5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+    <script src="supabase.js?v=20261119-tab-auth-isolation-6"></script>
 
     <script>
         let publicDeliveryUrl = '';

@@ -140,6 +140,16 @@ function getSupabase() {
 
   if (window.supabase && typeof window.supabase.createClient === 'function') {
     const tabStorageKey = getVortexTabAuthStorageKey();
+    // Migra a sessão da versão anterior (sessionStorage) para o armazenamento
+    // persistente da mesma aba, sem misturar as chaves de outras abas.
+    try {
+      const previousTabSession = window.sessionStorage.getItem(tabStorageKey);
+      if (previousTabSession && window.localStorage.getItem(tabStorageKey) === null) {
+        window.localStorage.setItem(tabStorageKey, previousTabSession);
+      }
+    } catch (migrationError) {
+      console.warn('Não foi possível migrar automaticamente a sessão desta aba:', migrationError);
+    }
     const nativeBroadcastChannel = window.BroadcastChannel;
 
     try {

@@ -616,6 +616,16 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="confirmLogoutModal">
+    <div class="custom-modal-card">
+      <div class="custom-modal-icon">🚪</div>
+      <div class="custom-modal-title">Sair da conta?</div>
+      <div class="custom-modal-desc">Tem certeza de que deseja sair da sua conta? Você precisará entrar novamente para acessar o Vortex Food neste navegador.</div>
+      <button type="button" class="btn-modal-danger" id="confirmLogoutButton" onclick="confirmLogoutFromSettings()">Sim, sair da conta</button>
+      <button type="button" class="btn-modal-secondary" onclick="closeConfirmLogoutModal()">Cancelar</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="confirmLogoModal">
     <div class="custom-modal-card">
       <div class="custom-modal-icon">🖼️</div>
@@ -1191,7 +1201,17 @@
       }
     }
 
-    async function logoutFromSettings() {
+    function logoutFromSettings() {
+      document.getElementById('confirmLogoutModal').classList.add('active');
+    }
+
+    function closeConfirmLogoutModal() {
+      document.getElementById('confirmLogoutModal').classList.remove('active');
+    }
+
+    async function confirmLogoutFromSettings() {
+      const confirmButton = document.getElementById('confirmLogoutButton');
+      if (confirmButton) { confirmButton.disabled = true; confirmButton.textContent = 'Saindo...'; }
       try {
         if (!window.VortexAuth || typeof window.VortexAuth.signOut !== 'function') {
           throw new Error('A função de encerramento da sessão não está disponível.');
@@ -1202,7 +1222,10 @@
         window.location.replace('login.html');
       } catch (error) {
         console.error('Não foi possível encerrar a sessão:', error);
+        closeConfirmLogoutModal();
         showNoticeModal('Não foi possível sair', error && error.message ? error.message : 'Tente novamente.', '⚠️');
+      } finally {
+        if (confirmButton) { confirmButton.disabled = false; confirmButton.textContent = 'Sim, sair da conta'; }
       }
     }
 

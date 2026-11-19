@@ -161,6 +161,7 @@ function vortexRotateTabAuthIdentity() {
   }
   const id = vortexCreateTabAuthId();
   vortexWriteTabAuthId(id);
+  VORTEX_TAB_AUTH_STORAGE_KEY = 'vortex-food-auth-v3-' + id;
   return id;
 }
 
@@ -194,7 +195,7 @@ function vortexInstallTabNavigation() {
 
 // Inicializa a identidade antes dos módulos registrarem seus próprios eventos.
 // O parâmetro vf_tab mantém a sessão ligada à aba mesmo após fechar/reabrir o Brave.
-const VORTEX_TAB_AUTH_STORAGE_KEY = getVortexTabAuthStorageKey();
+let VORTEX_TAB_AUTH_STORAGE_KEY = getVortexTabAuthStorageKey();
 vortexInstallTabNavigation();
 
 function getSupabase() {

@@ -199,7 +199,7 @@ BEGIN
     SELECT item.value INTO v_match
     FROM jsonb_array_elements(v_rates) AS item(value)
     WHERE length(trim(COALESCE(item.value->>'name','')))>=2
-      AND COALESCE(v_address,'') ILIKE '%' || trim(item.value->>'name') || '%'
+      AND position(lower(trim(item.value->>'name')) in lower(COALESCE(v_address,'')))>0
     ORDER BY length(trim(item.value->>'name')) DESC
     LIMIT 1;
     IF v_match IS NULL THEN

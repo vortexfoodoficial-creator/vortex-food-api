@@ -219,7 +219,8 @@
     <div class="card-box">
       <div class="card-title">
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-secondary" type="button" onclick="copyCourierLoginLink()">🔗 Copiar link de acesso</button>
           <button class="btn-secondary" onclick="openCourierHistoryModal()">📋 Histórico Entregas</button>
           <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
         </div>
@@ -2165,6 +2166,37 @@
         </html>
       `);
       printWin.document.close();
+    }
+
+    async function copyCourierLoginLink() {
+      const loginUrl = new URL('login.html', window.location.href).href;
+      let copied = false;
+
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(loginUrl);
+          copied = true;
+        } else {
+          const temporaryInput = document.createElement('textarea');
+          temporaryInput.value = loginUrl;
+          temporaryInput.setAttribute('readonly', '');
+          temporaryInput.style.position = 'fixed';
+          temporaryInput.style.opacity = '0';
+          document.body.appendChild(temporaryInput);
+          temporaryInput.select();
+          copied = document.execCommand('copy');
+          temporaryInput.remove();
+        }
+      } catch (error) {
+        copied = false;
+      }
+
+      const safeUrl = escapeDeliveryHtml(loginUrl);
+      if (copied) {
+        showNoticeModal('Link copiado com sucesso', 'Envie este endereço ao motoboy para que ele entre na tela oficial de login do Vortex Food:<br><strong style="word-break:break-all;">' + safeUrl + '</strong>', '🔗');
+      } else {
+        showNoticeModal('Link de acesso do motoboy', 'Não foi possível copiar automaticamente. Copie este endereço e envie ao motoboy:<br><strong style="word-break:break-all;">' + safeUrl + '</strong>', '🔗');
+      }
     }
 
     function showNoticeModal(title, desc, icon) {

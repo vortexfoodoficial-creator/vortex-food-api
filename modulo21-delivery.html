@@ -1141,8 +1141,12 @@
         ]);
         if (result.error) throw result.error;
         if (courierResult.error) throw courierResult.error;
-        if (paymentRulesResult.error) throw paymentRulesResult.error;
-        dispatchCourierPaymentMode = paymentRulesResult.data?.mode || 'fixed';
+        if (paymentRulesResult.error) {
+          dispatchCourierPaymentMode = 'fixed';
+          console.warn('Configuração de remuneração ainda não disponível no banco:',paymentRulesResult.error);
+        } else {
+          dispatchCourierPaymentMode = paymentRulesResult.data?.mode || 'fixed';
+        }
         dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
         const courierHost = document.getElementById('dispatchCouriersList');
         const dispatchCouriers = Array.isArray(courierResult.data) ? courierResult.data : [];

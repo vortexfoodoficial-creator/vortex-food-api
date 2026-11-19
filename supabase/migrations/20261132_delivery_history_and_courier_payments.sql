@@ -138,10 +138,16 @@ DECLARE
   v_address text;
   v_match jsonb;
 BEGIN
-  IF TG_OP='UPDATE' AND NOT (OLD.status='cancelled' AND NEW.status='assigned') THEN
-    RETURN NEW;
+  IF TG_OP='UPDATE' THEN
+    IF OLD.status='cancelled' AND NEW.status='assigned' THEN
+      NULL;
+    ELSIF NEW.status='delivered' AND OLD.courier_payment_amount IS NULL THEN
+      NULL;
+    ELSE
+      RETURN NEW;
+    END IF;
   END IF;
-  IF NEW.status NOT IN ('assigned','in_progress') THEN
+  IF NEW.status NOT IN ('assigned','in_progress','delivered') THEN
     RETURN NEW;
   END IF;
 
@@ -163,11 +169,11 @@ BEGIN
     SELECT o.address INTO v_address
     FROM public.vortex_kds_orders o
     WHERE o.store_id=NEW.store_id AND o.id=NEW.order_id;
-    SELECT rate INTO v_match
-    FROM jsonb_array_elements(v_rates) AS rate
-    WHERE length(trim(COALESCE(rate->>'name','')))>=2
-      AND COALESCE(v_address,'') ILIKE '%' || trim(rate->>'name') || '%'
-    ORDER BY length(trim(rate->>'name')) DESC
+    SELECT item.value INTO v_match
+    FROM jsonb_array_elements(v_rates) AS item(value)
+    WHERE length(trim(COALESCE(item.value->>'name','')))>=2
+      AND COALESCE(v_address,'') ILIKE '%' || trim(item.value->>'name') || '%'
+    ORDER BY length(trim(item.value->>'name')) DESC
     LIMIT 1;
     IF v_match IS NULL THEN
       NEW.courier_payment_amount:=NULL;

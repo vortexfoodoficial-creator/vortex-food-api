@@ -1244,7 +1244,8 @@ async function vortexSignIn(email, password) {
 async function vortexSignOut() {
   const supabase = getSupabase();
   if (!supabase) return { error: new Error('Conexão com Supabase indisponível.') };
-  const result = await supabase.auth.signOut();
+  // Encerra somente a sessão desta aba; não revoga sessões independentes do mesmo usuário.
+  const result = await supabase.auth.signOut({ scope: 'local' });
   if (!result.error && window.VortexStoreStorage) window.VortexStoreStorage.clearSession();
   return result;
 }

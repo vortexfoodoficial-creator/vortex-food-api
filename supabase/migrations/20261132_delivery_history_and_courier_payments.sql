@@ -71,7 +71,7 @@ BEGIN
   END IF;
   FOR v_item IN SELECT value FROM jsonb_array_elements(v_rates) LOOP
     IF length(trim(COALESCE(v_item->>'name','')))<2
-       OR COALESCE(v_item->>'amount','') !~ '^\\d{1,8}([.,]\\d{1,2})?$'
+       OR COALESCE(v_item->>'amount','') !~ '^\d{1,8}([.,]\d{1,2})?$'
        OR replace(v_item->>'amount',',','.')::numeric<0
        OR replace(v_item->>'amount',',','.')::numeric>10000 THEN
       RAISE EXCEPTION 'Revise os bairros e valores informados na remuneração.';
@@ -228,8 +228,8 @@ BEGIN
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
           'display_id',o."displayId",
-          'customer_name',regexp_replace(COALESCE(o.client,''),' \\([^()]*\\)$',''),
-          'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\\(([^()]*)\\)$'))[1],''),
+          'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
+          'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\(([^()]*)\)$'))[1],''),
           'address',o.address,'items',o.items,'payment_method',o.payment,
           'amount_due',o.total,'cash_given',o.cashgiven,'change',o.change,
           'observation',o.observation,'order_status',o.status,
@@ -278,7 +278,7 @@ BEGIN
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'order_id',s.order_id,'display_id',o."displayId",
-    'customer_name',regexp_replace(COALESCE(o.client,''),' \\([^()]*\\)$',''),
+    'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
     'courier_payment_amount',s.courier_payment_amount,
     'courier_payment_rule_label',s.courier_payment_rule_label,
@@ -319,7 +319,7 @@ BEGIN
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'order_id',s.order_id,'display_id',o."displayId",
-    'customer_name',regexp_replace(COALESCE(o.client,''),' \\([^()]*\\)$',''),
+    'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
     'courier_user_id',s.delivered_by_user_id,
     'courier_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy não identificado'),
@@ -393,7 +393,7 @@ BEGIN
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
           'display_id',o."displayId",
-          'customer_name',regexp_replace(COALESCE(o.client,''),' \\([^()]*\\)$',''),
+          'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
           'address',o.address,'order_status',o.status
         ) ORDER BY s.sequence_number)
         FROM public.vortex_delivery_route_stops s

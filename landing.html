@@ -794,8 +794,8 @@
         <p>&copy; 2026 Vortex Food. Todos os direitos reservados. Tecnologia de ponta para restaurantes.</p>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js?v=20261119-tab-auth-isolation-5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+    <script src="supabase.js?v=20261119-tab-auth-isolation-6"></script>
     <script>
         function toggleModulos() {
             const list = document.getElementById('modules-list');
@@ -863,7 +863,7 @@
         }
 
         function irParaOSistema() {
-            window.location.href = 'login.html';
+            window.location.href = window.VortexAuth.tabUrl('login.html');
         }
     </script>
 

@@ -108,7 +108,18 @@ function getSupabase() {
     return window.supabaseClient;
   }
   if (window.supabase && typeof window.supabase.createClient === 'function') {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    // Cada aba mantém sua própria sessão. localStorage compartilhado fazia o login
+    // do motoboy substituir a sessão do proprietário (e vice-versa) em outra aba.
+    // sessionStorage persiste durante a navegação da aba, mas não sincroniza contas entre abas.
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.sessionStorage,
+        storageKey: 'vortex-food-auth-session'
+      }
+    });
     return window.supabaseClient;
   }
   console.warn('SDK do Supabase ainda não foi carregado pelo navegador.');
@@ -565,6 +576,37 @@ async function dbCancelDeliveryRoute(routeId, reason) {
   });
 }
 
+async function dbGetDeliveryHistory(startDate, endDate, ownOnly) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  const start = String(startDate || '');
+  const end = String(endDate || '');
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(end) || start > end) {
+    return { data: null, error: new Error('Selecione um período válido para consultar o histórico.') };
+  }
+  return await vortexDeliveryRpc(ownOnly ? 'rpc_get_my_delivery_history' : 'rpc_get_delivery_dispatch_history', {
+    p_store_id: storeId, p_start_date: start, p_end_date: end
+  });
+}
+
+async function dbSaveDeliveryCourierPaymentRules(config) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  const payload = config && typeof config === 'object' ? config : {};
+  return await vortexDeliveryRpc('rpc_save_delivery_courier_payment_rules', {
+    p_store_id: storeId,
+    p_mode: String(payload.mode || 'fixed'),
+    p_fixed_amount: payload.fixedAmount == null || payload.fixedAmount === '' ? null : Number(payload.fixedAmount),
+    p_neighborhood_rates: Array.isArray(payload.neighborhoodRates) ? payload.neighborhoodRates : []
+  });
+}
+
+async function dbGetDeliveryCourierPaymentRules() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_delivery_courier_payment_rules', { p_store_id: storeId });
+}
+
 window.VortexDelivery = {
   createRoute: dbCreateDeliveryRoute,
   fetchDispatchRoutes: dbGetDeliveryDispatchRoutes,
@@ -580,7 +622,10 @@ window.VortexDelivery = {
   startRoute: dbStartDeliveryRoute,
   reportOccurrence: dbReportDeliveryOccurrence,
   getPresence: dbGetDeliveryCourierPresence,
-  setPresence: dbSetDeliveryCourierPresence
+  setPresence: dbSetDeliveryCourierPresence,
+  fetchHistory: dbGetDeliveryHistory,
+  savePaymentRules: dbSaveDeliveryCourierPaymentRules,
+  getPaymentRules: dbGetDeliveryCourierPaymentRules
 };
 
 async function dbFetchKdsOrders() {

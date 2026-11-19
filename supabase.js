@@ -110,13 +110,13 @@ function getSupabase() {
   if (window.supabase && typeof window.supabase.createClient === 'function') {
     // Cada aba mantém sua própria sessão. localStorage compartilhado fazia o login
     // do motoboy substituir a sessão do proprietário (e vice-versa) em outra aba.
-    // sessionStorage persiste durante a navegação da aba, mas não sincroniza contas entre abas.
+    // localStorage mantém o token após fechar o navegador; a chave exclusiva da aba mantém contas separadas.
     window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: window.sessionStorage,
+        storage: window.localStorage,
         // O Supabase Auth também usa BroadcastChannel para sincronizar eventos entre abas.
         // Uma chave exclusiva por aba impede que o logout de uma conta seja propagado à outra.
         storageKey: (function getTabAuthStorageKey() {

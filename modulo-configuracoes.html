@@ -488,6 +488,30 @@
         </div>
       </div>
 
+      <!-- CARD 5B: REMUNERAÇÃO DOS ENTREGADORES -->
+      <div class="config-card">
+        <div class="config-title">💵 Remuneração dos Entregadores</div>
+        <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">
+          Defina quanto o estabelecimento paga ao motoboy por cada entrega concluída. Esta regra é independente da taxa cobrada do cliente e o valor de cada entrega fica registrado no histórico.
+        </p>
+        <div class="form-group">
+          <label for="courierPaymentMode">Forma de remuneração:</label>
+          <select id="courierPaymentMode" onchange="toggleCourierPaymentMode(this.value)">
+            <option value="fixed">Valor fixo por entrega</option>
+            <option value="neighborhood">Valor por bairro</option>
+          </select>
+        </div>
+        <div id="courierPaymentFixedPanel" class="form-group">
+          <label for="courierPaymentFixedAmount">Quanto o motoboy recebe por entrega (R$):</label>
+          <input type="text" id="courierPaymentFixedAmount" placeholder="Ex.: 5,00" oninput="maskCurrency(this)">
+        </div>
+        <div id="courierPaymentNeighborhoodPanel" style="display:none;">
+          <div id="courierPaymentNeighborhoodsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+          <button type="button" class="btn-modal-secondary" onclick="addCourierPaymentNeighborhood()">➕ Adicionar bairro e valor</button>
+          <p style="font-size:.73rem;color:var(--text-muted);margin-top:8px;">O sistema procura o nome do bairro no endereço do pedido. Se não encontrar uma regra correspondente, o valor ficará como “Não definido” até ser ajustado.</p>
+        </div>
+      </div>
+
       <!-- CARD 6: AGENDAMENTO E ESTIMATIVAS -->
       <div class="config-card">
         <div class="config-title">📅 Agendamento e Estimativas</div>
@@ -704,6 +728,29 @@
       });
     }
     function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '0,00' }); renderKmRangesList(); }
+    let courierPaymentNeighborhoodsData = [];
+    function escapeCourierPaymentHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    }
+    function renderCourierPaymentNeighborhoods() {
+      const host = document.getElementById('courierPaymentNeighborhoodsList');
+      if (!host) return;
+      host.innerHTML = courierPaymentNeighborhoodsData.map((item,index) => `
+        <div style="display:flex;gap:6px;align-items:center;background:var(--bg-card);padding:7px;border-radius:8px;border:1px solid var(--border);">
+          <input type="text" value="${escapeCourierPaymentHtml(item.name)}" placeholder="Nome do bairro" aria-label="Nome do bairro" style="flex:2;min-width:0;" oninput="courierPaymentNeighborhoodsData[${index}].name=this.value">
+          <input type="text" value="${escapeCourierPaymentHtml(item.amount)}" placeholder="Valor R$" aria-label="Valor por entrega" style="flex:1;min-width:0;" oninput="maskCurrency(this);courierPaymentNeighborhoodsData[${index}].amount=this.value">
+          <button type="button" aria-label="Remover bairro" onclick="courierPaymentNeighborhoodsData.splice(${index},1);renderCourierPaymentNeighborhoods();" style="background:none;border:0;color:var(--danger);font-weight:bold;padding:6px;">✕</button>
+        </div>`).join('') || '<div style="font-size:.78rem;color:var(--text-muted);">Nenhum bairro configurado.</div>';
+    }
+    function addCourierPaymentNeighborhood() {
+      courierPaymentNeighborhoodsData.push({name:'',amount:'0,00'});
+      renderCourierPaymentNeighborhoods();
+    }
+    function toggleCourierPaymentMode(mode) {
+      document.getElementById('courierPaymentFixedPanel').style.display = mode === 'fixed' ? 'block' : 'none';
+      document.getElementById('courierPaymentNeighborhoodPanel').style.display = mode === 'neighborhood' ? 'block' : 'none';
+    }
+
 
     async function loadStoreSettings() {
       applyTheme();
@@ -810,6 +857,13 @@
       document.getElementById('fixedDeliveryPriceInput').value = settings.fixedDeliveryPrice || '';
       document.getElementById('minOrderValueInput').value = settings.minOrderValue || '';
       document.getElementById('defaultDeliveryFeeInput').value = settings.defaultDeliveryFee || '';
+      document.getElementById('courierPaymentMode').value = settings.courierPaymentMode || 'fixed';
+      document.getElementById('courierPaymentFixedAmount').value = settings.courierPaymentFixedAmount || '';
+      courierPaymentNeighborhoodsData = Array.isArray(settings.courierPaymentNeighborhoodsData)
+        ? settings.courierPaymentNeighborhoodsData.map(item => ({name:String(item.name || ''),amount:String(item.amount || '0,00')}))
+        : [];
+      renderCourierPaymentNeighborhoods();
+      toggleCourierPaymentMode(document.getElementById('courierPaymentMode').value);
 
       document.getElementById('requireScheduleToggle').checked = settings.requireSchedule || false;
       document.getElementById('schedulePickupToggle').checked = settings.schedulePickup || false;
@@ -1000,6 +1054,12 @@
       const fixedDeliveryPrice = document.getElementById('fixedDeliveryPriceInput').value.trim();
       const minOrderValue = document.getElementById('minOrderValueInput').value.trim();
       const defaultDeliveryFee = document.getElementById('defaultDeliveryFeeInput').value.trim();
+      const courierPaymentMode = document.getElementById('courierPaymentMode').value;
+      const courierPaymentFixedAmount = document.getElementById('courierPaymentFixedAmount').value.trim();
+      const courierPaymentNeighborhoods = courierPaymentNeighborhoodsData.map(item => ({
+        name: String(item.name || '').trim(),
+        amount: String(item.amount || '').trim()
+      })).filter(item => item.name && item.amount);
 
       const requireSchedule = document.getElementById('requireScheduleToggle').checked;
       const schedulePickup = document.getElementById('schedulePickupToggle').checked;
@@ -1023,7 +1083,7 @@
         legalName, storeType, ownerName, docNumber, phone, email, cep,
         streetNumber, complement, street, neighborhood, city, uf,
         timezone, specialHours, workingHours, deliveryType, freeDelivery, freeDeliveryMin,
-        fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
+        fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,\n        courierPaymentMode, courierPaymentFixedAmount, courierPaymentNeighborhoodsData: courierPaymentNeighborhoods,
         requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
         scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
         paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification,
@@ -1057,6 +1117,32 @@
       } else {
         cloudSyncSuccess = false;
         cloudSyncMessage = 'Conexão com a nuvem indisponível.';
+      }
+
+      // A regra de remuneração fica em tabela própria para ser validada no servidor
+      // e congelada em cada nova parada; o documento de configurações mantém a cópia visual.
+      if (cloudSyncSuccess && window.VortexDelivery?.savePaymentRules) {
+        try {
+          const parseBRL = value => {
+            const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\\./g,'').replace(',','.');
+            return normalized === '' ? null : Number(normalized);
+          };
+          const savedRules = await window.VortexDelivery.savePaymentRules({
+            mode: courierPaymentMode,
+            fixedAmount: parseBRL(courierPaymentFixedAmount),
+            neighborhoodRates: courierPaymentNeighborhoods.map(item => ({
+              name: item.name,
+              amount: String(parseBRL(item.amount))
+            }))
+          });
+          if (!savedRules || savedRules.error) throw (savedRules && savedRules.error) || new Error('O servidor não confirmou a remuneração.');
+        } catch (error) {
+          cloudSyncSuccess = false;
+          cloudSyncMessage = error.message || 'Falha ao sincronizar a remuneração dos entregadores.';
+        }
+      } else if (cloudSyncSuccess) {
+        cloudSyncSuccess = false;
+        cloudSyncMessage = 'Rotina segura de remuneração indisponível. Atualize o sistema antes de salvar.';
       }
 
       if (window.supabaseClient) {

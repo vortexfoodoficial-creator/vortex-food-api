@@ -1124,7 +1124,7 @@
       if (cloudSyncSuccess && window.VortexDelivery?.savePaymentRules) {
         try {
           const parseBRL = value => {
-            const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\\./g,'').replace(',','.');
+            const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
             return normalized === '' ? null : Number(normalized);
           };
           const savedRules = await window.VortexDelivery.savePaymentRules({

@@ -581,7 +581,7 @@ async function dbGetDeliveryHistory(startDate, endDate, ownOnly) {
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
   const start = String(startDate || '');
   const end = String(endDate || '');
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(end) || start > end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) {
     return { data: null, error: new Error('Selecione um período válido para consultar o histórico.') };
   }
   return await vortexDeliveryRpc(ownOnly ? 'rpc_get_my_delivery_history' : 'rpc_get_delivery_dispatch_history', {

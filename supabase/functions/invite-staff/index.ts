@@ -122,7 +122,8 @@ Deno.serve(async (req: Request) => {
     if (targetPermissionsError) {
       return response(500, { error: "Não foi possível validar o perfil selecionado." });
     }
-    const exceedsActor = (targetPermissions || []).some(
+    const actorIsOwner = context.role === "owner" || context.profile_key === "owner";
+    const exceedsActor = !actorIsOwner && (targetPermissions || []).some(
       (item: { permission_key: string }) => !actorPermissions.has(item.permission_key),
     );
     if (exceedsActor) {
@@ -136,6 +137,7 @@ Deno.serve(async (req: Request) => {
 
     let invitedUserId = '';
     let existingAccount = false;
+    let recoveredPendingInvite = false;
     const inviteResult = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: appUrl.replace(/\/$/, "") + "/login.html",
       data: {
@@ -147,13 +149,40 @@ Deno.serve(async (req: Request) => {
     if (!inviteResult.error && inviteResult.data.user) {
       invitedUserId = inviteResult.data.user.id;
     } else if (/already registered|already been registered|user already exists/i.test(inviteResult.error?.message || '')) {
-      const { data: usersResult, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const existingUser = (usersResult?.users || []).find((user) => String(user.email || '').toLowerCase() === email);
+      // Busca a conta exata por e-mail com paginação. Uma conta ainda não
+      // confirmada só pode ser recuperada se os metadados do convite original
+      // corresponderem à mesma loja e ao mesmo cadastro de funcionário.
+      let existingUser: any = null;
+      let usersError: any = null;
+      for (let page = 1; page <= 100; page++) {
+        const { data: usersResult, error: pageError } = await admin.auth.admin.listUsers({
+          page,
+          perPage: 1000,
+        });
+        if (pageError) {
+          usersError = pageError;
+          break;
+        }
+        const pageUsers = usersResult?.users || [];
+        existingUser = pageUsers.find(
+          (user) => String(user.email || "").trim().toLowerCase() === email,
+        ) || null;
+        if (existingUser || pageUsers.length < 1000) break;
+      }
       if (usersError || !existingUser) {
         return response(409, { error: "Este e-mail já possui uma conta. Não foi possível localizar o usuário com segurança." });
       }
       if (!existingUser.email_confirmed_at) {
-        return response(409, { error: "Este e-mail já possui uma conta, mas ainda não foi confirmado. O funcionário precisa concluir a confirmação dessa conta antes de ser vinculado à loja." });
+        const metadata = existingUser.user_metadata || {};
+        const samePendingInvite =
+          String(metadata.vortex_store_id || "") === storeId &&
+          String(metadata.vortex_staff_record_id || "") === staffRecordId;
+        if (!samePendingInvite) {
+          return response(409, {
+            error: "Este e-mail já possui uma conta não confirmada, mas ela não corresponde com segurança a este convite. Não foi criado outro convite.",
+          });
+        }
+        recoveredPendingInvite = true;
       }
       invitedUserId = existingUser.id;
       existingAccount = true;
@@ -193,9 +222,12 @@ Deno.serve(async (req: Request) => {
       invitation_status: "pending",
       user_id: invitedUserId,
       existing_account: existingAccount,
-      message: existingAccount
-        ? "Este e-mail já possui uma conta. Nenhum novo e-mail de convite foi enviado; peça ao funcionário para entrar com a senha atual. O vínculo será ativado no primeiro acesso."
-        : "Convite enviado. O funcionário precisa aceitar o e-mail e criar a própria senha antes de acessar o Vortex Food.",
+      recovered_pending_invite: recoveredPendingInvite,
+      message: recoveredPendingInvite
+        ? "O convite que já havia sido enviado foi recuperado e vinculado à loja. Nenhum novo e-mail foi disparado; o funcionário deve usar o convite original para criar a senha."
+        : existingAccount
+          ? "Este e-mail já possui uma conta. Nenhum novo e-mail de convite foi enviado; peça ao funcionário para entrar com a senha atual. O vínculo será ativado no primeiro acesso."
+          : "Convite enviado. O funcionário precisa aceitar o e-mail e criar a própria senha antes de acessar o Vortex Food.",
     });
   } catch (error) {
     console.error("invite-staff error:", error);

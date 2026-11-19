@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Configurações do Sistema</title>
   <!-- SDK do Supabase e Conexão Central -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+  <script src="supabase.js?v=20261119-tab-auth-isolation-6"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -1219,7 +1219,7 @@
         const result = await window.VortexAuth.signOut();
         if (result && result.error) throw result.error;
         window.VORTEX_ACTIVE_STORE_ID = null;
-        window.location.replace('login.html');
+        window.location.replace(window.VortexAuth.tabUrl('login.html'));
       } catch (error) {
         console.error('Não foi possível encerrar a sessão:', error);
         closeConfirmLogoutModal();

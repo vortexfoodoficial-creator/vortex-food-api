@@ -413,6 +413,7 @@ BEGIN
     'order_id',s.order_id,'display_id',o."displayId",
     'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
+    'distance_km',s.distance_km,
     'courier_user_id',s.delivered_by_user_id,
     'courier_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy não identificado'),
     'courier_payment_amount',s.courier_payment_amount,
@@ -493,6 +494,10 @@ BEGIN
         LEFT JOIN public.vortex_kds_orders o
           ON o.store_id=s.store_id AND o.id=s.order_id
         WHERE s.store_id=r.store_id AND s.route_id=r.id
+          AND (s.status IN ('assigned','in_progress','occurrence')
+            OR (s.status='delivered'
+              AND s.delivered_at >= (((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo'))
+              AND s.delivered_at < (((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')))
       ),'[]'::jsonb)
     ) ORDER BY CASE r.status WHEN 'in_route' THEN 0 WHEN 'assigned' THEN 1 ELSE 2 END,
       r.assigned_at DESC

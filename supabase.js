@@ -140,11 +140,20 @@ function getVortexTabAuthStorageKey() {
     const nameId = typeof window.name === 'string' && window.name.startsWith(namePrefix)
       ? window.name.slice(namePrefix.length)
       : '';
+    // Migração compatível: recupera a identidade v2 da mesma aba para copiar
+    // apenas a sessão v2 correspondente, sem copiar tokens de outras abas.
+    const previousSessionId = window.sessionStorage.getItem('vortex_auth_tab_storage_key_v2') || '';
+    const previousNamePrefix = 'vortex-food-tab-auth-v2:';
+    const previousNameId = typeof window.name === 'string' && window.name.startsWith(previousNamePrefix)
+      ? window.name.slice(previousNamePrefix.length)
+      : '';
     // A URL sobrevive à restauração de abas e é a fonte de verdade.
     // sessionStorage/window.name servem apenas como recuperação em URLs antigas.
     tabId = /^[A-Za-z0-9_-]{16,80}$/.test(urlId) ? urlId
       : /^[A-Za-z0-9_-]{16,80}$/.test(sessionId) ? sessionId
       : /^[A-Za-z0-9_-]{16,80}$/.test(nameId) ? nameId
+      : /^[A-Za-z0-9_-]{16,80}$/.test(previousSessionId) ? previousSessionId
+      : /^[A-Za-z0-9_-]{16,80}$/.test(previousNameId) ? previousNameId
       : vortexCreateTabAuthId();
   } catch (error) {
     tabId = vortexCreateTabAuthId();
@@ -203,6 +212,23 @@ function getSupabase() {
 
   if (window.supabase && typeof window.supabase.createClient === 'function') {
     const tabStorageKey = VORTEX_TAB_AUTH_STORAGE_KEY;
+    // Migra a sessão v2 da mesma aba para a chave v3. Não migra o antigo
+    // sessionStorage v1, pois ele podia ter sido compartilhado por abas duplicadas.
+    try {
+      const tabId = window.__VORTEX_TAB_AUTH_ID;
+      const previousKey = 'vortex-food-auth-v2-' + tabId;
+      if (window.localStorage.getItem(tabStorageKey) === null) {
+        const previousValue = window.localStorage.getItem(previousKey);
+        if (previousValue) {
+          const previousSession = JSON.parse(previousValue);
+          if (previousSession && previousSession.access_token && previousSession.refresh_token) {
+            window.localStorage.setItem(tabStorageKey, previousValue);
+          }
+        }
+      }
+    } catch (migrationError) {
+      console.warn('Não foi possível migrar a sessão anterior desta aba:', migrationError);
+    }
     window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,

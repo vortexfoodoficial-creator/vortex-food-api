@@ -116,7 +116,7 @@ function getSupabase() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: window.localStorage,
+        storage: window.sessionStorage,
         // O Supabase Auth também usa BroadcastChannel para sincronizar eventos entre abas.
         // Uma chave exclusiva por aba impede que o logout de uma conta seja propagado à outra.
         storageKey: (function getTabAuthStorageKey() {

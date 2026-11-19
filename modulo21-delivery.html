@@ -211,8 +211,11 @@
         <button class="toggle-btn" onclick="toggleMenu()">☰</button>
         <h1>Delivery & Logística Inteligente</h1>
       </div>
-      <div style="font-size: 0.9rem; color: var(--text-muted);">
-        🕒 <span id="currentTimeHeader">--:--:--</span>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
+        <button class="btn-secondary" type="button" onclick="copyCourierLoginLink()">🔗 Copiar link de acesso ao login</button>
+        <div style="font-size: 0.9rem; color: var(--text-muted);">
+          🕒 <span id="currentTimeHeader">--:--:--</span>
+        </div>
       </div>
     </header>
 
@@ -220,7 +223,6 @@
       <div class="card-title">
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn-secondary" type="button" onclick="copyCourierLoginLink()">🔗 Copiar link de acesso</button>
           <button class="btn-secondary" onclick="openCourierHistoryModal()">📋 Histórico Entregas</button>
           <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
         </div>

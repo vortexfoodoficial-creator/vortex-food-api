@@ -349,7 +349,7 @@
             const details = event.details || {};
             const note = details.notes || details.reason || details.message || '';
             const paymentChange = event.event_type==='delivery_payment_updated' ? ' · ' + paymentEventText(details.previous) + ' → ' + paymentEventText(details.current) : '';
-            return '<div class="small muted" style="margin-top:4px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') +
+            return '<div class="small muted" style="margin-top:4px;">• ' + escapeHtml(deliveryEventLabel(event.event_type)) +
               ' · ' + dateTime(event.created_at) + (event.actor_name ? ' · por ' + escapeHtml(event.actor_name) : '') + paymentChange + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
           }).join('');
           return '<article class="history-item" style="display:block;border:1px solid var(--border);border-radius:12px;padding:11px;margin-bottom:8px;">' +
@@ -415,6 +415,40 @@
         <div class="stop-list">${stopMarkup || '<p class="small muted">Esta rota ainda não possui paradas.</p>'}</div>`;
     }
 
+    function normalizeCustomerWhatsAppPhone(value) {
+      let digits = String(value || '').replace(/\\D/g,'');
+      if (digits.startsWith('0055')) digits = digits.slice(2);
+      if (digits.startsWith('0') && digits.length >= 11) digits = digits.slice(1);
+      if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return digits;
+      if (digits.length === 10 || digits.length === 11) return '55' + digits;
+      return '';
+    }
+
+    function getStopWhatsAppNumber(stop) {
+      const candidates = [stop && stop.customer_phone, stop && stop.phone, stop && stop.client_phone,
+        stop && stop.telephone, stop && stop.customer && stop.customer.phone];
+      for (const candidate of candidates) {
+        const normalized = normalizeCustomerWhatsAppPhone(candidate);
+        if (normalized) return normalized;
+      }
+      const raw = String((stop && (stop.customer_name || stop.client)) || '');
+      const match = raw.match(/(?:\\+?55\\s*)?(?:\\(?\\d{2}\\)?\\s*)?9?\\d{4}[-.\\s]?\\d{4}/);
+      return match ? normalizeCustomerWhatsAppPhone(match[0]) : '';
+    }
+
+    function deliveryEventLabel(eventType) {
+      const labels = {
+        route_created:'Rota criada',route_started:'Rota iniciada',route_transferred:'Rota transferida',
+        route_stops_updated:'Paradas da rota atualizadas',route_cancelled:'Rota cancelada',
+        delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',
+        delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento do pedido atualizado',
+        delivery_distance_updated:'Distância da entrega atualizada',delivery_deadline_updated:'Prazo de entrega atualizado',
+        delivery_confirmed:'Entrega confirmada',courier_payment_settled:'Repasse ao motoboy registrado',
+        delivery_manual_confirmed:'Entrega confirmada manualmente'
+      };
+      return labels[eventType] || 'Atualização da entrega';
+    }
+
     function renderStop(route, stop) {
       const status = stop.stop_status || 'assigned';
       const isPending = ['in_progress','occurrence'].includes(status);
@@ -440,7 +474,7 @@
       const stopTimeline = (Array.isArray(stop.events) ? stop.events : []).slice(-5).map(event => {
         const details = event.details || {};
         const note = details.notes || details.reason || '';
-        return '<div class="small muted" style="margin-top:3px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dateTime(event.created_at) + (event.actor_name ? ' · por ' + escapeHtml(event.actor_name) : '') + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
+        return '<div class="small muted" style="margin-top:3px;">• ' + escapeHtml(deliveryEventLabel(event.event_type)) + ' · ' + dateTime(event.created_at) + (event.actor_name ? ' · por ' + escapeHtml(event.actor_name) : '') + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
       }).join('');
 
       return `
@@ -474,7 +508,7 @@
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(maps)}')">🗺️ Google Maps</button>
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
             ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
-            ${whatsappUrl ? '<a class="btn btn-secondary wide" href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer">💬 WhatsApp do cliente</a>' : ''}
+            ${whatsappUrl ? '<a class="btn btn-secondary wide" style="background:#14532d;color:#fff;border-color:#166534;" href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer">💬 Abrir conversa no WhatsApp</a>' : ''}
             ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
             ${isPending && !stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="confirmManualDelivery(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega</button>' : ''}
             ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}

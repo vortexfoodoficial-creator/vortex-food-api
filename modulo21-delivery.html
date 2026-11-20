@@ -1469,23 +1469,72 @@ ml>
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
 
-      const selected = getUnifiedCouriers().find(item =>
-        String(item.name || '').trim().toLowerCase() === String(courierName || '').trim().toLowerCase()
-      );
-      const result = await syncKdsPatch(orderId, { courier: courierName || '' });
-      if (result && result.error) {
-        showNoticeModal('Não foi possível atribuir', result.error.message || 'O servidor recusou a alteração.', '⚠️');
-        return;
-      }
+      try {
+        const cloudStaff = await refreshDeliveryTeamLinks();
+        const selectedName = String(courierName || '').trim().toLowerCase();
+        const staffCourier = cloudStaff.find(member =>
+          (member.status || 'ativo') === 'ativo' &&
+          String(member.role || '').toLowerCase().includes('entregador') &&
+          String(member.name || member.nome || '').trim().toLowerCase() === selectedName
+        );
+        const selected = getUnifiedCouriers().find(item =>
+          String(item.name || '').trim().toLowerCase() === selectedName
+        );
+        if (staffCourier && !staffCourier.authUserId) {
+          throw new Error('Este funcionário ainda não possui uma conta individual ativa. Conclua o convite antes de atribuir uma rota do Painel do Motoboy.');
+        }
+        const courierUserId = staffCourier?.authUserId || selected?.authUserId || null;
+        const resolvedName = staffCourier
+          ? (staffCourier.name || staffCourier.nome || courierName)
+          : (selected?.name || courierName || '');
 
-      order.courier = courierName || '';
-      order.courier_member_id = selected && selected.authUserId ? selected.authUserId : null;
-      saveLocalKdsOrders(kdsOrders);
-      renderActiveDeliveryOrders(kdsOrders, true);
-      runSmartRouteOptimization();
-      const visibleNum = getVisibleDeliveryOrderNumber(order);
-      if (courierName) showNoticeModal('Motoboy Atribuído!', `O pedido #${visibleNum} foi vinculado a ${courierName}.`, '🛵');
-      else showNoticeModal('Entrega Desvinculada', `O pedido #${visibleNum} foi desvinculado.`, 'ℹ️');
+        const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
+        if (routesResult.error) throw routesResult.error;
+        const activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
+          ['assigned','in_route'].includes(route.status) &&
+          (route.stops || []).some(stop =>
+            String(stop.order_id) === String(orderId) &&
+            ['assigned','in_progress','occurrence'].includes(stop.status)
+          )
+        );
+
+        if (activeRoute) {
+          if (!courierUserId) {
+            throw new Error('O pedido já pertence a uma rota ativa. Para mudar o responsável, transfira a rota para outro motoboy com conta individual.');
+          }
+          if (String(activeRoute.courier_user_id) === String(courierUserId)) {
+            showNoticeModal('Motoboy já atribuído','Este pedido já pertence à rota deste motoboy.','ℹ️');
+            return;
+          }
+          const transfer = await window.VortexDelivery.transferRoute(activeRoute.id,courierUserId);
+          if (transfer.error) throw transfer.error;
+          if (!transfer.data || transfer.data.success !== true) throw new Error('O servidor não confirmou a transferência da rota.');
+          await loadDispatchRoutes();
+          await loadActiveOrders();
+          showNoticeModal('Rota transferida','O pedido faz parte de uma rota ativa. Por segurança, a rota inteira foi transferida para ' + resolvedName + ', preservando a sequência e o histórico.','✅');
+          return;
+        }
+
+        const result = await syncKdsPatch(orderId, {
+          courier: resolvedName,
+          courier_member_id: courierUserId
+        });
+        if (result && result.error) throw result.error;
+
+        order.courier = resolvedName;
+        order.courier_member_id = courierUserId;
+        saveLocalKdsOrders(kdsOrders);
+        renderActiveDeliveryOrders(kdsOrders, true);
+        runSmartRouteOptimization();
+        const visibleNum = getVisibleDeliveryOrderNumber(order);
+        if (resolvedName) {
+          showNoticeModal('Motoboy atribuído','O pedido #' + visibleNum + ' foi vinculado a ' + resolvedName + '. Para aparecer no painel dele, conclua o despacho/criação da rota.','🛵');
+        } else {
+          showNoticeModal('Entrega desvinculada','O pedido #' + visibleNum + ' foi desvinculado e permanece disponível para despacho.','ℹ️');
+        }
+      } catch (error) {
+        showNoticeModal('Não foi possível atribuir',error.message || 'O servidor recusou a alteração.','⚠️');
+      }
     }
 
     function openEditCourierModal(orderId) {

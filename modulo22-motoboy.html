@@ -343,11 +343,13 @@
           const completionLabels = {customer_code:'Código do cliente',manual_by_courier:'Confirmação manual pelo motoboy',manual_by_store:'Confirmação manual pelo estabelecimento'};
           const completion = completionLabels[row.completion_method] || 'Método de confirmação não identificado';
           const eventLabels = {route_started:'Rota iniciada',delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento atualizado',delivery_confirmed:'Entrega confirmada',route_transferred:'Rota transferida'};
+          const paymentEventText = payment => { if (!payment) return 'Não informado'; const m=payment.payment_method || 'Não informado'; return m + (String(m).toLowerCase()==='pix' ? ' · ' + (payment.payment_status==='paid'?'Pago':payment.payment_status==='pending'?'Pendente':'Situação não informada') : m==='Dinheiro' ? ' · troco ' + money(payment.change || 0) : ''); };
           const timeline = (Array.isArray(row.events) ? row.events : []).slice(-8).map(event => {
             const details = event.details || {};
             const note = details.notes || details.reason || details.message || '';
+            const paymentChange = event.event_type==='delivery_payment_updated' ? ' · ' + paymentEventText(details.previous) + ' → ' + paymentEventText(details.current) : '';
             return '<div class="small muted" style="margin-top:4px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') +
-              ' · ' + dateTime(event.created_at) + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
+              ' · ' + dateTime(event.created_at) + (event.actor_name ? ' · por ' + escapeHtml(event.actor_name) : '') + paymentChange + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
           }).join('');
           return '<article class="history-item" style="display:block;border:1px solid var(--border);border-radius:12px;padding:11px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>Pedido #' +
@@ -422,7 +424,7 @@
       }).join('<br>') : 'Itens não informados';
       const display = stop.display_id || stop.order_id;
       const phone = String(stop.customer_phone || '').replace(/[^0-9+]/g,'');
-      const phoneDigits = phone.replace(/\\D/g,'');
+      const phoneDigits = phone.replace(/\D/g,'');
       const whatsappNumber = phoneDigits.startsWith('55') ? phoneDigits : ((phoneDigits.length===10 || phoneDigits.length===11) ? '55'+phoneDigits : '');
       const whatsappMessage = 'Olá, ' + (stop.customer_name || 'tudo bem') + '! Aqui é o entregador do pedido #' + display + '. Estou entrando em contato sobre sua entrega.';
       const whatsappUrl = whatsappNumber ? 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(whatsappMessage) : '';

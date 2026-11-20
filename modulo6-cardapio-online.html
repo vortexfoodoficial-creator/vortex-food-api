@@ -249,43 +249,122 @@ header.top-header{
   }
 }
 
+
+
+/* Padronização estrutural do módulo com o restante do Vortex Food */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;
+}
+.sidebar-overlay.open{display:block}
+aside.sidebar{
+  position:fixed!important;top:0!important;bottom:0!important;left:0!important;
+  width:260px!important;height:100vh!important;height:100dvh!important;
+  max-height:100dvh!important;display:flex!important;flex-direction:column!important;
+  overflow-y:auto!important;overflow-x:hidden!important;z-index:1001!important;
+  padding:0!important;background:var(--panel-dark)!important;
+  border-right:1px solid var(--border-color)!important;transition:transform .3s ease;
+}
+.sidebar-header{
+  flex:0 0 auto;padding:18px 16px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid var(--border-color);
+}
+.store-brand{
+  display:flex;align-items:center;gap:10px;max-width:190px;word-break:break-word;
+  color:var(--text-dark);font-size:1.1rem;font-weight:800;letter-spacing:.03em;
+  text-transform:uppercase;
+}
+.store-brand-logo{display:none!important;width:32px;height:32px;object-fit:contain;border-radius:6px}
+.close-sidebar-btn{
+  display:none;background:transparent;border:0;color:var(--text-muted);
+  font-size:1.5rem;cursor:pointer;
+}
+.sidebar-nav{flex:1;padding:15px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.nav-section{margin-bottom:20px}
+.nav-section-title{
+  display:block;padding:0 10px 8px;color:var(--text-muted);font-size:.75rem;
+  font-weight:400;letter-spacing:.05em;text-transform:uppercase;
+}
+.nav-link{
+  display:flex;align-items:center;gap:12px;min-height:42px;padding:10px 12px;
+  margin-bottom:4px;border-radius:8px;color:var(--text-muted);background:transparent;
+  text-decoration:none;font-size:.9rem;font-weight:400;transition:all .2s;
+}
+.nav-link:hover,.nav-link.active{background:rgba(249,115,22,.15);color:var(--primary)}
+.nav-icon{font-size:1.1rem;flex:0 0 auto}
+.nav-text{min-width:0;flex:1}
+.sidebar-footer{
+  flex:0 0 auto;padding:14px 16px;border-top:1px solid var(--border-color);
+  color:var(--text-muted);font-size:.78rem;display:flex;align-items:center;
+  justify-content:center;gap:6px;background:rgba(0,0,0,.1);
+}
+aside.sidebar.collapsed{transform:translateX(-100%)}
+main.main-content{
+  flex:1;display:flex;flex-direction:column;min-width:0;min-height:100vh;min-height:100dvh;
+  margin-left:260px!important;width:calc(100% - 260px)!important;
+  overflow:hidden;background:var(--bg-dark)!important;
+}
+main.main-content>header{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  gap:15px;margin:0 0 20px;padding:0 0 15px;flex-wrap:wrap;
+  background:transparent!important;border:0!important;border-bottom:1px solid var(--border-color)!important;
+  color:var(--text-dark)!important;min-height:0!important;height:auto!important;
+}
+.header-left{display:flex;align-items:center;gap:15px;min-width:0}
+.header-left h1{font-size:1.5rem;font-weight:800;line-height:1.2;margin:0;color:var(--text-dark)}
+.toggle-btn{
+  display:none;background:var(--card-white);border:1px solid var(--border-color);
+  color:var(--text-dark);padding:8px 12px;border-radius:8px;font-size:1.2rem;cursor:pointer;
+}
+#vortexEmployeeIdentity{margin-top:10px}
+@media(max-width:900px){
+  aside.sidebar{transform:translateX(-100%)!important;max-width:85vw!important}
+  aside.sidebar.open{transform:translateX(0)!important}
+  .sidebar-overlay.open{display:block!important}
+  .close-sidebar-btn,.toggle-btn{display:block}
+  main.main-content{margin-left:0!important;width:100%!important}
+  main.main-content>header{padding:0 0 15px!important;min-height:0!important}
+  .header-left h1{font-size:1.35rem}
+  .content-body{padding:20px 16px 34px!important}
+}
+
 </style>
 </head>
 <body>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://sjwddjcsrtudbvqnmhyd.supabase.co/storage/v1/object/public/assets/1791939902279.jpg" alt="Vortex Food">
-            <span id="sidebarStoreName" style="font-size:12px;font-weight:800;color:#dcdde1;text-align:center;">MEU ESTABELECIMENTO</span>
-            <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="store-brand">
+        <img id="sidebarStoreLogo" src="" alt="Logo" class="store-brand-logo">
+        <span id="sidebarStoreName">MEU ESTABELECIMENTO</span>
+      </div>
+      <button class="close-sidebar-btn" onclick="toggleSidebar()">✕</button>
+    </div>
 
-        <nav class="sidebar-menu">
-            <div class="menu-group-label">Operação & Salão</div>
-            <div class="menu-item active">📱 Módulo 6: Cardápio Online</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo5-mesas.html')">🍽️ Módulo 5: Mesas</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo4-caixa.html')">💰 Módulo 4: Caixa</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo3-pdv.html')">🖥️ Módulo 3: PDV Caixa</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo2-cardapio.html')">🍔 Módulo 2: Cardápio</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('modulo-configuracoes.html')">⚙️ Configurações do Sistema</div>
-            
-            <div class="menu-group-label">Navegação</div>
-            <div class="menu-item" onclick="window.location.href=window.VortexAuth.tabUrl('dashboard.html')">📊 Voltar ao Dashboard</div>
-        </nav>
-    </aside>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-title">PRODUTOS & PROMOÇÕES</span>
+        <a href="modulo6-cardapio-online.html" class="nav-link active"><span class="nav-icon">🌐</span><span class="nav-text">Cardápio Online</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>🌪️</span>
+      <span>VORTEX <strong>FOOD</strong></span>
+    </div>
+  </aside>
 
     <main class="main-content">
-        <header class="top-header">
-            <div class="top-header-left">
-                <button class="btn-toggle-menu" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
-                <div>
-                    <span class="eyebrow">PRODUTOS & PROMOÇÕES</span>
-                    <h1>Cardápio Online</h1>
-                </div>
-            </div>
-        </header>
+    <header>
+      <div class="header-left">
+        <button class="toggle-btn" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+        <h1>Cardápio Online</h1>
+      </div>
+      <div style="font-size:0.9rem;color:var(--text-muted);">
+        🕒 <span id="currentTimeHeader">--:--:--</span>
+      </div>
+    </header>
 
         <div class="content-body">
             <section class="page-intro">
@@ -355,14 +434,8 @@ header.top-header{
     <script>
         let publicDeliveryUrl = '';
         function toggleSidebar() {
-            const sidebar = document.getElementById('mainSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            } else {
-                sidebar.classList.toggle('collapsed');
-            }
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
         }
         async function loadPublicDeliverySettings() {
             const statusEl = document.getElementById('deliveryLinkStatus');
@@ -420,6 +493,12 @@ header.top-header{
             } catch (error) { document.getElementById('deliveryLinkStatus').textContent = publicDeliveryUrl; }
         }
         window.addEventListener('DOMContentLoaded', loadPublicDeliverySettings);
+        function updateModuleClock() {
+            const clock = document.getElementById('currentTimeHeader');
+            if (clock) clock.textContent = new Date().toLocaleTimeString('pt-BR');
+        }
+        updateModuleClock();
+        setInterval(updateModuleClock, 1000);
     </script>
 </body>
 </html>

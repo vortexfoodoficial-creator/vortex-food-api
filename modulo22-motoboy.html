@@ -436,7 +436,7 @@
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
             ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
             ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
-            ${isPending && !stop.requires_customer_code ? '<div class="small muted wide" style="padding:8px 0;">A confirmação desta entrega será registrada pelo estabelecimento.</div>' : ''}
+            ${isPending && !stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="confirmManualDelivery(\\'' + escapeHtml(stop.order_id) + '\\',\\'' + escapeHtml(display) + '\\')">✓ Confirmar entrega</button>' : ''}
             ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}
           </div>
         </article>`;
@@ -499,6 +499,31 @@
       } catch (error) {
         if (button) { button.disabled = false; button.textContent = 'Validar código'; }
         showToast(error.message || 'Não foi possível validar o código.', true);
+      }
+    }
+
+    function confirmManualDelivery(orderId, displayId) {
+      openModal(
+        'Confirmar entrega',
+        '<p>Confirma que o pedido #' + escapeHtml(displayId) + ' foi entregue ao cliente? Esta opção só existe para pedidos sem código de confirmação.</p>',
+        '<button class="btn btn-secondary" type="button" onclick="closeModal()">Voltar</button><button class="btn btn-success" id="confirmManualDeliveryButton" type="button" onclick="submitManualDelivery(\\'' + escapeHtml(orderId) + '\\')">Confirmar entrega</button>',
+        '✓'
+      );
+    }
+
+    async function submitManualDelivery(orderId) {
+      const button = document.getElementById('confirmManualDeliveryButton');
+      if (button) { button.disabled = true; button.textContent = 'Confirmando...'; }
+      try {
+        const result = await window.VortexDelivery.confirmManualDelivery(orderId);
+        if (result.error) throw result.error;
+        if (!result.data || result.data.success !== true) throw new Error(result.data && result.data.message || 'Não foi possível confirmar esta entrega.');
+        closeModal();
+        showToast('Entrega confirmada com sucesso!');
+        await refreshRoutes();
+      } catch (error) {
+        if (button) { button.disabled = false; button.textContent = 'Confirmar entrega'; }
+        showToast(error.message || 'Não foi possível confirmar a entrega.', true);
       }
     }
 

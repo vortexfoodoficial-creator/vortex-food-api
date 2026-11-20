@@ -2118,14 +2118,20 @@
           String(member.role || '').toLowerCase().includes('entregador') &&
           String(member.name || member.nome || '').trim().toLowerCase() === selectedName
         );
-        const courierRecord = getUnifiedCouriers().find(item =>
+        let courierRecord = getUnifiedCouriers().find(item =>
           String(item.name || '').trim().toLowerCase() === selectedName
         );
         if (staffCourier && !staffCourier.authUserId) {
           throw new Error('O cadastro deste entregador ainda não está vinculado a uma conta individual ativa. Confira o convite e o vínculo na Equipe antes de despachar.');
         }
-        if (staffCourier && staffCourier.authUserId && courierRecord) {
-          courierRecord.authUserId = staffCourier.authUserId;
+        if (staffCourier && staffCourier.authUserId) {
+          courierRecord = {
+            ...(courierRecord || {}),
+            id: (courierRecord && courierRecord.id) || staffCourier.id,
+            name: (courierRecord && courierRecord.name) || staffCourier.name || staffCourier.nome,
+            phone: (courierRecord && courierRecord.phone) || staffCourier.phone || staffCourier.telefone || '',
+            authUserId: staffCourier.authUserId
+          };
         }
         if (courierRecord && courierRecord.authUserId) {
           // Primeiro garante a rota no servidor: o painel do motoboy consulta rotas,

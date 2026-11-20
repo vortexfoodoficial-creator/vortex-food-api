@@ -337,12 +337,18 @@
             escapeHtml(row.display_id || row.order_id) + '</strong><span class="small muted">' + dateTime(row.delivered_at) + '</span></div>' +
             '<div class="small" style="margin-top:5px;">' + escapeHtml(row.customer_name || 'Cliente') + '</div>' +
             '<div class="small muted" style="margin-top:3px;">' + escapeHtml(row.address || 'Endereço não informado') + '</div>' +
-            '<div class="small" style="margin-top:7px;">Valor da entrega: ' + value + '</div></article>';
+            '<div class="small" style="margin-top:7px;">Valor da entrega repassado a você: ' + value + '</div></article>';
         }).join('');
       } catch (error) {
         host.innerHTML = '<p class="small" style="color:var(--danger)">Não foi possível carregar o histórico: ' + escapeHtml(error.message || 'Erro de conexão') + '</p>';
         summary.innerHTML = '<div class="meta-label">Total a receber</div><div class="meta-value">Indisponível</div>';
       }
+    }
+
+    function courierRouteDisplayName(route) {
+      const date = new Date(route && (route.assigned_at || route.created_at));
+      if (Number.isNaN(date.getTime())) return 'Rota de entrega';
+      return 'Rota · ' + date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }
 
     function renderActiveRoute(route) {
@@ -366,7 +372,7 @@
       host.innerHTML = `
         <div class="route-banner">
           <div>
-            <div class="route-id">Rota #${escapeHtml(String(route.id).slice(0,8).toUpperCase())}</div>
+            <div class="route-id">${escapeHtml(courierRouteDisplayName(route))}</div>
             <div class="small muted" style="margin-top:5px">Atribuída em ${dateTime(route.assigned_at)}</div>
           </div>
           <span class="status-pill ${routeStatusClass(route.status)}">${statusLabel(route.status)}</span>
@@ -414,11 +420,12 @@
           </div>
           <div class="stop-address">📍 ${escapeHtml(address || 'Endereço não informado')}</div>
           <div class="stop-details">
-            <div class="detail"><div class="detail-label">Pagamento</div><div class="detail-value">${escapeHtml(stop.payment_method || 'Não informado')}</div></div>
-            <div class="detail"><div class="detail-label">Cobrar</div><div class="detail-value">${money(stop.amount_due)}</div></div>
+            <div class="detail"><div class="detail-label">Forma de pagamento</div><div class="detail-value">${escapeHtml(stop.payment_method || 'Não informado')}</div></div>
+            <div class="detail"><div class="detail-label">${stop.payment_method === 'Pix' && stop.payment_status === 'paid' ? 'Pagamento recebido' : 'Valor a cobrar do cliente'}</div><div class="detail-value">${stop.payment_method === 'Pix' && stop.payment_status === 'paid' ? 'Já pago via Pix' : money(stop.amount_due)}</div></div>
+            ${stop.payment_method === 'Pix' ? '<div class="detail"><div class="detail-label">Situação do Pix</div><div class="detail-value">' + (stop.payment_status === 'paid' ? 'Pago' : stop.payment_status === 'pending' ? 'Pendente · cobrar na entrega' : 'Não informada') + '</div></div>' : ''}
             <div class="detail"><div class="detail-label">Troco informado</div><div class="detail-value">${stop.payment_method === 'Dinheiro' ? money(stop.change) : 'Não se aplica'}</div></div>
             <div class="detail"><div class="detail-label">Prazo prometido</div><div class="detail-value">${escapeHtml(promised)}</div></div>
-            <div class="detail" style="grid-column:1/-1;"><div class="detail-label">Valor da entrega</div><div class="detail-value" style="color:${stop.courier_payment_amount == null ? 'var(--warning)' : 'var(--success)'}">${stop.courier_payment_amount == null ? 'Valor não definido' : money(stop.courier_payment_amount)}</div></div>
+            <div class="detail" style="grid-column:1/-1;"><div class="detail-label">Valor da entrega repassado a você</div><div class="detail-value" style="color:${stop.courier_payment_amount == null ? 'var(--warning)' : 'var(--success)'}">${stop.courier_payment_amount == null ? 'Valor não definido' : money(stop.courier_payment_amount)}</div></div>
             ${stop.distance_km != null ? '<div class="detail"><div class="detail-label">Distância registrada</div><div class="detail-value">' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div></div>' : ''}
           </div>
           <div class="items"><strong>Itens do pedido</strong><br>${itemText}</div>
@@ -428,7 +435,8 @@
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(maps)}')">🗺️ Google Maps</button>
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
             ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
-            ${isPending ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
+            ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\\'' + escapeHtml(stop.order_id) + '\\',\\'' + escapeHtml(display) + '\\')">✓ Confirmar entrega com código</button>' : ''}
+            ${isPending && !stop.requires_customer_code ? '<div class="small muted wide" style="padding:8px 0;">A confirmação desta entrega será registrada pelo estabelecimento.</div>' : ''}
             ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}
           </div>
         </article>`;

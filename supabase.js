@@ -748,6 +748,31 @@ async function dbSaveDeliveryCourierPaymentRules(config) {
   });
 }
 
+async function dbGetDeliveryCourierEarnings(startDate, endDate, courierUserId) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  const start = String(startDate || ''), end = String(endDate || '');
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(end) || start > end) {
+    return { data: null, error: new Error('Selecione um período válido para consultar os repasses.') };
+  }
+  return await vortexDeliveryRpc('rpc_get_delivery_courier_earnings', {
+    p_store_id: storeId, p_start_date: start, p_end_date: end,
+    p_courier_user_id: courierUserId || null
+  });
+}
+
+async function dbMarkDeliveryCourierPaymentPaid(stopId, paymentMethod, paymentReference, paymentNotes) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  if (!stopId) return { data: null, error: new Error('Entrega não identificada.') };
+  return await vortexDeliveryRpc('rpc_mark_delivery_courier_payment_paid', {
+    p_store_id: storeId, p_stop_id: String(stopId),
+    p_payment_method: String(paymentMethod || ''),
+    p_payment_reference: String(paymentReference || ''),
+    p_payment_notes: String(paymentNotes || '')
+  });
+}
+
 async function dbGetDeliveryCourierPaymentRules() {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -775,6 +800,8 @@ window.VortexDelivery = {
   fetchPaymentStatuses: dbGetDeliveryPaymentStatuses,
   savePaymentRules: dbSaveDeliveryCourierPaymentRules,
   getPaymentRules: dbGetDeliveryCourierPaymentRules,
+  fetchCourierEarnings: dbGetDeliveryCourierEarnings,
+  markCourierPaymentPaid: dbMarkDeliveryCourierPaymentPaid,
   setStopDistance: dbSetDeliveryStopDistance
 };
 

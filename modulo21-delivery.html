@@ -1488,15 +1488,21 @@ ml>
           ? (staffCourier.name || staffCourier.nome || courierName)
           : (selected?.name || courierName || '');
 
-        const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
-        if (routesResult.error) throw routesResult.error;
-        const activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
-          ['assigned','in_route'].includes(route.status) &&
-          (route.stops || []).some(stop =>
-            String(stop.order_id) === String(orderId) &&
-            ['assigned','in_progress','occurrence'].includes(stop.status)
-          )
-        );
+        const canInspectRoutes = (window.VORTEX_AUTH_CONTEXT?.permissions || []).includes('delivery.dispatch_view');
+        let activeRoute = null;
+        if (canInspectRoutes) {
+          const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
+          if (routesResult.error) throw routesResult.error;
+          activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
+            ['assigned','in_route'].includes(route.status) &&
+            (route.stops || []).some(stop =>
+              String(stop.order_id) === String(orderId) &&
+              ['assigned','in_progress','occurrence'].includes(stop.status)
+            )
+          );
+        } else if (order.status === 'delivering') {
+          throw new Error('A rota deste pedido já pode estar em andamento. Somente um usuário com permissão de gerenciamento de rotas pode transferi-la com segurança.');
+        }
 
         if (activeRoute) {
           if (!courierUserId) {
@@ -1578,15 +1584,21 @@ ml>
       if (!order) return;
 
       try {
-        const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
-        if (routesResult.error) throw routesResult.error;
-        const activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
-          ['assigned','in_route'].includes(route.status) &&
-          (route.stops || []).some(stop =>
-            String(stop.order_id) === String(orderId) &&
-            ['assigned','in_progress','occurrence'].includes(stop.status)
-          )
-        );
+        const canInspectRoutes = (window.VORTEX_AUTH_CONTEXT?.permissions || []).includes('delivery.dispatch_view');
+        let activeRoute = null;
+        if (canInspectRoutes) {
+          const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
+          if (routesResult.error) throw routesResult.error;
+          activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
+            ['assigned','in_route'].includes(route.status) &&
+            (route.stops || []).some(stop =>
+              String(stop.order_id) === String(orderId) &&
+              ['assigned','in_progress','occurrence'].includes(stop.status)
+            )
+          );
+        } else if (order.status === 'delivering') {
+          throw new Error('A rota deste pedido já pode estar em andamento. Somente um usuário com permissão de gerenciamento de rotas pode transferi-la com segurança.');
+        }
 
         if (activeRoute) {
           if (!newCourierUserId) {

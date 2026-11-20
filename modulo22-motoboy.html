@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>Vortex Food | Painel do Motoboy</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-7"></script>
+  <script src="supabase.js?v=20261119-delivery-audit-36"></script>
   <style>
     :root {
       --bg-main:#0f172a; --bg-card:#1e293b; --bg-soft:#172337;
@@ -332,12 +332,36 @@
           const value = row.courier_payment_amount == null
             ? '<strong style="color:var(--warning)">Valor não definido</strong>'
             : '<strong style="color:var(--success)">' + money(row.courier_payment_amount) + '</strong>';
+          const method = String(row.payment_method || 'Não informado');
+          const isPix = method.toLowerCase() === 'pix';
+          const paymentState = isPix
+            ? (row.payment_status === 'paid' ? 'Pix pago' : row.payment_status === 'pending' ? 'Pix pendente · cobrar na entrega' : 'Situação do Pix não informada')
+            : method === 'Dinheiro' ? 'Pagamento em dinheiro na entrega' : 'Pagamento na entrega';
+          const paymentValue = row.amount_due == null ? 'Valor não informado' : money(row.amount_due);
+          const cashInfo = method === 'Dinheiro'
+            ? '<div class="small muted" style="margin-top:3px;">Cliente paga com: ' + money(row.cash_given || 0) + ' · Troco: ' + money(row.change || 0) + '</div>' : '';
+          const completionLabels = {customer_code:'Código do cliente',manual_by_courier:'Confirmação manual pelo motoboy',manual_by_store:'Confirmação manual pelo estabelecimento'};
+          const completion = completionLabels[row.completion_method] || 'Método de confirmação não identificado';
+          const eventLabels = {route_started:'Rota iniciada',delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento atualizado',delivery_confirmed:'Entrega confirmada',route_transferred:'Rota transferida'};
+          const timeline = (Array.isArray(row.events) ? row.events : []).slice(-8).map(event => {
+            const details = event.details || {};
+            const note = details.notes || details.reason || details.message || '';
+            return '<div class="small muted" style="margin-top:4px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') +
+              ' · ' + dateTime(event.created_at) + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
+          }).join('');
           return '<article class="history-item" style="display:block;border:1px solid var(--border);border-radius:12px;padding:11px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>Pedido #' +
             escapeHtml(row.display_id || row.order_id) + '</strong><span class="small muted">' + dateTime(row.delivered_at) + '</span></div>' +
             '<div class="small" style="margin-top:5px;">' + escapeHtml(row.customer_name || 'Cliente') + '</div>' +
             '<div class="small muted" style="margin-top:3px;">' + escapeHtml(row.address || 'Endereço não informado') + '</div>' +
-            '<div class="small" style="margin-top:7px;">Valor da entrega repassado a você: ' + value + '</div></article>';
+            '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">' +
+              '<div class="small"><strong>Pagamento:</strong> ' + escapeHtml(method) + ' · ' + escapeHtml(paymentState) + '</div>' +
+              '<div class="small" style="margin-top:3px;"><strong>Valor do pedido:</strong> ' + paymentValue + '</div>' + cashInfo +
+              '<div class="small" style="margin-top:6px;">Valor da entrega repassado a você: ' + value + '</div>' +
+            '</div>' +
+            '<div class="small muted" style="margin-top:8px;"><strong>Comprovante:</strong> ' + escapeHtml(completion) + ' · Concluída em ' + dateTime(row.delivered_at) + '</div>' +
+            (timeline ? '<details style="margin-top:8px;"><summary class="small" style="cursor:pointer;font-weight:800;">Linha do tempo e ocorrências</summary>' + timeline + '</details>' : '') +
+          '</article>';
         }).join('');
       } catch (error) {
         host.innerHTML = '<p class="small" style="color:var(--danger)">Não foi possível carregar o histórico: ' + escapeHtml(error.message || 'Erro de conexão') + '</p>';
@@ -398,6 +422,10 @@
       }).join('<br>') : 'Itens não informados';
       const display = stop.display_id || stop.order_id;
       const phone = String(stop.customer_phone || '').replace(/[^0-9+]/g,'');
+      const phoneDigits = phone.replace(/\\D/g,'');
+      const whatsappNumber = phoneDigits.startsWith('55') ? phoneDigits : ((phoneDigits.length===10 || phoneDigits.length===11) ? '55'+phoneDigits : '');
+      const whatsappMessage = 'Olá, ' + (stop.customer_name || 'tudo bem') + '! Aqui é o entregador do pedido #' + display + '. Estou entrando em contato sobre sua entrega.';
+      const whatsappUrl = whatsappNumber ? 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(whatsappMessage) : '';
       const address = String(stop.address || '');
       const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address);
       const waze = 'https://waze.com/ul?q=' + encodeURIComponent(address) + '&navigate=yes';
@@ -405,6 +433,12 @@
         ? '<div class="small" style="color:var(--warning);margin-top:9px">⚠️ ' + escapeHtml(stop.occurrence_notes || statusLabel(status)) + '</div>'
         : '';
       const promised = stop.promised_delivery_at ? dateTime(stop.promised_delivery_at) : 'Não informado';
+      const eventLabels = {route_started:'Rota iniciada',delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento atualizado',delivery_confirmed:'Entrega confirmada',route_transferred:'Rota transferida'};
+      const stopTimeline = (Array.isArray(stop.events) ? stop.events : []).slice(-5).map(event => {
+        const details = event.details || {};
+        const note = details.notes || details.reason || '';
+        return '<div class="small muted" style="margin-top:3px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dateTime(event.created_at) + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
+      }).join('');
 
       return `
         <article class="stop-card">
@@ -431,10 +465,12 @@
           <div class="items"><strong>Itens do pedido</strong><br>${itemText}</div>
           ${stop.observation ? '<div class="small muted" style="margin-top:9px">Observação: ' + escapeHtml(stop.observation) + '</div>' : ''}
           ${occurrence}
+          ${stopTimeline ? '<details style="margin-top:8px;"><summary class="small" style="cursor:pointer;font-weight:800;">Linha do tempo da entrega</summary>' + stopTimeline + '</details>' : ''}
           <div class="stop-actions">
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(maps)}')">🗺️ Google Maps</button>
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
             ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
+            ${whatsappUrl ? '<a class="btn btn-secondary wide" href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer">💬 WhatsApp do cliente</a>' : ''}
             ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
             ${isPending && !stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="confirmManualDelivery(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega</button>' : ''}
             ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}

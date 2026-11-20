@@ -6,7 +6,7 @@
   <title>Vortex Food - Configurações do Sistema</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-7"></script>
+  <script src="supabase.js?v=20261120-courier-ledger-37"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -878,7 +878,7 @@
       document.getElementById('courierPaymentFixedAmount').value = settings.courierPaymentFixedAmount || '';
       document.getElementById('courierPaymentKmAmount').value = settings.courierPaymentKmAmount || '';
       courierPaymentNeighborhoodsData = Array.isArray(settings.courierPaymentNeighborhoodsData)
-        ? settings.courierPaymentNeighborhoodsData.map(item => ({name:String(item.name || ''),amount:String(item.amount || '0,00')}))
+        ? settings.courierPaymentNeighborhoodsData.map(item => ({name:String(item.name || ''),amount:String(item.amount || '')}))
         : [];
       renderCourierPaymentNeighborhoods();
       toggleCourierPaymentMode(document.getElementById('courierPaymentMode').value);

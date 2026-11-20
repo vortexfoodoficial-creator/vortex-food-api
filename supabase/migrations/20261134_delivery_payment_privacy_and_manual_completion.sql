@@ -241,7 +241,10 @@ DECLARE
   v_stop_id uuid;
 BEGIN
   IF auth.uid() IS NULL
-     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.dispatch_manage') THEN
+     OR NOT (
+       public.vortex_user_has_permission(p_store_id,'delivery.dispatch_manage')
+       OR public.vortex_user_has_permission(p_store_id,'delivery.manage')
+     ) THEN
     RAISE EXCEPTION 'Seu perfil não pode alterar o pagamento deste pedido.';
   END IF;
 
@@ -254,7 +257,7 @@ BEGIN
   END IF;
 
   IF lower(v_method)='pix' THEN
-    IF p_payment_status NOT IN ('paid','pending') THEN
+    IF p_payment_status IS NULL OR p_payment_status NOT IN ('paid','pending') THEN
       RAISE EXCEPTION 'Informe se o Pix já foi pago.';
     END IF;
     v_status:=p_payment_status;
@@ -324,7 +327,10 @@ AS $function$
 DECLARE v_result jsonb;
 BEGIN
   IF auth.uid() IS NULL
-     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.dispatch_view') THEN
+     OR NOT (
+       public.vortex_user_has_permission(p_store_id,'delivery.dispatch_view')
+       OR public.vortex_user_has_permission(p_store_id,'delivery.manage')
+     ) THEN
     RAISE EXCEPTION 'Seu perfil não pode consultar os pagamentos de delivery.';
   END IF;
 

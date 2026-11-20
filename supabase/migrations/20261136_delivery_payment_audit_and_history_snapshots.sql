@@ -194,11 +194,11 @@ BEGIN
     'order_id',s.order_id,'display_id',o."displayId",
     'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
-    'payment_method',COALESCE(s.payment_method_snapshot,o.payment),
-    'payment_status',COALESCE(s.payment_status_snapshot,o.payment_status),
-    'amount_due',COALESCE(s.amount_due_snapshot,o.total),
-    'cash_given',COALESCE(s.cash_given_snapshot,o.cashgiven),
-    'change',COALESCE(s.change_snapshot,o.change),
+    'payment_method',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_method_snapshot ELSE o.payment END,
+    'payment_status',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_status_snapshot ELSE o.payment_status END,
+    'amount_due',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.amount_due_snapshot ELSE o.total END,
+    'cash_given',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.cash_given_snapshot ELSE o.cashgiven END,
+    'change',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.change_snapshot ELSE o.change END,
     'payment_snapshot_at',s.payment_snapshot_at,
     'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
@@ -264,11 +264,11 @@ BEGIN
     'order_id',s.order_id,'display_id',o."displayId",
     'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
     'address',o.address,'delivered_at',s.delivered_at,
-    'payment_method',COALESCE(s.payment_method_snapshot,o.payment),
-    'payment_status',COALESCE(s.payment_status_snapshot,o.payment_status),
-    'amount_due',COALESCE(s.amount_due_snapshot,o.total),
-    'cash_given',COALESCE(s.cash_given_snapshot,o.cashgiven),
-    'change',COALESCE(s.change_snapshot,o.change),
+    'payment_method',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_method_snapshot ELSE o.payment END,
+    'payment_status',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_status_snapshot ELSE o.payment_status END,
+    'amount_due',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.amount_due_snapshot ELSE o.total END,
+    'cash_given',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.cash_given_snapshot ELSE o.cashgiven END,
+    'change',CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.change_snapshot ELSE o.change END,
     'payment_snapshot_at',s.payment_snapshot_at,
     'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
@@ -352,8 +352,8 @@ BEGIN
           'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
           'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\(([^()]*)\)$'))[1],''),
           'address',o.address,'items',o.items,
-          'payment_method',CASE WHEN s.status='delivered' THEN COALESCE(s.payment_method_snapshot,o.payment) ELSE o.payment END,
-          'payment_status',CASE WHEN s.status='delivered' THEN COALESCE(s.payment_status_snapshot,o.payment_status) ELSE o.payment_status END,
+          'payment_method',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_method_snapshot ELSE o.payment END ELSE o.payment END,
+          'payment_status',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_status_snapshot ELSE o.payment_status END ELSE o.payment_status END,
           'requires_customer_code',EXISTS (
             SELECT 1
             FROM public.vortex_delivery_verifications v
@@ -361,9 +361,9 @@ BEGIN
               AND v.is_active=true AND v.consumed_at IS NULL
               AND v.expires_at>now()
           ),
-          'amount_due',CASE WHEN s.status='delivered' THEN COALESCE(s.amount_due_snapshot,o.total) ELSE o.total END,
-          'cash_given',CASE WHEN s.status='delivered' THEN COALESCE(s.cash_given_snapshot,o.cashgiven) ELSE o.cashgiven END,
-          'change',CASE WHEN s.status='delivered' THEN COALESCE(s.change_snapshot,o.change) ELSE o.change END,
+          'amount_due',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.amount_due_snapshot ELSE o.total END ELSE o.total END,
+          'cash_given',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.cash_given_snapshot ELSE o.cashgiven END ELSE o.cashgiven END,
+          'change',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.change_snapshot ELSE o.change END ELSE o.change END,
           'payment_snapshot_at',s.payment_snapshot_at,
           'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,
@@ -466,11 +466,11 @@ BEGIN
           'display_id',o."displayId",
           'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
           'address',o.address,'order_status',o.status,
-          'payment_method',CASE WHEN s.status='delivered' THEN COALESCE(s.payment_method_snapshot,o.payment) ELSE o.payment END,
-          'payment_status',CASE WHEN s.status='delivered' THEN COALESCE(s.payment_status_snapshot,o.payment_status) ELSE o.payment_status END,
-          'amount_due',CASE WHEN s.status='delivered' THEN COALESCE(s.amount_due_snapshot,o.total) ELSE o.total END,
-          'cash_given',CASE WHEN s.status='delivered' THEN COALESCE(s.cash_given_snapshot,o.cashgiven) ELSE o.cashgiven END,
-          'change',CASE WHEN s.status='delivered' THEN COALESCE(s.change_snapshot,o.change) ELSE o.change END,
+          'payment_method',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_method_snapshot ELSE o.payment END ELSE o.payment END,
+          'payment_status',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.payment_status_snapshot ELSE o.payment_status END ELSE o.payment_status END,
+          'amount_due',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.amount_due_snapshot ELSE o.total END ELSE o.total END,
+          'cash_given',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.cash_given_snapshot ELSE o.cashgiven END ELSE o.cashgiven END,
+          'change',CASE WHEN s.status='delivered' THEN CASE WHEN s.payment_snapshot_at IS NOT NULL THEN s.change_snapshot ELSE o.change END ELSE o.change END,
           'payment_snapshot_at',s.payment_snapshot_at,
           'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,

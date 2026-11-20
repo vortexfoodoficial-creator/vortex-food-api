@@ -2187,7 +2187,6 @@
       const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
       const canDispatch = permissions.includes('delivery.dispatch');
       const canAssign = permissions.includes('delivery.assign');
-      const canConfirm = permissions.includes('delivery.confirm');
       const canManualFinish = permissions.includes('delivery.manual_finish');
       const canManagePayment = permissions.includes('delivery.dispatch_manage') || permissions.includes('delivery.manage');
       const todayDateStr = getLocalDateStr(new Date());
@@ -2229,8 +2228,7 @@
           actionAreaHtml = canDispatch ? `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>` : `<div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:4px;">Aguardando usuário autorizado para despachar.</div>`;
         } else if (o.status === 'delivering') {
           statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
-          const isOnlineDelivery = String(o.origin || '').toLowerCase().includes('online');
-          actionAreaHtml = `<div style="margin-top:6px;">${isOnlineDelivery && canConfirm ? `<div class="code-input-row"><input type="text" inputmode="numeric" pattern="[0-9]{6}" class="code-input" id="codeInput_${o.id}" placeholder="Código de 6 dígitos" maxlength="6"><button class="action-btn-delivery btn-deliver" style="margin:0; width:auto; padding:0 12px;" onclick="confirmDeliveryWithCode('${o.id}')">Validar Código ✅</button></div>` : ''}${canManualFinish ? `<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button>` : ''}${!canConfirm && !canManualFinish ? `<div style="font-size:0.78rem;color:var(--text-muted);">Aguardando confirmação por usuário autorizado.</div>` : ''}</div>`;
+          actionAreaHtml = `<div style="margin-top:6px;">${canManualFinish ? `<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button>` : `<div style="font-size:0.78rem;color:var(--text-muted);">Aguardando confirmação manual por usuário autorizado.</div>`}</div>`;
         } else if (o.status === 'finished') {
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
@@ -2421,43 +2419,6 @@
         showNoticeModal('Pedido Entregue!', 'O pedido #' + (order.displayId || orderId) + ' foi concluído manualmente e sincronizado com a rota do motoboy.', '✅');
       } catch (error) {
         showNoticeModal('Não foi possível concluir', error.message || 'A nuvem não confirmou a entrega.', '⚠️');
-      }
-    }
-
-    async function confirmDeliveryWithCode(orderId) {
-      if (!window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.confirm')) {
-        showNoticeModal('Acesso restrito', 'Seu perfil não pode confirmar códigos de entrega.', '🔒');
-        return;
-      }
-      const inputVal = document.getElementById('codeInput_' + orderId)?.value.trim() || '';
-      if (!/^\d{6}$/.test(inputVal)) {
-        showNoticeModal('Código inválido', 'Digite os seis números informados pelo cliente.', '⚠️');
-        return;
-      }
-      try {
-        const client = getDeliverySupabaseClient();
-        if (!client) throw new Error('Conexão com a nuvem indisponível.');
-        const { data, error } = await client.rpc('rpc_confirm_delivery_code', {
-          p_store_id: window.VORTEX_ACTIVE_STORE_ID,
-          p_order_id: String(orderId),
-          p_code: inputVal
-        });
-        if (error) throw error;
-        if (!data || data.success !== true) {
-          showNoticeModal('Não foi possível validar', data && data.message ? data.message : 'Código incorreto ou indisponível.', '⚠️');
-          return;
-        }
-        const kdsOrders = readLocalKdsOrders();
-        const order = kdsOrders.find(item => String(item.id) === String(orderId));
-        if (order) {
-          order.status = 'finished';
-          saveLocalKdsOrders(kdsOrders);
-          recordCourierHistory(order);
-        }
-        renderActiveDeliveryOrders(kdsOrders, true);
-        showNoticeModal('Código Confirmado!', 'Entrega do pedido #' + ((order && order.displayId) || orderId) + ' validada.', '🎉');
-      } catch (error) {
-        showNoticeModal('Falha na validação', error.message || 'Não foi possível validar o código na nuvem.', '⚠️');
       }
     }
 

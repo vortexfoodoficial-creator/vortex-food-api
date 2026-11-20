@@ -6,7 +6,7 @@
   <title>Vortex Food - Delivery & Logística Inteligente</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-7"></script>
+  <script src="supabase.js?v=20261119-delivery-audit-36"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -1331,6 +1331,11 @@
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'returned\')">Registrar retorno</button></div>'
                 : '';
               const deadlineEditable = canManage && ['assigned','in_route'].includes(route.status) && ['assigned','in_progress','occurrence'].includes(stop.status);
+              const paymentMethod = String(stop.payment_method || 'Não informado');
+              const paymentState = paymentMethod.toLowerCase()==='pix' ? (stop.payment_status==='paid'?'Pix pago':stop.payment_status==='pending'?'Pix pendente':'Pix sem situação informada') : paymentMethod==='Dinheiro'?'Cobrança em dinheiro':'Cobrança na entrega';
+              const paymentDetails = '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Pagamento: <strong>' + escapeDeliveryHtml(paymentMethod) + '</strong> · ' + paymentState + (stop.amount_due != null ? ' · Pedido: ' + Number(stop.amount_due).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + (paymentMethod==='Dinheiro' ? ' · Troco: ' + Number(stop.change||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + '</div>';
+              const stopEventLabels = {delivery_occurrence:'Ocorrência',occurrence_retry:'Nova tentativa',delivery_returned:'Retorno',delivery_payment_updated:'Pagamento alterado',delivery_confirmed:'Entrega confirmada'};
+              const stopTimeline = (Array.isArray(stop.events)?stop.events:[]).slice(-5).map(event => '<div style="font-size:.68rem;color:var(--text-muted);margin-top:3px;">• ' + escapeDeliveryHtml(stopEventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dispatchDate(event.created_at) + '</div>').join('');
               const stopIndex = activeAssignedStops.findIndex(item => String(item.order_id) === String(stop.order_id));
               const stopControls = editableStops && stop.status === 'assigned'
                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
@@ -1353,12 +1358,14 @@
                 '<div><strong>#' + escapeDeliveryHtml(stop.display_id || stop.order_id) + '</strong> · ' +
                 escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +
                 '<div style="color:var(--text-muted);margin-top:3px;">' + escapeDeliveryHtml(stop.address || 'Endereço não informado') + '</div>' +
+                paymentDetails +
                 (stop.occurrence_notes ? '<div style="color:var(--warning);margin-top:3px;">' + escapeDeliveryHtml(stop.occurrence_type || 'Ocorrência') + ': ' + escapeDeliveryHtml(stop.occurrence_notes) + '</div>' : '') +
                 '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Valor da entrega repassado ao motoboy: ' +
                 (stop.courier_payment_amount == null ? '<strong style="color:var(--warning);">Valor não definido</strong>' :
                   '<strong style="color:var(--success);">' + Number(stop.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</strong>') +
                 '</div>' +
                 (stop.distance_km != null ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Distância registrada: ' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div>' : '') +
+                (stopTimeline ? '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.7rem;font-weight:800;">Linha do tempo</summary>' + stopTimeline + '</details>' : '') +
                 distanceEditor + deadlineEditor + stopControls + occurrenceActions + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
@@ -1735,13 +1742,37 @@
         content.innerHTML = rows.map(row => {
           const amount = row.courier_payment_amount == null ? '<span style="color:var(--warning);font-weight:800;">Valor não definido</span>' :
             '<strong style="color:var(--success);">' + Number(row.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</strong>';
+          const method = String(row.payment_method || 'Não informado');
+          const pix = method.toLowerCase() === 'pix';
+          const paymentState = pix ? (row.payment_status === 'paid' ? 'Pago' : row.payment_status === 'pending' ? 'Pendente' : 'Não informado') :
+            method === 'Dinheiro' ? 'Dinheiro na entrega' : 'Na entrega';
+          const cash = method === 'Dinheiro' ? '<div style="font-size:.74rem;color:var(--text-muted);margin-top:3px;">Cliente paga com: ' +
+            Number(row.cash_given || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + ' · Troco: ' +
+            Number(row.change || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</div>' : '';
+          const completionLabels = {customer_code:'Código do cliente',manual_by_courier:'Confirmação manual pelo motoboy',manual_by_store:'Confirmação manual pelo estabelecimento'};
+          const completion = completionLabels[row.completion_method] || 'Método não identificado';
+          const eventLabels = {route_started:'Rota iniciada',delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento atualizado',delivery_confirmed:'Entrega confirmada',route_transferred:'Rota transferida'};
+          const timeline = (Array.isArray(row.events) ? row.events : []).slice(-8).map(event => {
+            const d = event.details || {};
+            const note = d.notes || d.reason || '';
+            return '<div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;">• ' +
+              escapeDeliveryHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dispatchDate(event.created_at) +
+              (note ? ' — ' + escapeDeliveryHtml(note) : '') + '</div>';
+          }).join('');
           return '<article style="background:var(--bg-main);border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>🛵 ' + escapeDeliveryHtml(row.courier_name || 'Motoboy não identificado') +
             '</strong><span style="font-size:.72rem;color:var(--text-muted);">' + dispatchDate(row.delivered_at) + '</span></div>' +
             '<div style="font-size:.8rem;margin-top:6px;">Pedido <strong>#' + escapeDeliveryHtml(row.display_id || row.order_id) + '</strong> · ' +
             escapeDeliveryHtml(row.customer_name || 'Cliente') + '</div>' +
             '<div style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">' + escapeDeliveryHtml(row.address || 'Endereço não informado') + '</div>' +
-            '<div style="font-size:.8rem;margin-top:7px;">Valor da entrega repassado ao motoboy: ' + amount + '</div></article>';
+            '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:.76rem;"><strong>Pagamento:</strong> ' +
+              escapeDeliveryHtml(method) + ' · ' + paymentState + '<br><strong>Valor do pedido:</strong> ' +
+              (row.amount_due == null ? 'Não informado' : Number(row.amount_due).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})) +
+              cash + '<div style="margin-top:6px;">Valor da entrega repassado ao motoboy: ' + amount + '</div></div>' +
+            '<div style="font-size:.72rem;color:var(--text-muted);margin-top:7px;"><strong>Comprovante:</strong> ' +
+              completion + ' · Concluída em ' + dispatchDate(row.delivered_at) + '</div>' +
+            (timeline ? '<details style="margin-top:7px;"><summary style="cursor:pointer;font-size:.74rem;font-weight:800;">Linha do tempo e ocorrências</summary>' + timeline + '</details>' : '') +
+          '</article>';
         }).join('');
       } catch (error) {
         content.innerHTML = '<div style="color:var(--danger);padding:14px;">Não foi possível consultar o histórico: ' + escapeDeliveryHtml(error.message || 'Erro de conexão') + '</div>';

@@ -48,6 +48,16 @@ WHERE r.status IN ('assigned', 'in_route')
       AND pending.status IN ('assigned', 'in_progress', 'occurrence')
   );
 
+-- Libera a disponibilidade do motoboy quando a regularização conclui sua rota.
+UPDATE public.vortex_delivery_courier_presence p
+SET status='available',updated_at=now()
+FROM public.vortex_delivery_routes r
+WHERE p.store_id=r.store_id
+  AND p.courier_user_id=r.courier_user_id
+  AND r.status='completed'
+  AND r.completed_at >= now() - interval '10 minutes'
+  AND p.status='in_route';
+
 -- 2) O motoboy vê o botão de código quando existe uma verificação ativa
 -- para aquele pedido. O código em si nunca é retornado nesta consulta.
 -- Pedidos manuais, cuja verificação foi desativada, continuam sem exigir código.

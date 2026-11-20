@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+<!DOCTYPE ht
+
+    <nav class="delivery-workspace-tabs" aria-label="Áreas do Delivery">
+      <button type="button" class="delivery-workspace-tab active" data-delivery-tab="orders" aria-selected="true" onclick="setDeliveryWorkspaceTab('orders')">📦 Pedidos</button>
+      <button type="button" class="delivery-workspace-tab" data-delivery-tab="routes" aria-selected="false" onclick="setDeliveryWorkspaceTab('routes')">🛵 Rotas & Entregadores</button>
+    </nav>
+ml>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -134,6 +140,13 @@
     .custom-modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; width: 100%; max-width: 480px; text-align: left; max-height: 90vh; overflow-y: auto; }
     .btn-modal-primary { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; text-align: center; }
 
+    .delivery-workspace-tabs { display:flex; gap:8px; padding:6px; margin:0 0 18px; border:1px solid var(--border); border-radius:14px; background:var(--bg-card); }
+    .delivery-workspace-tab { flex:1; min-height:44px; padding:10px 14px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text-muted); font-weight:800; font-size:.9rem; cursor:pointer; transition:background .18s,color .18s,border-color .18s; }
+    .delivery-workspace-tab:hover { color:var(--text-main); background:rgba(148,163,184,.10); }
+    .delivery-workspace-tab.active { color:#fff; background:var(--primary); border-color:var(--primary); }
+    .delivery-workspace-panel[hidden] { display:none !important; }
+    @media (max-width:520px) { .delivery-workspace-tabs { position:sticky; top:0; z-index:20; margin:0 -2px 14px; } .delivery-workspace-tab { padding:9px 6px; font-size:.78rem; } }
+
     .suggestion-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
     @media (max-width: 900px) {
@@ -219,6 +232,7 @@
       </div>
     </header>
 
+    <section class="delivery-workspace-panel" id="deliveryWorkspaceRoutes" data-delivery-panel="routes" hidden>
     <div class="card-box">
       <div class="card-title">
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
@@ -256,6 +270,7 @@
       <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">A central mostra dados operacionais e a remuneração das entregas. Os demais dados financeiros permanecem restritos.</div>
     </section>
 
+    <section class="delivery-workspace-panel" id="deliveryWorkspaceOrders" data-delivery-panel="orders">
     <div class="delivery-grid">
       <div class="card-box">
         <div class="card-title">🛵 Lançar Pedido para Entrega</div>
@@ -364,6 +379,9 @@
         <div class="delivery-orders-list" id="deliveryOrdersList"></div>
       </div>
     </div>
+    </section>
+
+    </section>
   </main>
 
   <div class="modal-overlay" id="smartRouteModal">
@@ -490,6 +508,20 @@
   <script>
     let deliveryCart = [];
     let rawCashGiven = 0;
+
+    function setDeliveryWorkspaceTab(tab) {
+      const selected = tab === 'routes' ? 'routes' : 'orders';
+      document.querySelectorAll('[data-delivery-panel]').forEach(panel => {
+        panel.hidden = panel.getAttribute('data-delivery-panel') !== selected;
+      });
+      document.querySelectorAll('[data-delivery-tab]').forEach(button => {
+        const active = button.getAttribute('data-delivery-tab') === selected;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+
+    setDeliveryWorkspaceTab('orders');
 
     function toggleMenu() {
       document.getElementById('sidebar').classList.toggle('open');

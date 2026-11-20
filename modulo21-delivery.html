@@ -1752,12 +1752,14 @@
           const completionLabels = {customer_code:'Código do cliente',manual_by_courier:'Confirmação manual pelo motoboy',manual_by_store:'Confirmação manual pelo estabelecimento'};
           const completion = completionLabels[row.completion_method] || 'Método não identificado';
           const eventLabels = {route_started:'Rota iniciada',delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento atualizado',delivery_confirmed:'Entrega confirmada',route_transferred:'Rota transferida'};
+          const paymentEventText = payment => { if (!payment) return 'Não informado'; const m=payment.payment_method || 'Não informado'; return m + (String(m).toLowerCase()==='pix' ? ' · ' + (payment.payment_status==='paid'?'Pago':payment.payment_status==='pending'?'Pendente':'Situação não informada') : m==='Dinheiro' ? ' · troco ' + Number(payment.change||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : ''); };
           const timeline = (Array.isArray(row.events) ? row.events : []).slice(-8).map(event => {
             const d = event.details || {};
             const note = d.notes || d.reason || '';
+            const paymentChange = event.event_type==='delivery_payment_updated' ? ' · ' + paymentEventText(d.previous) + ' → ' + paymentEventText(d.current) : '';
             return '<div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;">• ' +
               escapeDeliveryHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dispatchDate(event.created_at) +
-              (note ? ' — ' + escapeDeliveryHtml(note) : '') + '</div>';
+              (event.actor_name ? ' · por ' + escapeDeliveryHtml(event.actor_name) : '') + paymentChange + (note ? ' — ' + escapeDeliveryHtml(note) : '') + '</div>';
           }).join('');
           return '<article style="background:var(--bg-main);border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>🛵 ' + escapeDeliveryHtml(row.courier_name || 'Motoboy não identificado') +

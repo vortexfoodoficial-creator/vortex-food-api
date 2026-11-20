@@ -572,15 +572,6 @@ async function dbCreateDeliveryRoute(courierUserId, orderIds) {
   });
 }
 
-async function dbGetDeliveryRouteCodes(routeId) {
-  const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
-  return await vortexDeliveryRpc('rpc_get_delivery_route_codes', {
-    p_store_id: storeId,
-    p_route_id: String(routeId || '')
-  });
-}
-
 async function dbConfirmDeliveryCode(orderId, code) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -706,6 +697,23 @@ async function dbSetDeliveryStopDistance(routeId, orderId, distanceKm) {
   });
 }
 
+async function dbUpdateDeliveryPayment(orderId, paymentMethod, paymentStatus, cashGiven, change) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_update_delivery_payment', {
+    p_store_id: storeId, p_order_id: String(orderId || ''),
+    p_payment_method: String(paymentMethod || ''),
+    p_payment_status: paymentStatus == null ? null : String(paymentStatus),
+    p_cash_given: Number(cashGiven || 0), p_change: Number(change || 0)
+  });
+}
+
+async function dbGetDeliveryPaymentStatuses() {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  return await vortexDeliveryRpc('rpc_get_delivery_payment_statuses', { p_store_id: storeId });
+}
+
 async function dbGetDeliveryHistory(startDate, endDate, ownOnly) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -747,13 +755,14 @@ window.VortexDelivery = {
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,
   fetchMyRoutes: dbFetchMyDeliveryRoutes,
-  getRouteCodes: dbGetDeliveryRouteCodes,
   confirmDeliveryCode: dbConfirmDeliveryCode,
   startRoute: dbStartDeliveryRoute,
   reportOccurrence: dbReportDeliveryOccurrence,
   getPresence: dbGetDeliveryCourierPresence,
   setPresence: dbSetDeliveryCourierPresence,
   fetchHistory: dbGetDeliveryHistory,
+  updatePayment: dbUpdateDeliveryPayment,
+  fetchPaymentStatuses: dbGetDeliveryPaymentStatuses,
   savePaymentRules: dbSaveDeliveryCourierPaymentRules,
   getPaymentRules: dbGetDeliveryCourierPaymentRules,
   setStopDistance: dbSetDeliveryStopDistance
@@ -784,6 +793,7 @@ async function dbFetchKdsOrders() {
     observation: item.observation,
     status: item.status || 'received',
     financialStatus: item.financial_status || 'paid',
+    payment_status: item.payment_status || null,
     code: item.code || '',
     displayId: item.displayId || item.displayid || null,
     courier: item.courier || '',

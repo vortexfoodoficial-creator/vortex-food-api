@@ -1302,7 +1302,7 @@
             route_assigned:'Rota atribuída',route_started:'Saída registrada',
             delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
             route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_deadline_updated:'Prazo de entrega atualizado',delivery_distance_updated:'Distância da entrega atualizada',occurrence_retry:'Nova tentativa autorizada',
-            delivery_returned:'Pedido retornou',route_cancelled:'Rota cancelada'
+            delivery_returned:'Pedido retornou',delivery_payment_updated:'Pagamento do pedido atualizado',route_cancelled:'Rota cancelada'
           };
           const activeRoute = ['assigned','in_route'].includes(route.status);
           const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';
@@ -2239,7 +2239,7 @@
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
         const pixStatusLabel = String(o.payment || '').toLowerCase() === 'pix' ? (o.payment_status === 'paid' ? ' · Pix já pago' : o.payment_status === 'pending' ? ' · Pix a cobrar na entrega' : ' · Situação do Pix não informada') : '';
-        const paymentEditButton = canManagePayment ? `<button class="btn-secondary" style="padding:3px 7px;font-size:.7rem;margin-left:6px;" onclick="openDeliveryPaymentModal('${o.id}')">✏️ Editar pagamento</button>` : '';
+        const paymentEditButton = canManagePayment && o.status !== 'finished' ? `<button class="btn-secondary" style="padding:3px 7px;font-size:.7rem;margin-left:6px;" onclick="openDeliveryPaymentModal('${o.id}')">✏️ Editar pagamento</button>` : '';
         return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${pixStatusLabel}${changeInfoHtml}${paymentEditButton}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;

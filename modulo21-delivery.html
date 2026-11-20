@@ -805,8 +805,9 @@ ml>
       }
       let summaryHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
       couriers.forEach(c => {
-        select.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
-        editSelect.innerHTML += `<option value="${c.name}">${c.name} (${c.type})</option>`;
+        select.innerHTML += `<option value="${escapeDeliveryHtml(c.name)}">${escapeDeliveryHtml(c.name)} (${escapeDeliveryHtml(c.type)})</option>`;
+        const editValue = c.authUserId ? 'user:' + c.authUserId : 'legacy:' + c.id;
+        editSelect.innerHTML += `<option value="${escapeDeliveryHtml(editValue)}">${escapeDeliveryHtml(c.name)} (${escapeDeliveryHtml(c.type)})</option>`;
         summaryHtml += `
           <div style="background:var(--bg-main); padding:8px 12px; border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <span>🛵 <strong>${c.name}</strong> [${c.phone}] - <span style="color:var(--primary);">${c.type}</span></span>
@@ -1276,7 +1277,10 @@ ml>
           return;
         }
         const canManage = permissions.includes('delivery.dispatch_manage');
-        const couriers = getUnifiedCouriers().filter(c => c.authUserId);
+        const couriers = dispatchCouriers.map(courier => ({
+          authUserId: courier.user_id,
+          name: courier.name || 'Motoboy'
+        })).filter(courier => courier.authUserId);
         host.innerHTML = dispatchRoutesCache.map(route => {
           const stops = Array.isArray(route.stops) ? route.stops : [];
           const events = Array.isArray(route.events) ? route.events.slice(0,5) : [];
@@ -1388,6 +1392,7 @@ ml>
         if (!result.data || result.data.success !== true) throw new Error('O servidor não confirmou a transferência.');
         showNoticeModal('Rota transferida','A sequência e o histórico foram preservados. O novo motoboy receberá a rota na próxima sincronização.','✅');
         await loadDispatchRoutes();
+        await loadActiveOrders();
       } catch (error) { showNoticeModal('Falha na transferência',error.message || 'Não foi possível transferir a rota.','⚠️'); }
     }
 
@@ -1485,10 +1490,17 @@ ml>
 
     function openEditCourierModal(orderId) {
       document.getElementById('editCourierOrderId').value = orderId;
-      let kdsOrders = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
+      const kdsOrders = readLocalKdsOrders();
       const o = kdsOrders.find(item => String(item.id) === String(orderId));
       if (o) {
-        document.getElementById('modalEditCourierSelect').value = o.courier || '';
+        const couriers = getUnifiedCouriers();
+        const linked = couriers.find(item =>
+          (o.courier_member_id && String(item.authUserId) === String(o.courier_member_id)) ||
+          (!o.courier_member_id && String(item.name || '').trim().toLowerCase() === String(o.courier || '').trim().toLowerCase())
+        );
+        document.getElementById('modalEditCourierSelect').value = linked
+          ? (linked.authUserId ? 'user:' + linked.authUserId : 'legacy:' + linked.id)
+          : '';
       }
       document.getElementById('editCourierModal').classList.add('active');
     }
@@ -1503,23 +1515,64 @@ ml>
         return;
       }
       const orderId = document.getElementById('editCourierOrderId').value;
-      const newCourier = document.getElementById('modalEditCourierSelect').value;
+      const selection = document.getElementById('modalEditCourierSelect').value;
+      const couriers = getUnifiedCouriers();
+      const selected = selection.startsWith('user:')
+        ? couriers.find(item => String(item.authUserId) === selection.slice(5))
+        : selection.startsWith('legacy:')
+          ? couriers.find(item => String(item.id) === selection.slice(7))
+          : null;
+      const newCourier = selected ? selected.name : '';
+      const newCourierUserId = selected && selected.authUserId ? String(selected.authUserId) : null;
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
-      const result = await syncKdsPatch(orderId, { courier: newCourier || '' });
-      if (result && result.error) {
-        showNoticeModal('Não foi possível atribuir', result.error.message || 'O servidor recusou a alteração.', '⚠️');
-        return;
+
+      try {
+        const routesResult = await window.VortexDelivery.fetchDispatchRoutes();
+        if (routesResult.error) throw routesResult.error;
+        const activeRoute = (Array.isArray(routesResult.data) ? routesResult.data : []).find(route =>
+          ['assigned','in_route'].includes(route.status) &&
+          (route.stops || []).some(stop =>
+            String(stop.order_id) === String(orderId) &&
+            ['assigned','in_progress','occurrence'].includes(stop.status)
+          )
+        );
+
+        if (activeRoute) {
+          if (!newCourierUserId) {
+            throw new Error('Este pedido já faz parte de uma rota ativa. Para transferir a rota, selecione outro motoboy com conta individual ativa. Não é possível apenas apagar o vínculo do pedido.');
+          }
+          if (String(activeRoute.courier_user_id) === newCourierUserId) {
+            throw new Error('Este pedido já está atribuído a esse motoboy.');
+          }
+          const transfer = await window.VortexDelivery.transferRoute(activeRoute.id,newCourierUserId);
+          if (transfer.error) throw transfer.error;
+          if (!transfer.data || transfer.data.success !== true) throw new Error('O servidor não confirmou a transferência da rota.');
+          closeEditCourierModal();
+          await loadDispatchRoutes();
+          await loadActiveOrders();
+          showNoticeModal('Rota transferida', 'A rota inteira, incluindo as paradas pendentes, foi transferida para ' + newCourier.name + '. As entregas já concluídas e o histórico foram preservados.', '✅');
+          return;
+        }
+
+        const result = await syncKdsPatch(orderId, {
+          courier: newCourier,
+          courier_member_id: newCourierUserId
+        });
+        if (result && result.error) throw result.error;
+        order.courier = newCourier;
+        order.courier_member_id = newCourierUserId;
+        saveLocalKdsOrders(kdsOrders);
+        closeEditCourierModal();
+        renderActiveDeliveryOrders(kdsOrders, true);
+        const visibleNum = getVisibleDeliveryOrderNumber(order);
+        showNoticeModal('Motoboy atualizado', newCourier
+          ? 'O pedido #' + visibleNum + ' foi atribuído a ' + newCourier + '. Ele aparecerá no painel após a criação/despacho da rota.'
+          : 'O pedido #' + visibleNum + ' foi desvinculado e permanece disponível para despacho.', '✅');
+      } catch (error) {
+        showNoticeModal('Não foi possível alterar o motoboy',error.message || 'A operação não foi confirmada pelo servidor.','⚠️');
       }
-      order.courier = newCourier;
-      const selected = getUnifiedCouriers().find(item => String(item.name || '').trim().toLowerCase() === String(newCourier).trim().toLowerCase());
-      order.courier_member_id = selected && selected.authUserId ? selected.authUserId : null;
-      saveLocalKdsOrders(kdsOrders);
-      closeEditCourierModal();
-      renderActiveDeliveryOrders(kdsOrders, true);
-      const visibleNum = getVisibleDeliveryOrderNumber(order);
-      showNoticeModal('Motoboy Atualizado', newCourier ? `O motoboy do pedido #${visibleNum} foi alterado para ${newCourier}.` : `O motoboy foi removido.`, '✅');
     }
 
     function recordCourierHistory(o) {
@@ -1981,18 +2034,21 @@ ml>
       try {
         const supabase = getDeliverySupabaseClient();
         if (!supabase) return { error: new Error('Supabase não inicializado') };
-        const hasCourier = Object.prototype.hasOwnProperty.call(patch || {}, 'courier');
+          const hasCourier = Object.prototype.hasOwnProperty.call(patch || {}, 'courier');
         const courierName = hasCourier ? String(patch.courier || '') : null;
         const matchedCourier = hasCourier
           ? getUnifiedCouriers().find(item => String(item.name || '').trim().toLowerCase() === courierName.trim().toLowerCase())
           : null;
+        const explicitMemberId = Object.prototype.hasOwnProperty.call(patch || {}, 'courier_member_id')
+          ? (patch.courier_member_id || null)
+          : (matchedCourier && matchedCourier.authUserId ? matchedCourier.authUserId : null);
         return await supabase.rpc('rpc_update_delivery_order', {
           p_store_id: window.VORTEX_ACTIVE_STORE_ID,
           p_order_id: String(orderId),
           p_status: patch && patch.status ? String(patch.status) : null,
           p_courier: courierName,
           p_update_courier: hasCourier,
-          p_courier_member_id: matchedCourier && matchedCourier.authUserId ? matchedCourier.authUserId : null
+          p_courier_member_id: explicitMemberId
         });
       } catch (error) {
         return { error };
@@ -2139,6 +2195,10 @@ ml>
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
       const selectedCourier = order.courier || document.getElementById('selectCourierForRoute').value || '';
+      if (!selectedCourier.trim()) {
+        showNoticeModal('Selecione um motoboy','Escolha ou atribua um motoboy antes de despachar o pedido.','⚠️');
+        return;
+      }
 
       try {
         // Atualiza o vínculo no momento do despacho; não depende de ter aberto o

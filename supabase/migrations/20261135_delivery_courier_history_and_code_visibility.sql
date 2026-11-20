@@ -55,8 +55,13 @@ FROM public.vortex_delivery_routes r
 WHERE p.store_id=r.store_id
   AND p.courier_user_id=r.courier_user_id
   AND r.status='completed'
-  AND r.completed_at >= now() - interval '10 minutes'
-  AND p.status='in_route';
+  AND p.status='in_route'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.vortex_delivery_routes active_route
+    WHERE active_route.store_id=p.store_id
+      AND active_route.courier_user_id=p.courier_user_id
+      AND active_route.status IN ('assigned','in_route')
+  );
 
 -- 2) O motoboy vê o botão de código quando existe uma verificação ativa
 -- para aquele pedido. O código em si nunca é retornado nesta consulta.

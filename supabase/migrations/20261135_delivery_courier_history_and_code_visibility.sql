@@ -130,4 +130,98 @@ $function$;
 REVOKE ALL ON FUNCTION public.rpc_get_my_delivery_routes(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_get_my_delivery_routes(uuid) TO authenticated;
 
+-- Motoboy confirma diretamente somente pedidos sem código ativo e da própria rota.
+CREATE OR REPLACE FUNCTION public.rpc_confirm_delivery_manual_by_courier(
+  p_store_id uuid,
+  p_order_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_route_id uuid;
+  v_stop_id uuid;
+  v_order_status text;
+BEGIN
+  IF auth.uid() IS NULL
+     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.route_view')
+     OR NOT EXISTS (
+       SELECT 1 FROM public.vortex_store_members
+       WHERE store_id=p_store_id AND user_id=auth.uid()
+         AND status='active' AND profile_key='delivery'
+     ) THEN
+    RAISE EXCEPTION 'Esta operação é exclusiva da conta ativa de motoboy.';
+  END IF;
+
+  SELECT s.route_id,s.id,o.status
+  INTO v_route_id,v_stop_id,v_order_status
+  FROM public.vortex_delivery_route_stops s
+  JOIN public.vortex_delivery_routes r
+    ON r.store_id=s.store_id AND r.id=s.route_id
+  JOIN public.vortex_kds_orders o
+    ON o.store_id=s.store_id AND o.id=s.order_id
+  WHERE s.store_id=p_store_id AND s.order_id=p_order_id
+    AND r.courier_user_id=auth.uid()
+    AND r.status IN ('assigned','in_route')
+    AND s.status IN ('assigned','in_progress','occurrence')
+  FOR UPDATE OF s,o;
+
+  IF v_stop_id IS NULL THEN
+    RETURN jsonb_build_object('success',false,'message','Entrega não encontrada na sua rota ativa.');
+  END IF;
+  IF v_order_status IN ('finished','cancelled') THEN
+    RETURN jsonb_build_object('success',false,'message','Este pedido já foi finalizado ou cancelado.');
+  END IF;
+  IF v_order_status<>'delivering' THEN
+    RETURN jsonb_build_object('success',false,'message','A entrega precisa estar em rota para ser confirmada.');
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.vortex_delivery_verifications v
+    WHERE v.store_id=p_store_id AND v.order_id=p_order_id
+      AND v.is_active=true AND v.consumed_at IS NULL AND v.expires_at>now()
+  ) THEN
+    RETURN jsonb_build_object('success',false,'message','Este pedido exige o código do cliente. A confirmação manual pelo motoboy não está disponível.');
+  END IF;
+
+  UPDATE public.vortex_kds_orders
+  SET status='finished',updated_at=now()
+  WHERE store_id=p_store_id AND id=p_order_id;
+
+  UPDATE public.vortex_delivery_route_stops
+  SET status='delivered',delivered_at=now(),
+      delivered_by_user_id=auth.uid(),updated_at=now()
+  WHERE store_id=p_store_id AND id=v_stop_id;
+
+  INSERT INTO public.vortex_delivery_route_events(
+    store_id,route_id,stop_id,order_id,actor_user_id,event_type,details
+  ) VALUES (
+    p_store_id,v_route_id,v_stop_id,p_order_id,auth.uid(),'delivery_confirmed',
+    jsonb_build_object('confirmed_at',now(),'method','manual_by_courier',
+      'confirmed_by_user_id',auth.uid(),'courier_user_id',auth.uid())
+  );
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.vortex_delivery_route_stops
+    WHERE store_id=p_store_id AND route_id=v_route_id
+      AND status IN ('assigned','in_progress','occurrence')
+  ) THEN
+    UPDATE public.vortex_delivery_routes
+    SET status='completed',completed_at=now(),updated_at=now()
+    WHERE store_id=p_store_id AND id=v_route_id AND status IN ('assigned','in_route');
+
+    UPDATE public.vortex_delivery_courier_presence
+    SET status='available',updated_at=now()
+    WHERE store_id=p_store_id AND courier_user_id=auth.uid();
+  END IF;
+
+  RETURN jsonb_build_object('success',true,'message','Entrega confirmada.');
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.rpc_confirm_delivery_manual_by_courier(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.rpc_confirm_delivery_manual_by_courier(uuid,text) TO authenticated;
+
 COMMIT;

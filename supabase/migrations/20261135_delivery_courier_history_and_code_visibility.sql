@@ -87,8 +87,8 @@ BEGIN
           'courier_payment_rule_label',s.courier_payment_rule_label,
           'delivered_by_user_id',s.delivered_by_user_id,
           'display_id',o."displayId",
-          'customer_name',regexp_replace(COALESCE(o.client,''),' \\([^()]*\\)$',''),
-          'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\\(([^()]*)\\)$'))[1],''),
+          'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
+          'customer_phone',COALESCE((regexp_match(COALESCE(o.client,''),'\(([^()]*)\)$'))[1],''),
           'address',o.address,'items',o.items,'payment_method',o.payment,
           'payment_status',o.payment_status,
           'requires_customer_code',EXISTS (

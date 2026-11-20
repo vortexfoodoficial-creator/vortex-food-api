@@ -202,19 +202,25 @@ BEGIN
     'payment_snapshot_at',s.payment_snapshot_at,
     'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1),
     'completion_actor_user_id',(SELECT e.actor_user_id
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1),
     'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,
-            'actor_user_id',e.actor_user_id,'details',e.details
+            'actor_user_id',e.actor_user_id,'actor_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Equipe'),'details',e.details
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
             AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
     'distance_km',s.distance_km,
@@ -266,19 +272,25 @@ BEGIN
     'payment_snapshot_at',s.payment_snapshot_at,
     'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1),
     'completion_actor_user_id',(SELECT e.actor_user_id
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1),
     'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,
-            'actor_user_id',e.actor_user_id,'details',e.details
+            'actor_user_id',e.actor_user_id,'actor_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Equipe'),'details',e.details
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
             AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
     'distance_km',s.distance_km,
@@ -355,13 +367,17 @@ BEGIN
           'payment_snapshot_at',s.payment_snapshot_at,
           'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,
-            'actor_user_id',e.actor_user_id,'details',e.details
+            'actor_user_id',e.actor_user_id,'actor_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Equipe'),'details',e.details
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
             AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
           'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1),
@@ -458,13 +474,17 @@ BEGIN
           'payment_snapshot_at',s.payment_snapshot_at,
           'events',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'event_type',e.event_type,'created_at',e.created_at,
-            'actor_user_id',e.actor_user_id,'details',e.details
+            'actor_user_id',e.actor_user_id,'actor_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Equipe'),'details',e.details
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
             AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
           'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
+          LEFT JOIN auth.users u ON u.id=e.actor_user_id
+          LEFT JOIN public.vortex_store_members m ON m.store_id=e.store_id AND m.user_id=e.actor_user_id
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
             AND e.event_type='delivery_confirmed'
           ORDER BY e.created_at DESC LIMIT 1)

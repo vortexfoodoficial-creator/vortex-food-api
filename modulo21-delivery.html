@@ -149,6 +149,11 @@
     }
 
     .suggestion-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .dispatch-routes-list { -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; touch-action:pan-y; }
+    @media (max-width:520px) {
+      .dispatch-routes-list { max-height:none !important; height:auto !important; overflow:visible !important; padding-right:0 !important; touch-action:pan-y; }
+      .dispatch-routes-list article { touch-action:pan-y; }
+    }
 
     @media (max-width: 900px) {
       .delivery-grid { grid-template-columns: 1fr; }
@@ -270,7 +275,7 @@
       <div style="font-size:.82rem;font-weight:800;margin:12px 0 8px;">Disponibilidade da equipe</div>
       <div id="dispatchCouriersList" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><span style="font-size:.78rem;color:var(--text-muted);">Carregando motoboys...</span></div>
       <div style="font-size:.82rem;font-weight:800;margin:12px 0 8px;">Rotas e entregas</div>
-      <div id="dispatchRoutesList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;max-height:560px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;">
+      <div id="dispatchRoutesList" class="dispatch-routes-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;max-height:560px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;">
         <div style="padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);">Aguardando dados do servidor...</div>
       </div>
       <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">A central mostra dados operacionais e a remuneração das entregas. Os demais dados financeiros permanecem restritos.</div>
@@ -364,6 +369,13 @@
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
+        <div class="form-group" id="pixPaidBox" style="display:block;">
+          <label for="pixPaidSelect">O Pix já foi pago?</label>
+          <select id="pixPaidSelect">
+            <option value="pending">Não, cobrar na entrega</option>
+            <option value="paid">Sim, já foi pago</option>
+          </select>
+        </div>
 
         <div class="cash-change-box" id="cashChangeBox">
           <label for="cashGivenInput">Troco para quanto?</label>
@@ -418,6 +430,22 @@
         <button class="btn-secondary" style="flex:1;" onclick="closeEditCourierModal()">Cancelar</button>
         <button class="btn-modal-primary" style="flex:1; margin:0; background:var(--success);" onclick="saveOrderCourierChange()">Salvar Alteração</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="deliveryPaymentModal">
+    <div class="custom-modal-card" style="max-width:440px;">
+      <div style="font-size:1.15rem;font-weight:800;margin-bottom:12px;">💳 Editar pagamento do pedido</div>
+      <input type="hidden" id="editDeliveryPaymentOrderId">
+      <div id="editDeliveryPaymentTotal" style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;"></div>
+      <div class="form-group"><label for="editPaymentMethod">Forma de pagamento</label>
+        <select id="editPaymentMethod" onchange="handleEditPaymentChange(this.value)">
+          <option value="Pix">Pix</option><option value="Cartão de Débito (Maquininha)">Cartão de Débito (Maquininha)</option><option value="Cartão de Crédito (Maquininha)">Cartão de Crédito (Maquininha)</option><option value="Vale Refeição - VR (Maquininha)">Vale Refeição - VR (Maquininha)</option><option value="Vale Alimentação - VA (Maquininha)">Vale Alimentação - VA (Maquininha)</option><option value="Dinheiro">Dinheiro</option>
+        </select>
+      </div>
+      <div class="form-group" id="editPixPaidBox"><label for="editPixPaidSelect">O Pix já foi pago?</label><select id="editPixPaidSelect"><option value="pending">Não, cobrar na entrega</option><option value="paid">Sim, já foi pago</option></select></div>
+      <div class="form-group" id="editCashBox"><label for="editCashGiven">Valor recebido em dinheiro</label><input type="number" id="editCashGiven" min="0" step="0.01"></div>
+      <div style="display:flex;gap:10px;margin-top:18px;"><button class="btn-secondary" style="flex:1;" onclick="closeDeliveryPaymentModal()">Cancelar</button><button class="btn-modal-primary" style="flex:1;margin:0;" onclick="saveDeliveryPayment()">Salvar pagamento</button></div>
     </div>
   </div>
 
@@ -1056,71 +1084,33 @@
     async function createOptimizedCourierRoute() {
       const optimized = Array.isArray(window.vortexOptimizedDeliveryRoute) ? window.vortexOptimizedDeliveryRoute : [];
       const courierName = window.vortexSelectedCourierForRoute || '';
-      const courier = getUnifiedCouriers().find(item =>
-        String(item.name || '').trim().toLowerCase() === String(courierName).trim().toLowerCase()
-      );
+      const courier = getUnifiedCouriers().find(item => String(item.name || '').trim().toLowerCase() === String(courierName).trim().toLowerCase());
       if (!courier || !courier.authUserId) {
-        showNoticeModal('Conta individual necessária', 'Para receber uma rota no Painel do Motoboy, o entregador precisa ter uma conta individual ativa com perfil Entregador no módulo Equipe.', 'ℹ️');
+        showNoticeModal('Conta individual necessária','Para receber uma rota no Painel do Motoboy, o entregador precisa ter uma conta individual ativa com perfil Entregador no módulo Equipe.','ℹ️');
         return;
       }
-      if (!optimized.length) {
-        showNoticeModal('Rota vazia', 'Não há pedidos na sequência otimizada para atribuir.', '⚠️');
-        return;
-      }
-
-      const eligible = optimized.filter(order =>
-        !order.courier_member_id || String(order.courier_member_id) === String(courier.authUserId)
-      );
+      if (!optimized.length) { showNoticeModal('Rota vazia','Não há pedidos na sequência otimizada para atribuir.','⚠️'); return; }
+      const eligible = optimized.filter(order => !order.courier_member_id || String(order.courier_member_id) === String(courier.authUserId));
       const blocked = optimized.length - eligible.length;
-      if (!eligible.length) {
-        showNoticeModal('Pedidos já atribuídos', 'Todos os pedidos desta sugestão já estão vinculados a outro motoboy. Atualize a lista e tente novamente.', '⚠️');
-        return;
-      }
-
+      if (!eligible.length) { showNoticeModal('Pedidos já atribuídos','Todos os pedidos desta sugestão já estão vinculados a outro motoboy. Atualize a lista e tente novamente.','⚠️'); return; }
       const button = document.getElementById('createCourierRouteButton');
       if (button) { button.disabled = true; button.textContent = 'Criando rota...'; }
       try {
-        const routeId = await ensureCourierRoute(
-          courier,
-          eligible.map(order => String(order.id))
-        );
-
-        const codesResult = await window.VortexDelivery.getRouteCodes(routeId);
-        const codes = !codesResult.error && Array.isArray(codesResult.data) ? codesResult.data : [];
+        await ensureCourierRoute(courier,eligible.map(order => String(order.id)));
         const resultHost = document.getElementById('routeCodeResults');
         const orderNumbers = eligible.map(order => '#' + getVisibleDeliveryOrderNumber(order)).join(', ');
-
         if (resultHost) {
           resultHost.style.display = 'block';
-          resultHost.innerHTML = `
-            <div style="padding:12px; border:1px solid var(--success); background:rgba(34,197,94,.08); border-radius:10px; margin-bottom:12px;">
-              <strong style="color:var(--success);">✓ Rota criada e enviada!</strong>
-              <div style="font-size:.82rem; margin-top:5px;">Motoboy: <strong>${escapeDeliveryHtml(courier.name)}</strong></div>
-              <div style="font-size:.78rem; color:var(--text-muted); margin-top:3px;">Pedidos: ${escapeDeliveryHtml(orderNumbers)}</div>
-              ${blocked ? '<div style="font-size:.76rem; color:var(--warning); margin-top:5px;">' + blocked + ' pedido(s) já atribuídos a outro motoboy ficaram fora desta rota.</div>' : ''}
-            </div>
-            <div style="font-size:.84rem; font-weight:bold; margin:8px 0;">Códigos para compartilhar com os clientes</div>
-            ${codes.length ? codes.map(item => {
-              const digits = String(item.customer_phone || '').replace(/\D/g,'');
-              const whatsapp = digits ? (digits.length <= 11 ? '55' + digits : digits) : '';
-              const message = 'Olá, ' + (item.customer_name || 'tudo bem?') + '! Para confirmar o recebimento do pedido #' + (item.display_id || item.order_id) + ', informe ao motoboy este código de 6 dígitos: ' + item.code + '.';
-              const link = whatsapp ? 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(message) : '';
-              return `
-                <div style="padding:10px; border:1px solid var(--border); background:var(--bg-main); border-radius:9px; margin-bottom:8px;">
-                  <div style="font-size:.82rem;"><strong>#${escapeDeliveryHtml(item.display_id || item.order_id)}</strong> · ${escapeDeliveryHtml(item.customer_name || 'Cliente')}</div>
-                  <div style="font-size:1.35rem; font-weight:900; letter-spacing:.18em; color:var(--primary); margin:7px 0;">${escapeDeliveryHtml(item.code || '------')}</div>
-                  ${link ? '<a class="btn-secondary" style="display:block; text-align:center; padding:8px; border-radius:7px; color:var(--text-main); text-decoration:none;" target="_blank" rel="noopener" href="' + escapeDeliveryHtml(link) + '">Enviar código pelo WhatsApp ↗</a>' : '<div style="font-size:.75rem; color:var(--text-muted);">Telefone do cliente não disponível.</div>'}
-                </div>`;
-            }).join('') : '<p style="font-size:.78rem; color:var(--warning);">A rota foi criada, mas os códigos não puderam ser carregados agora. Atualize a tela e consulte novamente.</p>'}
-            <p style="font-size:.74rem; color:var(--text-muted); margin-top:8px;">O código é exclusivo do cliente. Não compartilhe o código com o motoboy.</p>`;
-          }
+          resultHost.innerHTML = '<div style="padding:12px;border:1px solid var(--success);background:rgba(34,197,94,.08);border-radius:10px;margin-bottom:12px;"><strong style="color:var(--success);">✓ Rota criada e enviada!</strong><div style="font-size:.82rem;margin-top:5px;">Motoboy: <strong>' + escapeDeliveryHtml(courier.name) + '</strong></div><div style="font-size:.78rem;color:var(--text-muted);margin-top:3px;">Pedidos: ' + escapeDeliveryHtml(orderNumbers) + '</div>' + (blocked ? '<div style="font-size:.76rem;color:var(--warning);margin-top:5px;">' + blocked + ' pedido(s) já atribuídos a outro motoboy ficaram fora desta rota.</div>' : '') + '<div style="font-size:.76rem;color:var(--text-muted);margin-top:8px;">O código de confirmação é exibido somente ao cliente no checkout online.</div></div>';
+        }
         window.vortexOptimizedDeliveryRoute = [];
         if (button) button.style.display = 'none';
-        showNoticeModal('Rota enviada ao motoboy', 'A rota foi criada com segurança. Compartilhe os códigos com os clientes antes das entregas.', '🛵');
+        showNoticeModal('Rota enviada ao motoboy','A rota foi criada. O código é recebido diretamente pelo cliente no checkout online; pedidos lançados manualmente podem ser concluídos pelo estabelecimento.','🛵');
+        await loadDispatchRoutes();
         await loadActiveOrders();
       } catch (error) {
         if (button) { button.disabled = false; button.textContent = 'Tentar criar rota novamente'; }
-        showNoticeModal('Não foi possível criar a rota', error.message || 'O servidor recusou a atribuição.', '⚠️');
+        showNoticeModal('Não foi possível criar a rota',error.message || 'O servidor recusou a atribuição.','⚠️');
       }
     }
 
@@ -1141,6 +1131,15 @@
       const pad = n => String(n).padStart(2,'0');
       return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) +
         'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    function dispatchRouteDisplayName(route) {
+      const date = new Date(route && (route.assigned_at || route.created_at));
+      if (Number.isNaN(date.getTime())) return 'Rota de entrega';
+      return 'Rota · ' + date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+    function dispatchPresenceLabel(status) {
+      return ({available:'Disponível',in_route:'Em rota',paused:'Em pausa',unavailable:'Indisponível'})[String(status || '')] || 'Indisponível';
     }
 
     async function saveDispatchStopDistance(routeId,orderId) {
@@ -1314,10 +1313,10 @@
           ).join('');
           return '<article style="border:1px solid var(--border);background:var(--bg-main);border-radius:12px;padding:13px;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
-              '<div><strong style="color:var(--primary);">Rota ' + escapeDeliveryHtml(String(route.id).slice(0,8).toUpperCase()) + '</strong>' +
+              '<div><strong style="color:var(--primary);">' + escapeDeliveryHtml(dispatchRouteDisplayName(route)) + '</strong>' +
               '<div style="font-size:.84rem;margin-top:4px;">🛵 ' + escapeDeliveryHtml(route.courier_name || 'Motoboy') + '</div></div>' +
               '<span style="font-size:.72rem;font-weight:800;color:' + statusColor + ';">' + statusText + '</span></div>' +
-            '<div style="font-size:.76rem;color:var(--text-muted);margin:8px 0;">Disponibilidade: ' + escapeDeliveryHtml(route.presence_status || 'unavailable') +
+            '<div style="font-size:.76rem;color:var(--text-muted);margin:8px 0;">Disponibilidade: ' + escapeDeliveryHtml(dispatchPresenceLabel(route.presence_status)) +
               ' · ' + Number(route.delivered_count || 0) + '/' + Number(route.stop_count || 0) + ' entregues' +
               (elapsed !== null && route.status === 'in_route' ? ' · ' + elapsed + ' min desde a saída' : '') + '</div>' +
             '<div style="font-size:.76rem;color:var(--text-muted);margin-bottom:8px;">Atribuída: ' + dispatchDate(route.assigned_at) +
@@ -1829,9 +1828,58 @@
 
     function handlePaymentChange(val) {
       const box = document.getElementById('cashChangeBox');
-      if (val === 'Dinheiro') box.classList.add('active');
-      else box.classList.remove('active');
+      const pixBox = document.getElementById('pixPaidBox');
+      if (box) box.classList.toggle('active',val === 'Dinheiro');
+      if (pixBox) pixBox.style.display = val === 'Pix' ? 'block' : 'none';
       calculateChange();
+    }
+
+    function handleEditPaymentChange(val) {
+      const pixBox = document.getElementById('editPixPaidBox');
+      const cashBox = document.getElementById('editCashBox');
+      if (pixBox) pixBox.style.display = val === 'Pix' ? 'block' : 'none';
+      if (cashBox) cashBox.style.display = val === 'Dinheiro' ? 'block' : 'none';
+    }
+
+    function openDeliveryPaymentModal(orderId) {
+      const order = readLocalKdsOrders().find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      document.getElementById('editDeliveryPaymentOrderId').value = String(orderId);
+      document.getElementById('editPaymentMethod').value = order.payment || 'Pix';
+      document.getElementById('editPixPaidSelect').value = order.payment_status || 'pending';
+      document.getElementById('editCashGiven').value = Number(order.cashGiven || order.cashgiven || 0).toFixed(2);
+      document.getElementById('editDeliveryPaymentTotal').textContent = 'Total do pedido: ' + Number(order.total || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      handleEditPaymentChange(document.getElementById('editPaymentMethod').value);
+      document.getElementById('deliveryPaymentModal').classList.add('active');
+    }
+
+    function closeDeliveryPaymentModal() { document.getElementById('deliveryPaymentModal').classList.remove('active'); }
+
+    async function saveDeliveryPayment() {
+      const orderId = document.getElementById('editDeliveryPaymentOrderId').value;
+      const order = readLocalKdsOrders().find(item => String(item.id) === String(orderId));
+      if (!order) return;
+      const method = document.getElementById('editPaymentMethod').value;
+      const paymentStatus = method === 'Pix' ? document.getElementById('editPixPaidSelect').value : null;
+      const cashGiven = method === 'Dinheiro' ? Number(document.getElementById('editCashGiven').value || 0) : 0;
+      const change = method === 'Dinheiro' ? Math.max(0,cashGiven-Number(order.total || 0)) : 0;
+      if (method === 'Dinheiro' && cashGiven < Number(order.total || 0)) {
+        showNoticeModal('Valor recebido insuficiente','O valor recebido em dinheiro precisa cobrir o total do pedido.','⚠️'); return;
+      }
+      try {
+        const result = await window.VortexDelivery.updatePayment(orderId,method,paymentStatus,cashGiven,change);
+        if (result.error) throw result.error;
+        const orders = readLocalKdsOrders();
+        const current = orders.find(item => String(item.id) === String(orderId));
+        if (current) { current.payment=method; current.payment_status=paymentStatus; current.cashGiven=cashGiven; current.change=change; }
+        saveLocalKdsOrders(orders);
+        closeDeliveryPaymentModal();
+        await loadDispatchRoutes();
+        await loadActiveOrders();
+        showNoticeModal('Pagamento atualizado','A alteração foi salva e será sincronizada com o painel do motoboy na próxima atualização.','✅');
+      } catch (error) {
+        showNoticeModal('Não foi possível atualizar o pagamento',error.message || 'Tente novamente.','⚠️');
+      }
     }
 
     function maskCurrencyInput(input) {
@@ -1983,6 +2031,7 @@
 
       const total = deliveryCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
       const payment = document.getElementById('paymentMethodSelect').value;
+      const paymentStatus = payment === 'Pix' ? (document.getElementById('pixPaidSelect')?.value || 'pending') : null;
       let cashGivenVal = 0;
       let changeVal = 0;
       if (payment === 'Dinheiro') {
@@ -2037,6 +2086,7 @@
         address: fullAddress,
         payment: payment,
         payMethod: payment,
+        payment_status: paymentStatus,
         cashGiven: cashGivenVal,
         change: changeVal,
         observation: observation,
@@ -2061,6 +2111,10 @@
         if (!saleResult || saleResult.error) throw (saleResult && saleResult.error) || new Error('A venda não foi confirmada na nuvem.');
         const orderResult = await saveDeliveryKdsOrderToCloud(newOrder);
         if (orderResult && orderResult.error) throw orderResult.error;
+        if (window.VortexDelivery?.updatePayment) {
+          const paymentResult = await window.VortexDelivery.updatePayment(technicalId,payment,paymentStatus,cashGivenVal,changeVal);
+          if (paymentResult.error) throw paymentResult.error;
+        }
       } catch (error) {
         cloudSuccess = false;
         cloudErrorMsg = error.message || String(error);
@@ -2090,7 +2144,7 @@
       try {
         return JSON.stringify(orders.map(o => ({
           id: o.id, displayId: o.displayId, status: o.status, courier: o.courier, client: o.client,
-          address: o.address, total: o.total, payment: o.payment
+          address: o.address, total: o.total, payment: o.payment, payment_status: o.payment_status
         })));
       } catch (error) {
         return String(Date.now());
@@ -2135,6 +2189,7 @@
       const canAssign = permissions.includes('delivery.assign');
       const canConfirm = permissions.includes('delivery.confirm');
       const canManualFinish = permissions.includes('delivery.manual_finish');
+      const canManagePayment = permissions.includes('delivery.dispatch_manage');
       const todayDateStr = getLocalDateStr(new Date());
       const isDeliveryAccount = window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery';
       const currentUserId = String(window.VORTEX_AUTH_CONTEXT?.user_id || '');
@@ -2185,7 +2240,9 @@
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Not info'})${changeInfoHtml}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        const pixStatusLabel = o.payment === 'Pix' ? (o.payment_status === 'paid' ? ' · Pix já pago' : o.payment_status === 'pending' ? ' · Pix a cobrar na entrega' : ' · Situação do Pix não informada') : '';
+        const paymentEditButton = canManagePayment ? `<button class="btn-secondary" style="padding:3px 7px;font-size:.7rem;margin-left:6px;" onclick="openDeliveryPaymentModal('${o.id}')">✏️ Editar pagamento</button>` : '';
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${pixStatusLabel}${changeInfoHtml}${paymentEditButton}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }
@@ -2206,6 +2263,11 @@
         const { data, error } = await supabase.rpc('rpc_get_kds_orders');
         if (error) throw error;
         if (!Array.isArray(data)) return;
+        let paymentStatusByOrder = {};
+        if (!isDeliveryAccount && window.VortexDelivery?.fetchPaymentStatuses) {
+          const paymentResult = await window.VortexDelivery.fetchPaymentStatuses();
+          if (!paymentResult.error && Array.isArray(paymentResult.data)) paymentResult.data.forEach(item => { paymentStatusByOrder[String(item.order_id)] = item; });
+        }
 
         if (isDeliveryAccount) {
           const assignedOrders = data
@@ -2229,9 +2291,14 @@
         data.forEach(remoteOrder => {
           const localOrder = localById.get(String(remoteOrder.id)) || {};
           const finalDisplayId = remoteOrder.displayId || remoteOrder.displayid || localOrder.displayId || localOrder.displayid || null;
+          const paymentInfo = paymentStatusByOrder[String(remoteOrder.id)] || {};
           mergedMap.set(String(remoteOrder.id), {
             ...localOrder,
             ...remoteOrder,
+            payment: paymentInfo.payment_method || remoteOrder.payment || localOrder.payment,
+            payment_status: paymentInfo.payment_status ?? remoteOrder.payment_status ?? localOrder.payment_status ?? null,
+            cashGiven: paymentInfo.cash_given ?? remoteOrder.cashgiven ?? localOrder.cashGiven ?? 0,
+            change: paymentInfo.change ?? remoteOrder.change ?? localOrder.change ?? 0,
             displayId: finalDisplayId
           });
         });
@@ -2349,7 +2416,9 @@
         saveLocalKdsOrders(kdsOrders);
         recordCourierHistory(current || order);
         renderActiveDeliveryOrders(kdsOrders, true);
-        showNoticeModal('Pedido Entregue!', 'O pedido #' + (order.displayId || orderId) + ' foi concluído manualmente.', '✅');
+        await loadDispatchRoutes();
+        await loadActiveOrders();
+        showNoticeModal('Pedido Entregue!', 'O pedido #' + (order.displayId || orderId) + ' foi concluído manualmente e sincronizado com a rota do motoboy.', '✅');
       } catch (error) {
         showNoticeModal('Não foi possível concluir', error.message || 'A nuvem não confirmou a entrega.', '⚠️');
       }

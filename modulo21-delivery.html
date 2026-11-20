@@ -564,16 +564,23 @@
       let teamCouriers = team.filter(m => (m.status || 'ativo') === 'ativo' && ((m.role && m.role.toLowerCase().includes('entregador')) || (m.cargo && m.cargo.toLowerCase().includes('motoboy')) || (m.type && m.type.toLowerCase().includes('entregador'))));
       
       let map = new Map();
-      couriers.forEach(c => map.set(c.name.trim().toLowerCase(), c));
+      couriers.forEach(c => {
+        const key = String(c.name || '').trim().toLowerCase();
+        if (key) map.set(key, { ...c });
+      });
       teamCouriers.forEach(t => {
-        if (!map.has(t.name.trim().toLowerCase())) {
-          map.set(t.name.trim().toLowerCase(), {
-            id: t.id || 'cour_' + Date.now(),
-            name: t.name,
-            phone: t.phone || t.telefone || '',
-            type: t.courierType || t.type || 'Próprio'
-          });
-        }
+        const key = String(t.name || t.nome || '').trim().toLowerCase();
+        if (!key) return;
+        const existing = map.get(key) || {};
+        map.set(key, {
+          ...existing,
+          id: existing.id || t.id || 'cour_' + Date.now(),
+          name: existing.name || t.name || t.nome,
+          phone: existing.phone || t.phone || t.telefone || '',
+          type: existing.type || t.courierType || t.type || 'Próprio',
+          // O vínculo de autenticação da equipe prevalece sobre o cadastro legado.
+          authUserId: t.authUserId || t.auth_user_id || t.user_id || existing.authUserId || null
+        });
       });
 
       return Array.from(map.values());
@@ -943,6 +950,50 @@
       }[char]));
     }
 
+    async function ensureCourierRoute(courier, orderIds) {
+      if (!courier || !courier.authUserId) {
+        throw new Error('Este entregador não possui uma conta individual ativa no painel do Motoboy.');
+      }
+      const requestedIds = Array.from(new Set((orderIds || []).map(id => String(id))));
+      if (!requestedIds.length) throw new Error('Selecione ao menos um pedido para enviar.');
+
+      const dispatchResult = await window.VortexDelivery.fetchDispatchRoutes();
+      if (dispatchResult.error) throw dispatchResult.error;
+      const activeRoute = (Array.isArray(dispatchResult.data) ? dispatchResult.data : []).find(route =>
+        String(route.courier_user_id) === String(courier.authUserId) &&
+        ['assigned','in_route'].includes(route.status)
+      );
+
+      if (!activeRoute) {
+        const created = await window.VortexDelivery.createRoute(courier.authUserId, requestedIds);
+        if (created.error) throw created.error;
+        if (!created.data || created.data.success !== true || !created.data.route_id) {
+          throw new Error(created.data && created.data.message || 'O servidor não confirmou a criação da rota.');
+        }
+        return created.data.route_id;
+      }
+
+      const existingIds = (activeRoute.stops || [])
+        .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status))
+        .map(stop => String(stop.order_id));
+      const missingIds = requestedIds.filter(id => !existingIds.includes(id));
+      if (!missingIds.length) return activeRoute.id;
+
+      if (activeRoute.status !== 'assigned') {
+        throw new Error('Este motoboy já iniciou a rota. Os novos pedidos precisam ser enviados após a conclusão ou transferência da rota atual.');
+      }
+      const updated = await window.VortexDelivery.updateRouteStops(
+        activeRoute.id,
+        activeRoute.route_version,
+        existingIds.concat(missingIds)
+      );
+      if (updated.error) throw updated.error;
+      if (!updated.data || updated.data.success !== true) {
+        throw new Error(updated.data && updated.data.message || 'O servidor não confirmou a inclusão dos pedidos na rota.');
+      }
+      return activeRoute.id;
+    }
+
     async function createOptimizedCourierRoute() {
       const optimized = Array.isArray(window.vortexOptimizedDeliveryRoute) ? window.vortexOptimizedDeliveryRoute : [];
       const courierName = window.vortexSelectedCourierForRoute || '';
@@ -970,16 +1021,12 @@
       const button = document.getElementById('createCourierRouteButton');
       if (button) { button.disabled = true; button.textContent = 'Criando rota...'; }
       try {
-        const created = await window.VortexDelivery.createRoute(
-          courier.authUserId,
+        const routeId = await ensureCourierRoute(
+          courier,
           eligible.map(order => String(order.id))
         );
-        if (created.error) throw created.error;
-        if (!created.data || created.data.success !== true || !created.data.route_id) {
-          throw new Error(created.data && created.data.message || 'O servidor não confirmou a criação da rota.');
-        }
 
-        const codesResult = await window.VortexDelivery.getRouteCodes(created.data.route_id);
+        const codesResult = await window.VortexDelivery.getRouteCodes(routeId);
         const codes = !codesResult.error && Array.isArray(codesResult.data) ? codesResult.data : [];
         const resultHost = document.getElementById('routeCodeResults');
         const orderNumbers = eligible.map(order => '#' + getVisibleDeliveryOrderNumber(order)).join(', ');
@@ -1157,10 +1204,12 @@
           const status = courier.presence_status || 'unavailable';
           const label = status === 'available' ? 'Disponível' : status === 'in_route' ? 'Em rota' : status === 'paused' ? 'Pausado' : 'Indisponível';
           const color = status === 'available' ? 'var(--success)' : status === 'in_route' ? 'var(--primary)' : 'var(--text-muted)';
-          return '<div style="border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:145px;background:var(--bg-main);">' +
-            '<div style="font-size:.8rem;font-weight:800;">' + escapeDeliveryHtml(courier.name || 'Motoboy') + '</div>' +
-            '<div style="font-size:.72rem;color:' + color + ';margin-top:3px;">● ' + label + '</div>' +
-            (courier.route_status ? '<div style="font-size:.68rem;color:var(--text-muted);margin-top:2px;">' + (courier.route_status === 'assigned' ? 'Aguardando saída' : 'Rota iniciada') + '</div>' : '') +
+          return '<div style="border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:165px;background:var(--bg-main);">' +
+            '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:.8rem;font-weight:800;">' +
+            '<span>' + escapeDeliveryHtml(courier.name || 'Motoboy') + '</span>' +
+            '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:' + (status === 'available' ? 'rgba(34,197,94,.12)' : status === 'in_route' ? 'rgba(249,115,22,.12)' : 'rgba(148,163,184,.12)') + ';color:' + color + ';font-size:.68rem;font-weight:700;">● ' + label + '</span>' +
+            '</div>' +
+            (courier.route_status ? '<div style="font-size:.68rem;color:var(--text-muted);margin-top:5px;">' + (courier.route_status === 'assigned' ? 'Aguardando saída' : 'Rota iniciada') + '</div>' : '') +
             '</div>';
         }).join('') : '<span style="font-size:.78rem;color:var(--text-muted);">Nenhuma conta de motoboy ativa cadastrada na equipe.</span>';
         const active = dispatchRoutesCache.filter(r => ['assigned','in_route'].includes(r.status));
@@ -2037,20 +2086,45 @@
       const kdsOrders = readLocalKdsOrders();
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
-      const previous = { status: order.status, courier: order.courier };
       const selectedCourier = order.courier || document.getElementById('selectCourierForRoute').value || '';
-      const result = await syncKdsPatch(orderId, { status: 'delivering', courier: selectedCourier });
-      if (result && result.error) {
-        showNoticeModal('Não foi possível despachar', result.error.message || 'O servidor recusou a operação.', '⚠️');
-        return;
+      const courierRecord = getUnifiedCouriers().find(item =>
+        String(item.name || '').trim().toLowerCase() === String(selectedCourier || '').trim().toLowerCase()
+      );
+
+      try {
+        if (courierRecord && courierRecord.authUserId) {
+          // Primeiro garante a rota no servidor: o painel do motoboy consulta rotas,
+          // não apenas o texto do nome do entregador gravado no pedido.
+          const assignment = await syncKdsPatch(orderId, { courier: selectedCourier });
+          if (assignment && assignment.error) throw assignment.error;
+          order.courier = selectedCourier;
+          order.courier_member_id = courierRecord.authUserId;
+          const routeId = await ensureCourierRoute(courierRecord, [String(orderId)]);
+          const dispatch = await syncKdsPatch(orderId, { status: 'delivering', courier: selectedCourier });
+          if (dispatch && dispatch.error) throw dispatch.error;
+          order.status = 'delivering';
+          saveLocalKdsOrders(kdsOrders);
+          recordCourierHistory(order);
+          renderActiveDeliveryOrders(kdsOrders, true);
+          await loadDispatchRoutes();
+          const visibleNum = getVisibleDeliveryOrderNumber(order);
+          showNoticeModal('Pedido enviado ao Motoboy!', `O pedido #${visibleNum} foi incluído na rota de ${courierRecord.name}. Ele já pode visualizar o pedido no painel e iniciar a rota quando estiver pronto.`, '🚀');
+          return;
+        }
+
+        // Mantém o fluxo legado para entregadores sem conta individual no sistema.
+        const result = await syncKdsPatch(orderId, { status: 'delivering', courier: selectedCourier });
+        if (result && result.error) throw result.error;
+        order.status = 'delivering';
+        order.courier = selectedCourier || 'Não atribuído';
+        saveLocalKdsOrders(kdsOrders);
+        recordCourierHistory(order);
+        renderActiveDeliveryOrders(kdsOrders, true);
+        const visibleNum = getVisibleDeliveryOrderNumber(order);
+        showNoticeModal('Pedido Despachado!', `O pedido #${visibleNum} foi enviado para rota.`, '🚀');
+      } catch (error) {
+        showNoticeModal('Não foi possível despachar', error.message || 'O servidor não confirmou o envio ao painel do motoboy.', '⚠️');
       }
-      order.status = 'delivering';
-      order.courier = selectedCourier || 'Não atribuído';
-      saveLocalKdsOrders(kdsOrders);
-      recordCourierHistory(order);
-      renderActiveDeliveryOrders(kdsOrders, true);
-      const visibleNum = getVisibleDeliveryOrderNumber(order);
-      showNoticeModal('Pedido Despachado!', `O pedido #${visibleNum} foi enviado para rota.`, '🚀');
     }
 
     async function finishDeliveryOrder(orderId) {

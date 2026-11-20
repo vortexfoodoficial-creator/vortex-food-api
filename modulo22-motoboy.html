@@ -321,9 +321,10 @@
         const known = rows.filter(row => row.courier_payment_amount != null);
         const pending = rows.length-known.length;
         const total = known.reduce((sum,row) => sum + Number(row.courier_payment_amount || 0),0);
+        const paymentCounts = rows.reduce((counts,row) => { const method=String(row.payment_method||'').toLowerCase(); if(method==='pix' && row.payment_status==='paid') counts.pixPaid++; else if(method==='pix') counts.pixPending++; else if(method==='dinheiro') counts.cash++; else if(method) counts.card++; return counts; },{pixPaid:0,pixPending:0,cash:0,card:0});
         summary.innerHTML = '<div class="meta-label">Total a receber</div><div class="meta-value" style="color:var(--success)">' +
           money(total) + '</div><div class="small muted" style="margin-top:5px;">' + rows.length + ' entrega(s) · ' +
-          pending + ' sem valor definido</div>';
+          pending + ' sem valor definido</div><div class="small muted" style="margin-top:6px;">Pagamentos registrados: Pix pago ' + paymentCounts.pixPaid + ' · Pix pendente ' + paymentCounts.pixPending + ' · Dinheiro ' + paymentCounts.cash + ' · Cartão/vale ' + paymentCounts.card + '</div>';
         if (!rows.length) {
           host.innerHTML = '<p class="small muted">Nenhuma entrega concluída neste período.</p>';
           return;
@@ -439,7 +440,7 @@
       const stopTimeline = (Array.isArray(stop.events) ? stop.events : []).slice(-5).map(event => {
         const details = event.details || {};
         const note = details.notes || details.reason || '';
-        return '<div class="small muted" style="margin-top:3px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dateTime(event.created_at) + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
+        return '<div class="small muted" style="margin-top:3px;">• ' + escapeHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dateTime(event.created_at) + (event.actor_name ? ' · por ' + escapeHtml(event.actor_name) : '') + (note ? ' — ' + escapeHtml(note) : '') + '</div>';
       }).join('');
 
       return `
@@ -459,7 +460,8 @@
             <div class="detail"><div class="detail-label">Forma de pagamento</div><div class="detail-value">${escapeHtml(stop.payment_method || 'Não informado')}</div></div>
             <div class="detail"><div class="detail-label">${String(stop.payment_method || '').toLowerCase() === 'pix' && stop.payment_status === 'paid' ? 'Pagamento recebido' : 'Valor a cobrar do cliente'}</div><div class="detail-value">${String(stop.payment_method || '').toLowerCase() === 'pix' && stop.payment_status === 'paid' ? 'Já pago via Pix' : money(stop.amount_due)}</div></div>
             ${String(stop.payment_method || '').toLowerCase() === 'pix' ? '<div class="detail"><div class="detail-label">Situação do Pix</div><div class="detail-value">' + (stop.payment_status === 'paid' ? 'Pago' : stop.payment_status === 'pending' ? 'Pendente · cobrar na entrega' : 'Não informada') + '</div></div>' : ''}
-            <div class="detail"><div class="detail-label">Troco informado</div><div class="detail-value">${stop.payment_method === 'Dinheiro' ? money(stop.change) : 'Não se aplica'}</div></div>
+            <div class="detail"><div class="detail-label">${stop.payment_method === 'Dinheiro' ? 'Cliente paga com' : 'Troco informado'}</div><div class="detail-value">${stop.payment_method === 'Dinheiro' ? money(stop.cash_given) : 'Não se aplica'}</div></div>
+            ${stop.payment_method === 'Dinheiro' ? '<div class="detail"><div class="detail-label">Troco necessário</div><div class="detail-value">' + money(stop.change) + '</div></div>' : ''}
             <div class="detail"><div class="detail-label">Prazo prometido</div><div class="detail-value">${escapeHtml(promised)}</div></div>
             <div class="detail" style="grid-column:1/-1;"><div class="detail-label">Valor da entrega repassado a você</div><div class="detail-value" style="color:${stop.courier_payment_amount == null ? 'var(--warning)' : 'var(--success)'}">${stop.courier_payment_amount == null ? 'Valor não definido' : money(stop.courier_payment_amount)}</div></div>
             ${stop.distance_km != null ? '<div class="detail"><div class="detail-label">Distância registrada</div><div class="detail-value">' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div></div>' : ''}

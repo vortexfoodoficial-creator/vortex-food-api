@@ -752,7 +752,7 @@ async function dbGetDeliveryCourierEarnings(startDate, endDate, courierUserId) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
   const start = String(startDate || ''), end = String(endDate || '');
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(end) || start > end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) {
     return { data: null, error: new Error('Selecione um período válido para consultar os repasses.') };
   }
   return await vortexDeliveryRpc('rpc_get_delivery_courier_earnings', {

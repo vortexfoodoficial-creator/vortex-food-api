@@ -727,10 +727,30 @@
       else showNoticeModal('Entregador Excluído', 'O entregador externo foi removido da lista de entregadores.', '🗑️');
     }
 
+    async function refreshDeliveryTeamLinks() {
+      if (typeof dbFetchStoreDocument !== 'function') {
+        throw new Error('Não foi possível consultar o cadastro atualizado da equipe.');
+      }
+      const cloudStaff = await dbFetchStoreDocument('staff');
+      if (!Array.isArray(cloudStaff)) {
+        throw new Error('Não foi possível carregar os vínculos dos entregadores na nuvem. Atualize o módulo e tente novamente.');
+      }
+      // A equipe é a fonte oficial do vínculo entre funcionário e conta Auth.
+      // O documento "couriers" pode estar desatualizado após um convite/ativação.
+      localStorage.setItem('vortex_team_members', JSON.stringify(cloudStaff));
+      return cloudStaff;
+    }
+
     async function loadCouriers() {
       if (localStorage.getItem('vortex_team_sync_pending') !== 'true' && typeof dbFetchStoreDocument === 'function') {
         try {
-          const cloud = await dbFetchStoreDocument('couriers');
+          const [cloud, cloudStaff] = await Promise.all([
+            dbFetchStoreDocument('couriers'),
+            dbFetchStoreDocument('staff')
+          ]);
+          if (Array.isArray(cloudStaff)) {
+            localStorage.setItem('vortex_team_members', JSON.stringify(cloudStaff));
+          }
           if (Array.isArray(cloud)) {
             const local = JSON.parse(localStorage.getItem('vortex_couriers')) || [];
             const pending = local.filter(c => c && c.syncPending === true);
@@ -738,7 +758,7 @@
             pending.forEach(c => { if (!merged.has(String(c.id))) merged.set(String(c.id), c); });
             localStorage.setItem('vortex_couriers', JSON.stringify(Array.from(merged.values())));
           }
-        } catch (error) { console.warn('Não foi possível carregar os entregadores da nuvem; mantendo os dados locais.', error); }
+        } catch (error) { console.warn('Não foi possível atualizar os vínculos dos entregadores; mantendo o cache local.', error); }
       }
       let couriers = getUnifiedCouriers();
       const select = document.getElementById('selectCourierForRoute');
@@ -2087,11 +2107,26 @@
       const order = kdsOrders.find(item => String(item.id) === String(orderId));
       if (!order) return;
       const selectedCourier = order.courier || document.getElementById('selectCourierForRoute').value || '';
-      const courierRecord = getUnifiedCouriers().find(item =>
-        String(item.name || '').trim().toLowerCase() === String(selectedCourier || '').trim().toLowerCase()
-      );
 
       try {
+        // Atualiza o vínculo no momento do despacho; não depende de ter aberto o
+        // módulo Equipe neste navegador nem de um cache antigo do documento couriers.
+        const cloudStaff = await refreshDeliveryTeamLinks();
+        const selectedName = String(selectedCourier || '').trim().toLowerCase();
+        const staffCourier = cloudStaff.find(member =>
+          (member.status || 'ativo') === 'ativo' &&
+          String(member.role || '').toLowerCase().includes('entregador') &&
+          String(member.name || member.nome || '').trim().toLowerCase() === selectedName
+        );
+        const courierRecord = getUnifiedCouriers().find(item =>
+          String(item.name || '').trim().toLowerCase() === selectedName
+        );
+        if (staffCourier && !staffCourier.authUserId) {
+          throw new Error('O cadastro deste entregador ainda não está vinculado a uma conta individual ativa. Confira o convite e o vínculo na Equipe antes de despachar.');
+        }
+        if (staffCourier && staffCourier.authUserId && courierRecord) {
+          courierRecord.authUserId = staffCourier.authUserId;
+        }
         if (courierRecord && courierRecord.authUserId) {
           // Primeiro garante a rota no servidor: o painel do motoboy consulta rotas,
           // não apenas o texto do nome do entregador gravado no pedido.

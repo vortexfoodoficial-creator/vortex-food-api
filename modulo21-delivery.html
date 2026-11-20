@@ -1118,6 +1118,19 @@
     let dispatchRoutesCache = [];
     let dispatchCourierPaymentMode = 'fixed';
 
+    function deliveryEventLabel(eventType) {
+      const labels = {
+        route_created:'Rota criada',route_started:'Rota iniciada',route_transferred:'Rota transferida',
+        route_stops_updated:'Paradas da rota atualizadas',route_cancelled:'Rota cancelada',
+        delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',
+        delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento do pedido atualizado',
+        delivery_distance_updated:'Distância da entrega atualizada',delivery_deadline_updated:'Prazo de entrega atualizado',
+        delivery_confirmed:'Entrega confirmada',courier_payment_settled:'Repasse ao motoboy registrado',
+        delivery_manual_confirmed:'Entrega confirmada manualmente'
+      };
+      return labels[eventType] || 'Atualização da entrega';
+    }
+
     function dispatchDate(value) {
       if (!value) return '—';
       const date = new Date(value);
@@ -1335,7 +1348,7 @@
               const paymentState = paymentMethod.toLowerCase()==='pix' ? (stop.payment_status==='paid'?'Pix pago':stop.payment_status==='pending'?'Pix pendente':'Pix sem situação informada') : paymentMethod==='Dinheiro'?'Cobrança em dinheiro':'Cobrança na entrega';
               const paymentDetails = '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Pagamento: <strong>' + escapeDeliveryHtml(paymentMethod) + '</strong> · ' + paymentState + (stop.amount_due != null ? ' · Pedido: ' + Number(stop.amount_due).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + (paymentMethod==='Dinheiro' ? ' · Cliente paga com: ' + Number(stop.cash_given||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + ' · Troco: ' + Number(stop.change||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + '</div>';
               const stopEventLabels = {delivery_occurrence:'Ocorrência',occurrence_retry:'Nova tentativa',delivery_returned:'Retorno',delivery_payment_updated:'Pagamento alterado',delivery_confirmed:'Entrega confirmada'};
-              const stopTimeline = (Array.isArray(stop.events)?stop.events:[]).slice(-5).map(event => '<div style="font-size:.68rem;color:var(--text-muted);margin-top:3px;">• ' + escapeDeliveryHtml(stopEventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dispatchDate(event.created_at) + (event.actor_name ? ' · por ' + escapeDeliveryHtml(event.actor_name) : '') + '</div>').join('');
+              const stopTimeline = (Array.isArray(stop.events)?stop.events:[]).slice(-5).map(event => '<div style="font-size:.68rem;color:var(--text-muted);margin-top:3px;">• ' + escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) + (event.actor_name ? ' · por ' + escapeDeliveryHtml(event.actor_name) : '') + '</div>').join('');
               const stopIndex = activeAssignedStops.findIndex(item => String(item.order_id) === String(stop.order_id));
               const stopControls = editableStops && stop.status === 'assigned'
                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
@@ -1377,7 +1390,7 @@
               '<div style="font-size:.68rem;color:var(--text-muted);margin-top:5px;">A sequência pode ser ajustada antes de iniciar a rota.</div></div>' : '') +
             (events.length ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:.72rem;"><strong>Histórico recente</strong>' +
               events.map(event => '<div style="color:var(--text-muted);margin-top:4px;">' +
-                escapeDeliveryHtml(eventNames[event.event_type] || event.event_type) + ' · ' + dispatchDate(event.created_at) +
+                escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) +
                 (event.details && event.details.reason ? ' · ' + escapeDeliveryHtml(event.details.reason) : '') +
                 '</div>').join('') + '</div>' : '') +
             (canManage && activeRoute ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
@@ -1759,7 +1772,7 @@
             const note = d.notes || d.reason || '';
             const paymentChange = event.event_type==='delivery_payment_updated' ? ' · ' + paymentEventText(d.previous) + ' → ' + paymentEventText(d.current) : '';
             return '<div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;">• ' +
-              escapeDeliveryHtml(eventLabels[event.event_type] || event.event_type || 'Atualização') + ' · ' + dispatchDate(event.created_at) +
+              escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) +
               (event.actor_name ? ' · por ' + escapeDeliveryHtml(event.actor_name) : '') + paymentChange + (note ? ' — ' + escapeDeliveryHtml(note) : '') + '</div>';
           }).join('');
           return '<article style="background:var(--bg-main);border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:8px;">' +

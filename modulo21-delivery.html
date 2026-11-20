@@ -1,10 +1,4 @@
-<!DOCTYPE ht
-
-    <nav class="delivery-workspace-tabs" aria-label="Áreas do Delivery">
-      <button type="button" class="delivery-workspace-tab active" data-delivery-tab="orders" aria-selected="true" onclick="setDeliveryWorkspaceTab('orders')">📦 Pedidos</button>
-      <button type="button" class="delivery-workspace-tab" data-delivery-tab="routes" aria-selected="false" onclick="setDeliveryWorkspaceTab('routes')">🛵 Rotas & Entregadores</button>
-    </nav>
-ml>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -145,7 +139,14 @@ ml>
     .delivery-workspace-tab:hover { color:var(--text-main); background:rgba(148,163,184,.10); }
     .delivery-workspace-tab.active { color:#fff; background:var(--primary); border-color:var(--primary); }
     .delivery-workspace-panel[hidden] { display:none !important; }
-    @media (max-width:520px) { .delivery-workspace-tabs { position:sticky; top:0; z-index:20; margin:0 -2px 14px; } .delivery-workspace-tab { padding:9px 6px; font-size:.78rem; } }
+    @media (max-width:520px) {
+      .delivery-workspace-tabs { position:static; display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 14px; padding:5px; }
+      .delivery-workspace-tab { min-width:0; min-height:42px; padding:9px 5px; font-size:.76rem; line-height:1.25; white-space:normal; }
+      .main-content { min-width:0; }
+      header h1 { font-size:1.15rem; line-height:1.3; }
+      .header-left { min-width:0; gap:10px; }
+      header > div:last-child { width:100%; justify-content:flex-start !important; }
+    }
 
     .suggestion-item-row { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
@@ -231,6 +232,11 @@ ml>
         </div>
       </div>
     </header>
+
+    <nav class="delivery-workspace-tabs" aria-label="Áreas do Delivery">
+      <button type="button" class="delivery-workspace-tab active" data-delivery-tab="orders" aria-selected="true" onclick="setDeliveryWorkspaceTab('orders')">📦 Pedidos</button>
+      <button type="button" class="delivery-workspace-tab" data-delivery-tab="routes" aria-selected="false" onclick="setDeliveryWorkspaceTab('routes')">🛵 Rotas & Entregadores</button>
+    </nav>
 
     <section class="delivery-workspace-panel" id="deliveryWorkspaceRoutes" data-delivery-panel="routes" hidden>
     <div class="card-box">

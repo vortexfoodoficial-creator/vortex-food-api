@@ -216,7 +216,7 @@ BEGIN
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
-            AND (e.stop_id=s.id OR e.order_id=s.order_id)),
+            AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
     'distance_km',s.distance_km,
     'courier_payment_amount',s.courier_payment_amount,
     'courier_payment_rule_label',s.courier_payment_rule_label,
@@ -280,7 +280,7 @@ BEGIN
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
-            AND (e.stop_id=s.id OR e.order_id=s.order_id)),
+            AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
     'distance_km',s.distance_km,
     'courier_user_id',s.delivered_by_user_id,
     'courier_name',COALESCE(NULLIF(m.display_name,''),NULLIF(u.raw_user_meta_data->>'display_name',''),'Motoboy não identificado'),
@@ -359,7 +359,7 @@ BEGIN
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
-            AND (e.stop_id=s.id OR e.order_id=s.order_id)),
+            AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
           'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.stop_id=s.id
@@ -462,7 +462,7 @@ BEGIN
           ) ORDER BY e.created_at),'[]'::jsonb)
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.route_id=s.route_id
-            AND (e.stop_id=s.id OR e.order_id=s.order_id)),
+            AND (e.stop_id=s.id OR e.order_id=s.order_id OR (e.stop_id IS NULL AND e.order_id IS NULL))),
           'completion_method',(SELECT e.details->>'method'
           FROM public.vortex_delivery_route_events e
           WHERE e.store_id=s.store_id AND e.stop_id=s.id

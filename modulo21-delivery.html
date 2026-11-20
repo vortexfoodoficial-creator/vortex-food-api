@@ -1354,7 +1354,7 @@
                 escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +
                 '<div style="color:var(--text-muted);margin-top:3px;">' + escapeDeliveryHtml(stop.address || 'Endereço não informado') + '</div>' +
                 (stop.occurrence_notes ? '<div style="color:var(--warning);margin-top:3px;">' + escapeDeliveryHtml(stop.occurrence_type || 'Ocorrência') + ': ' + escapeDeliveryHtml(stop.occurrence_notes) + '</div>' : '') +
-                '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Valor da entrega: ' +
+                '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Valor da entrega repassado ao motoboy: ' +
                 (stop.courier_payment_amount == null ? '<strong style="color:var(--warning);">Valor não definido</strong>' :
                   '<strong style="color:var(--success);">' + Number(stop.courier_payment_amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + '</strong>') +
                 '</div>' +
@@ -1741,7 +1741,7 @@
             '<div style="font-size:.8rem;margin-top:6px;">Pedido <strong>#' + escapeDeliveryHtml(row.display_id || row.order_id) + '</strong> · ' +
             escapeDeliveryHtml(row.customer_name || 'Cliente') + '</div>' +
             '<div style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">' + escapeDeliveryHtml(row.address || 'Endereço não informado') + '</div>' +
-            '<div style="font-size:.8rem;margin-top:7px;">Valor da entrega: ' + amount + '</div></article>';
+            '<div style="font-size:.8rem;margin-top:7px;">Valor da entrega repassado ao motoboy: ' + amount + '</div></article>';
         }).join('');
       } catch (error) {
         content.innerHTML = '<div style="color:var(--danger);padding:14px;">Não foi possível consultar o histórico: ' + escapeDeliveryHtml(error.message || 'Erro de conexão') + '</div>';
@@ -2189,7 +2189,7 @@
       const canAssign = permissions.includes('delivery.assign');
       const canConfirm = permissions.includes('delivery.confirm');
       const canManualFinish = permissions.includes('delivery.manual_finish');
-      const canManagePayment = permissions.includes('delivery.dispatch_manage');
+      const canManagePayment = permissions.includes('delivery.dispatch_manage') || permissions.includes('delivery.manage');
       const todayDateStr = getLocalDateStr(new Date());
       const isDeliveryAccount = window.VORTEX_AUTH_CONTEXT?.profile_key === 'delivery';
       const currentUserId = String(window.VORTEX_AUTH_CONTEXT?.user_id || '');
@@ -2240,7 +2240,7 @@
         const change = Number(o.change) || 0;
         const changeInfoHtml = o.payment === 'Dinheiro' && cashGiven > 0
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
-        const pixStatusLabel = o.payment === 'Pix' ? (o.payment_status === 'paid' ? ' · Pix já pago' : o.payment_status === 'pending' ? ' · Pix a cobrar na entrega' : ' · Situação do Pix não informada') : '';
+        const pixStatusLabel = String(o.payment || '').toLowerCase() === 'pix' ? (o.payment_status === 'paid' ? ' · Pix já pago' : o.payment_status === 'pending' ? ' · Pix a cobrar na entrega' : ' · Situação do Pix não informada') : '';
         const paymentEditButton = canManagePayment ? `<button class="btn-secondary" style="padding:3px 7px;font-size:.7rem;margin-left:6px;" onclick="openDeliveryPaymentModal('${o.id}')">✏️ Editar pagamento</button>` : '';
         return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${pixStatusLabel}${changeInfoHtml}${paymentEditButton}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');

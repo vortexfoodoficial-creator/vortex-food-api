@@ -6,7 +6,7 @@
   <title>Vortex Food - Delivery & Logística Inteligente</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-delivery-audit-36"></script>
+  <script src="supabase.js?v=20261120-courier-ledger-37"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -249,6 +249,7 @@
         <span>🛵 Gestão de Entregadores & Roteirização Automática</span>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn-secondary" onclick="openCourierHistoryModal()">📋 Histórico Entregas</button>
+          <button class="btn-secondary" onclick="openCourierPayoutModal()">💰 Financeiro dos Motoboys</button>
           <button class="btn-secondary" onclick="openCourierModal()">➕ Cadastrar Entregador</button>
         </div>
       </div>
@@ -474,6 +475,52 @@
         <div style="color:var(--text-muted);text-align:center;padding:15px;">Carregando...</div>
       </div>
       <button class="btn-secondary" style="width:100%;text-align:center;" onclick="closeCourierHistoryModal()">Fechar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="courierPayoutModal">
+    <div class="custom-modal-card" style="max-width:760px;">
+      <div style="font-size:1.2rem;font-weight:bold;margin-bottom:12px;">💰 Financeiro dos Motoboys</div>
+      <div class="form-row" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label for="courierPayoutPeriod">Período</label>
+          <select id="courierPayoutPeriod" onchange="handleCourierPayoutPeriodChange()">
+            <option value="today">Hoje</option><option value="yesterday">Ontem</option>
+            <option value="week">Esta semana</option><option value="month">Este mês</option>
+            <option value="custom">Data específica / intervalo</option>
+          </select>
+        </div>
+        <div class="form-group" id="courierPayoutDateFields" style="display:none;">
+          <label for="courierPayoutStartDate">De / até</label>
+          <div style="display:flex;gap:6px;">
+            <input type="date" id="courierPayoutStartDate" onchange="loadCourierPayouts()" aria-label="Data inicial">
+            <input type="date" id="courierPayoutEndDate" onchange="loadCourierPayouts()" aria-label="Data final">
+          </div>
+        </div>
+      </div>
+      <div id="courierPayoutSummary" style="font-size:.82rem;color:var(--text-muted);background:var(--bg-main);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:10px;">Consultando financeiro...</div>
+      <div id="courierPayoutContent" style="max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-bottom:14px;">Carregando...</div>
+      <button class="btn-secondary" style="width:100%;" onclick="closeCourierPayoutModal()">Fechar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="courierPayoutPaymentModal">
+    <div class="custom-modal-card" style="max-width:440px;">
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:12px;">Registrar repasse ao motoboy</div>
+      <input type="hidden" id="courierPayoutStopId">
+      <div id="courierPayoutPaymentAmount" style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px;"></div>
+      <div class="form-group"><label for="courierPayoutPaymentMethod">Forma de pagamento</label>
+        <select id="courierPayoutPaymentMethod">
+          <option value="pix">Pix</option><option value="transferencia">Transferência bancária</option>
+          <option value="dinheiro">Dinheiro</option><option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-group"><label for="courierPayoutPaymentReference">Comprovante / referência (opcional)</label><input type="text" id="courierPayoutPaymentReference" maxlength="160" placeholder="Identificação do comprovante"></div>
+      <div class="form-group"><label for="courierPayoutPaymentNotes">Observações (opcional)</label><textarea id="courierPayoutPaymentNotes" rows="3" maxlength="500" placeholder="Observações do repasse"></textarea></div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button class="btn-secondary" style="flex:1;" onclick="closeCourierPayoutPaymentModal()">Cancelar</button>
+        <button class="btn-modal-primary" style="flex:1;margin:0;" onclick="saveCourierPayoutPayment()">Confirmar pagamento</button>
+      </div>
     </div>
   </div>
 
@@ -1793,6 +1840,135 @@
       } catch (error) {
         content.innerHTML = '<div style="color:var(--danger);padding:14px;">Não foi possível consultar o histórico: ' + escapeDeliveryHtml(error.message || 'Erro de conexão') + '</div>';
         summary.textContent = 'Falha ao carregar o histórico.';
+      }
+    }
+
+    function courierPayoutRange(period) {
+      return courierHistoryRange(period);
+    }
+
+    function openCourierPayoutModal() {
+      const modal=document.getElementById('courierPayoutModal');
+      if (!modal) return;
+      modal.classList.add('active');
+      document.getElementById('courierPayoutPeriod').value='today';
+      handleCourierPayoutPeriodChange();
+    }
+
+    function closeCourierPayoutModal() {
+      document.getElementById('courierPayoutModal').classList.remove('active');
+    }
+
+    function handleCourierPayoutPeriodChange() {
+      const period=document.getElementById('courierPayoutPeriod').value;
+      const custom=period==='custom';
+      document.getElementById('courierPayoutDateFields').style.display=custom?'block':'none';
+      if(!custom) {
+        const range=courierPayoutRange(period);
+        document.getElementById('courierPayoutStartDate').value=range.start;
+        document.getElementById('courierPayoutEndDate').value=range.end;
+      }
+      loadCourierPayouts();
+    }
+
+    async function loadCourierPayouts() {
+      const summary=document.getElementById('courierPayoutSummary');
+      const host=document.getElementById('courierPayoutContent');
+      if(!summary||!host||!window.VortexDelivery?.fetchCourierEarnings) return;
+      const period=document.getElementById('courierPayoutPeriod').value;
+      const range=period==='custom'
+        ? {start:document.getElementById('courierPayoutStartDate').value,end:document.getElementById('courierPayoutEndDate').value}
+        : courierPayoutRange(period);
+      if(!range.start||!range.end||range.start>range.end) {
+        summary.textContent='Selecione um intervalo válido.';
+        host.innerHTML='';
+        return;
+      }
+      summary.textContent='Consultando os repasses registrados no servidor...';
+      host.innerHTML='<div style="padding:12px;color:var(--text-muted);">Carregando lançamentos...</div>';
+      try {
+        const result=await window.VortexDelivery.fetchCourierEarnings(range.start,range.end);
+        if(result.error) throw result.error;
+        const rows=Array.isArray(result.data)?result.data:[];
+        const valued=rows.filter(row=>row.amount!=null);
+        const due=valued.filter(row=>row.payout_status==='pending').reduce((sum,row)=>sum+Number(row.amount||0),0);
+        const paid=valued.filter(row=>row.payout_status==='paid').reduce((sum,row)=>sum+Number(row.amount||0),0);
+        const total=due+paid;
+        summary.innerHTML='<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;">' +
+          '<span>Total calculado: <strong>'+total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</strong></span>' +
+          '<span style="color:var(--warning);">Pendente: <strong>'+due.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</strong></span>' +
+          '<span style="color:var(--success);">Já pago: <strong>'+paid.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</strong></span></div>' +
+          '<div style="font-size:.72rem;margin-top:6px;">'+rows.length+' entrega(s) · '+rows.filter(row=>row.amount==null).length+' sem remuneração definida</div>';
+        if(!rows.length) {
+          host.innerHTML='<div style="padding:18px;text-align:center;color:var(--text-muted);">Nenhum repasse registrado neste período.</div>';
+          return;
+        }
+        const groups=new Map();
+        rows.forEach(row=>{
+          const key=String(row.courier_user_id||'unknown');
+          if(!groups.has(key)) groups.set(key,{name:row.courier_name||'Motoboy',rows:[]});
+          groups.get(key).rows.push(row);
+        });
+        host.innerHTML=Array.from(groups.values()).map(group=>{
+          const groupRows=group.rows;
+          const groupTotal=groupRows.filter(x=>x.amount!=null).reduce((sum,x)=>sum+Number(x.amount||0),0);
+          const groupDue=groupRows.filter(x=>x.amount!=null&&x.payout_status==='pending').reduce((sum,x)=>sum+Number(x.amount||0),0);
+          const groupPaid=groupRows.filter(x=>x.amount!=null&&x.payout_status==='paid').reduce((sum,x)=>sum+Number(x.amount||0),0);
+          return '<section style="border:1px solid var(--border);border-radius:11px;padding:11px;margin-bottom:10px;background:var(--bg-main);">' +
+            '<div style="font-weight:800;">'+escapeDeliveryHtml(group.name)+'</div>' +
+            '<div style="font-size:.74rem;color:var(--text-muted);margin:4px 0 8px;">'+groupRows.length+' entrega(s) · Total '+groupTotal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+
+            ' · Pendente '+groupDue.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+' · Pago '+groupPaid.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div>' +
+            groupRows.map(row=>{
+              const amount=row.amount==null?'Valor não definido':Number(row.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+              const paid=row.payout_status==='paid';
+              return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
+                '<div><strong>Pedido #'+escapeDeliveryHtml(row.display_id||row.order_id)+'</strong> · '+dispatchDate(row.delivered_at)+'</div>' +
+                '<div style="margin-top:3px;">Remuneração: <strong>'+amount+'</strong> · '+(paid?'<span style="color:var(--success);font-weight:800;">Pago</span>':'<span style="color:var(--warning);font-weight:800;">Pendente</span>')+'</div>' +
+                (paid?'<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Pago em '+dispatchDate(row.paid_at)+' · '+escapeDeliveryHtml(row.payment_method||'Forma não informada')+(row.payment_reference?' · Ref.: '+escapeDeliveryHtml(row.payment_reference):'')+'</div>':
+                  (row.amount==null?'':'<button class="btn-secondary" type="button" style="margin-top:6px;" onclick="openCourierPayoutPaymentModal(\''+escapeDeliveryHtml(row.stop_id)+'\',\''+escapeDeliveryHtml(amount)+'\')">Registrar repasse pago</button>'))+
+              '</div>';
+            }).join('')+'</section>';
+        }).join('');
+      } catch(error) {
+        summary.textContent='Não foi possível consultar os repasses: '+(error.message||'erro de conexão');
+        host.innerHTML='';
+      }
+    }
+
+    function openCourierPayoutPaymentModal(stopId,amount) {
+      document.getElementById('courierPayoutStopId').value=stopId;
+      document.getElementById('courierPayoutPaymentAmount').textContent='Valor do repasse: '+amount;
+      document.getElementById('courierPayoutPaymentMethod').value='pix';
+      document.getElementById('courierPayoutPaymentReference').value='';
+      document.getElementById('courierPayoutPaymentNotes').value='';
+      document.getElementById('courierPayoutPaymentModal').classList.add('active');
+    }
+
+    function closeCourierPayoutPaymentModal() {
+      document.getElementById('courierPayoutPaymentModal').classList.remove('active');
+    }
+
+    async function saveCourierPayoutPayment() {
+      const stopId=document.getElementById('courierPayoutStopId').value;
+      const button=document.querySelector('#courierPayoutPaymentModal .btn-modal-primary');
+      if(!stopId||!window.VortexDelivery?.markCourierPaymentPaid) return;
+      button.disabled=true; button.textContent='Registrando...';
+      try {
+        const result=await window.VortexDelivery.markCourierPaymentPaid(
+          stopId,
+          document.getElementById('courierPayoutPaymentMethod').value,
+          document.getElementById('courierPayoutPaymentReference').value.trim(),
+          document.getElementById('courierPayoutPaymentNotes').value.trim()
+        );
+        if(result.error) throw result.error;
+        closeCourierPayoutPaymentModal();
+        showNoticeModal('Repasse registrado','O lançamento foi marcado como pago e entrou na linha do tempo da entrega.','✅');
+        await loadCourierPayouts();
+        await loadDispatchRoutes();
+      } catch(error) {
+        showNoticeModal('Não foi possível registrar o repasse',error.message||'Verifique a conexão e tente novamente.','⚠️');
+      } finally {
+        button.disabled=false; button.textContent='Confirmar pagamento';
       }
     }
 

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>Vortex Food | Painel do Motoboy</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-delivery-audit-36"></script>
+  <script src="supabase.js?v=20261120-courier-ledger-37"></script>
   <style>
     :root {
       --bg-main:#0f172a; --bg-card:#1e293b; --bg-soft:#172337;
@@ -318,13 +318,29 @@
         const result = await window.VortexDelivery.fetchHistory(range.start,range.end,true);
         if (result.error) throw result.error;
         const rows = Array.isArray(result.data) ? result.data : [];
-        const known = rows.filter(row => row.courier_payment_amount != null);
-        const pending = rows.length-known.length;
-        const total = known.reduce((sum,row) => sum + Number(row.courier_payment_amount || 0),0);
+        let payouts = [];
+        let payoutLoadError = '';
+        if (window.VortexDelivery.fetchCourierEarnings) {
+          try {
+            const payoutResult = await window.VortexDelivery.fetchCourierEarnings(range.start,range.end);
+            if (payoutResult.error) throw payoutResult.error;
+            payouts = Array.isArray(payoutResult.data) ? payoutResult.data : [];
+          } catch (payoutError) {
+            payoutLoadError = payoutError.message || 'Não foi possível consultar os repasses.';
+          }
+        }
+        const payoutByOrder = new Map(payouts.map(item => [String(item.order_id),item]));
+        const known = payouts.filter(item => item.amount != null);
+        const pendingAmount = known.filter(item => item.payout_status === 'pending').reduce((sum,item) => sum + Number(item.amount || 0),0);
+        const paidAmount = known.filter(item => item.payout_status === 'paid').reduce((sum,item) => sum + Number(item.amount || 0),0);
+        const total = known.reduce((sum,item) => sum + Number(item.amount || 0),0);
+        const pending = payouts.filter(item => item.amount == null).length;
         const paymentCounts = rows.reduce((counts,row) => { const method=String(row.payment_method||'').toLowerCase(); if(method==='pix' && row.payment_status==='paid') counts.pixPaid++; else if(method==='pix') counts.pixPending++; else if(method==='dinheiro') counts.cash++; else if(method) counts.card++; return counts; },{pixPaid:0,pixPending:0,cash:0,card:0});
-        summary.innerHTML = '<div class="meta-label">Total a receber</div><div class="meta-value" style="color:var(--success)">' +
-          money(total) + '</div><div class="small muted" style="margin-top:5px;">' + rows.length + ' entrega(s) · ' +
-          pending + ' sem valor definido</div><div class="small muted" style="margin-top:6px;">Pagamentos registrados: Pix pago ' + paymentCounts.pixPaid + ' · Pix pendente ' + paymentCounts.pixPending + ' · Dinheiro ' + paymentCounts.cash + ' · Cartão/vale ' + paymentCounts.card + '</div>';
+        summary.innerHTML = '<div class="meta-label">Remuneração das entregas</div><div class="meta-value" style="color:var(--success)">' +
+          money(total) + '</div><div class="small muted" style="margin-top:5px;">A receber: ' + money(pendingAmount) + ' · Já recebido: ' + money(paidAmount) +
+          ' · ' + pending + ' entrega(s) sem valor definido</div>' +
+          (payoutLoadError ? '<div class="small" style="color:var(--warning);margin-top:5px;">Financeiro ainda não sincronizado: ' + escapeHtml(payoutLoadError) + '</div>' : '') +
+          '<div class="small muted" style="margin-top:6px;">Pagamentos dos clientes: Pix pago ' + paymentCounts.pixPaid + ' · Pix pendente ' + paymentCounts.pixPending + ' · Dinheiro ' + paymentCounts.cash + ' · Cartão/vale ' + paymentCounts.card + '</div>';
         if (!rows.length) {
           host.innerHTML = '<p class="small muted">Nenhuma entrega concluída neste período.</p>';
           return;
@@ -361,6 +377,10 @@
               '<div class="small"><strong>Pagamento:</strong> ' + escapeHtml(method) + ' · ' + escapeHtml(paymentState) + '</div>' +
               '<div class="small" style="margin-top:3px;"><strong>Valor do pedido:</strong> ' + paymentValue + '</div>' + cashInfo +
               '<div class="small" style="margin-top:6px;">Valor da entrega repassado a você: ' + value + '</div>' +
+              (payoutByOrder.has(String(row.order_id)) ? '<div class="small" style="margin-top:4px;"><strong>Situação do repasse:</strong> ' +
+                (payoutByOrder.get(String(row.order_id)).payout_status === 'paid'
+                  ? 'Recebido em ' + dateTime(payoutByOrder.get(String(row.order_id)).paid_at) + ' · ' + escapeHtml(payoutByOrder.get(String(row.order_id)).payment_method || 'Forma não informada')
+                  : 'Pendente de repasse pelo estabelecimento') + '</div>' : '<div class="small muted" style="margin-top:4px;">Situação do repasse indisponível.</div>') +
             '</div>' +
             '<div class="small muted" style="margin-top:8px;"><strong>Comprovante:</strong> ' + escapeHtml(completion) + ' · Concluída em ' + dateTime(row.delivered_at) + '</div>' +
             (timeline ? '<details style="margin-top:8px;"><summary class="small" style="cursor:pointer;font-weight:800;">Linha do tempo e ocorrências</summary>' + timeline + '</details>' : '') +
@@ -416,7 +436,7 @@
     }
 
     function normalizeCustomerWhatsAppPhone(value) {
-      let digits = String(value || '').replace(/\\D/g,'');
+      let digits = String(value || '').replace(/\D/g,'');
       if (digits.startsWith('0055')) digits = digits.slice(2);
       if (digits.startsWith('0') && digits.length >= 11) digits = digits.slice(1);
       if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return digits;
@@ -432,7 +452,7 @@
         if (normalized) return normalized;
       }
       const raw = String((stop && (stop.customer_name || stop.client)) || '');
-      const match = raw.match(/(?:\\+?55\\s*)?(?:\\(?\\d{2}\\)?\\s*)?9?\\d{4}[-.\\s]?\\d{4}/);
+      const match = raw.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-.\s]?\d{4}/);
       return match ? normalizeCustomerWhatsAppPhone(match[0]) : '';
     }
 
@@ -458,9 +478,8 @@
         return escapeHtml(qty + '× ' + (item.name || item.title || 'Item'));
       }).join('<br>') : 'Itens não informados';
       const display = stop.display_id || stop.order_id;
-      const phone = String(stop.customer_phone || '').replace(/[^0-9+]/g,'');
-      const phoneDigits = phone.replace(/\D/g,'');
-      const whatsappNumber = phoneDigits.startsWith('55') ? phoneDigits : ((phoneDigits.length===10 || phoneDigits.length===11) ? '55'+phoneDigits : '');
+      const whatsappNumber = getStopWhatsAppNumber(stop);
+      const phone = whatsappNumber ? '+' + whatsappNumber : '';
       const whatsappMessage = 'Olá, ' + (stop.customer_name || 'tudo bem') + '! Aqui é o entregador do pedido #' + display + '. Estou entrando em contato sobre sua entrega.';
       const whatsappUrl = whatsappNumber ? 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(whatsappMessage) : '';
       const address = String(stop.address || '');

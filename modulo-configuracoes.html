@@ -712,7 +712,7 @@
       document.getElementById('freeDeliveryFields').style.display = isChecked ? 'block' : 'none';
     }
 
-    let bairrosData = [{ name: 'Centro', fee: '5,00' }];
+    let bairrosData = [];
     function renderBairrosList() {
       const container = document.getElementById('bairrosListContainer');
       container.innerHTML = '';
@@ -726,9 +726,9 @@
         `;
       });
     }
-    function addNewBairroRow() { bairrosData.push({ name: '', fee: '0,00' }); renderBairrosList(); }
+    function addNewBairroRow() { bairrosData.push({ name: '', fee: '' }); renderBairrosList(); }
 
-    let kmRangesData = [{ kmStart: '0', kmEnd: '5', price: '7,00' }];
+    let kmRangesData = [];
     function renderKmRangesList() {
       const container = document.getElementById('kmRangesContainer');
       container.innerHTML = '';
@@ -743,7 +743,7 @@
         `;
       });
     }
-    function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '0,00' }); renderKmRangesList(); }
+    function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '' }); renderKmRangesList(); }
     let courierPaymentNeighborhoodsData = [];
     function escapeCourierPaymentHtml(value) {
       return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -759,7 +759,7 @@
         </div>`).join('') || '<div style="font-size:.78rem;color:var(--text-muted);">Nenhum bairro configurado.</div>';
     }
     function addCourierPaymentNeighborhood() {
-      courierPaymentNeighborhoodsData.push({name:'',amount:'0,00'});
+      courierPaymentNeighborhoodsData.push({name:'',amount:''});
       renderCourierPaymentNeighborhoods();
     }
     function toggleCourierPaymentMode(mode) {
@@ -1147,9 +1147,13 @@
             const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
             return normalized === '' ? null : Number(normalized);
           };
+          const courierRate = parseBRL(courierPaymentMode === 'per_km' ? courierPaymentKmAmount : courierPaymentFixedAmount);
+          if (courierPaymentMode === 'per_km' && (courierRate == null || !Number.isFinite(courierRate) || courierRate <= 0)) {
+            throw new Error('Informe um valor válido por quilômetro na seção Remuneração dos Entregadores.');
+          }
           const savedRules = await window.VortexDelivery.savePaymentRules({
             mode: courierPaymentMode,
-            fixedAmount: parseBRL(courierPaymentMode === 'per_km' ? courierPaymentKmAmount : courierPaymentFixedAmount),
+            fixedAmount: courierRate,
             neighborhoodRates: courierPaymentNeighborhoods.map(item => ({
               name: item.name,
               amount: String(parseBRL(item.amount))

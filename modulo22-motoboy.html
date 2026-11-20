@@ -435,7 +435,7 @@
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(maps)}')">🗺️ Google Maps</button>
             <button class="btn btn-secondary" type="button" onclick="openNavigation('${escapeHtml(waze)}')">🚗 Waze</button>
             ${phone ? '<a class="btn btn-secondary wide" href="tel:' + escapeHtml(phone) + '">☎ Ligar para o cliente</a>' : ''}
-            ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\\'' + escapeHtml(stop.order_id) + '\\',\\'' + escapeHtml(display) + '\\')">✓ Confirmar entrega com código</button>' : ''}
+            ${isPending && stop.requires_customer_code ? '<button class="btn btn-success wide" type="button" onclick="openCodeModal(\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">✓ Confirmar entrega com código</button>' : ''}
             ${isPending && !stop.requires_customer_code ? '<div class="small muted wide" style="padding:8px 0;">A confirmação desta entrega será registrada pelo estabelecimento.</div>' : ''}
             ${status === 'in_progress' ? '<button class="btn btn-danger wide" type="button" onclick="openOccurrenceModal(\'' + escapeHtml(route.id) + '\',\'' + escapeHtml(stop.order_id) + '\',\'' + escapeHtml(display) + '\')">⚠ Informar ocorrência</button>' : ''}
           </div>

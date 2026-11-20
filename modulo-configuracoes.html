@@ -1124,11 +1124,15 @@
       // 2. Sincroniza as configurações completas e os campos principais na nuvem.
       let cloudSyncSuccess = true;
       let cloudSyncMessage = '';
+      let documentCloudSaved = false;
+      let courierRulesCloudSaved = false;
+      let baseSettingsCloudSaved = false;
 
       if (typeof dbSaveStoreDocument === 'function') {
         try {
           const documentResult = await dbSaveStoreDocument('settings', payload);
           if (documentResult && documentResult.error) throw documentResult.error;
+          documentCloudSaved = true;
         } catch (error) {
           cloudSyncSuccess = false;
           cloudSyncMessage = error.message || 'Falha ao salvar as configurações completas.';
@@ -1160,6 +1164,8 @@
             }))
           });
           if (!savedRules || savedRules.error) throw (savedRules && savedRules.error) || new Error('O servidor não confirmou a remuneração.');
+          if (!savedRules.data || savedRules.data.success !== true) throw new Error('O servidor não confirmou a gravação da remuneração.');
+          courierRulesCloudSaved = true;
         } catch (error) {
           cloudSyncSuccess = false;
           cloudSyncMessage = error.message || 'Falha ao sincronizar a remuneração dos entregadores.';
@@ -1187,6 +1193,7 @@
             .from('vortex_store_settings')
             .upsert([dbPayload], { onConflict: 'store_id,id' });
           if (error) throw error;
+          baseSettingsCloudSaved = true;
         } catch (error) {
           cloudSyncSuccess = false;
           cloudSyncMessage = cloudSyncMessage || error.message || 'Falha ao salvar os dados principais.';
@@ -1199,9 +1206,13 @@
 
       await loadStoreSettings();
       if (cloudSyncSuccess) {
-        showNoticeModal('Configurações Salvas!', 'As configurações foram salvas neste estabelecimento e sincronizadas com a nuvem.', '🎉');
+        showNoticeModal('Configurações Salvas!', 'As configurações gerais, os dados principais e as regras de remuneração foram confirmados na nuvem deste estabelecimento.', '🎉');
+      } else if (documentCloudSaved && baseSettingsCloudSaved) {
+        showNoticeModal('Configurações principais sincronizadas', 'Os dados gerais foram gravados na nuvem, mas a remuneração dos entregadores não foi confirmada. ' + cloudSyncMessage + ' Corrija a remuneração antes de usar os valores em outra tela.', '⚠️');
+      } else if (documentCloudSaved || baseSettingsCloudSaved) {
+        showNoticeModal('Sincronização parcial', 'Parte das configurações foi gravada na nuvem, mas outra parte falhou. ' + cloudSyncMessage + ' Confira a conexão e tente salvar novamente.', '⚠️');
       } else {
-        showNoticeModal('Salvo neste aparelho', 'As alterações ficaram salvas localmente, mas a sincronização com a nuvem não foi confirmada. ' + cloudSyncMessage + ' Verifique a conexão antes de utilizar outro dispositivo.', '⚠️');
+        showNoticeModal('Sincronização não confirmada', 'As alterações estão apenas neste aparelho. A nuvem não confirmou a gravação. ' + cloudSyncMessage + ' Não utilize outro dispositivo até corrigir a sincronização.', '⚠️');
       }
     }
 

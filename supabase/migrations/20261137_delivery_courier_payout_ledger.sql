@@ -36,7 +36,7 @@ BEGIN
   END IF;
   FOR v_item IN SELECT value FROM jsonb_array_elements(v_rates) LOOP
     IF length(trim(COALESCE(v_item->>'name','')))<2
-       OR COALESCE(v_item->>'amount','') !~ '^\d{1,8}([.,]\d{1,2})?$'
+       OR COALESCE(v_item->>'amount','') !~ '^[0-9]{1,8}([.,][0-9]{1,2})?$'
        OR replace(v_item->>'amount',',','.')::numeric<0
        OR replace(v_item->>'amount',',','.')::numeric>10000 THEN
       RAISE EXCEPTION 'Revise os bairros e valores informados na remuneração.';

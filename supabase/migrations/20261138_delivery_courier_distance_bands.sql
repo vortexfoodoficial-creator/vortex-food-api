@@ -3,6 +3,9 @@
 -- a armazenar objetos {kmStart, kmEnd, amount}. Valores históricos já congelados não são reescritos.
 BEGIN;
 
+ALTER TABLE public.vortex_delivery_courier_payment_rules
+  ADD COLUMN IF NOT EXISTS distance_ranges jsonb NOT NULL DEFAULT '[]'::jsonb;
+
 CREATE OR REPLACE FUNCTION public.rpc_save_delivery_courier_payment_rules(
   p_store_id uuid,
   p_mode text,
@@ -83,19 +86,53 @@ BEGIN
   END IF;
 
   INSERT INTO public.vortex_delivery_courier_payment_rules(
-    store_id,mode,fixed_amount,neighborhood_rates,updated_by,updated_at
+    store_id,mode,fixed_amount,neighborhood_rates,distance_ranges,updated_by,updated_at
   ) VALUES (
     p_store_id,p_mode,CASE WHEN p_mode='fixed' THEN p_fixed_amount ELSE NULL END,
-    v_rates,auth.uid(),now()
+    CASE WHEN p_mode='neighborhood' THEN v_rates ELSE '[]'::jsonb END,
+    CASE WHEN p_mode='per_km' THEN v_rates ELSE '[]'::jsonb END,
+    auth.uid(),now()
   )
   ON CONFLICT (store_id) DO UPDATE SET
     mode=EXCLUDED.mode,
     fixed_amount=EXCLUDED.fixed_amount,
     neighborhood_rates=EXCLUDED.neighborhood_rates,
+    distance_ranges=EXCLUDED.distance_ranges,
     updated_by=EXCLUDED.updated_by,
     updated_at=now();
 
   RETURN jsonb_build_object('success',true,'mode',p_mode,'configured',true);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.rpc_get_delivery_courier_payment_rules(p_store_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT (
+    public.vortex_user_has_permission(p_store_id,'settings.manage')
+    OR public.vortex_user_has_permission(p_store_id,'delivery.dispatch_view')
+    OR public.vortex_user_has_permission(p_store_id,'delivery.route_view')
+  ) THEN
+    RAISE EXCEPTION 'Seu perfil não pode consultar a remuneração dos entregadores.';
+  END IF;
+  SELECT jsonb_build_object(
+    'mode',mode,'fixed_amount',fixed_amount,
+    'neighborhood_rates',neighborhood_rates,
+    'distance_ranges',distance_ranges,
+    'updated_at',updated_at
+  ) INTO v_result
+  FROM public.vortex_delivery_courier_payment_rules
+  WHERE store_id=p_store_id;
+  RETURN COALESCE(v_result,jsonb_build_object(
+    'mode','fixed','fixed_amount',NULL,
+    'neighborhood_rates','[]'::jsonb,'distance_ranges','[]'::jsonb
+  ));
 END;
 $function$;
 
@@ -129,7 +166,7 @@ BEGIN
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'A rota não está ativa.'; END IF;
 
-  SELECT mode,neighborhood_rates INTO v_mode,v_rates
+  SELECT mode,distance_ranges INTO v_mode,v_rates
   FROM public.vortex_delivery_courier_payment_rules
   WHERE store_id=p_store_id;
   IF NOT FOUND OR v_mode<>'per_km' THEN

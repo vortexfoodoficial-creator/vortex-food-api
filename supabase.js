@@ -714,7 +714,7 @@ async function dbOptimizeDeliveryRoute(orderIds) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
   const ids = Array.from(new Set((Array.isArray(orderIds) ? orderIds : []).map(id => String(id || '').trim()).filter(Boolean)));
-  if (!ids.length || ids.length > 25) return { data: null, error: new Error('Selecione entre 1 e 25 pedidos para otimizar.') };
+  if (!ids.length || ids.length > 24) return { data: null, error: new Error('Selecione entre 1 e 24 pedidos para otimizar.') };
   return await supabase.functions.invoke('calculate-delivery-distance', {
     body: { action: 'optimize', order_ids: ids }
   });

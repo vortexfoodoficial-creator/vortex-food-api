@@ -732,9 +732,10 @@
       const container = document.getElementById('kmRangesContainer');
       container.innerHTML = '';
       kmRangesData.forEach((k, idx) => {
+        const startLabel = idx === 0 ? 'De' : 'Acima de';
         container.innerHTML += `
           <div style="display:flex; gap:6px; align-items:center; background:var(--bg-card); padding:6px; border-radius:6px; border:1px solid var(--border);">
-            <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${k.kmStart}" placeholder="De" aria-label="Quilometragem inicial" style="width:100%;min-width:0;padding:6px;font-size:.8rem;" oninput="maskNumber(this);kmRangesData[${idx}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+            <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${k.kmStart}" placeholder="${idx===0?'0':'Limite'}" aria-label="${startLabel} quilometragem" style="width:100%;min-width:0;padding:6px;font-size:.8rem;" oninput="maskNumber(this);kmRangesData[${idx}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
             <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${k.kmEnd}" placeholder="Até" aria-label="Quilometragem final" style="width:100%;min-width:0;padding:6px;font-size:.8rem;" oninput="maskNumber(this);kmRangesData[${idx}].kmEnd=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
             <input type="text" value="${k.price}" placeholder="Preço R$" aria-label="Taxa cobrada do cliente" style="flex:1;min-width:0;padding:6px;font-size:.8rem;" oninput="maskCurrency(this);kmRangesData[${idx}].price=this.value">
             <button type="button" onclick="kmRangesData.splice(${idx},1); renderKmRangesList();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button>
@@ -742,14 +743,18 @@
         `;
       });
     }
-    function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '' }); renderKmRangesList(); }
+    function addNewKmRow() {
+      const last = kmRangesData[kmRangesData.length - 1];
+      kmRangesData.push({kmStart:last && last.kmEnd !== '' ? String(Number(last.kmEnd)) : '0',kmEnd:'',price:''});
+      renderKmRangesList();
+    }
     let courierPaymentKmRangesData = [];
     function renderCourierPaymentKmRanges() {
       const host = document.getElementById('courierPaymentKmRangesContainer');
       if (!host) return;
       host.innerHTML = courierPaymentKmRangesData.map((item,index) => `
         <div style="display:flex;gap:6px;align-items:center;background:var(--bg-card);padding:7px;border-radius:8px;border:1px solid var(--border);">
-          <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${escapeCourierPaymentHtml(item.kmStart)}" placeholder="De" aria-label="Quilometragem inicial do repasse" style="width:100%;min-width:0;" oninput="maskNumber(this);courierPaymentKmRangesData[${index}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+          <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${escapeCourierPaymentHtml(item.kmStart)}" placeholder="${index===0?'0':'Limite'}" aria-label="${index===0?'De':'Acima de'} quilometragem do repasse" style="width:100%;min-width:0;" oninput="maskNumber(this);courierPaymentKmRangesData[${index}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
           <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${escapeCourierPaymentHtml(item.kmEnd)}" placeholder="Até" aria-label="Quilometragem final do repasse" style="width:100%;min-width:0;" oninput="maskNumber(this);courierPaymentKmRangesData[${index}].kmEnd=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
           <input type="text" value="${escapeCourierPaymentHtml(item.amount)}" placeholder="Repasse R$" aria-label="Valor pago ao motoboy" style="flex:1;min-width:0;" oninput="maskCurrency(this);courierPaymentKmRangesData[${index}].amount=this.value">
           <button type="button" aria-label="Remover faixa" onclick="courierPaymentKmRangesData.splice(${index},1);renderCourierPaymentKmRanges();" style="background:none;border:0;color:var(--danger);font-weight:bold;padding:6px;">✕</button>
@@ -771,7 +776,7 @@
         if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 500 || !raw || !Number.isFinite(amount) || amount < 0 || amount > 10000) {
           throw new Error('Revise as distâncias e os valores das faixas em ' + label + '.');
         }
-        return {kmStart:start,kmEnd:end,amount:amount.toFixed(2)};
+        return {kmStart:start,kmEnd:end,[priceKey]:amount.toFixed(2)};
       }).sort((a,b)=>a.kmStart-b.kmStart);
       if (normalized[0].kmStart !== 0) throw new Error('A primeira faixa de ' + label + ' precisa começar em 0 KM.');
       for (let i=1;i<normalized.length;i++) {

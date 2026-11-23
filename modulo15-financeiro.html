@@ -249,7 +249,7 @@
       <div class="metric-card">
         <span class="metric-title">Despesas / Sangrias</span>
         <span class="metric-value" style="color:var(--danger);" id="finExpensesTotal">R$ 0,00</span>
-        <span class="metric-sub">Contas e custos operacionais</span>
+        <span class="metric-sub">Despesas, sangrias e remuneração dos motoboys</span>
       </div>
 
       <div class="metric-card">
@@ -599,7 +599,7 @@
 
     function isDateInFilter(rawDate) {
       const itemDateStr = parseToLocalDateStr(rawDate);
-      if (!itemDateStr) return true;
+      if (!itemDateStr) return false;
 
       const today = new Date();
       const todayStr = getLocalDateStr(today);
@@ -1055,7 +1055,7 @@
       document.getElementById('finExpensesTotal').innerText = `R$ ${formatFloatToCurrency(totalOperatingExpenses)}`;
       document.getElementById('finCmvTotal').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
       document.getElementById('finNetProfit').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netProfit)}`;
-      document.getElementById('finProfitMargin').innerText = `Margem Líquida: ${profitMarginPct}%`;
+      document.getElementById('finProfitMargin').innerText = courierPayoutLoadError ? 'Margem indisponível' : `Margem Líquida: ${profitMarginPct}%`;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
       document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;

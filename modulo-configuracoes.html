@@ -6,7 +6,7 @@
   <title>Vortex Food - Configurações do Sistema</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261123-delivery-finance-week-fix-1"></script>
+  <script src="supabase.js?v=20261123-auto-distance-ranges-1"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -505,8 +505,9 @@
         </div>
         <div id="courierPaymentKmPanel" class="form-group" style="display:none;">
           <label for="courierPaymentKmAmount">Quanto o motoboy recebe por quilômetro (R$):</label>
-          <input type="text" id="courierPaymentKmAmount" placeholder="Ex.: 2,00 por km" oninput="maskCurrency(this)">
-          <p style="font-size:.73rem;color:var(--text-muted);margin-top:7px;">Na central de operações, o responsável informará a distância de cada entrega. O sistema calculará e registrará automaticamente o valor correspondente.</p>
+          <div id="courierPaymentKmRangesContainer" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+          <button type="button" class="btn-modal-secondary" onclick="addCourierPaymentKmRange()">➕ Adicionar faixa de KM</button>
+          <p style="font-size:.73rem;color:var(--text-muted);margin-top:7px;">O sistema calcula a distância real da rota automaticamente e aplica a faixa correspondente. Não será necessário informar quilômetros na Central de Operações.</p>
         </div>
         <div id="courierPaymentNeighborhoodPanel" style="display:none;">
           <div id="courierPaymentNeighborhoodsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
@@ -733,15 +734,53 @@
       kmRangesData.forEach((k, idx) => {
         container.innerHTML += `
           <div style="display:flex; gap:6px; align-items:center; background:var(--bg-card); padding:6px; border-radius:6px; border:1px solid var(--border);">
-            <input type="text" value="${k.kmStart}" placeholder="De KM" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskNumber(this); kmRangesData[${idx}].kmStart=this.value">
-            <input type="text" value="${k.kmEnd}" placeholder="Até KM" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskNumber(this); kmRangesData[${idx}].kmEnd=this.value">
-            <input type="text" value="${k.price}" placeholder="Preço R$" style="flex:1; padding:6px; font-size:0.8rem;" oninput="maskCurrency(this); kmRangesData[${idx}].price=this.value">
+            <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${k.kmStart}" placeholder="De" aria-label="Quilometragem inicial" style="width:100%;min-width:0;padding:6px;font-size:.8rem;" oninput="maskNumber(this);kmRangesData[${idx}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+            <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${k.kmEnd}" placeholder="Até" aria-label="Quilometragem final" style="width:100%;min-width:0;padding:6px;font-size:.8rem;" oninput="maskNumber(this);kmRangesData[${idx}].kmEnd=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+            <input type="text" value="${k.price}" placeholder="Preço R$" aria-label="Taxa cobrada do cliente" style="flex:1;min-width:0;padding:6px;font-size:.8rem;" oninput="maskCurrency(this);kmRangesData[${idx}].price=this.value">
             <button type="button" onclick="kmRangesData.splice(${idx},1); renderKmRangesList();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button>
           </div>
         `;
       });
     }
     function addNewKmRow() { kmRangesData.push({ kmStart: '', kmEnd: '', price: '' }); renderKmRangesList(); }
+    let courierPaymentKmRangesData = [];
+    function renderCourierPaymentKmRanges() {
+      const host = document.getElementById('courierPaymentKmRangesContainer');
+      if (!host) return;
+      host.innerHTML = courierPaymentKmRangesData.map((item,index) => `
+        <div style="display:flex;gap:6px;align-items:center;background:var(--bg-card);padding:7px;border-radius:8px;border:1px solid var(--border);">
+          <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${escapeCourierPaymentHtml(item.kmStart)}" placeholder="De" aria-label="Quilometragem inicial do repasse" style="width:100%;min-width:0;" oninput="maskNumber(this);courierPaymentKmRangesData[${index}].kmStart=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+          <label style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;"><input type="text" value="${escapeCourierPaymentHtml(item.kmEnd)}" placeholder="Até" aria-label="Quilometragem final do repasse" style="width:100%;min-width:0;" oninput="maskNumber(this);courierPaymentKmRangesData[${index}].kmEnd=this.value"><span style="font-size:.72rem;color:var(--text-muted);">KM</span></label>
+          <input type="text" value="${escapeCourierPaymentHtml(item.amount)}" placeholder="Repasse R$" aria-label="Valor pago ao motoboy" style="flex:1;min-width:0;" oninput="maskCurrency(this);courierPaymentKmRangesData[${index}].amount=this.value">
+          <button type="button" aria-label="Remover faixa" onclick="courierPaymentKmRangesData.splice(${index},1);renderCourierPaymentKmRanges();" style="background:none;border:0;color:var(--danger);font-weight:bold;padding:6px;">✕</button>
+        </div>`).join('') || '<div style="font-size:.78rem;color:var(--text-muted);">Nenhuma faixa configurada.</div>';
+    }
+    function addCourierPaymentKmRange() {
+      const last = courierPaymentKmRangesData[courierPaymentKmRangesData.length - 1];
+      const nextStart = last && last.kmEnd !== '' ? String(Number(last.kmEnd)) : '0';
+      courierPaymentKmRangesData.push({kmStart:nextStart,kmEnd:'',amount:''});
+      renderCourierPaymentKmRanges();
+    }
+    function validateDeliveryKmRanges(ranges,label,priceKey) {
+      if (!Array.isArray(ranges) || !ranges.length) throw new Error('Cadastre ao menos uma faixa de quilometragem em ' + label + '.');
+      const normalized = ranges.map((item,index) => {
+        const start = Number(String(item.kmStart).replace(',','.'));
+        const end = Number(String(item.kmEnd).replace(',','.'));
+        const raw = String(item[priceKey] || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
+        const amount = Number(raw);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 500 || !raw || !Number.isFinite(amount) || amount < 0 || amount > 10000) {
+          throw new Error('Revise as distâncias e os valores das faixas em ' + label + '.');
+        }
+        return {kmStart:start,kmEnd:end,amount:amount.toFixed(2)};
+      }).sort((a,b)=>a.kmStart-b.kmStart);
+      if (normalized[0].kmStart !== 0) throw new Error('A primeira faixa de ' + label + ' precisa começar em 0 KM.');
+      for (let i=1;i<normalized.length;i++) {
+        if (Math.abs(normalized[i].kmStart-normalized[i-1].kmEnd)>0.000001) {
+          throw new Error('As faixas de ' + label + ' precisam ser contínuas, sem sobreposição ou distância descoberta.');
+        }
+      }
+      return normalized;
+    }
     let courierPaymentNeighborhoodsData = [];
     function escapeCourierPaymentHtml(value) {
       return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -764,6 +803,7 @@
       document.getElementById('courierPaymentFixedPanel').style.display = mode === 'fixed' ? 'block' : 'none';
       document.getElementById('courierPaymentNeighborhoodPanel').style.display = mode === 'neighborhood' ? 'block' : 'none';
       document.getElementById('courierPaymentKmPanel').style.display = mode === 'per_km' ? 'block' : 'none';
+      if (mode === 'per_km') renderCourierPaymentKmRanges();
     }
 
 
@@ -864,6 +904,8 @@
         });
       });
 
+      kmRangesData = Array.isArray(settings.kmRangesData) ? settings.kmRangesData.map(item => ({kmStart:String(item.kmStart ?? ''),kmEnd:String(item.kmEnd ?? ''),price:String(item.price ?? '')})) : [];
+      renderKmRangesList();
       document.getElementById('deliveryTypeSelect').value = settings.deliveryType || 'bairro';
       toggleDeliveryType(settings.deliveryType || 'bairro');
       document.getElementById('freeDeliveryToggle').checked = settings.freeDelivery || false;
@@ -875,6 +917,10 @@
       document.getElementById('courierPaymentMode').value = settings.courierPaymentMode || 'fixed';
       document.getElementById('courierPaymentFixedAmount').value = settings.courierPaymentFixedAmount || '';
       document.getElementById('courierPaymentKmAmount').value = settings.courierPaymentKmAmount || '';
+      courierPaymentKmRangesData = Array.isArray(settings.courierPaymentKmRangesData)
+        ? settings.courierPaymentKmRangesData.map(item => ({kmStart:String(item.kmStart ?? ''),kmEnd:String(item.kmEnd ?? ''),amount:String(item.amount ?? '')}))
+        : [];
+      renderCourierPaymentKmRanges();
       courierPaymentNeighborhoodsData = Array.isArray(settings.courierPaymentNeighborhoodsData)
         ? settings.courierPaymentNeighborhoodsData.map(item => ({name:String(item.name || ''),amount:String(item.amount || '')}))
         : [];
@@ -1073,6 +1119,12 @@
       const courierPaymentMode = document.getElementById('courierPaymentMode').value;
       const courierPaymentFixedAmount = document.getElementById('courierPaymentFixedAmount').value.trim();
       const courierPaymentKmAmount = document.getElementById('courierPaymentKmAmount').value.trim();
+      const customerKmRanges = document.getElementById('deliveryTypeSelect').value === 'km'
+        ? validateDeliveryKmRanges(kmRangesData,'taxa cobrada do cliente','price')
+        : kmRangesData.map(item => ({...item}));
+      const courierKmRanges = courierPaymentMode === 'per_km'
+        ? validateDeliveryKmRanges(courierPaymentKmRangesData,'remuneração do motoboy','amount')
+        : courierPaymentKmRangesData.map(item => ({...item}));
       const courierPaymentNeighborhoods = courierPaymentNeighborhoodsData.map(item => ({
         name: String(item.name || '').trim(),
         amount: String(item.amount || '').trim()
@@ -1100,8 +1152,8 @@
         legalName, storeType, ownerName, docNumber, phone, email, cep,
         streetNumber, complement, street, neighborhood, city, uf,
         timezone, specialHours, workingHours, deliveryType, freeDelivery, freeDeliveryMin,
-        fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData,
-        courierPaymentMode, courierPaymentFixedAmount, courierPaymentKmAmount, courierPaymentNeighborhoodsData: courierPaymentNeighborhoods,
+        fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData:customerKmRanges,
+        courierPaymentMode, courierPaymentFixedAmount, courierPaymentKmAmount, courierPaymentKmRangesData:courierKmRanges, courierPaymentNeighborhoodsData: courierPaymentNeighborhoods,
         requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
         scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
         paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification,
@@ -1149,17 +1201,19 @@
             const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
             return normalized === '' ? null : Number(normalized);
           };
-          const courierRate = parseBRL(courierPaymentMode === 'per_km' ? courierPaymentKmAmount : courierPaymentFixedAmount);
-          if (courierPaymentMode === 'per_km' && (courierRate == null || !Number.isFinite(courierRate) || courierRate <= 0)) {
-            throw new Error('Informe um valor válido por quilômetro na seção Remuneração dos Entregadores.');
+          const courierRate = courierPaymentMode === 'fixed' ? parseBRL(courierPaymentFixedAmount) : null;
+          if (courierPaymentMode === 'fixed' && (courierRate == null || !Number.isFinite(courierRate) || courierRate <= 0)) {
+            throw new Error('Informe um valor fixo válido por entrega.');
           }
+          const courierRules = courierPaymentMode === 'per_km'
+            ? courierKmRanges.map(item => ({kmStart:item.kmStart,kmEnd:item.kmEnd,amount:item.amount}))
+            : courierPaymentMode === 'neighborhood'
+              ? courierPaymentNeighborhoods.map(item => ({name:item.name,amount:String(parseBRL(item.amount))}))
+              : [];
           const savedRules = await window.VortexDelivery.savePaymentRules({
             mode: courierPaymentMode,
             fixedAmount: courierRate,
-            neighborhoodRates: courierPaymentNeighborhoods.map(item => ({
-              name: item.name,
-              amount: String(parseBRL(item.amount))
-            }))
+            neighborhoodRates: courierRules
           });
           if (!savedRules || savedRules.error) throw (savedRules && savedRules.error) || new Error('O servidor não confirmou a remuneração.');
           if (!savedRules.data || savedRules.data.success !== true) throw new Error('O servidor não confirmou a gravação da remuneração.');

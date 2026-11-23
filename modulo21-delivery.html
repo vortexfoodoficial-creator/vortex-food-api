@@ -861,7 +861,7 @@
       if (codeResults) { codeResults.style.display = 'none'; codeResults.innerHTML = ''; }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência calculada pelas distâncias viárias do OpenRouteService.</span>`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência sugerida pela menor distância viária sucessiva (OpenRouteService).</span>`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';

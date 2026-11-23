@@ -429,7 +429,7 @@
 
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-7"></script>
+  <script src="supabase.js?v=20261123-delivery-finance-week-fix-1"></script>
 
   <script>
     let currentFilter = 'today';
@@ -535,34 +535,21 @@
       loadDashboardData();
     }
 
+    function getDashboardFilterRange(filterType) {
+      const today = new Date();
+      const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      let start = new Date(end);
+      if (filterType === 'yesterday') start.setDate(start.getDate() - 1);
+      else if (filterType === 'week') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      else if (filterType === 'month') start = new Date(end.getFullYear(), end.getMonth(), 1);
+      return { start: getLocalDateStr(start), end: getLocalDateStr(end) };
+    }
+
     function isDateInFilter(rawDate, filterType) {
-      const todayStr = getLocalDateStr(new Date());
       const itemDateStr = parseToLocalDateStr(rawDate);
-
       if (!itemDateStr) return false;
-
-      const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
-      const [iYear, iMonth, iDay] = itemDateStr.split('-').map(Number);
-
-      const todayObj = new Date(tYear, tMonth - 1, tDay);
-      const itemObj = new Date(iYear, iMonth - 1, iDay);
-
-      if (filterType === 'today') {
-        return itemDateStr === todayStr;
-      } 
-      else if (filterType === 'yesterday') {
-        const yesterdayObj = new Date(tYear, tMonth - 1, tDay - 1);
-        const yesterdayStr = getLocalDateStr(yesterdayObj);
-        return itemDateStr === yesterdayStr;
-      } 
-      else if (filterType === 'week') {
-        const sevenDaysAgoObj = new Date(tYear, tMonth - 1, tDay - 6);
-        return itemObj >= sevenDaysAgoObj && itemObj <= todayObj;
-      } 
-      else if (filterType === 'month') {
-        return iYear === tYear && iMonth === tMonth;
-      }
-      return true;
+      const range = getDashboardFilterRange(filterType);
+      return itemDateStr >= range.start && itemDateStr <= range.end;
     }
 
     function getProductCost(itemName, recipesCatalog, productsCatalog) {
@@ -600,7 +587,7 @@
             typeof dbFetchTableCarts === 'function' ? dbFetchTableCarts() : Promise.resolve({ data: null, error: new Error('Consulta de comandas indisponível.') })
           ]);
 
-          dashCache.sales = (salesRes && salesRes.data && salesRes.data.length > 0) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+          dashCache.sales = (salesRes && !salesRes.error && Array.isArray(salesRes.data)) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
           dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
           dashCache.recipes = (recipesRes && recipesRes.data && recipesRes.data.length > 0) ? recipesRes.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
           dashCache.products = (catalogRes && catalogRes.data && catalogRes.data.products && catalogRes.data.products.length > 0) ? catalogRes.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
@@ -630,6 +617,18 @@
 
       const salesHistory = dashCache.sales.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
       const kdsOrders = dashCache.kds;
+      let courierDeliveryCosts = 0;
+      const dashboardRange = getDashboardFilterRange(currentFilter);
+      if (window.VortexDelivery?.fetchCourierEarnings) {
+        try {
+          const payoutResult = await window.VortexDelivery.fetchCourierEarnings(dashboardRange.start, dashboardRange.end);
+          if (payoutResult && payoutResult.error) throw payoutResult.error;
+          const payoutRows = Array.isArray(payoutResult?.data) ? payoutResult.data : [];
+          courierDeliveryCosts = payoutRows.reduce((sum, row) => sum + (row.amount == null ? 0 : Math.max(0, Number(row.amount) || 0)), 0);
+        } catch (error) {
+          console.warn('Não foi possível carregar os custos de remuneração dos entregadores no Dashboard:', error);
+        }
+      }
 
       let grossSales = 0;
       let totalDiscounts = 0;
@@ -657,8 +656,9 @@
 
       const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
       const netSales = Math.max(0, grossSales - totalDiscounts);
-      const grossProfit = Math.max(0, netSales - totalCmvCost);
-      const profitMargin = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0.0';
+      const grossProfit = netSales - totalCmvCost;
+      const netOperationalProfit = grossProfit - courierDeliveryCosts;
+      const profitMargin = netSales > 0 ? ((netOperationalProfit / netSales) * 100).toFixed(1) : '0.0';
       const ticketMedio = totalOrdersCount > 0 ? netSales / totalOrdersCount : 0;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
       const activeKds = kdsOrders.filter(o => o.status !== 'finished' && o.status !== 'cancelled').length;
@@ -742,7 +742,7 @@
       document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
-      document.getElementById('dashMargemLucro').innerText = `Margem Média: ${profitMargin}%`;
+      document.getElementById('dashMargemLucro').innerText = `Margem após entregas: ${profitMargin}%`;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;

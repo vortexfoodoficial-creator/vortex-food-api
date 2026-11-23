@@ -157,7 +157,9 @@ BEGIN
   UPDATE public.vortex_delivery_route_stops
   SET distance_km=v_distance,
       courier_payment_amount=v_amount,
-      courier_payment_rule_label='Faixa de ' || (v_match->>'kmStart') || ' a ' || (v_match->>'kmEnd') || ' km',
+      courier_payment_rule_label=CASE WHEN (v_match->>'kmStart')::numeric=0
+        THEN 'Até ' || (v_match->>'kmEnd') || ' km'
+        ELSE 'Acima de ' || (v_match->>'kmStart') || ' até ' || (v_match->>'kmEnd') || ' km' END,
       updated_at=now()
   WHERE store_id=p_store_id AND route_id=p_route_id
     AND order_id=p_order_id AND status IN ('assigned','in_progress','occurrence')
@@ -173,10 +175,14 @@ BEGIN
   ) VALUES (
     p_store_id,p_route_id,v_stop_id,p_order_id,auth.uid(),'delivery_distance_updated',
     jsonb_build_object('distance_km',v_distance,'courier_payment_amount',v_amount,
-      'rule_label','Faixa de ' || (v_match->>'kmStart') || ' a ' || (v_match->>'kmEnd') || ' km')
+      'rule_label',CASE WHEN (v_match->>'kmStart')::numeric=0
+        THEN 'Até ' || (v_match->>'kmEnd') || ' km'
+        ELSE 'Acima de ' || (v_match->>'kmStart') || ' até ' || (v_match->>'kmEnd') || ' km' END)
   );
   RETURN jsonb_build_object('success',true,'distance_km',v_distance,'courier_payment_amount',v_amount,
-    'rule_label','Faixa de ' || (v_match->>'kmStart') || ' a ' || (v_match->>'kmEnd') || ' km');
+    'rule_label',CASE WHEN (v_match->>'kmStart')::numeric=0
+      THEN 'Até ' || (v_match->>'kmEnd') || ' km'
+      ELSE 'Acima de ' || (v_match->>'kmStart') || ' até ' || (v_match->>'kmEnd') || ' km' END);
 END;
 $function$;
 

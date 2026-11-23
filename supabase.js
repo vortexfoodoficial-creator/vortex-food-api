@@ -710,6 +710,16 @@ async function dbCalculateDeliveryStopDistance(routeId, orderId) {
   });
 }
 
+async function dbCalculateDeliveryRouteDistances(routeId, orderIds) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  const ids = Array.from(new Set((Array.isArray(orderIds) ? orderIds : []).map(id => String(id || '').trim()).filter(Boolean)));
+  if (!routeId || !ids.length || ids.length > 24) return { data: null, error: new Error('Informe uma rota e entre 1 e 24 entregas para calcular.') };
+  return await supabase.functions.invoke('calculate-delivery-distance', {
+    body: { action: 'calculate_route', route_id: String(routeId), order_ids: ids }
+  });
+}
+
 async function dbOptimizeDeliveryRoute(orderIds) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
@@ -801,6 +811,7 @@ window.VortexDelivery = {
   updateRouteStops: dbUpdateDeliveryRouteStops,
   setStopDeadline: dbSetDeliveryStopDeadline,
   calculateStopDistance: dbCalculateDeliveryStopDistance,
+  calculateRouteDistances: dbCalculateDeliveryRouteDistances,
   optimizeRoute: dbOptimizeDeliveryRoute,
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,

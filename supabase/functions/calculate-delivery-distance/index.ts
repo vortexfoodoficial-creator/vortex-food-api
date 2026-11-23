@@ -167,6 +167,81 @@ Deno.serve(async (req: Request) => {
       return respond(200, { success: true, provider: "openrouteservice", profile: ORS_PROFILE, optimization: "nearest_next_by_road_distance", optimized_order_ids: optimizedIds });
     }
 
+    if (body.action === "calculate_route") {
+      const routeId = String(body.route_id || "").trim();
+      const rawIds = Array.isArray(body.order_ids) ? body.order_ids : [];
+      const orderIds = Array.from(new Set(rawIds.map(value => String(value || "").trim()).filter(Boolean)));
+      if (!routeId || !orderIds.length || orderIds.length > 24) {
+        return respond(400, { error: "Informe uma rota e entre 1 e 24 pedidos válidos." });
+      }
+      const { data: stops, error: stopsError } = await admin
+        .from("vortex_delivery_route_stops")
+        .select("id,store_id,route_id,order_id,status")
+        .eq("store_id", storeId).eq("route_id", routeId).in("order_id", orderIds)
+        .in("status", ["assigned", "in_progress", "occurrence"]);
+      if (stopsError || !Array.isArray(stops) || stops.length !== orderIds.length) {
+        return respond(422, { error: "Uma ou mais entregas não estão ativas nesta rota. Atualize a Central de Operações e tente novamente." });
+      }
+      const { data: orders, error: ordersError } = await admin
+        .from("vortex_kds_orders").select("id,address")
+        .eq("store_id", storeId).in("id", orderIds);
+      if (ordersError || !Array.isArray(orders) || orders.length !== orderIds.length) {
+        return respond(422, { error: "Não foi possível localizar todos os endereços dos pedidos desta rota." });
+      }
+      const orderById = new Map(orders.map(order => [String(order.id), order]));
+      const orderedOrders = orderIds.map(id => orderById.get(id));
+      const addresses = orderedOrders.map(order => cleanAddress(order?.address));
+      if (addresses.some(address => !address)) {
+        return respond(422, { error: "Uma ou mais entregas não possuem endereço completo para calcular a remuneração." });
+      }
+
+      const coordinates: [number, number][] = [];
+      try {
+        coordinates.push(await geocode(originRaw, orsApiKey, settings));
+        for (const address of addresses) coordinates.push(await geocode(address, orsApiKey, settings));
+      } catch (error) {
+        return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços da rota." });
+      }
+      const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
+        method: "POST",
+        body: JSON.stringify({ locations: coordinates, sources: ["0"], destinations: orderIds.map((_, index) => String(index + 1)), metrics: ["distance"], units: "m" }),
+      });
+      const distances = matrix?.distances?.[0];
+      if (!Array.isArray(distances) || distances.length !== orderIds.length) {
+        return respond(502, { error: "O serviço de mapas não retornou todas as distâncias da rota." });
+      }
+
+      const results: Record<string, unknown>[] = [];
+      for (let index = 0; index < orderIds.length; index++) {
+        const meters = Number(distances[index]);
+        if (!Number.isFinite(meters) || meters <= 0) {
+          results.push({ order_id: orderIds[index], success: false, error: "Não foi encontrada uma rota viária para este endereço." });
+          continue;
+        }
+        const distanceKm = Math.ceil(meters / 10) / 100;
+        const { data: saved, error: saveError } = await caller.rpc("rpc_set_delivery_stop_distance", {
+          p_store_id: storeId, p_route_id: routeId, p_order_id: orderIds[index], p_distance_km: distanceKm,
+        });
+        if (saveError || !saved?.success) {
+          results.push({ order_id: orderIds[index], success: false, error: saveError?.message || saved?.message || "Não foi possível registrar a remuneração desta entrega." });
+        } else {
+          results.push({
+            order_id: orderIds[index], success: true,
+            distance_km: saved.distance_km,
+            courier_payment_amount: saved.courier_payment_amount,
+            rule_label: saved.rule_label,
+          });
+        }
+      }
+      return respond(200, {
+        success: results.every(item => item.success === true),
+        provider: "openrouteservice",
+        profile: ORS_PROFILE,
+        route_id: routeId,
+        results,
+      });
+    }
+
     const routeId = String(body.route_id || "").trim();
     const orderId = String(body.order_id || "").trim();
     if (!routeId || routeId.length > 100 || !orderId || orderId.length > 120) {

@@ -422,15 +422,21 @@ async function dbSaveSale(saleData) {
   return { data, error, items: record.items };
 }
 
+function vortexMarkFetchArraySource(items, cloudConfirmed) {
+  const safeItems = Array.isArray(items) ? items : [];
+  try { Object.defineProperty(safeItems, 'cloudConfirmed', { value: !!cloudConfirmed, configurable: true }); } catch (error) {}
+  return safeItems;
+}
+
 async function dbFetchSales() {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return [];
-  if (!supabase) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+  if (!storeId) return vortexMarkFetchArraySource([], false);
+  if (!supabase) return vortexMarkFetchArraySource(JSON.parse(localStorage.getItem('vortex_sales_history')) || [], false);
 
   const { data, error } = await supabase.from('vortex_sales_history').select('*').eq('store_id', storeId);
-  if (error) return JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
-  if (!data) return [];
+  if (error) return vortexMarkFetchArraySource(JSON.parse(localStorage.getItem('vortex_sales_history')) || [], false);
+  if (!data) return vortexMarkFetchArraySource([], true);
 
   const mapped = data.map(item => ({
     id: item.id,
@@ -457,7 +463,7 @@ async function dbFetchSales() {
   } catch(e) {}
   const mergedSales = new Map(mapped.map(sale => [String(sale.id), sale]));
   localPending.forEach(sale => mergedSales.set(String(sale.id), sale));
-  const finalSales = Array.from(mergedSales.values());
+  const finalSales = vortexMarkFetchArraySource(Array.from(mergedSales.values()), true);
   try { localStorage.setItem('vortex_sales_history', JSON.stringify(finalSales)); } catch(e) {}
   return finalSales;
 }
@@ -1129,11 +1135,11 @@ async function dbSaveCashFinancialEntry(entryData, shiftId, movementData) {
 async function dbFetchFinancialEntries() {
   const supabase = getSupabase();
   const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return [];
-  if (!supabase) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
+  if (!storeId) return vortexMarkFetchArraySource([], false);
+  if (!supabase) return vortexMarkFetchArraySource(JSON.parse(localStorage.getItem('vortex_financial_entries')) || [], false);
   const { data, error } = await supabase.from('vortex_financial').select('*').eq('store_id', storeId);
-  if (error) return JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
-  const entries = Array.isArray(data) ? data : [];
+  if (error) return vortexMarkFetchArraySource(JSON.parse(localStorage.getItem('vortex_financial_entries')) || [], false);
+  const entries = vortexMarkFetchArraySource(Array.isArray(data) ? data : [], true);
   try { localStorage.setItem('vortex_financial_entries', JSON.stringify(entries)); } catch (storageError) {}
   return entries;
 }
@@ -1370,7 +1376,10 @@ async function dbDeleteRecord(tableName, id) {
 
 // Funções Result
 async function dbFetchSalesResult() {
-  try { return { data: await dbFetchSales(), error: null }; } catch (err) { return { data: [], error: err }; }
+  try {
+    const data = await dbFetchSales();
+    return { data, error: data && data.cloudConfirmed === false ? new Error('Consulta de vendas em modo de contingência local.') : null };
+  } catch (err) { return { data: [], error: err }; }
 }
 async function dbFetchKdsOrdersResult() {
   try { return { data: await dbFetchKdsOrders(), error: null }; } catch (err) { return { data: [], error: err }; }
@@ -1379,7 +1388,10 @@ async function dbFetchRecipesResult() {
   try { return { data: await dbFetchRecipes(), error: null }; } catch (err) { return { data: [], error: err }; }
 }
 async function dbFetchFinancialEntriesResult() {
-  try { return { data: await dbFetchFinancialEntries(), error: null }; } catch (err) { return { data: [], error: err }; }
+  try {
+    const data = await dbFetchFinancialEntries();
+    return { data, error: data && data.cloudConfirmed === false ? new Error('Consulta financeira em modo de contingência local.') : null };
+  } catch (err) { return { data: [], error: err }; }
 }
 async function dbFetchCatalogResult() {
   try { return { data: await dbFetchCatalog(), error: null }; } catch (err) { return { data: { products: [] }, error: err }; }

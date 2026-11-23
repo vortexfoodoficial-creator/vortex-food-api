@@ -269,7 +269,7 @@
       </div>
 
       <div class="metric-card">
-        <span class="metric-title">Lucro Bruto Estimado</span>
+        <span class="metric-title">Lucro após custo das entregas</span>
         <span class="metric-value" style="color:var(--success);" id="dashLucroBruto">R$ 0,00</span>
         <span class="metric-sub" id="dashMargemLucro">Margem Média: 0.0%</span>
       </div>
@@ -618,6 +618,7 @@
       const salesHistory = dashCache.sales.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
       const kdsOrders = dashCache.kds;
       let courierDeliveryCosts = 0;
+      let courierDeliveryLoadError = null;
       const dashboardRange = getDashboardFilterRange(currentFilter);
       if (window.VortexDelivery?.fetchCourierEarnings) {
         try {
@@ -626,8 +627,11 @@
           const payoutRows = Array.isArray(payoutResult?.data) ? payoutResult.data : [];
           courierDeliveryCosts = payoutRows.reduce((sum, row) => sum + (row.amount == null ? 0 : Math.max(0, Number(row.amount) || 0)), 0);
         } catch (error) {
+          courierDeliveryLoadError = error;
           console.warn('Não foi possível carregar os custos de remuneração dos entregadores no Dashboard:', error);
         }
+      } else {
+        courierDeliveryLoadError = new Error('Consulta financeira de entregas indisponível.');
       }
 
       let grossSales = 0;
@@ -741,8 +745,10 @@
       document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
       document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
-      document.getElementById('dashLucroBruto').innerText = `R$ ${formatFloatToCurrency(grossProfit)}`;
-      document.getElementById('dashMargemLucro').innerText = `Margem após entregas: ${profitMargin}%`;
+      document.getElementById('dashLucroBruto').innerText = courierDeliveryLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netOperationalProfit)}`;
+      document.getElementById('dashMargemLucro').innerText = courierDeliveryLoadError
+        ? 'Não foi possível consultar os custos dos motoboys'
+        : `Motoboys: R$ ${formatFloatToCurrency(courierDeliveryCosts)} · Margem: ${profitMargin}%`;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;

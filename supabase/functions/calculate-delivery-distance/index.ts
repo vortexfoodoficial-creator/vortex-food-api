@@ -125,7 +125,9 @@ Deno.serve(async (req: Request) => {
     if (!Number.isFinite(meters) || meters <= 0) {
       return respond(422, { error: "Não foi encontrada uma rota viária válida entre o estabelecimento e o cliente." });
     }
-    const distanceKm = Math.round((meters / 1000) * 100) / 100;
+    // Arredonda para cima a 0,01 km para não enquadrar uma rota acima do limite
+    // artificialmente na faixa inferior por causa do arredondamento.
+    const distanceKm = Math.ceil(meters / 10) / 100;
 
     const { data: saved, error: saveError } = await caller.rpc("rpc_set_delivery_stop_distance", {
       p_store_id: storeId,

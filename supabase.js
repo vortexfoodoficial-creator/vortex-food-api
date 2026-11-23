@@ -807,7 +807,6 @@ window.VortexDelivery = {
   getPaymentRules: dbGetDeliveryCourierPaymentRules,
   fetchCourierEarnings: dbGetDeliveryCourierEarnings,
   markCourierPaymentPaid: dbMarkDeliveryCourierPaymentPaid,
-  setStopDistance: dbSetDeliveryStopDistance
 };
 
 async function dbFetchKdsOrders() {

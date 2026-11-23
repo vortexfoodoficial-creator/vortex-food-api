@@ -712,7 +712,7 @@
       document.getElementById('dreCourierExpenses').title = courierPayoutLoadError
         ? 'Não foi possível consultar os custos das entregas; o resultado líquido está incompleto.'
         : (courierUnpricedCount ? courierUnpricedCount + ' entrega(s) sem remuneração definida não foram somadas.' : 'Custo reconhecido por entrega concluída.');
-      document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+      document.getElementById('dreNetProfit').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netProfit)}`;
 
       renderHourlySales(sales);
       renderCategorySales(sales);

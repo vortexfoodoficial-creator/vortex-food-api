@@ -903,6 +903,10 @@
 
     async function calculateCourierRouteDistances(routeId,orderIds) {
       const ids = Array.from(new Set((orderIds || []).map(id => String(id))));
+      if (!ids.length) return {results:[],failures:[]};
+      const rulesResult = await window.VortexDelivery.getPaymentRules();
+      if (rulesResult.error) return {results:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'})),failures:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'}))};
+      if (rulesResult.data?.mode !== 'per_km') return {results:ids.map(orderId=>({orderId,success:true,skipped:true})),failures:[]};
       const results = await Promise.all(ids.map(async orderId => {
         try {
           const result = await window.VortexDelivery.calculateStopDistance(routeId,orderId);
@@ -944,7 +948,13 @@
         .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status))
         .map(stop => String(stop.order_id));
       const missingIds = requestedIds.filter(id => !existingIds.includes(id));
-      if (!missingIds.length) return {routeId:activeRoute.id,distanceFailures:[]};
+      if (!missingIds.length) {
+        const pendingDistanceIds = (activeRoute.stops || [])
+          .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status) && stop.distance_km == null)
+          .map(stop => String(stop.order_id));
+        const distanceResult = await calculateCourierRouteDistances(activeRoute.id,pendingDistanceIds);
+        return {routeId:activeRoute.id,distanceFailures:distanceResult.failures};
+      }
 
       if (activeRoute.status !== 'assigned') {
         throw new Error('Este motoboy já iniciou a rota. Os novos pedidos precisam ser enviados após a conclusão ou transferência da rota atual.');
@@ -1073,9 +1083,11 @@
         showNoticeModal('Rota atualizada',successMessage,'✅');
         await loadDispatchRoutes();
         await loadActiveOrders();
+        return true;
       } catch (error) {
         showNoticeModal('Não foi possível atualizar a rota',error.message || 'A rota pode ter sido alterada por outra pessoa. Atualize e tente novamente.','⚠️');
         await loadDispatchRoutes();
+        return false;
       }
     }
 
@@ -1088,7 +1100,8 @@
       }
       const ids = (route.stops || []).filter(stop => stop.status === 'assigned').map(stop => String(stop.order_id));
       ids.push(String(select.value));
-      await submitDispatchStopOrder(routeId,ids,'O pedido foi incluído no final da sequência.');
+      const updated = await submitDispatchStopOrder(routeId,ids,'O pedido foi incluído no final da sequência.');
+      if (!updated) return;
       const distanceResult = await calculateCourierRouteDistances(routeId,[String(select.value)]);
       if (distanceResult.failures.length) {
         showNoticeModal('Distância pendente','O pedido entrou na rota, mas a distância não foi calculada. Verifique o serviço de mapas e tente novamente.','⚠️');

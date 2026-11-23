@@ -6,7 +6,7 @@
   <title>Vortex Food - Configurações do Sistema</title>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261120-courier-ledger-37"></script>
+  <script src="supabase.js?v=20261123-delivery-finance-week-fix-1"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -424,7 +424,7 @@
 
       <!-- CARD 5: CONFIGURAÇÕES DE TAXA DE ENTREGA -->
       <div class="config-card">
-        <div class="config-title">🛵 Configurações Taxa de Entrega</div>
+        <div class="config-title">🛵 Gestão de Entregas — Taxas e Remuneração</div>
 
         <div class="form-group">
           <label for="deliveryTypeSelect">Escolha o tipo de Taxa de Entrega:</label>
@@ -486,13 +486,10 @@
             <input type="text" id="defaultDeliveryFeeInput" placeholder="0,00" oninput="maskCurrency(this)">
           </div>
         </div>
-      </div>
-
-      <!-- CARD 5B: REMUNERAÇÃO DOS ENTREGADORES -->
-      <div class="config-card">
-        <div class="config-title">💵 Remuneração dos Entregadores</div>
+      <div style="border-top:1px solid var(--border); margin-top:20px; padding-top:18px;">
+        <div class="config-title" style="font-size:1rem;">💵 Remuneração dos Entregadores</div>
         <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">
-          Defina quanto o estabelecimento paga ao motoboy por cada entrega concluída. Esta regra é independente da taxa cobrada do cliente e o valor de cada entrega fica registrado no histórico.
+          <strong>Custo operacional do estabelecimento:</strong> defina quanto será pago ao motoboy por entrega concluída. Este valor é independente da taxa cobrada do cliente e será registrado no financeiro, no histórico e nos indicadores de resultado.
         </p>
         <div class="form-group">
           <label for="courierPaymentMode">Forma de remuneração:</label>
@@ -516,6 +513,7 @@
           <button type="button" class="btn-modal-secondary" onclick="addCourierPaymentNeighborhood()">➕ Adicionar bairro e valor</button>
           <p style="font-size:.73rem;color:var(--text-muted);margin-top:8px;">O sistema procura o nome do bairro no endereço do pedido. Se não encontrar uma regra correspondente, o valor ficará como “Não definido” até ser ajustado.</p>
         </div>
+      </div>
       </div>
 
       <!-- CARD 6: AGENDAMENTO E ESTIMATIVAS -->

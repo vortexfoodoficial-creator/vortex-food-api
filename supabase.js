@@ -712,6 +712,15 @@ async function dbSetDeliveryStopDistance(routeId, orderId, distanceKm) {
   });
 }
 
+async function dbCalculateDeliveryStopDistance(routeId, orderId) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  if (!routeId || !orderId) return { data: null, error: new Error('Rota ou pedido não identificado.') };
+  return await supabase.functions.invoke('calculate-delivery-distance', {
+    body: { route_id: String(routeId), order_id: String(orderId) }
+  });
+}
+
 async function dbUpdateDeliveryPayment(orderId, paymentMethod, paymentStatus, cashGiven, change) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -792,6 +801,7 @@ window.VortexDelivery = {
   transferRoute: dbTransferDeliveryRoute,
   updateRouteStops: dbUpdateDeliveryRouteStops,
   setStopDeadline: dbSetDeliveryStopDeadline,
+  calculateStopDistance: dbCalculateDeliveryStopDistance,
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,
   fetchMyRoutes: dbFetchMyDeliveryRoutes,

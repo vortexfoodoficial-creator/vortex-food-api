@@ -428,6 +428,7 @@
     let cloudExpensesLoaded = false;
     let courierPayoutRows = [];
     let courierPayoutLoadError = null;
+    let reportsLoadSequence = 0;
     let cloudRecipes = [];
 
     function toggleMenu() {
@@ -631,6 +632,7 @@
     }
 
     async function loadReportsData() {
+      const loadSequence = ++reportsLoadSequence;
       const sales = getFilteredSales();
       const expenses = getFilteredExpenses();
       courierPayoutRows = [];
@@ -649,6 +651,7 @@
       } else {
         courierPayoutLoadError = new Error('Consulta financeira de entregas indisponível para o período.');
       }
+      if (loadSequence !== reportsLoadSequence) return;
       const courierExpenseTotal = courierPayoutRows.reduce((sum, row) => sum + (row.amount == null ? 0 : Math.max(0, Number(row.amount) || 0)), 0);
       const courierUnpricedCount = courierPayoutRows.filter(row => row.amount == null).length;
 

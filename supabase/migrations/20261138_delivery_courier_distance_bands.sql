@@ -136,6 +136,93 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.vortex_snapshot_delivery_courier_payment()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE
+  v_mode text;
+  v_fixed numeric(12,2);
+  v_neighborhood_rates jsonb;
+  v_distance_ranges jsonb;
+  v_address text;
+  v_match jsonb;
+BEGIN
+  IF TG_OP='UPDATE' THEN
+    IF OLD.status='cancelled' AND NEW.status='assigned' THEN
+      NULL;
+    ELSIF NEW.status='delivered' AND OLD.courier_payment_amount IS NULL THEN
+      NULL;
+    ELSE
+      RETURN NEW;
+    END IF;
+  END IF;
+  IF NEW.status NOT IN ('assigned','in_progress','delivered') THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT mode,fixed_amount,neighborhood_rates,distance_ranges
+  INTO v_mode,v_fixed,v_neighborhood_rates,v_distance_ranges
+  FROM public.vortex_delivery_courier_payment_rules
+  WHERE store_id=NEW.store_id;
+
+  IF NOT FOUND THEN
+    NEW.courier_payment_amount:=NULL;
+    NEW.courier_payment_rule_label:=NULL;
+    RETURN NEW;
+  END IF;
+
+  IF v_mode='fixed' THEN
+    NEW.courier_payment_amount:=v_fixed;
+    NEW.courier_payment_rule_label:=CASE WHEN v_fixed IS NULL THEN NULL ELSE 'Valor fixo por entrega' END;
+  ELSIF v_mode='per_km' THEN
+    IF NEW.distance_km IS NULL THEN
+      NEW.courier_payment_amount:=NULL;
+      NEW.courier_payment_rule_label:=NULL;
+    ELSE
+      SELECT value INTO v_match
+      FROM jsonb_array_elements(COALESCE(v_distance_ranges,'[]'::jsonb)) AS ranges(value)
+      WHERE NEW.distance_km>(value->>'kmStart')::numeric
+        AND NEW.distance_km<=(value->>'kmEnd')::numeric
+      ORDER BY (value->>'kmStart')::numeric DESC
+      LIMIT 1;
+      IF v_match IS NULL THEN
+        NEW.courier_payment_amount:=NULL;
+        NEW.courier_payment_rule_label:=NULL;
+      ELSE
+        NEW.courier_payment_amount:=replace(v_match->>'amount',',','.')::numeric;
+        NEW.courier_payment_rule_label:=CASE WHEN (v_match->>'kmStart')::numeric=0
+          THEN 'Até ' || (v_match->>'kmEnd') || ' km'
+          ELSE 'Acima de ' || (v_match->>'kmStart') || ' até ' || (v_match->>'kmEnd') || ' km' END;
+      END IF;
+    END IF;
+  ELSIF v_mode='neighborhood' THEN
+    SELECT o.address INTO v_address
+    FROM public.vortex_kds_orders o
+    WHERE o.store_id=NEW.store_id AND o.id=NEW.order_id;
+    SELECT item.value INTO v_match
+    FROM jsonb_array_elements(COALESCE(v_neighborhood_rates,'[]'::jsonb)) AS item(value)
+    WHERE length(trim(COALESCE(item.value->>'name','')))>=2
+      AND position(lower(trim(item.value->>'name')) in lower(COALESCE(v_address,'')))>0
+    ORDER BY length(trim(item.value->>'name')) DESC
+    LIMIT 1;
+    IF v_match IS NULL THEN
+      NEW.courier_payment_amount:=NULL;
+      NEW.courier_payment_rule_label:=NULL;
+    ELSE
+      NEW.courier_payment_amount:=replace(v_match->>'amount',',','.')::numeric;
+      NEW.courier_payment_rule_label:='Bairro: ' || trim(v_match->>'name');
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.vortex_snapshot_delivery_courier_payment() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.vortex_snapshot_delivery_courier_payment() TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.rpc_set_delivery_stop_distance(
   p_store_id uuid,p_route_id uuid,p_order_id text,p_distance_km numeric
 )

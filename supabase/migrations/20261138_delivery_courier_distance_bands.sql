@@ -310,6 +310,42 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.vortex_require_courier_distance_before_route_start()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE
+  v_mode text;
+BEGIN
+  IF OLD.status='assigned' AND NEW.status='in_route' THEN
+    SELECT mode INTO v_mode
+    FROM public.vortex_delivery_courier_payment_rules
+    WHERE store_id=NEW.store_id;
+
+    IF v_mode='per_km' AND EXISTS (
+      SELECT 1
+      FROM public.vortex_delivery_route_stops s
+      WHERE s.store_id=NEW.store_id
+        AND s.route_id=NEW.id
+        AND s.status IN ('assigned','in_progress','occurrence')
+        AND (s.distance_km IS NULL OR s.courier_payment_amount IS NULL)
+    ) THEN
+      RAISE EXCEPTION 'Não é possível iniciar a rota: o sistema ainda não calculou a distância e a remuneração de todas as entregas. Confira os endereços e o serviço de mapas.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_require_delivery_courier_distance_before_start ON public.vortex_delivery_routes;
+CREATE TRIGGER trg_require_delivery_courier_distance_before_start
+BEFORE UPDATE OF status ON public.vortex_delivery_routes
+FOR EACH ROW EXECUTE FUNCTION public.vortex_require_courier_distance_before_route_start();
+
+REVOKE ALL ON FUNCTION public.vortex_require_courier_distance_before_route_start() FROM PUBLIC,anon,authenticated;
+
 REVOKE ALL ON FUNCTION public.rpc_save_delivery_courier_payment_rules(uuid,text,numeric,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.rpc_save_delivery_courier_payment_rules(uuid,text,numeric,jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.rpc_set_delivery_stop_distance(uuid,uuid,text,numeric) FROM PUBLIC,anon;

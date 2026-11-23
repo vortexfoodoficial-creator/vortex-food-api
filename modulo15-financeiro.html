@@ -1054,7 +1054,7 @@
       
       document.getElementById('finExpensesTotal').innerText = `R$ ${formatFloatToCurrency(totalOperatingExpenses)}`;
       document.getElementById('finCmvTotal').innerText = `R$ ${formatFloatToCurrency(totalCmv)}`;
-      document.getElementById('finNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+      document.getElementById('finNetProfit').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netProfit)}`;
       document.getElementById('finProfitMargin').innerText = `Margem Líquida: ${profitMarginPct}%`;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
@@ -1071,7 +1071,7 @@
       document.getElementById('finProfitMargin').title = courierPayoutLoadError
         ? 'Atenção: custos de entregas não foram carregados.'
         : (courierUnpricedCount ? courierUnpricedCount + ' entrega(s) sem remuneração definida.' : '');
-      document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
+      document.getElementById('dreNetProfit').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netProfit)}`;
 
       document.getElementById('payPixVal').innerText = `R$ ${formatFloatToCurrency(payPix)}`;
       document.getElementById('payCreditVal').innerText = `R$ ${formatFloatToCurrency(payCredit)}`;

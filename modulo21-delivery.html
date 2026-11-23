@@ -818,39 +818,32 @@
         return;
       }
 
-      function extractMetrics(addrStr) {
-        if (!addrStr) return { cepNum: 0, houseNum: 0 };
-        let cepMatch = addrStr.match(/CEP:\s*(\d{5})-?(\d{3})/i) || addrStr.match(/(\d{5}-\d{3})/);
-        let cepVal = cepMatch ? parseInt(cepMatch[0].replace(/\D/g, '')) || 0 : 0;
-        let numMatch = addrStr.match(/N[º°]?\s*(\d+)/i) || addrStr.match(/,\s*(\d+)/);
-        let houseVal = numMatch ? parseInt(numMatch[1]) : 0;
-        return { cepNum: cepVal, houseNum: houseVal };
+      let optimizationResult;
+      try {
+        optimizationResult = await window.VortexDelivery.optimizeRoute(readyOrders.map(order => String(order.id)));
+        if (optimizationResult.error) throw optimizationResult.error;
+        if (!optimizationResult.data || optimizationResult.data.success !== true ||
+            !Array.isArray(optimizationResult.data.optimized_order_ids) ||
+            optimizationResult.data.optimized_order_ids.length !== readyOrders.length) {
+          throw new Error(optimizationResult.data?.error || 'O serviço de mapas não confirmou a sequência otimizada.');
+        }
+      } catch (error) {
+        showNoticeModal(
+          'Não foi possível otimizar a rota',
+          (error.message || 'O serviço de mapas não conseguiu calcular as distâncias.') +
+          ' Confira a chave do OpenRouteService, os limites de uso e os endereços dos pedidos. Nenhuma sequência aproximada será apresentada como otimizada.',
+          '⚠️'
+        );
+        return;
       }
 
-      let storeMetrics = extractMetrics(storeAddress);
-      let unassigned = [...readyOrders];
-      let optimizedRoute = [];
-      let currentRefCep = storeMetrics.cepNum || 7000000;
-      let currentRefHouse = storeMetrics.houseNum || 1;
-
-      while (unassigned.length > 0) {
-        let nearestIndex = 0;
-        let minScore = Infinity;
-
-        unassigned.forEach((ord, idx) => {
-          let m = extractMetrics(ord.address);
-          let score = (Math.abs(m.cepNum - currentRefCep) * 1000) + Math.abs(m.houseNum - currentRefHouse);
-          if (score < minScore) {
-            minScore = score;
-            nearestIndex = idx;
-          }
-        });
-
-        let nextOrder = unassigned.splice(nearestIndex, 1)[0];
-        optimizedRoute.push(nextOrder);
-        let nextMetrics = extractMetrics(nextOrder.address);
-        currentRefCep = nextMetrics.cepNum || currentRefCep;
-        currentRefHouse = nextMetrics.houseNum || currentRefHouse;
+      const ordersById = new Map(readyOrders.map(order => [String(order.id), order]));
+      const optimizedRoute = optimizationResult.data.optimized_order_ids
+        .map(id => ordersById.get(String(id)))
+        .filter(Boolean);
+      if (optimizedRoute.length !== readyOrders.length) {
+        showNoticeModal('Sequência incompleta', 'O serviço de mapas não retornou todos os pedidos. Confira os endereços e tente novamente.', '⚠️');
+        return;
       }
 
       window.vortexOptimizedDeliveryRoute = optimizedRoute.slice();
@@ -868,7 +861,7 @@
       if (codeResults) { codeResults.style.display = 'none'; codeResults.innerHTML = ''; }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${storeAddress}</strong>`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência calculada pelas distâncias viárias do OpenRouteService.</span>`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';

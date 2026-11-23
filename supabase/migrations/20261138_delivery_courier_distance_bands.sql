@@ -339,10 +339,20 @@ BEGIN
 END;
 $function$;
 
-DROP TRIGGER IF EXISTS trg_require_delivery_courier_distance_before_start ON public.vortex_delivery_routes;
-CREATE TRIGGER trg_require_delivery_courier_distance_before_start
-BEFORE UPDATE OF status ON public.vortex_delivery_routes
-FOR EACH ROW EXECUTE FUNCTION public.vortex_require_courier_distance_before_route_start();
+DO $trigger$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname='trg_require_delivery_courier_distance_before_start'
+      AND tgrelid='public.vortex_delivery_routes'::regclass
+      AND NOT tgisinternal
+  ) THEN
+    CREATE TRIGGER trg_require_delivery_courier_distance_before_start
+    BEFORE UPDATE OF status ON public.vortex_delivery_routes
+    FOR EACH ROW EXECUTE FUNCTION public.vortex_require_courier_distance_before_route_start();
+  END IF;
+END;
+$trigger$;
 
 REVOKE ALL ON FUNCTION public.vortex_require_courier_distance_before_route_start() FROM PUBLIC,anon,authenticated;
 

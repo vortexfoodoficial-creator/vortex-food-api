@@ -117,8 +117,8 @@ Deno.serve(async (req: Request) => {
     if (body.action === "optimize") {
       const rawIds = Array.isArray(body.order_ids) ? body.order_ids : [];
       const orderIds = Array.from(new Set(rawIds.map(value => String(value || "").trim()).filter(Boolean)));
-      if (!orderIds.length || orderIds.length > 25) {
-        return respond(400, { error: "Selecione entre 1 e 25 pedidos prontos para otimizar." });
+      if (!orderIds.length || orderIds.length > 24) {
+        return respond(400, { error: "Selecione entre 1 e 24 pedidos prontos para otimizar." });
       }
       const { data: orders, error: ordersError } = await admin
         .from("vortex_kds_orders").select("id,address")

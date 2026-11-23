@@ -98,7 +98,13 @@ Deno.serve(async (req: Request) => {
         : "O pedido não possui um endereço de entrega completo." });
     }
 
-    const withBrazil = (address: string) => /\b(brasil|brazil)\b/i.test(address) ? address : address + ", Brasil";
+    const city = cleanAddress(settings.city);
+    const uf = cleanAddress(settings.uf);
+    const withRegion = (address: string) => {
+      const missingRegion = [city, uf].filter(part => part && !address.toLowerCase().includes(part.toLowerCase()));
+      if (!/\b(brasil|brazil)\b/i.test(address)) missingRegion.push("Brasil");
+      return [address, ...missingRegion].join(", ");
+    };
     const routeResponse = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
       method: "POST",
       headers: {
@@ -107,8 +113,8 @@ Deno.serve(async (req: Request) => {
         "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
       },
       body: JSON.stringify({
-        origin: { address: withBrazil(originRaw) },
-        destination: { address: withBrazil(destinationRaw) },
+        origin: { address: withRegion(originRaw) },
+        destination: { address: withRegion(destinationRaw) },
         travelMode: "TWO_WHEELER",
         regionCode: "BR",
         languageCode: "pt-BR",

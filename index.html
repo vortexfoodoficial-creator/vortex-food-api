@@ -438,6 +438,7 @@
     let dashCache = {
       sales: [],
       entries: [],
+      entriesLoadError: null,
       kds: [],
       recipes: [],
       products: [],
@@ -583,6 +584,7 @@
           ]);
 
           dashboardFinancialLoadError = entriesRes && entriesRes.error ? entriesRes.error : null;
+          dashCache.entriesLoadError = dashboardFinancialLoadError;
           dashCache.sales = (salesRes && !salesRes.error && Array.isArray(salesRes.data)) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
           dashCache.entries = (entriesRes && !entriesRes.error && Array.isArray(entriesRes.data)) ? entriesRes.data : (JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
           dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
@@ -594,6 +596,7 @@
           dashCache.lastFetched = now;
         } catch (e) {
           dashboardFinancialLoadError = e;
+          dashCache.entriesLoadError = e;
           console.warn('Erro ao buscar dados do Supabase, recorrendo ao cache local.', e);
           dashCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
           dashCache.entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
@@ -603,6 +606,7 @@
         }
       }
 
+      dashboardFinancialLoadError = dashCache.entriesLoadError || dashboardFinancialLoadError;
       const settings = JSON.parse(localStorage.getItem('vortex_store_settings')) || {};
       storeName = settings.storeName || settings.nome || settings.store_name || 'MEU ESTABELECIMENTO';
       sidebarLogoUrl = localStorage.getItem('vortex_store_logo') || '';

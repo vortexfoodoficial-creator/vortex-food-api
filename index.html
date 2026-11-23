@@ -568,6 +568,7 @@
       let cloudTableCarts = null;
       let clientsLoyalty = {};
 
+      let dashboardFinancialLoadError = null;
       const now = Date.now();
       if (forceRefresh || now - dashCache.lastFetched > 30000 || dashCache.sales.length === 0) {
         try {
@@ -581,6 +582,7 @@
             typeof dbFetchTableCarts === 'function' ? dbFetchTableCarts() : Promise.resolve({ data: null, error: new Error('Consulta de comandas indisponível.') })
           ]);
 
+          dashboardFinancialLoadError = entriesRes && entriesRes.error ? entriesRes.error : null;
           dashCache.sales = (salesRes && !salesRes.error && Array.isArray(salesRes.data)) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
           dashCache.entries = (entriesRes && !entriesRes.error && Array.isArray(entriesRes.data)) ? entriesRes.data : (JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
           dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
@@ -591,6 +593,7 @@
             : null;
           dashCache.lastFetched = now;
         } catch (e) {
+          dashboardFinancialLoadError = e;
           console.warn('Erro ao buscar dados do Supabase, recorrendo ao cache local.', e);
           dashCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
           dashCache.entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
@@ -670,6 +673,7 @@
       });
       const grossProfit = netSales + additionalIncome - totalCmvCost;
       const netOperationalProfit = grossProfit - operatingExpenses - courierDeliveryCosts;
+      const dashboardProfitUnavailable = !!(dashboardFinancialLoadError || courierDeliveryLoadError);
       const profitMargin = netSales > 0 ? ((netOperationalProfit / netSales) * 100).toFixed(1) : '0.0';
       const ticketMedio = totalOrdersCount > 0 ? netSales / totalOrdersCount : 0;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
@@ -753,9 +757,9 @@
       document.getElementById('dashVendasLiquidas').innerText = `R$ ${formatFloatToCurrency(netSales)}`;
       document.getElementById('dashNetSub').innerText = `Descontos: R$ ${formatFloatToCurrency(totalDiscounts)}`;
       document.getElementById('dashTotalDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
-      document.getElementById('dashLucroBruto').innerText = courierDeliveryLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netOperationalProfit)}`;
-      document.getElementById('dashMargemLucro').innerText = courierDeliveryLoadError
-        ? 'Não foi possível consultar os custos dos motoboys'
+      document.getElementById('dashLucroBruto').innerText = dashboardProfitUnavailable ? 'Indisponível' : `R$ ${formatFloatToCurrency(netOperationalProfit)}`;
+      document.getElementById('dashMargemLucro').innerText = dashboardProfitUnavailable
+        ? 'Não foi possível consultar todas as despesas e entregas'
         : `Despesas: R$ ${formatFloatToCurrency(operatingExpenses)} · Motoboys: R$ ${formatFloatToCurrency(courierDeliveryCosts)} · ${courierUnpricedCount ? courierUnpricedCount + ' sem valor definido · ' : ''}Margem: ${profitMargin}%`;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;

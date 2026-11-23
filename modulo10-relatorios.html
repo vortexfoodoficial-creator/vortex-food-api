@@ -285,6 +285,7 @@
         <span>(-) Remuneração dos Entregadores</span>
         <span id="dreCourierExpenses">R$ 0,00</span>
       </div>
+      <div id="dreCourierExpensesNote" style="font-size:.75rem;color:var(--text-muted);margin:-4px 0 10px;"></div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
         <span>(=) RESULTADO GERENCIAL LÍQUIDO</span>
         <strong id="dreNetProfit" style="color:var(--success); font-size:1.2rem;">R$ 0,00</strong>
@@ -715,6 +716,9 @@
       document.getElementById('dreCourierExpenses').title = courierPayoutLoadError
         ? 'Não foi possível consultar os custos das entregas; o resultado líquido está incompleto.'
         : (courierUnpricedCount ? courierUnpricedCount + ' entrega(s) sem remuneração definida não foram somadas.' : 'Custo reconhecido por entrega concluída.');
+      document.getElementById('dreCourierExpensesNote').innerText = courierPayoutLoadError
+        ? 'Atenção: os custos das entregas não foram consultados. O resultado líquido está indisponível.'
+        : (courierUnpricedCount ? courierUnpricedCount + ' entrega(s) concluída(s) sem remuneração definida ficaram fora do cálculo.' : 'Custo reconhecido na conclusão da entrega; o status de pagamento não altera o custo do período.');
       document.getElementById('dreNetProfit').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netProfit)}`;
 
       renderHourlySales(sales);

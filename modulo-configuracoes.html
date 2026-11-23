@@ -504,7 +504,6 @@
           <input type="text" id="courierPaymentFixedAmount" placeholder="Ex.: 5,00" oninput="maskCurrency(this)">
         </div>
         <div id="courierPaymentKmPanel" class="form-group" style="display:none;">
-          <label for="courierPaymentKmAmount">Quanto o motoboy recebe por quilômetro (R$):</label>
           <div id="courierPaymentKmRangesContainer" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
           <button type="button" class="btn-modal-secondary" onclick="addCourierPaymentKmRange()">➕ Adicionar faixa de KM</button>
           <p style="font-size:.73rem;color:var(--text-muted);margin-top:7px;">O sistema calcula a distância real da rota automaticamente e aplica a faixa correspondente. Não será necessário informar quilômetros na Central de Operações.</p>
@@ -921,7 +920,6 @@
       document.getElementById('defaultDeliveryFeeInput').value = settings.defaultDeliveryFee || '';
       document.getElementById('courierPaymentMode').value = settings.courierPaymentMode || 'fixed';
       document.getElementById('courierPaymentFixedAmount').value = settings.courierPaymentFixedAmount || '';
-      document.getElementById('courierPaymentKmAmount').value = settings.courierPaymentKmAmount || '';
       courierPaymentKmRangesData = Array.isArray(settings.courierPaymentKmRangesData)
         ? settings.courierPaymentKmRangesData.map(item => ({kmStart:String(item.kmStart ?? ''),kmEnd:String(item.kmEnd ?? ''),amount:String(item.amount ?? '')}))
         : [];
@@ -1123,7 +1121,6 @@
       const defaultDeliveryFee = document.getElementById('defaultDeliveryFeeInput').value.trim();
       const courierPaymentMode = document.getElementById('courierPaymentMode').value;
       const courierPaymentFixedAmount = document.getElementById('courierPaymentFixedAmount').value.trim();
-      const courierPaymentKmAmount = document.getElementById('courierPaymentKmAmount').value.trim();
       const customerKmRanges = document.getElementById('deliveryTypeSelect').value === 'km'
         ? validateDeliveryKmRanges(kmRangesData,'taxa cobrada do cliente','price')
         : kmRangesData.map(item => ({...item}));
@@ -1158,7 +1155,7 @@
         streetNumber, complement, street, neighborhood, city, uf,
         timezone, specialHours, workingHours, deliveryType, freeDelivery, freeDeliveryMin,
         fixedDeliveryPrice, minOrderValue, defaultDeliveryFee, bairrosData, kmRangesData:customerKmRanges,
-        courierPaymentMode, courierPaymentFixedAmount, courierPaymentKmAmount, courierPaymentKmRangesData:courierKmRanges, courierPaymentNeighborhoodsData: courierPaymentNeighborhoods,
+        courierPaymentMode, courierPaymentFixedAmount, courierPaymentKmRangesData:courierKmRanges, courierPaymentNeighborhoodsData: courierPaymentNeighborhoods,
         requireSchedule, schedulePickup, scheduleDelivery, closedBusinessSchedule,
         scheduleInterval, futureMinMinutes, estPrepTime, estDeliveryTime, maxScheduleDays,
         paymentMethodsConfig, serviceTax, defaultDiscount, receiptFooter, soundNotification,

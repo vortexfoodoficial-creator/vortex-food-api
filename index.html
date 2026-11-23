@@ -583,7 +583,7 @@
             typeof dbFetchTableCarts === 'function' ? dbFetchTableCarts() : Promise.resolve({ data: null, error: new Error('Consulta de comandas indisponível.') })
           ]);
 
-          dashboardFinancialLoadError = entriesRes && entriesRes.error ? entriesRes.error : null;
+          dashboardFinancialLoadError = (salesRes && salesRes.error) || (entriesRes && entriesRes.error) || null;
           dashCache.entriesLoadError = dashboardFinancialLoadError;
           dashCache.sales = (salesRes && !salesRes.error && Array.isArray(salesRes.data)) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
           dashCache.entries = (entriesRes && !entriesRes.error && Array.isArray(entriesRes.data)) ? entriesRes.data : (JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);

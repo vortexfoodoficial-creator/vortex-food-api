@@ -6,7 +6,7 @@
   <title>Vortex Food - Relatórios & DRE Gerencial</title>
   <!-- Integração Oficial Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261119-tab-auth-isolation-7"></script>
+  <script src="supabase.js?v=20261123-delivery-finance-week-fix-1"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -281,6 +281,10 @@
         <span>(-) Despesas Operacionais / Custos Fixos / Sangrias</span>
         <span id="dreOperatingExpenses">R$ 0,00</span>
       </div>
+      <div class="dre-row sub">
+        <span>(-) Remuneração dos Entregadores</span>
+        <span id="dreCourierExpenses">R$ 0,00</span>
+      </div>
       <div class="dre-row total" style="background: rgba(34, 197, 94, 0.1); padding: 14px 10px; border-radius: 8px; margin-top: 10px;">
         <span>(=) RESULTADO GERENCIAL LÍQUIDO</span>
         <strong id="dreNetProfit" style="color:var(--success); font-size:1.2rem;">R$ 0,00</strong>
@@ -419,7 +423,11 @@
     let cloudFichas = [];
     let cloudCardapio = [];
     let cloudSales = [];
+    let cloudSalesLoaded = false;
     let cloudExpenses = [];
+    let cloudExpensesLoaded = false;
+    let courierPayoutRows = [];
+    let courierPayoutLoadError = null;
     let cloudRecipes = [];
 
     function toggleMenu() {
@@ -449,17 +457,9 @@
 
     function parseToLocalDateStr(rawDate) {
       if (!rawDate) return '';
-      if (typeof rawDate === 'string') {
-        const cleanStr = rawDate.split('T')[0].split(' ')[0];
-        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
-          return cleanStr;
-        }
-      }
+      if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) return rawDate.trim();
       const d = new Date(rawDate);
-      if (!isNaN(d.getTime())) {
-        return getLocalDateStr(d);
-      }
-      return '';
+      return !isNaN(d.getTime()) ? getLocalDateStr(d) : '';
     }
 
     function setQuickFilter(type) {
@@ -479,8 +479,9 @@
         endStr = getLocalDateStr(yesterday);
       } else if (type === 'week') {
         document.getElementById('btnFilterWeek').classList.add('active');
-        const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
-        startStr = getLocalDateStr(sevenDaysAgo);
+        const mondayOffset = (today.getDay() + 6) % 7;
+        const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+        startStr = getLocalDateStr(monday);
       } else if (type === 'month') {
         document.getElementById('btnFilterMonth').classList.add('active');
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -531,7 +532,7 @@
       const startStr = document.getElementById('startDate').value;
       const endStr = document.getElementById('endDate').value;
 
-      let rawHistory = cloudSales.length > 0 ? cloudSales : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+      let rawHistory = cloudSalesLoaded ? cloudSales : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
       
       return rawHistory.filter(s => {
         const itemDateStr = parseToLocalDateStr(s.date || s.timestamp);
@@ -549,7 +550,7 @@
       let localExp3 = JSON.parse(localStorage.getItem('vortex_financial') || '[]');
       let localExp4 = JSON.parse(localStorage.getItem('vortex_financial_entries') || '[]');
       
-      let combined = [...cloudExpenses, ...localExp1, ...localExp2, ...localExp3, ...localExp4];
+      let combined = cloudExpensesLoaded ? cloudExpenses : [...localExp1, ...localExp2, ...localExp3, ...localExp4];
       
       let uniqueMap = new Map();
       combined.forEach(item => {
@@ -560,7 +561,7 @@
 
       return allExp.filter(e => {
         const itemDateStr = parseToLocalDateStr(e.date || e.timestamp);
-        if (!itemDateStr) return true;
+        if (!itemDateStr) return false;
         return itemDateStr >= startStr && itemDateStr <= endStr;
       });
     }
@@ -609,16 +610,18 @@
       }
 
       try {
-        const [salesData, recipesData, catalogData, expensesData] = await Promise.all([
-          typeof dbFetchSales === 'function' ? dbFetchSales() : Promise.resolve([]),
+        const [salesResult, recipesData, catalogData, expensesResult] = await Promise.all([
+          typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({data:[],error:new Error('Consulta de vendas indisponível.')}),
           typeof dbFetchRecipes === 'function' ? dbFetchRecipes() : Promise.resolve([]),
           typeof dbFetchCatalog === 'function' ? dbFetchCatalog() : Promise.resolve({ products: [] }),
-          typeof dbFetchFinancialEntries === 'function' ? dbFetchFinancialEntries() : Promise.resolve([])
+          typeof dbFetchFinancialEntriesResult === 'function' ? dbFetchFinancialEntriesResult() : Promise.resolve({data:[],error:new Error('Consulta financeira indisponível.')})
         ]);
-        if (Array.isArray(salesData)) cloudSales = salesData;
+        cloudSalesLoaded = !!(salesResult && !salesResult.error && Array.isArray(salesResult.data));
+        cloudSales = cloudSalesLoaded ? salesResult.data : [];
+        cloudExpensesLoaded = !!(expensesResult && !expensesResult.error && Array.isArray(expensesResult.data));
+        cloudExpenses = cloudExpensesLoaded ? expensesResult.data : [];
         if (Array.isArray(recipesData)) cloudRecipes = recipesData;
         if (catalogData && Array.isArray(catalogData.products)) cloudCardapio = catalogData.products;
-        if (Array.isArray(expensesData)) cloudExpenses = expensesData;
         try { cloudFichas = JSON.parse(localStorage.getItem('vortex_fichas_tecnicas') || '[]'); } catch (error) { cloudFichas = []; }
       } catch (err) {
         console.warn('Aviso: Utilizando dados locais da loja devido a falha na nuvem:', err);
@@ -627,9 +630,27 @@
       loadReportsData();
     }
 
-    function loadReportsData() {
+    async function loadReportsData() {
       const sales = getFilteredSales();
       const expenses = getFilteredExpenses();
+      courierPayoutRows = [];
+      courierPayoutLoadError = null;
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      if (start && end && window.VortexDelivery?.fetchCourierEarnings) {
+        try {
+          const payoutResult = await window.VortexDelivery.fetchCourierEarnings(start, end);
+          if (payoutResult && payoutResult.error) throw payoutResult.error;
+          courierPayoutRows = Array.isArray(payoutResult?.data) ? payoutResult.data : [];
+        } catch (error) {
+          courierPayoutLoadError = error;
+          console.warn('Não foi possível consultar os custos de remuneração dos entregadores nos relatórios:', error);
+        }
+      } else {
+        courierPayoutLoadError = new Error('Consulta financeira de entregas indisponível para o período.');
+      }
+      const courierExpenseTotal = courierPayoutRows.reduce((sum, row) => sum + (row.amount == null ? 0 : Math.max(0, Number(row.amount) || 0)), 0);
+      const courierUnpricedCount = courierPayoutRows.filter(row => row.amount == null).length;
 
       renderIndividualSalesList(sales);
 
@@ -677,7 +698,8 @@
       const netSales = grossSales - totalDiscounts + manualIncome;
       const grossMargin = netSales - totalCmvReal;
       const adjustedNetSales = netSales;
-      const netProfit = grossMargin - totalOperatingExpenses;
+      const totalOperatingExpensesWithCourier = totalOperatingExpenses + courierExpenseTotal;
+      const netProfit = grossMargin - totalOperatingExpensesWithCourier;
 
       document.getElementById('dreGrossSales').innerText = `R$ ${formatFloatToCurrency(grossSales)}`;
       document.getElementById('dreDiscounts').innerText = `R$ ${formatFloatToCurrency(totalDiscounts)}`;
@@ -686,6 +708,10 @@
       document.getElementById('dreCmv').innerText = `R$ ${formatFloatToCurrency(totalCmvReal)}`;
       document.getElementById('dreGrossMargin').innerText = `R$ ${formatFloatToCurrency(grossMargin)}`;
       document.getElementById('dreOperatingExpenses').innerText = `R$ ${formatFloatToCurrency(totalOperatingExpenses)}`;
+      document.getElementById('dreCourierExpenses').innerText = courierPayoutLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(courierExpenseTotal)}`;
+      document.getElementById('dreCourierExpenses').title = courierPayoutLoadError
+        ? 'Não foi possível consultar os custos das entregas; o resultado líquido está incompleto.'
+        : (courierUnpricedCount ? courierUnpricedCount + ' entrega(s) sem remuneração definida não foram somadas.' : 'Custo reconhecido por entrega concluída.');
       document.getElementById('dreNetProfit').innerText = `R$ ${formatFloatToCurrency(netProfit)}`;
 
       renderHourlySales(sales);

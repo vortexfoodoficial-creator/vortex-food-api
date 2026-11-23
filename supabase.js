@@ -701,17 +701,6 @@ async function dbCancelDeliveryRoute(routeId, reason) {
   });
 }
 
-async function dbSetDeliveryStopDistance(routeId, orderId, distanceKm) {
-  const storeId = await vortexGetCurrentStoreId();
-  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
-  return await vortexDeliveryRpc('rpc_set_delivery_stop_distance', {
-    p_store_id: storeId,
-    p_route_id: String(routeId || ''),
-    p_order_id: String(orderId || ''),
-    p_distance_km: Number(distanceKm)
-  });
-}
-
 async function dbCalculateDeliveryStopDistance(routeId, orderId) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };

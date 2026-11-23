@@ -269,9 +269,9 @@
       </div>
 
       <div class="metric-card">
-        <span class="metric-title">Lucro após custo das entregas</span>
+        <span class="metric-title">Resultado após custos operacionais</span>
         <span class="metric-value" style="color:var(--success);" id="dashLucroBruto">R$ 0,00</span>
-        <span class="metric-sub" id="dashMargemLucro">Margem Média: 0.0%</span>
+        <span class="metric-sub" id="dashMargemLucro">CMV, despesas e remuneração das entregas</span>
       </div>
 
       <div class="metric-card">
@@ -437,6 +437,7 @@
     // Cache local otimizado para evitar requisições repetidas
     let dashCache = {
       sales: [],
+      entries: [],
       kds: [],
       recipes: [],
       products: [],
@@ -571,8 +572,9 @@
       if (forceRefresh || now - dashCache.lastFetched > 30000 || dashCache.sales.length === 0) {
         try {
           // Carregamento paralelo simultâneo otimizado (Promise.all)
-          const [salesRes, kdsRes, recipesRes, catalogRes, tableCartsRes] = await Promise.all([
-            typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [] }),
+          const [salesRes, entriesRes, kdsRes, recipesRes, catalogRes, tableCartsRes] = await Promise.all([
+            typeof dbFetchSalesResult === 'function' ? dbFetchSalesResult() : Promise.resolve({ data: [], error: new Error('Consulta de vendas indisponível.') }),
+            typeof dbFetchFinancialEntriesResult === 'function' ? dbFetchFinancialEntriesResult() : Promise.resolve({ data: [], error: new Error('Consulta financeira indisponível.') }),
             typeof dbFetchKdsOrdersResult === 'function' ? dbFetchKdsOrdersResult() : Promise.resolve({ data: [] }),
             typeof dbFetchRecipesResult === 'function' ? dbFetchRecipesResult() : Promise.resolve({ data: [] }),
             typeof dbFetchCatalogResult === 'function' ? dbFetchCatalogResult() : Promise.resolve({ data: { products: [] } }),
@@ -580,6 +582,7 @@
           ]);
 
           dashCache.sales = (salesRes && !salesRes.error && Array.isArray(salesRes.data)) ? salesRes.data : (JSON.parse(localStorage.getItem('vortex_sales_history')) || []);
+          dashCache.entries = (entriesRes && !entriesRes.error && Array.isArray(entriesRes.data)) ? entriesRes.data : (JSON.parse(localStorage.getItem('vortex_financial_entries')) || []);
           dashCache.kds = (kdsRes && kdsRes.data && kdsRes.data.length > 0) ? kdsRes.data : (JSON.parse(localStorage.getItem('vortex_kds_orders')) || []);
           dashCache.recipes = (recipesRes && recipesRes.data && recipesRes.data.length > 0) ? recipesRes.data : (JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || []);
           dashCache.products = (catalogRes && catalogRes.data && catalogRes.data.products && catalogRes.data.products.length > 0) ? catalogRes.data.products : (JSON.parse(localStorage.getItem('vortex_products_catalog')) || []);
@@ -590,6 +593,7 @@
         } catch (e) {
           console.warn('Erro ao buscar dados do Supabase, recorrendo ao cache local.', e);
           dashCache.sales = JSON.parse(localStorage.getItem('vortex_sales_history')) || [];
+          dashCache.entries = JSON.parse(localStorage.getItem('vortex_financial_entries')) || [];
           dashCache.kds = JSON.parse(localStorage.getItem('vortex_kds_orders')) || [];
           dashCache.recipes = JSON.parse(localStorage.getItem('vortex_recipes_catalog')) || [];
           dashCache.products = JSON.parse(localStorage.getItem('vortex_products_catalog')) || [];
@@ -608,6 +612,7 @@
       clientsLoyalty = JSON.parse(localStorage.getItem('vortex_clients_loyalty')) || {};
 
       const salesHistory = dashCache.sales.filter(s => isDateInFilter(s.date || s.timestamp, currentFilter));
+      const financialEntries = dashCache.entries.filter(entry => isDateInFilter(entry.date || entry.timestamp, currentFilter));
       const kdsOrders = dashCache.kds;
       let courierDeliveryCosts = 0;
       let courierUnpricedCount = 0;
@@ -654,8 +659,17 @@
 
       const totalOrdersCount = salesHistory.filter(s => s.status !== 'cancelled').length;
       const netSales = Math.max(0, grossSales - totalDiscounts);
-      const grossProfit = netSales - totalCmvCost;
-      const netOperationalProfit = grossProfit - courierDeliveryCosts;
+      let operatingExpenses = 0;
+      let additionalIncome = 0;
+      financialEntries.forEach(entry => {
+        const type = String(entry.type || '').toLowerCase();
+        const amount = Number(entry.value || entry.amount || entry.valor || 0) || 0;
+        if (type === 'expense' || type === 'sangria' || type === 'despesa' || type.includes('ajuste (-)')) operatingExpenses += amount;
+        else if (type === 'income' || type === 'suprimento' || type.includes('ajuste (+)')) additionalIncome += amount;
+        else operatingExpenses += amount;
+      });
+      const grossProfit = netSales + additionalIncome - totalCmvCost;
+      const netOperationalProfit = grossProfit - operatingExpenses - courierDeliveryCosts;
       const profitMargin = netSales > 0 ? ((netOperationalProfit / netSales) * 100).toFixed(1) : '0.0';
       const ticketMedio = totalOrdersCount > 0 ? netSales / totalOrdersCount : 0;
       const pointPercent = Math.min(100, Math.round((grossSales / monthlyGoal) * 100));
@@ -742,7 +756,7 @@
       document.getElementById('dashLucroBruto').innerText = courierDeliveryLoadError ? 'Indisponível' : `R$ ${formatFloatToCurrency(netOperationalProfit)}`;
       document.getElementById('dashMargemLucro').innerText = courierDeliveryLoadError
         ? 'Não foi possível consultar os custos dos motoboys'
-        : `Motoboys: R$ ${formatFloatToCurrency(courierDeliveryCosts)} · ${courierUnpricedCount ? courierUnpricedCount + ' sem valor definido · ' : ''}Margem: ${profitMargin}%`;
+        : `Despesas: R$ ${formatFloatToCurrency(operatingExpenses)} · Motoboys: R$ ${formatFloatToCurrency(courierDeliveryCosts)} · ${courierUnpricedCount ? courierUnpricedCount + ' sem valor definido · ' : ''}Margem: ${profitMargin}%`;
       document.getElementById('dashTicketMedio').innerText = `R$ ${formatFloatToCurrency(ticketMedio)}`;
       document.getElementById('dashOrdersCount').innerText = `${totalOrdersCount} pedido(s) no período`;
       document.getElementById('dashPontoEquilibrio').innerText = `${pointPercent}%`;

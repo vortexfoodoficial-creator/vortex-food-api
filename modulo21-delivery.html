@@ -900,17 +900,18 @@
       const rulesResult = await window.VortexDelivery.getPaymentRules();
       if (rulesResult.error) return {results:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'})),failures:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'}))};
       if (rulesResult.data?.mode !== 'per_km') return {results:ids.map(orderId=>({orderId,success:true,skipped:true})),failures:[]};
-      const results = await Promise.all(ids.map(async orderId => {
-        try {
-          const result = await window.VortexDelivery.calculateStopDistance(routeId,orderId);
-          if (result.error) throw result.error;
-          if (!result.data || result.data.success !== true) throw new Error(result.data?.error || 'O servidor não confirmou a distância.');
-          return {orderId,success:true,data:result.data};
-        } catch (error) {
-          return {orderId,success:false,error:error.message || 'Falha ao calcular a rota.'};
-        }
-      }));
-      return {results,failures:results.filter(item=>!item.success)};
+      try {
+        const response = await window.VortexDelivery.calculateRouteDistances(routeId,ids);
+        if (response.error) throw response.error;
+        const results = Array.isArray(response.data?.results) ? response.data.results.map(item => ({
+          orderId:String(item.order_id),success:item.success === true,data:item,
+          error:item.success === true ? null : (item.error || 'Não foi possível calcular esta entrega.')
+        })) : [];
+        if (results.length !== ids.length) throw new Error(response.data?.error || 'O serviço de mapas não retornou todas as entregas.');
+        return {results,failures:results.filter(item=>!item.success)};
+      } catch (error) {
+        return {results:ids.map(orderId=>({orderId,success:false,error:error.message || 'Falha ao calcular as distâncias da rota.'})),failures:ids.map(orderId=>({orderId,success:false,error:error.message || 'Falha ao calcular as distâncias da rota.'}))};
+      }
     }
 
     async function ensureCourierRoute(courier, orderIds) {

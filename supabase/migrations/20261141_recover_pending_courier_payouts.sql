@@ -14,7 +14,7 @@ SET search_path = pg_catalog, public, auth
 AS $function$
 DECLARE
   v_mode text;
-  v_ranges jsonb;
+  v_ranges jsonb := '[]'::jsonb;
   v_row record;
   v_band jsonb;
   v_distance numeric(8,2);
@@ -40,20 +40,16 @@ BEGIN
   FROM public.vortex_delivery_courier_payment_rules
   WHERE store_id=p_store_id;
 
-  IF NOT FOUND OR v_mode <> 'per_km' THEN
-    RAISE EXCEPTION 'Configure as faixas de remuneração por quilometragem antes de recuperar os lançamentos.';
-  END IF;
   IF jsonb_typeof(COALESCE(v_ranges,'[]'::jsonb)) <> 'array' THEN
-    RAISE EXCEPTION 'As faixas de remuneração estão em formato inválido. Revise as configurações.';
-  END IF;
-  IF jsonb_array_length(COALESCE(v_ranges,'[]'::jsonb)) = 0 THEN
-    RAISE EXCEPTION 'Cadastre ao menos uma faixa de quilometragem antes de recuperar os lançamentos.';
+    v_ranges := '[]'::jsonb;
   END IF;
 
   FOR v_row IN
     SELECT l.stop_id,
            l.distance_km AS ledger_distance_km,
-           s.distance_km AS stop_distance_km
+           s.distance_km AS stop_distance_km,
+           s.courier_payment_amount AS stop_payment_amount,
+           s.courier_payment_rule_label AS stop_rule_label
     FROM public.vortex_delivery_courier_ledger l
     JOIN public.vortex_delivery_route_stops s
       ON s.store_id=l.store_id AND s.id=l.stop_id
@@ -68,36 +64,48 @@ BEGIN
   LOOP
     v_distance := round(COALESCE(v_row.ledger_distance_km,v_row.stop_distance_km),2);
 
-    IF v_distance IS NULL OR v_distance <= 0 OR v_distance > 500 THEN
-      v_without_distance := v_without_distance + 1;
-      CONTINUE;
+    -- Se a parada já possui remuneração congelada, restaura exatamente esse
+    -- valor histórico, sem recalculá-lo com as regras atuais.
+    IF v_row.stop_payment_amount IS NOT NULL THEN
+      v_amount := v_row.stop_payment_amount;
+      v_rule_label := COALESCE(v_row.stop_rule_label,'Remuneração registrada na entrega');
+    ELSE
+      IF v_distance IS NULL OR v_distance <= 0 OR v_distance > 500 THEN
+        v_without_distance := v_without_distance + 1;
+        CONTINUE;
+      END IF;
+
+      IF v_mode <> 'per_km' OR jsonb_array_length(v_ranges)=0 THEN
+        v_without_band := v_without_band + 1;
+        CONTINUE;
+      END IF;
+
+      v_band := NULL;
+      SELECT item.value
+        INTO v_band
+      FROM jsonb_array_elements(v_ranges) AS item(value)
+      WHERE v_distance > (item.value->>'kmStart')::numeric
+        AND v_distance <= (item.value->>'kmEnd')::numeric
+      ORDER BY (item.value->>'kmStart')::numeric DESC
+      LIMIT 1;
+
+      IF v_band IS NULL THEN
+        v_without_band := v_without_band + 1;
+        CONTINUE;
+      END IF;
+
+      v_amount := replace(v_band->>'amount',',','.')::numeric;
+      IF v_amount <= 0 OR v_amount > 10000 THEN
+        v_without_band := v_without_band + 1;
+        CONTINUE;
+      END IF;
+
+      v_rule_label := CASE
+        WHEN (v_band->>'kmStart')::numeric=0
+          THEN 'Até ' || (v_band->>'kmEnd') || ' km'
+        ELSE 'Acima de ' || (v_band->>'kmStart') || ' até ' || (v_band->>'kmEnd') || ' km'
+      END;
     END IF;
-
-    v_band := NULL;
-    SELECT item.value
-      INTO v_band
-    FROM jsonb_array_elements(v_ranges) AS item(value)
-    WHERE v_distance > (item.value->>'kmStart')::numeric
-      AND v_distance <= (item.value->>'kmEnd')::numeric
-    ORDER BY (item.value->>'kmStart')::numeric DESC
-    LIMIT 1;
-
-    IF v_band IS NULL THEN
-      v_without_band := v_without_band + 1;
-      CONTINUE;
-    END IF;
-
-    v_amount := replace(v_band->>'amount',',','.')::numeric;
-    IF v_amount <= 0 OR v_amount > 10000 THEN
-      v_without_band := v_without_band + 1;
-      CONTINUE;
-    END IF;
-
-    v_rule_label := CASE
-      WHEN (v_band->>'kmStart')::numeric=0
-        THEN 'Até ' || (v_band->>'kmEnd') || ' km'
-      ELSE 'Acima de ' || (v_band->>'kmStart') || ' até ' || (v_band->>'kmEnd') || ' km'
-    END;
 
     UPDATE public.vortex_delivery_courier_ledger
     SET amount=v_amount,

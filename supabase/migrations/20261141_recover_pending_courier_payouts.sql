@@ -40,7 +40,8 @@ BEGIN
   FROM public.vortex_delivery_courier_payment_rules
   WHERE store_id=p_store_id;
 
-  IF jsonb_typeof(COALESCE(v_ranges,'[]'::jsonb)) <> 'array' THEN
+  v_ranges := COALESCE(v_ranges,'[]'::jsonb);
+  IF jsonb_typeof(v_ranges) <> 'array' THEN
     v_ranges := '[]'::jsonb;
   END IF;
 

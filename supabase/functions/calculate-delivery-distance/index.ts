@@ -17,14 +17,25 @@ function respond(status: number, body: Record<string, unknown>) {
 function cleanAddress(value: unknown): string {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
+function normalizeAddressForGeocoding(address: string): string {
+  return cleanAddress(address)
+    .replace(/\s*\|\s*CEP\s*:\s*/i, ", ")
+    .replace(/\bN[º°o]\s*/gi, "")
+    .replace(/\s+-\s+/g, ", ")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/(?:,\s*){2,}/g, ", ")
+    .replace(/^,|,$/g, "")
+    .trim();
+}
 function withRegion(address: string, settings: Record<string, unknown>) {
+  const normalized = normalizeAddressForGeocoding(address);
   const city = cleanAddress(settings.city);
   const uf = cleanAddress(settings.uf);
-  const suffix = [city, uf, "Brasil"].filter((part, index, all) =>
-    part && !address.toLowerCase().includes(part.toLowerCase()) &&
-    (part !== "Brasil" || !/\b(brasil|brazil)\b/i.test(address))
+  const suffix = [city, uf, "Brasil"].filter((part) =>
+    part && !normalized.toLowerCase().includes(part.toLowerCase()) &&
+    (part !== "Brasil" || !/\b(brasil|brazil)\b/i.test(normalized))
   );
-  return [address, ...suffix].join(", ");
+  return [normalized, ...suffix].join(", ");
 }
 function providerErrorDetail(payload: any): string {
   const candidate = payload?.error?.message || payload?.error?.code ||
@@ -54,27 +65,43 @@ async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   return payload;
 }
 async function geocode(address: string, apiKey: string, settings: Record<string, unknown>): Promise<[number, number]> {
+  const normalizedQuery = withRegion(address, settings);
   const query = new URLSearchParams({
-    text: withRegion(address, settings),
+    text: normalizedQuery,
     "boundary.country": "BR",
-    size: "1",
+    layers: "address,street",
+    size: "5",
   });
   const response = await fetch(ORS_BASE + "/pelias/v1/search?" + query.toString(), {
     headers: { Authorization: apiKey },
   });
   const payload = await response.json().catch(() => ({}));
-  const feature = payload?.features?.[0];
-  const coordinates = feature?.geometry?.coordinates;
   if (!response.ok) {
     console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
     throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
   }
-  if (!Array.isArray(coordinates) || coordinates.length < 2 ||
-      !Number.isFinite(Number(coordinates[0])) || !Number.isFinite(Number(coordinates[1]))) {
-    console.error("OpenRouteService geocoding returned no coordinates.");
-    throw new Error("O geocodificador não encontrou o endereço informado. Confira rua, número, bairro, cidade e CEP.");
+  const features = Array.isArray(payload?.features) ? payload.features : [];
+  const feature = features.find((item: any) => {
+    const layer = String(item?.properties?.layer || "").toLowerCase();
+    const point = item?.geometry?.coordinates;
+    return (layer === "address" || layer === "street") &&
+      Array.isArray(point) && point.length >= 2 &&
+      Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1]));
+  });
+  if (!feature) {
+    const fallback = features[0]?.properties || {};
+    console.warn("OpenRouteService did not return a street/address match:", {
+      requested_layer: "address,street",
+      fallback_layer: fallback.layer || null,
+      fallback_accuracy: fallback.accuracy || null,
+      fallback_match_type: fallback.match_type || null,
+      fallback_name: fallback.name || null,
+      fallback_confidence: fallback.confidence ?? null,
+    });
+    throw new Error("O mapa não reconheceu a rua ou o endereço informado. Não foi usada a localização genérica da cidade. Confira rua, número, bairro e CEP.");
   }
-  const properties = feature?.properties || {};
+  const coordinates = feature.geometry.coordinates;
+  const properties = feature.properties || {};
   console.info("OpenRouteService geocoding candidate:", {
     name: properties.name || null,
     street: properties.street || null,

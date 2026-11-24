@@ -15,16 +15,31 @@ function respond(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
 function cleanAddress(value: unknown): string {
-  return String(value || "").replace(/\\s+/g, " ").trim();
+  return String(value || "").replace(/\s+/g, " ").trim();
 }
 function withRegion(address: string, settings: Record<string, unknown>) {
   const city = cleanAddress(settings.city);
   const uf = cleanAddress(settings.uf);
   const suffix = [city, uf, "Brasil"].filter((part, index, all) =>
     part && !address.toLowerCase().includes(part.toLowerCase()) &&
-    (part !== "Brasil" || !/\\b(brasil|brazil)\\b/i.test(address))
+    (part !== "Brasil" || !/\b(brasil|brazil)\b/i.test(address))
   );
   return [address, ...suffix].join(", ");
+}
+function providerErrorDetail(payload: any): string {
+  const candidate = payload?.error?.message || payload?.error?.code ||
+    payload?.message || payload?.detail ||
+    (Array.isArray(payload?.errors) ? payload.errors[0]?.message : "");
+  return typeof candidate === "string" ? candidate.slice(0, 180) : "";
+}
+function providerFailureMessage(operation: string, status: number, payload: any): string {
+  let reason = "requisição rejeitada";
+  if (status === 401 || status === 403) reason = "acesso negado; confira a chave e as permissões da API";
+  else if (status === 429) reason = "limite de requisições da API atingido";
+  else if (status >= 500) reason = "serviço externo temporariamente indisponível";
+  const detail = providerErrorDetail(payload);
+  return "OpenRouteService — " + operation + ": " + reason + " (HTTP " + status + ")" +
+    (detail ? ". Detalhe: " + detail : ".");
 }
 async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   const response = await fetch(ORS_BASE + path, {
@@ -33,8 +48,8 @@ async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error("OpenRouteService request failed:", path, response.status, payload?.error?.code || payload?.message || "no details");
-    throw new Error("O serviço de mapas não conseguiu processar os endereços. Confira os endereços e a chave do OpenRouteService.");
+    console.error("OpenRouteService request failed:", path, response.status, providerErrorDetail(payload) || "no details");
+    throw new Error(providerFailureMessage("matriz/rota", response.status, payload));
   }
   return payload;
 }
@@ -49,10 +64,14 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
   });
   const payload = await response.json().catch(() => ({}));
   const coordinates = payload?.features?.[0]?.geometry?.coordinates;
-  if (!response.ok || !Array.isArray(coordinates) || coordinates.length < 2 ||
+  if (!response.ok) {
+    console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
+    throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
+  }
+  if (!Array.isArray(coordinates) || coordinates.length < 2 ||
       !Number.isFinite(Number(coordinates[0])) || !Number.isFinite(Number(coordinates[1]))) {
-    console.error("OpenRouteService geocoding failed:", response.status, payload?.errors || payload?.message || "no result");
-    throw new Error("Não foi possível localizar um dos endereços. Confira rua, número, bairro, cidade e CEP.");
+    console.error("OpenRouteService geocoding returned no coordinates.");
+    throw new Error("O geocodificador não encontrou o endereço informado. Confira rua, número, bairro, cidade e CEP.");
   }
   return [Number(coordinates[0]), Number(coordinates[1])];
 }

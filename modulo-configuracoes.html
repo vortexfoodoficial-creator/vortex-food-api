@@ -670,6 +670,18 @@
       input.value = (parseFloat(v) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    // Aceita tanto valores digitados no padrão brasileiro (1.234,56)
+    // quanto valores decimais vindos do banco (1234.56), sem multiplicar por 100.
+    function parseDeliveryCurrency(value) {
+      const raw = String(value == null ? '' : value).trim().replace(/[^0-9,.-]/g, '');
+      if (!raw) return null;
+      const normalized = raw.includes(',')
+        ? raw.replace(/\./g, '').replace(',', '.')
+        : raw;
+      const amount = Number(normalized);
+      return Number.isFinite(amount) ? amount : null;
+    }
+
     function maskNumber(input) {
       input.value = input.value.replace(/\D/g, '');
     }
@@ -770,9 +782,8 @@
       const normalized = ranges.map((item,index) => {
         const start = Number(String(item.kmStart).replace(',','.'));
         const end = Number(String(item.kmEnd).replace(',','.'));
-        const raw = String(item[priceKey] || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
-        const amount = Number(raw);
-        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 500 || !raw || !Number.isFinite(amount) || amount < 0 || amount > 10000) {
+        const amount = parseDeliveryCurrency(item[priceKey]);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 500 || amount == null || amount < 0 || amount > 10000) {
           throw new Error('Revise as distâncias e os valores das faixas em ' + label + '.');
         }
         return {kmStart:start,kmEnd:end,[priceKey]:amount.toFixed(2)};
@@ -1199,11 +1210,7 @@
       // e congelada em cada nova parada; o documento de configurações mantém a cópia visual.
       if (cloudSyncSuccess && window.VortexDelivery?.savePaymentRules) {
         try {
-          const parseBRL = value => {
-            const normalized = String(value || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
-            return normalized === '' ? null : Number(normalized);
-          };
-          const courierRate = courierPaymentMode === 'fixed' ? parseBRL(courierPaymentFixedAmount) : null;
+          const courierRate = courierPaymentMode === 'fixed' ? parseDeliveryCurrency(courierPaymentFixedAmount) : null;
           if (courierPaymentMode === 'fixed' && (courierRate == null || !Number.isFinite(courierRate) || courierRate <= 0)) {
             throw new Error('Informe um valor fixo válido por entrega.');
           }

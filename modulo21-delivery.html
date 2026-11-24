@@ -944,7 +944,7 @@
           throw new Error(created.data && created.data.message || 'O servidor não confirmou a criação da rota.');
         }
         const distanceResult = await calculateCourierRouteDistances(created.data.route_id,requestedIds);
-        return {routeId:created.data.route_id,distanceFailures:distanceResult.failures};
+        return {routeId:created.data.route_id,distanceFailures:distanceResult.failures,paymentPending:distanceResult.paymentPending};
       }
 
       const existingIds = (activeRoute.stops || [])
@@ -957,7 +957,7 @@
             (stop.distance_km == null || stop.courier_payment_amount == null))
           .map(stop => String(stop.order_id));
         const distanceResult = await calculateCourierRouteDistances(activeRoute.id,pendingDistanceIds);
-        return {routeId:activeRoute.id,distanceFailures:distanceResult.failures};
+        return {routeId:activeRoute.id,distanceFailures:distanceResult.failures,paymentPending:distanceResult.paymentPending};
       }
 
       if (activeRoute.status !== 'assigned') {
@@ -973,7 +973,7 @@
         throw new Error(updated.data && updated.data.message || 'O servidor não confirmou a inclusão dos pedidos na rota.');
       }
       const distanceResult = await calculateCourierRouteDistances(activeRoute.id,missingIds);
-      return {routeId:activeRoute.id,distanceFailures:distanceResult.failures};
+      return {routeId:activeRoute.id,distanceFailures:distanceResult.failures,paymentPending:distanceResult.paymentPending};
     }
 
     async function createOptimizedCourierRoute() {

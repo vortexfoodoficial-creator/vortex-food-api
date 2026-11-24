@@ -953,7 +953,8 @@
       const missingIds = requestedIds.filter(id => !existingIds.includes(id));
       if (!missingIds.length) {
         const pendingDistanceIds = (activeRoute.stops || [])
-          .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status) && stop.distance_km == null)
+          .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status) &&
+            (stop.distance_km == null || stop.courier_payment_amount == null))
           .map(stop => String(stop.order_id));
         const distanceResult = await calculateCourierRouteDistances(activeRoute.id,pendingDistanceIds);
         return {routeId:activeRoute.id,distanceFailures:distanceResult.failures};

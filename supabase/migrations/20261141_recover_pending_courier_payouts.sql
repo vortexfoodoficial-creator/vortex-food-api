@@ -40,9 +40,14 @@ BEGIN
   FROM public.vortex_delivery_courier_payment_rules
   WHERE store_id=p_store_id;
 
-  IF NOT FOUND OR v_mode <> 'per_km' OR jsonb_typeof(COALESCE(v_ranges,'[]'::jsonb)) <> 'array'
-     OR jsonb_array_length(COALESCE(v_ranges,'[]'::jsonb)) = 0 THEN
+  IF NOT FOUND OR v_mode <> 'per_km' THEN
     RAISE EXCEPTION 'Configure as faixas de remuneração por quilometragem antes de recuperar os lançamentos.';
+  END IF;
+  IF jsonb_typeof(COALESCE(v_ranges,'[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'As faixas de remuneração estão em formato inválido. Revise as configurações.';
+  END IF;
+  IF jsonb_array_length(COALESCE(v_ranges,'[]'::jsonb)) = 0 THEN
+    RAISE EXCEPTION 'Cadastre ao menos uma faixa de quilometragem antes de recuperar os lançamentos.';
   END IF;
 
   FOR v_row IN
@@ -116,7 +121,8 @@ BEGIN
           updated_at=now()
       WHERE store_id=p_store_id
         AND id=v_row.stop_id
-        AND status='delivered';
+        AND status='delivered'
+        AND courier_payment_amount IS NULL;
 
       v_recovered := v_recovered + 1;
     END IF;

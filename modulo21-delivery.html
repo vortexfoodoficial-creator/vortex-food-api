@@ -499,6 +499,10 @@
         </div>
       </div>
       <div id="courierPayoutSummary" style="font-size:.82rem;color:var(--text-muted);background:var(--bg-main);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:10px;">Consultando financeiro...</div>
+      <div id="courierPayoutRecovery" style="display:none;margin-bottom:10px;">
+        <button id="courierPayoutRecoveryButton" class="btn-secondary" type="button" style="width:100%;" onclick="recoverPendingCourierPayouts()">Recalcular remunerações pendentes</button>
+        <div style="font-size:.7rem;color:var(--text-muted);margin-top:5px;">Recalcula somente entregas concluídas sem valor de repasse, usando a distância registrada e as faixas atuais. Repasses já pagos não são alterados.</div>
+      </div>
       <div id="courierPayoutContent" style="max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-bottom:14px;">Carregando...</div>
       <button class="btn-secondary" style="width:100%;" onclick="closeCourierPayoutModal()">Fechar</button>
     </div>
@@ -1728,6 +1732,9 @@
         const result=await window.VortexDelivery.fetchCourierEarnings(range.start,range.end);
         if(result.error) throw result.error;
         const rows=Array.isArray(result.data)?result.data:[];
+        const recoveryAction=document.getElementById('courierPayoutRecovery');
+        const canRecover=(window.VORTEX_AUTH_CONTEXT?.permissions||[]).includes('delivery.dispatch_manage');
+        if(recoveryAction) recoveryAction.style.display=canRecover&&rows.some(row=>row.amount==null)?'block':'none';
         const valued=rows.filter(row=>row.amount!=null);
         const due=valued.filter(row=>row.payout_status==='pending').reduce((sum,row)=>sum+Number(row.amount||0),0);
         const paid=valued.filter(row=>row.payout_status==='paid').reduce((sum,row)=>sum+Number(row.amount||0),0);
@@ -1738,6 +1745,7 @@
           '<span style="color:var(--success);">Já pago: <strong>'+paid.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</strong></span></div>' +
           '<div style="font-size:.72rem;margin-top:6px;">'+rows.length+' entrega(s) · '+rows.filter(row=>row.amount==null).length+' sem remuneração definida</div>';
         if(!rows.length) {
+          if(recoveryAction) recoveryAction.style.display='none';
           host.innerHTML='<div style="padding:18px;text-align:center;color:var(--text-muted);">Nenhum repasse registrado neste período.</div>';
           return;
         }
@@ -1761,7 +1769,7 @@
               const paid=row.payout_status==='paid';
               return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
                 '<div><strong>Pedido #'+escapeDeliveryHtml(row.display_id||row.order_id)+'</strong> · '+dispatchDate(row.delivered_at)+'</div>' +
-                '<div style="margin-top:3px;">Remuneração: <strong>'+amount+'</strong> · '+(paid?'<span style="color:var(--success);font-weight:800;">Pago</span>':'<span style="color:var(--warning);font-weight:800;">Pendente</span>')+'</div>' +
+                '<div style="margin-top:3px;">Remuneração: <strong>'+amount+'</strong> · '+(paid?'<span style="color:var(--success);font-weight:800;">Pago</span>':(row.amount==null?'<span style="color:var(--text-muted);font-weight:800;">Sem remuneração calculada</span>':'<span style="color:var(--warning);font-weight:800;">Pendente</span>'))+'</div>' +
                 (paid?'<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Pago em '+dispatchDate(row.paid_at)+' · '+escapeDeliveryHtml(row.payment_method||'Forma não informada')+(row.payment_reference?' · Ref.: '+escapeDeliveryHtml(row.payment_reference):'')+'</div>':
                   (row.amount==null?'':'<button class="btn-secondary" type="button" style="margin-top:6px;" onclick="openCourierPayoutPaymentModal(\''+escapeDeliveryHtml(row.stop_id)+'\',\''+escapeDeliveryHtml(amount)+'\')">Registrar repasse pago</button>'))+
               '</div>';
@@ -1770,6 +1778,47 @@
       } catch(error) {
         summary.textContent='Não foi possível consultar os repasses: '+(error.message||'erro de conexão');
         host.innerHTML='';
+      }
+    }
+
+    async function recoverPendingCourierPayouts() {
+      const permissions=window.VORTEX_AUTH_CONTEXT?.permissions||[];
+      if(!permissions.includes('delivery.dispatch_manage')) {
+        showNoticeModal('Acesso não permitido','Seu perfil não tem permissão para recuperar remunerações dos motoboys.','⚠️');
+        return;
+      }
+      if(!window.VortexDelivery?.recoverPendingCourierPayouts) {
+        showNoticeModal('Função indisponível','Atualize a integração do sistema antes de tentar novamente.','⚠️');
+        return;
+      }
+      const period=document.getElementById('courierPayoutPeriod').value;
+      const range=period==='custom'
+        ? {start:document.getElementById('courierPayoutStartDate').value,end:document.getElementById('courierPayoutEndDate').value}
+        : courierPayoutRange(period);
+      const button=document.getElementById('courierPayoutRecoveryButton');
+      if(!range.start||!range.end||range.start>range.end) {
+        showNoticeModal('Período inválido','Selecione um intervalo válido para recuperar as remunerações.','⚠️');
+        return;
+      }
+      if(!button) return;
+      button.disabled=true;
+      button.textContent='Recalculando...';
+      try {
+        const result=await window.VortexDelivery.recoverPendingCourierPayouts(range.start,range.end);
+        if(result.error) throw result.error;
+        const data=result.data||{};
+        showNoticeModal(
+          'Recuperação concluída',
+          (Number(data.recovered)||0)+' remuneração(ões) recuperada(s). '+(Number(data.without_distance)||0)+' entrega(s) sem distância registrada e '+(Number(data.without_matching_band)||0)+' sem faixa correspondente permaneceram pendentes.',
+          '✅'
+        );
+        await loadCourierPayouts();
+        await loadDispatchRoutes();
+      } catch(error) {
+        showNoticeModal('Não foi possível recuperar as remunerações',error.message||'Verifique a conexão e tente novamente.','⚠️');
+      } finally {
+        button.disabled=false;
+        button.textContent='Recalcular remunerações pendentes';
       }
     }
 

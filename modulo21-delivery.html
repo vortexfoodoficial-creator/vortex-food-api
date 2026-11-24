@@ -927,6 +927,76 @@
       }
     }
 
+    async function retryDispatchRouteCalculations(routeId) {
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('delivery.dispatch_manage')) {
+        showNoticeModal('Acesso restrito','Seu perfil não pode tentar novamente os cálculos desta rota.','🔒');
+        return;
+      }
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      if (!route || route.status !== 'assigned') {
+        showNoticeModal('Rota indisponível','Atualize a Central de Operações e tente novamente.','⚠️');
+        return;
+      }
+      const pendingStops = (route.stops || []).filter(stop =>
+        ['assigned','in_progress','occurrence'].includes(stop.status) &&
+        (stop.distance_km == null || stop.courier_payment_amount == null)
+      );
+      if (!pendingStops.length) {
+        showNoticeModal('Tudo certo','Esta rota não possui entregas com cálculos pendentes.','✅');
+        await loadDispatchRoutes();
+        return;
+      }
+      const button = document.getElementById('retryRouteCalc_' + routeId);
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Tentando novamente...';
+      }
+      try {
+        const result = await calculateCourierRouteDistances(
+          routeId,
+          pendingStops.map(stop => String(stop.order_id))
+        );
+        const failures = result.failures || [];
+        const paymentPending = result.paymentPending || [];
+        const failedDetails = failures.slice(0,3).map(item => {
+          const stop = pendingStops.find(row => String(row.order_id) === String(item.orderId));
+          return '#' + (stop?.display_id || item.orderId) + ': ' + (item.error || 'Não foi possível calcular.');
+        });
+        await loadDispatchRoutes();
+        if (failures.length) {
+          showNoticeModal(
+            'Não foi possível concluir os cálculos',
+            failures.length + ' entrega(s) continuam pendentes. ' + failedDetails.join(' · ') +
+            (failures.length > 3 ? ' · Confira as demais entregas na rota.' : ''),
+            '⚠️'
+          );
+        } else if (paymentPending.length) {
+          showNoticeModal(
+            'Remuneração pendente',
+            'As distâncias foram registradas, mas ' + paymentPending.length +
+            ' entrega(s) não possuem uma faixa de remuneração correspondente. Revise as faixas de pagamento por quilômetro.',
+            '⚠️'
+          );
+        } else {
+          showNoticeModal(
+            'Cálculos atualizados',
+            pendingStops.length + ' entrega(s) tiveram distância e remuneração processadas. A rota já pode ser validada para início.',
+            '✅'
+          );
+        }
+      } catch (error) {
+        showNoticeModal('Não foi possível atualizar os cálculos',error.message || 'Tente novamente em instantes.','⚠️');
+        await loadDispatchRoutes();
+      } finally {
+        const currentButton = document.getElementById('retryRouteCalc_' + routeId);
+        if (currentButton) {
+          currentButton.disabled = false;
+          currentButton.textContent = 'Tentar novamente';
+        }
+      }
+    }
+
     async function ensureCourierRoute(courier, orderIds) {
       if (!courier || !courier.authUserId) {
         throw new Error('Este entregador não possui uma conta individual ativa no painel do Motoboy.');
@@ -1212,6 +1282,10 @@
             route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_deadline_updated:'Prazo de entrega atualizado',delivery_distance_updated:'Distância da entrega atualizada',occurrence_retry:'Nova tentativa autorizada',
             delivery_returned:'Pedido retornou',delivery_payment_updated:'Pagamento do pedido atualizado',route_cancelled:'Rota cancelada'
           };
+          const pendingCalculationStops = stops.filter(stop =>
+            ['assigned','in_progress','occurrence'].includes(stop.status) &&
+            (stop.distance_km == null || stop.courier_payment_amount == null)
+          );
           const activeRoute = ['assigned','in_route'].includes(route.status);
           const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';
           const statusColor = route.status === 'in_route' ? 'var(--primary)' : route.status === 'assigned' ? 'var(--info)' : 'var(--text-muted)';
@@ -1282,6 +1356,10 @@
                 escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) +
                 (event.details && event.details.reason ? ' · ' + escapeDeliveryHtml(event.details.reason) : '') +
                 '</div>').join('') + '</div>' : '') +
+            (canManage && route.status === 'assigned' && pendingCalculationStops.length ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
+              '<div style="font-size:.74rem;color:var(--warning);margin-bottom:7px;">' + pendingCalculationStops.length + ' entrega(s) aguardando cálculo automático.</div>' +
+              '<button id="retryRouteCalc_' + escapeDeliveryHtml(route.id) + '" class="btn-secondary" type="button" style="width:100%;" onclick="retryDispatchRouteCalculations(\'' + escapeDeliveryHtml(route.id) + '\')">Tentar novamente</button>' +
+              '<div style="font-size:.68rem;color:var(--text-muted);margin-top:5px;">Use somente se o sistema não conseguir concluir os cálculos automaticamente.</div></div>' : '') +
             (canManage && activeRoute ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;">Transferir rota para outro motoboy</label>' +
               '<div style="display:flex;gap:6px;"><select id="transferCourier_' + escapeDeliveryHtml(route.id) + '" style="min-width:0;flex:1;"><option value="">Selecione...</option>' + courierOptions + '</select>' +

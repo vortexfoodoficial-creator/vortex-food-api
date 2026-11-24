@@ -898,19 +898,28 @@
       const ids = Array.from(new Set((orderIds || []).map(id => String(id))));
       if (!ids.length) return {results:[],failures:[]};
       const rulesResult = await window.VortexDelivery.getPaymentRules();
-      if (rulesResult.error) return {results:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'})),failures:ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'}))};
-      if (rulesResult.data?.mode !== 'per_km') return {results:ids.map(orderId=>({orderId,success:true,skipped:true})),failures:[]};
+      if (rulesResult.error) {
+        const failures = ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'}));
+        return {results:failures,failures,paymentPending:[]};
+      }
+      if (rulesResult.data?.mode !== 'per_km') return {results:ids.map(orderId=>({orderId,success:true,skipped:true})),failures:[],paymentPending:[]};
       try {
         const response = await window.VortexDelivery.calculateRouteDistances(routeId,ids);
         if (response.error) throw response.error;
         const results = Array.isArray(response.data?.results) ? response.data.results.map(item => ({
-          orderId:String(item.order_id),success:item.success === true,data:item,
+          orderId:String(item.order_id),success:item.success === true && (item.distance_saved === true || item.distance_km != null),data:item,
+          paymentPending:item.payment_pending === true,
           error:item.success === true ? null : (item.error || 'Não foi possível calcular esta entrega.')
         })) : [];
         if (results.length !== ids.length) throw new Error(response.data?.error || 'O serviço de mapas não retornou todas as entregas.');
-        return {results,failures:results.filter(item=>!item.success)};
+        return {
+          results,
+          failures:results.filter(item=>!item.success),
+          paymentPending:results.filter(item=>item.success && item.paymentPending)
+        };
       } catch (error) {
-        return {results:ids.map(orderId=>({orderId,success:false,error:error.message || 'Falha ao calcular as distâncias da rota.'})),failures:ids.map(orderId=>({orderId,success:false,error:error.message || 'Falha ao calcular as distâncias da rota.'}))};
+        const failures = ids.map(orderId=>({orderId,success:false,error:error.message || 'Falha ao calcular as distâncias da rota.'}));
+        return {results:failures,failures,paymentPending:[]};
       }
     }
 
@@ -983,9 +992,12 @@
       try {
         const routeResult = await ensureCourierRoute(courier,eligible.map(order => String(order.id)));
         const resultHost = document.getElementById('routeCodeResults');
+        const paymentPendingCount = routeResult.paymentPending ? routeResult.paymentPending.length : 0;
         const distanceWarning = routeResult.distanceFailures.length
-          ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + routeResult.distanceFailures.length + ' entrega(s) aguardam cálculo de distância. Confira a implantação da função de mapas e a chave da API antes de considerar a remuneração calculada.</div>'
-          : '<div style="font-size:.76rem;color:var(--success);margin-top:8px;">Distâncias e remunerações calculadas automaticamente para todas as paradas.</div>';
+          ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + routeResult.distanceFailures.length + ' entrega(s) ainda não tiveram a distância registrada. Confira o serviço de mapas e os endereços.</div>'
+          : paymentPendingCount
+            ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">Distâncias registradas, mas ' + paymentPendingCount + ' remuneração(ões) estão pendentes porque nenhuma faixa cobre o percurso. Ajuste as faixas antes de iniciar a rota.</div>'
+            : '<div style="font-size:.76rem;color:var(--success);margin-top:8px;">Distâncias e remunerações calculadas automaticamente para todas as paradas.</div>';
         const orderNumbers = eligible.map(order => '#' + getVisibleDeliveryOrderNumber(order)).join(', ');
         if (resultHost) {
           resultHost.style.display = 'block';
@@ -993,10 +1005,12 @@
         }
         window.vortexOptimizedDeliveryRoute = [];
         if (button) button.style.display = 'none';
-        showNoticeModal(routeResult.distanceFailures.length ? 'Rota enviada com pendência de distância' : 'Rota enviada ao motoboy',
+        showNoticeModal(routeResult.distanceFailures.length ? 'Rota enviada com pendência de distância' : paymentPendingCount ? 'Rota enviada com remuneração pendente' : 'Rota enviada ao motoboy',
           routeResult.distanceFailures.length
-            ? 'A rota foi criada, mas ' + routeResult.distanceFailures.length + ' distância(s) não puderam ser calculadas. Verifique a configuração do serviço de mapas.'
-            : 'A rota foi criada e as distâncias e remunerações foram calculadas automaticamente.','🛵');
+            ? 'A rota foi criada, mas ' + routeResult.distanceFailures.length + ' distância(s) não puderam ser registradas. Verifique os endereços e o serviço de mapas.'
+            : paymentPendingCount
+              ? 'As distâncias foram registradas, mas ' + paymentPendingCount + ' remuneração(ões) precisam de uma faixa correspondente. A rota não poderá ser iniciada até o ajuste.'
+              : 'A rota foi criada e as distâncias e remunerações foram calculadas automaticamente.','🛵');
         await loadDispatchRoutes();
         await loadActiveOrders();
       } catch (error) {
@@ -1098,7 +1112,9 @@
       if (!updated) return;
       const distanceResult = await calculateCourierRouteDistances(routeId,[String(select.value)]);
       if (distanceResult.failures.length) {
-        showNoticeModal('Distância pendente','O pedido entrou na rota, mas a distância não foi calculada. Verifique o serviço de mapas e tente novamente.','⚠️');
+        showNoticeModal('Distância pendente','O pedido entrou na rota, mas a distância não foi registrada. Verifique o serviço de mapas e tente novamente.','⚠️');
+      } else if (distanceResult.paymentPending && distanceResult.paymentPending.length) {
+        showNoticeModal('Remuneração pendente','A distância foi registrada, mas nenhuma faixa de remuneração cobre o percurso. Ajuste as faixas antes de iniciar a rota.','⚠️');
       }
     }
 

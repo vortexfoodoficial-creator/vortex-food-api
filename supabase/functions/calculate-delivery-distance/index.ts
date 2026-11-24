@@ -63,7 +63,8 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
     headers: { Authorization: apiKey },
   });
   const payload = await response.json().catch(() => ({}));
-  const coordinates = payload?.features?.[0]?.geometry?.coordinates;
+  const feature = payload?.features?.[0];
+  const coordinates = feature?.geometry?.coordinates;
   if (!response.ok) {
     console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
     throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
@@ -73,6 +74,20 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
     console.error("OpenRouteService geocoding returned no coordinates.");
     throw new Error("O geocodificador não encontrou o endereço informado. Confira rua, número, bairro, cidade e CEP.");
   }
+  const properties = feature?.properties || {};
+  console.info("OpenRouteService geocoding candidate:", {
+    name: properties.name || null,
+    street: properties.street || null,
+    housenumber: properties.housenumber || null,
+    postalcode: properties.postalcode || null,
+    locality: properties.locality || null,
+    region: properties.region || null,
+    confidence: properties.confidence ?? null,
+    match_type: properties.match_type || null,
+    accuracy: properties.accuracy || null,
+    layer: properties.layer || null,
+    coordinates: [Number(coordinates[0]), Number(coordinates[1])],
+  });
   return [Number(coordinates[0]), Number(coordinates[1])];
 }
 
@@ -246,9 +261,17 @@ Deno.serve(async (req: Request) => {
           const resolvedDestination = matrix?.destinations?.[index] || null;
           const originLabel = String(resolvedOrigin?.name || "").trim();
           const destinationLabel = String(resolvedDestination?.name || "").trim();
+          const sourceSnap = Array.isArray(resolvedOrigin?.location) ? resolvedOrigin.location : null;
+          const destinationSnap = Array.isArray(resolvedDestination?.location) ? resolvedDestination.location : null;
+          const originalDestination = coordinates[index + 1];
           const locationDetails = [
             originLabel ? "Origem reconhecida pelo mapa: " + originLabel : "",
             destinationLabel ? "Destino reconhecido pelo mapa: " + destinationLabel : "",
+            sourceSnap ? "Ponto viário da loja (longitude, latitude): " + sourceSnap.join(", ") : "",
+            destinationSnap ? "Ponto viário do cliente (longitude, latitude): " + destinationSnap.join(", ") : "",
+            originalDestination ? "Coordenada localizada para o cliente (longitude, latitude): " + originalDestination.join(", ") : "",
+            Number.isFinite(Number(resolvedDestination?.snapped_distance))
+              ? "Ajuste até a via: " + Number(resolvedDestination.snapped_distance).toFixed(1) + " m" : "",
           ].filter(Boolean).join(". ");
           console.warn("OpenRouteService returned no road distance for delivery:", {
             order_id: orderIds[index],

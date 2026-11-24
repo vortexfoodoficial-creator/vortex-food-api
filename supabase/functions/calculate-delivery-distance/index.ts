@@ -223,18 +223,44 @@ Deno.serve(async (req: Request) => {
       }
       const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
         method: "POST",
-        body: JSON.stringify({ locations: coordinates, sources: ["0"], destinations: orderIds.map((_, index) => String(index + 1)), metrics: ["distance"], units: "m" }),
+        body: JSON.stringify({
+          locations: coordinates,
+          sources: ["0"],
+          destinations: orderIds.map((_, index) => String(index + 1)),
+          metrics: ["distance"],
+          units: "m",
+          resolve_locations: true,
+        }),
       });
       const distances = matrix?.distances?.[0];
+      const resolvedOrigin = matrix?.sources?.[0] || null;
       if (!Array.isArray(distances) || distances.length !== orderIds.length) {
         return respond(502, { error: "O serviço de mapas não retornou todas as distâncias da rota." });
       }
 
       const results: Record<string, unknown>[] = [];
       for (let index = 0; index < orderIds.length; index++) {
-        const meters = Number(distances[index]);
+        const rawMeters = distances[index];
+        const meters = rawMeters == null ? NaN : Number(rawMeters);
         if (!Number.isFinite(meters) || meters <= 0) {
-          results.push({ order_id: orderIds[index], success: false, error: "Não foi encontrada uma rota viária para este endereço." });
+          const resolvedDestination = matrix?.destinations?.[index] || null;
+          const originLabel = String(resolvedOrigin?.name || "").trim();
+          const destinationLabel = String(resolvedDestination?.name || "").trim();
+          const locationDetails = [
+            originLabel ? "Origem reconhecida pelo mapa: " + originLabel : "",
+            destinationLabel ? "Destino reconhecido pelo mapa: " + destinationLabel : "",
+          ].filter(Boolean).join(". ");
+          console.warn("OpenRouteService returned no road distance for delivery:", {
+            order_id: orderIds[index],
+            origin: resolvedOrigin ? { name: resolvedOrigin.name, location: resolvedOrigin.location } : null,
+            destination: resolvedDestination ? { name: resolvedDestination.name, location: resolvedDestination.location } : null,
+          });
+          results.push({
+            order_id: orderIds[index],
+            success: false,
+            error: "O mapa localizou os pontos, mas não encontrou ligação viária entre eles." +
+              (locationDetails ? " " + locationDetails : " Confira se o ponto indicado pelo mapa corresponde ao endereço informado."),
+          });
           continue;
         }
         const distanceKm = Math.ceil(meters / 10) / 100;

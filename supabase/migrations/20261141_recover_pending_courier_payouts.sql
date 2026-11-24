@@ -107,6 +107,11 @@ BEGIN
       END;
     END IF;
 
+    IF v_amount IS NULL OR v_amount < 0 OR v_amount > 10000 THEN
+      v_without_band := v_without_band + 1;
+      CONTINUE;
+    END IF;
+
     UPDATE public.vortex_delivery_courier_ledger
     SET amount=v_amount,
         rule_label=v_rule_label,

@@ -245,9 +245,10 @@ Deno.serve(async (req: Request) => {
           results.push({ order_id: orderIds[index], success: false, error: saveError?.message || saved?.message || "Não foi possível registrar a remuneração desta entrega." });
         } else {
           results.push({
-            order_id: orderIds[index], success: true,
+            order_id: orderIds[index], success: true, distance_saved: saved.distance_saved === true,
             distance_km: saved.distance_km,
             courier_payment_amount: saved.courier_payment_amount,
+            payment_pending: saved.payment_pending === true,
             rule_label: saved.rule_label,
           });
         }
@@ -304,8 +305,10 @@ Deno.serve(async (req: Request) => {
     return respond(200, {
       success: true, provider: "openrouteservice", profile: ORS_PROFILE,
       route_id: routeId, order_id: orderId,
+      distance_saved: saved.distance_saved === true,
       distance_km: saved.distance_km,
       courier_payment_amount: saved.courier_payment_amount,
+      payment_pending: saved.payment_pending === true,
       rule_label: saved.rule_label,
     });
   } catch (error) {

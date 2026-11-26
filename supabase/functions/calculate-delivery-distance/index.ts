@@ -109,7 +109,7 @@ async function geoapifyGeocode(
   context: { role: string; orderId?: string },
 ): Promise<[number, number] | null> {
   const structured = parseStructuredAddress(address, settings);
-  const houseMatch = structured.address.match(/^(.*?),\\s*(\\d+[A-Za-z]?)$/);
+  const houseMatch = structured.address.match(/^(.*?),\s*(\d+[A-Za-z]?)$/);
   const street = houseMatch?.[1] || structured.address;
   const houseNumber = houseMatch?.[2] || "";
 

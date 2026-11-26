@@ -906,7 +906,21 @@
         const failures = ids.map(orderId=>({orderId,success:false,error:rulesResult.error.message || 'Não foi possível consultar a regra de remuneração.'}));
         return {results:failures,failures,paymentPending:[]};
       }
-      if (rulesResult.data?.mode !== 'per_km') return {results:ids.map(orderId=>({orderId,success:true,skipped:true})),failures:[],paymentPending:[]};
+      if (rulesResult.data?.mode !== 'per_km') {
+        try {
+          const recovery = await window.VortexDelivery.recalculatePendingCourierStopPayments(routeId);
+          if (recovery.error) throw recovery.error;
+          const pendingIds = Array.isArray(recovery.data?.pending_order_ids) ? recovery.data.pending_order_ids.map(String) : [];
+          return {
+            results:ids.map(orderId=>({orderId,success:true,recovered:true})),
+            failures:[],
+            paymentPending:pendingIds.filter(orderId=>ids.includes(orderId)).map(orderId=>({orderId,paymentPending:true}))
+          };
+        } catch (error) {
+          const failures = ids.map(orderId=>({orderId,success:false,error:error.message || 'Não foi possível recuperar a remuneração pendente.'}));
+          return {results:failures,failures,paymentPending:[]};
+        }
+      }
       try {
         const response = await window.VortexDelivery.calculateRouteDistances(routeId,ids);
         if (response.error) throw response.error;
@@ -940,7 +954,9 @@
       }
       const pendingStops = (route.stops || []).filter(stop =>
         ['assigned','in_progress','occurrence'].includes(stop.status) &&
-        (stop.distance_km == null || stop.courier_payment_amount == null)
+        (dispatchCourierPaymentMode === 'per_km'
+          ? (stop.distance_km == null || stop.courier_payment_amount == null)
+          : stop.courier_payment_amount == null)
       );
       if (!pendingStops.length) {
         showNoticeModal('Tudo certo','Esta rota não possui entregas com cálculos pendentes.','✅');
@@ -1096,6 +1112,7 @@
 
     let dispatchRoutesFetchInFlight = false;
     let dispatchRoutesCache = [];
+    let dispatchCourierPaymentMode = 'per_km';
 
     function deliveryEventLabel(eventType) {
       const labels = {
@@ -1103,7 +1120,7 @@
         route_stops_updated:'Paradas da rota atualizadas',route_cancelled:'Rota cancelada',
         delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',
         delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento do pedido atualizado',
-        delivery_distance_updated:'Distância da entrega atualizada',delivery_deadline_updated:'Prazo de entrega atualizado',
+        delivery_distance_updated:'Distância da entrega atualizada',
         delivery_confirmed:'Entrega confirmada',courier_payment_settled:'Repasse ao motoboy registrado',
         delivery_manual_confirmed:'Entrega confirmada manualmente'
       };
@@ -1116,16 +1133,7 @@
       return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
     }
 
-    function dispatchDateTimeLocal(value) {
-      if (!value) return '';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      const pad = n => String(n).padStart(2,'0');
-      return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) +
-        'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
-    }
-
-    function dispatchRouteDisplayName(route) {
+remove deadline datetime helper    function dispatchRouteDisplayName(route) {
       const date = new Date(route && (route.assigned_at || route.created_at));
       if (Number.isNaN(date.getTime())) return 'Rota de entrega';
       return 'Rota · ' + date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -1134,29 +1142,7 @@
       return ({available:'Disponível',in_route:'Em rota',paused:'Em pausa',unavailable:'Indisponível'})[String(status || '')] || 'Indisponível';
     }
 
-    async function saveDispatchStopDeadline(routeId,orderId) {
-      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
-      const input = document.getElementById('deadline_' + routeId + '_' + orderId);
-      if (!route || !input) return;
-      const value = input.value ? new Date(input.value) : null;
-      if (value && Number.isNaN(value.getTime())) {
-        showNoticeModal('Prazo inválido','Confira a data e o horário informados.','⚠️');
-        return;
-      }
-      try {
-        const result = await window.VortexDelivery.setStopDeadline(
-          routeId,orderId,route.route_version,value ? value.toISOString() : null
-        );
-        if (result.error) throw result.error;
-        showNoticeModal('Prazo atualizado','O motoboy receberá a atualização na próxima sincronização.','✅');
-        await loadDispatchRoutes();
-      } catch (error) {
-        showNoticeModal('Não foi possível salvar o prazo',error.message || 'Atualize a central e tente novamente.','⚠️');
-        await loadDispatchRoutes();
-      }
-    }
-
-    async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
+remove deadline writer    async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
       const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
       if (!route) return;
       try {
@@ -1227,12 +1213,15 @@
       if (dispatchRoutesFetchInFlight || !window.VortexDelivery?.fetchDispatchRoutes) return;
       dispatchRoutesFetchInFlight = true;
       try {
-        const [result,courierResult] = await Promise.all([
+        const [result,courierResult,rulesResult] = await Promise.all([
           window.VortexDelivery.fetchDispatchRoutes(),
-          window.VortexDelivery.fetchDispatchCouriers()
+          window.VortexDelivery.fetchDispatchCouriers(),
+          window.VortexDelivery.getPaymentRules()
         ]);
         if (result.error) throw result.error;
         if (courierResult.error) throw courierResult.error;
+        if (rulesResult.error) throw rulesResult.error;
+        dispatchCourierPaymentMode = rulesResult.data?.mode || 'per_km';
         dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
         const courierHost = document.getElementById('dispatchCouriersList');
         const dispatchCouriers = Array.isArray(courierResult.data) ? courierResult.data : [];
@@ -1279,12 +1268,14 @@
           const eventNames = {
             route_assigned:'Rota atribuída',route_started:'Saída registrada',
             delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
-            route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_deadline_updated:'Prazo de entrega atualizado',delivery_distance_updated:'Distância da entrega atualizada',occurrence_retry:'Nova tentativa autorizada',
+            route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_distance_updated:'Distância da entrega atualizada',occurrence_retry:'Nova tentativa autorizada',
             delivery_returned:'Pedido retornou',delivery_payment_updated:'Pagamento do pedido atualizado',route_cancelled:'Rota cancelada'
           };
           const pendingCalculationStops = stops.filter(stop =>
             ['assigned','in_progress','occurrence'].includes(stop.status) &&
-            (stop.distance_km == null || stop.courier_payment_amount == null)
+            (dispatchCourierPaymentMode === 'per_km'
+              ? (stop.distance_km == null || stop.courier_payment_amount == null)
+              : stop.courier_payment_amount == null)
           );
           const activeRoute = ['assigned','in_route'].includes(route.status);
           const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';
@@ -1312,7 +1303,6 @@
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'retry\')">Tentar novamente</button>' +
                   '<button class="btn-secondary" type="button" onclick="resolveDispatchOccurrence(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',\'returned\')">Registrar retorno</button></div>'
                 : '';
-              const deadlineEditable = canManage && ['assigned','in_route'].includes(route.status) && ['assigned','in_progress','occurrence'].includes(stop.status);
               const paymentMethod = String(stop.payment_method || 'Não informado');
               const paymentState = paymentMethod.toLowerCase()==='pix' ? (stop.payment_status==='paid'?'Pix pago':stop.payment_status==='pending'?'Pix pendente':'Pix sem situação informada') : paymentMethod==='Dinheiro'?'Cobrança em dinheiro':'Cobrança na entrega';
               const paymentDetails = '<div style="font-size:.72rem;color:var(--text-muted);margin-top:5px;">Pagamento: <strong>' + escapeDeliveryHtml(paymentMethod) + '</strong> · ' + paymentState + (stop.amount_due != null ? ' · Pedido: ' + Number(stop.amount_due).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + (paymentMethod==='Dinheiro' ? ' · Cliente paga com: ' + Number(stop.cash_given||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) + ' · Troco: ' + Number(stop.change||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '') + '</div>';
@@ -1324,12 +1314,9 @@
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
                   '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===activeAssignedStops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
                   '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
-              const deadlineEditor = deadlineEditable
-                ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">' +
-                  '<label style="font-size:.7rem;color:var(--text-muted);" for="deadline_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '">Prazo prometido</label>' +
-                  '<input type="datetime-local" id="deadline_' + escapeDeliveryHtml(route.id) + '_' + escapeDeliveryHtml(stop.order_id) + '" value="' + dispatchDateTimeLocal(stop.promised_delivery_at) + '" style="min-width:0;max-width:190px;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg-card);color:var(--text-main);font-size:.72rem;">' +
-                  '<button class="btn-secondary" type="button" onclick="saveDispatchStopDeadline(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Salvar prazo</button></div>'
-                : (stop.promised_delivery_at ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Prazo: ' + dispatchDate(stop.promised_delivery_at) + '</div>' : '');
+              const deadlineEditor = stop.promised_delivery_at
+                ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega: ' + dispatchDate(stop.promised_delivery_at) + '</div>'
+                : '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega ainda não registrada no aceite da loja.</div>';
               return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
                 '<div><strong>#' + escapeDeliveryHtml(stop.display_id || stop.order_id) + '</strong> · ' +
                 escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +

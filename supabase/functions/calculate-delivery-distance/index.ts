@@ -102,6 +102,83 @@ function parseStructuredAddress(address: string, settings: Record<string, unknow
   };
 }
 
+async function geoapifyGeocode(
+  address: string,
+  apiKey: string,
+  settings: Record<string, unknown>,
+  context: { role: string; orderId?: string },
+): Promise<[number, number] | null> {
+  const structured = parseStructuredAddress(address, settings);
+  const houseMatch = structured.address.match(/^(.*?),\\s*(\\d+[A-Za-z]?)$/);
+  const street = houseMatch?.[1] || structured.address;
+  const houseNumber = houseMatch?.[2] || "";
+
+  const requests: URLSearchParams[] = [];
+  if (street && structured.locality) {
+    const params = new URLSearchParams({
+      street,
+      city: structured.locality,
+      country: "Brazil",
+      format: "json",
+      limit: "5",
+      apiKey,
+    });
+    if (houseNumber) params.set("housenumber", houseNumber);
+    if (structured.neighbourhood) params.set("suburb", structured.neighbourhood);
+    if (structured.region) params.set("state", structured.region);
+    if (structured.postalcode) params.set("postcode", structured.postalcode);
+    requests.push(params);
+  }
+  requests.push(new URLSearchParams({
+    text: withRegion(address, settings),
+    format: "json",
+    limit: "5",
+    apiKey,
+  }));
+
+  for (let index = 0; index < requests.length; index++) {
+    try {
+      const response = await fetch("https://api.geoapify.com/v1/geocode/search?" + requests[index].toString());
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.warn("Geoapify geocoding request failed:", {
+          ...context,
+          search: index === 0 && requests.length > 1 ? "structured" : "text",
+          status: response.status,
+        });
+        continue;
+      }
+      const results = Array.isArray(payload?.results) ? payload.results : [];
+      const candidate = results.find((item: any) => {
+        const type = String(item?.result_type || "").toLowerCase();
+        const country = String(item?.country_code || "").toLowerCase();
+        return (type === "building" || type === "street") &&
+          (!country || country === "br") &&
+          Number.isFinite(Number(item?.lon)) &&
+          Number.isFinite(Number(item?.lat));
+      });
+      if (candidate) {
+        console.info("Geoapify geocoding candidate:", {
+          ...context,
+          search: index === 0 && requests.length > 1 ? "structured" : "text",
+          result_type: candidate.result_type || null,
+          rank_confidence: candidate.rank?.confidence ?? null,
+          has_house_number: Boolean(candidate.housenumber),
+        });
+        return [Number(candidate.lon), Number(candidate.lat)];
+      }
+    } catch (error) {
+      console.warn("Geoapify geocoding network error:", {
+        ...context,
+        search: index === 0 && requests.length > 1 ? "structured" : "text",
+        detail: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
+      });
+    }
+  }
+  console.warn("Geoapify did not return a street/building match; trying OpenRouteService:", context);
+  return null;
+}
+
 async function geocode(
   address: string,
   apiKey: string,
@@ -109,6 +186,11 @@ async function geocode(
   context: { role: string; orderId?: string },
 ): Promise<[number, number]> {
   const normalizedQuery = withRegion(address, settings);
+  const geoapifyApiKey = Deno.env.get("GEOAPIFY_API_KEY");
+  if (geoapifyApiKey) {
+    const geoapifyCoordinates = await geoapifyGeocode(address, geoapifyApiKey, settings, context);
+    if (geoapifyCoordinates) return geoapifyCoordinates;
+  }
   const validFeature = (item: any) => {
     const layer = String(item?.properties?.layer || "").toLowerCase();
     const point = item?.geometry?.coordinates;

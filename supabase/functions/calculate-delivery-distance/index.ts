@@ -64,45 +64,125 @@ async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   }
   return payload;
 }
+function parseStructuredAddress(address: string, settings: Record<string, unknown>) {
+  const normalized = normalizeAddressForGeocoding(address);
+  const postalMatch = normalized.match(/\b\d{5}-?\d{3}\b/);
+  const withoutPostal = normalized.replace(/\bCEP\s*:?\s*\d{5}-?\d{3}\b/i, "").trim();
+  const parts = withoutPostal.split(",").map((part) => part.trim()).filter(Boolean);
+  const configuredCity = cleanAddress(settings.city);
+  const configuredRegion = cleanAddress(settings.uf || settings.state);
+  const cityIndex = configuredCity
+    ? parts.findIndex((part) => part.toLowerCase() === configuredCity.toLowerCase())
+    : -1;
+
+  let addressPart = parts[0] || "";
+  let remainingStart = 1;
+  if (parts[1] && /^\d+[A-Za-z]?$/.test(parts[1])) {
+    addressPart += ", " + parts[1];
+    remainingStart = 2;
+  }
+
+  const locality = cityIndex >= 0
+    ? parts[cityIndex]
+    : configuredCity;
+  const neighbourhoodParts = cityIndex >= 0
+    ? parts.slice(remainingStart, cityIndex)
+    : parts.slice(remainingStart).filter((part) => !/^[A-Z]{2}$/i.test(part));
+  const regionFromAddress = cityIndex >= 0
+    ? parts.slice(cityIndex + 1).find((part) => /^[A-Z]{2}$/i.test(part))
+    : "";
+  const region = configuredRegion || regionFromAddress || "";
+
+  return {
+    address: addressPart,
+    neighbourhood: neighbourhoodParts.join(", "),
+    locality,
+    region,
+    postalcode: postalMatch?.[0] || "",
+  };
+}
+
 async function geocode(address: string, apiKey: string, settings: Record<string, unknown>): Promise<[number, number]> {
   const normalizedQuery = withRegion(address, settings);
-  const query = new URLSearchParams({
-    text: normalizedQuery,
-    "boundary.country": "BR",
-    layers: "address,street",
-    size: "5",
-  });
-  const response = await fetch(ORS_BASE + "/pelias/v1/search?" + query.toString(), {
-    headers: { Authorization: apiKey },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
-    throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
-  }
-  const features = Array.isArray(payload?.features) ? payload.features : [];
-  const feature = features.find((item: any) => {
+  const validFeature = (item: any) => {
     const layer = String(item?.properties?.layer || "").toLowerCase();
     const point = item?.geometry?.coordinates;
     return (layer === "address" || layer === "street") &&
       Array.isArray(point) && point.length >= 2 &&
       Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1]));
-  });
-  if (!feature) {
-    const fallback = features[0]?.properties || {};
-    console.warn("OpenRouteService did not return a street/address match:", {
-      requested_layer: "address,street",
-      fallback_layer: fallback.layer || null,
-      fallback_accuracy: fallback.accuracy || null,
-      fallback_match_type: fallback.match_type || null,
-      fallback_name: fallback.name || null,
-      fallback_confidence: fallback.confidence ?? null,
+  };
+
+  let feature: any = null;
+  let source = "text";
+  let structuredFeatures: any[] = [];
+  const structured = parseStructuredAddress(address, settings);
+
+  if (structured.address && structured.locality) {
+    const structuredQuery = new URLSearchParams({
+      address: structured.address,
+      locality: structured.locality,
+      country: "Brasil",
+      "boundary.country": "BR",
+      layers: "address,street",
+      size: "5",
     });
-    throw new Error("O mapa não reconheceu a rua ou o endereço informado. Não foi usada a localização genérica da cidade. Confira rua, número, bairro e CEP.");
+    if (structured.neighbourhood) structuredQuery.set("neighbourhood", structured.neighbourhood);
+    if (structured.region) structuredQuery.set("region", structured.region);
+    if (structured.postalcode) structuredQuery.set("postalcode", structured.postalcode);
+
+    const structuredResponse = await fetch(ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString(), {
+      headers: { Authorization: apiKey },
+    });
+    const structuredPayload = await structuredResponse.json().catch(() => ({}));
+    if (!structuredResponse.ok) {
+      console.warn("OpenRouteService structured geocoding request failed; trying text search:", {
+        status: structuredResponse.status,
+        detail: providerErrorDetail(structuredPayload) || null,
+      });
+    } else {
+      structuredFeatures = Array.isArray(structuredPayload?.features) ? structuredPayload.features : [];
+      feature = structuredFeatures.find(validFeature) || null;
+      if (feature) source = "structured";
+    }
   }
+
+  if (!feature) {
+    const query = new URLSearchParams({
+      text: normalizedQuery,
+      "boundary.country": "BR",
+      layers: "address,street",
+      size: "5",
+    });
+    const response = await fetch(ORS_BASE + "/pelias/v1/search?" + query.toString(), {
+      headers: { Authorization: apiKey },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
+      throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
+    }
+    const features = Array.isArray(payload?.features) ? payload.features : [];
+    feature = features.find(validFeature) || null;
+    if (feature) source = "text";
+    if (!feature) {
+      const fallback = features[0]?.properties || structuredFeatures[0]?.properties || {};
+      console.warn("OpenRouteService did not return a street/address match:", {
+        requested_layer: "address,street",
+        structured_search: Boolean(structured.address && structured.locality),
+        fallback_layer: fallback.layer || null,
+        fallback_accuracy: fallback.accuracy || null,
+        fallback_match_type: fallback.match_type || null,
+        fallback_name: fallback.name || null,
+        fallback_confidence: fallback.confidence ?? null,
+      });
+      throw new Error("O mapa não reconheceu a rua ou o endereço informado. Não foi usada a localização genérica da cidade. Confira rua, número, bairro e CEP.");
+    }
+  }
+
   const coordinates = feature.geometry.coordinates;
   const properties = feature.properties || {};
   console.info("OpenRouteService geocoding candidate:", {
+    source,
     name: properties.name || null,
     street: properties.street || null,
     housenumber: properties.housenumber || null,

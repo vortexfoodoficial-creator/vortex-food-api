@@ -188,7 +188,7 @@ async function geocode(
         requested_layer: "address,street",
         parsed_address: {
           has_street: Boolean(structured.address),
-          has_house_number: /,\\s*\\d+[A-Za-z]?$/.test(structured.address),
+          has_house_number: /,\s*\d+[A-Za-z]?$/.test(structured.address),
           has_neighbourhood: Boolean(structured.neighbourhood),
           has_locality: Boolean(structured.locality),
           has_region: Boolean(structured.region),
@@ -210,17 +210,10 @@ async function geocode(
   console.info("OpenRouteService geocoding candidate:", {
     ...context,
     source,
-    name: properties.name || null,
-    street: properties.street || null,
-    housenumber: properties.housenumber || null,
-    postalcode: properties.postalcode || null,
-    locality: properties.locality || null,
-    region: properties.region || null,
     confidence: properties.confidence ?? null,
     match_type: properties.match_type || null,
     accuracy: properties.accuracy || null,
     layer: properties.layer || null,
-    coordinates: [Number(coordinates[0]), Number(coordinates[1])],
   });
   return [Number(coordinates[0]), Number(coordinates[1])];
 }

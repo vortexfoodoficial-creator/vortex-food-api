@@ -997,7 +997,7 @@
         } else {
           showNoticeModal(
             'Cálculos atualizados',
-            pendingStops.length + ' entrega(s) tiveram distância e remuneração processadas. A rota já pode ser validada para início.',
+            pendingStops.length + ' entrega(s) tiveram a remuneração e, quando aplicável, a distância processadas. A rota já pode ser validada para início.',
             '✅'
           );
         }
@@ -1101,7 +1101,7 @@
             ? 'A rota foi criada, mas ' + routeResult.distanceFailures.length + ' distância(s) não puderam ser registradas. Verifique os endereços e o serviço de mapas.'
             : paymentPendingCount
               ? 'As distâncias foram registradas, mas ' + paymentPendingCount + ' remuneração(ões) precisam de uma faixa correspondente. A rota não poderá ser iniciada até o ajuste.'
-              : 'A rota foi criada e as distâncias e remunerações foram calculadas automaticamente.','🛵');
+              : 'A rota foi criada e as remunerações e, quando aplicável, as distâncias reais foram calculadas automaticamente.','🛵');
         await loadDispatchRoutes();
         await loadActiveOrders();
       } catch (error) {

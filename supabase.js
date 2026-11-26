@@ -674,6 +674,16 @@ async function dbSetDeliveryStopDeadline(routeId, orderId, expectedVersion, prom
   });
 }
 
+async function dbRecalculatePendingDeliveryCourierStopPayments(routeId) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  if (!routeId) return { data: null, error: new Error('Rota não identificada.') };
+  return await vortexDeliveryRpc('rpc_recalculate_pending_delivery_courier_stop_payments', {
+    p_store_id: storeId,
+    p_route_id: String(routeId)
+  });
+}
+
 async function dbTransferDeliveryRoute(routeId, newCourierUserId) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -822,6 +832,7 @@ window.VortexDelivery = {
   transferRoute: dbTransferDeliveryRoute,
   updateRouteStops: dbUpdateDeliveryRouteStops,
   setStopDeadline: dbSetDeliveryStopDeadline,
+  recalculatePendingCourierStopPayments: dbRecalculatePendingDeliveryCourierStopPayments,
   calculateStopDistance: dbCalculateDeliveryStopDistance,
   calculateRouteDistances: dbCalculateDeliveryRouteDistances,
   optimizeRoute: dbOptimizeDeliveryRoute,

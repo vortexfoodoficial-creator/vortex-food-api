@@ -515,7 +515,7 @@
             ${String(stop.payment_method || '').toLowerCase() === 'pix' ? '<div class="detail"><div class="detail-label">Situação do Pix</div><div class="detail-value">' + (stop.payment_status === 'paid' ? 'Pago' : stop.payment_status === 'pending' ? 'Pendente · cobrar na entrega' : 'Não informada') + '</div></div>' : ''}
             <div class="detail"><div class="detail-label">${stop.payment_method === 'Dinheiro' ? 'Cliente paga com' : 'Troco informado'}</div><div class="detail-value">${stop.payment_method === 'Dinheiro' ? money(stop.cash_given) : 'Não se aplica'}</div></div>
             ${stop.payment_method === 'Dinheiro' ? '<div class="detail"><div class="detail-label">Troco necessário</div><div class="detail-value">' + money(stop.change) + '</div></div>' : ''}
-            <div class="detail"><div class="detail-label">Prazo prometido</div><div class="detail-value">${escapeHtml(promised)}</div></div>
+            <div class="detail"><div class="detail-label">Previsão de entrega</div><div class="detail-value">${escapeHtml(promised)}</div></div>
             <div class="detail" style="grid-column:1/-1;"><div class="detail-label">Valor da entrega repassado a você</div><div class="detail-value" style="color:${stop.courier_payment_amount == null ? 'var(--warning)' : 'var(--success)'}">${stop.courier_payment_amount == null ? 'Valor não definido' : money(stop.courier_payment_amount)}</div></div>
             ${stop.distance_km != null ? '<div class="detail"><div class="detail-label">Distância registrada</div><div class="detail-value">' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div></div>' : ''}
           </div>

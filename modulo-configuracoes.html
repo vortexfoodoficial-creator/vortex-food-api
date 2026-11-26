@@ -1217,7 +1217,13 @@
           const courierRules = courierPaymentMode === 'per_km'
             ? courierKmRanges.map(item => ({kmStart:item.kmStart,kmEnd:item.kmEnd,amount:item.amount}))
             : courierPaymentMode === 'neighborhood'
-              ? courierPaymentNeighborhoods.map(item => ({name:item.name,amount:String(parseBRL(item.amount))}))
+              ? courierPaymentNeighborhoods.map(item => {
+                const amount = parseDeliveryCurrency(item.amount);
+                if (amount == null || !Number.isFinite(amount) || amount <= 0) {
+                  throw new Error('Informe um valor válido e maior que zero para cada bairro.');
+                }
+                return {name:item.name,amount:amount.toFixed(2)};
+              })
               : [];
           const savedRules = await window.VortexDelivery.savePaymentRules({
             mode: courierPaymentMode,

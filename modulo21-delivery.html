@@ -990,8 +990,8 @@
         } else if (paymentPending.length) {
           showNoticeModal(
             'Remuneração pendente',
-            'As distâncias foram registradas, mas ' + paymentPending.length +
-            ' entrega(s) não possuem uma faixa de remuneração correspondente. Revise as faixas de pagamento por quilômetro.',
+            'O sistema ainda não conseguiu aplicar uma regra de remuneração a ' + paymentPending.length +
+            ' entrega(s). Confira o modo de pagamento e as regras cadastradas nas Configurações.',
             '⚠️'
           );
         } else {
@@ -1087,7 +1087,7 @@
         const distanceWarning = routeResult.distanceFailures.length
           ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + routeResult.distanceFailures.length + ' entrega(s) ainda não tiveram a distância registrada. Confira o serviço de mapas e os endereços.</div>'
           : paymentPendingCount
-            ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">Distâncias registradas, mas ' + paymentPendingCount + ' remuneração(ões) estão pendentes porque nenhuma faixa cobre o percurso. Ajuste as faixas antes de iniciar a rota.</div>'
+            ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + paymentPendingCount + ' remuneração(ões) ainda não puderam ser definidas pelas regras cadastradas. Revise a configuração antes de iniciar a rota.</div>'
             : '<div style="font-size:.76rem;color:var(--success);margin-top:8px;">Distâncias e remunerações calculadas automaticamente para todas as paradas.</div>';
         const orderNumbers = eligible.map(order => '#' + getVisibleDeliveryOrderNumber(order)).join(', ');
         if (resultHost) {

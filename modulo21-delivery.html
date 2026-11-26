@@ -1314,7 +1314,7 @@ remove deadline writer    async function submitDispatchStopOrder(routeId,orderId
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
                   '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===activeAssignedStops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
                   '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
-              const deadlineEditor = stop.promised_delivery_at
+              const deliveryEstimateMarkup = stop.promised_delivery_at
                 ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega: ' + dispatchDate(stop.promised_delivery_at) + '</div>'
                 : '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega ainda não registrada no aceite da loja.</div>';
               return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
@@ -1329,7 +1329,7 @@ remove deadline writer    async function submitDispatchStopOrder(routeId,orderId
                 '</div>' +
                 (stop.distance_km != null ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Distância registrada: ' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div>' : '') +
                 (stopTimeline ? '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.7rem;font-weight:800;">Linha do tempo</summary>' + stopTimeline + '</details>' : '') +
-                deadlineEditor + stopControls + occurrenceActions + '</div>';
+                deliveryEstimateMarkup + stopControls + occurrenceActions + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +

@@ -710,6 +710,8 @@
               </div>
               <div class="order-client">👤 ${order.client || 'Cliente'}</div>
               <div class="order-time">🕒 ${order.time || '--:--'} | <strong>${statusLabel}</strong></div>
+              ${order.accepted_at ? '<div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">Aceito pela loja às ' + new Date(order.accepted_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + '</div>' : ''}
+              ${order.promised_delivery_at ? '<div style="font-size:.76rem;color:var(--success);font-weight:700;margin-top:3px;">Previsão de entrega: ' + new Date(order.promised_delivery_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + '</div>' : ''}
               ${cancelInfoHtml}
               <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
               

@@ -59,6 +59,7 @@ BEGIN
   v_promised_delivery_at := v_order.promised_delivery_at;
 
   IF p_status='preparing'
+     AND COALESCE(v_order.origin,'') ILIKE '%Delivery%'
      AND v_order.status IN ('new','received')
      AND v_order.accepted_at IS NULL THEN
     v_accepted_at := now();

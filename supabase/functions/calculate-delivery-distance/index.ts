@@ -130,19 +130,25 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
     if (structured.region) structuredQuery.set("region", structured.region);
     if (structured.postalcode) structuredQuery.set("postalcode", structured.postalcode);
 
-    const structuredResponse = await fetch(ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString(), {
-      headers: { Authorization: apiKey },
-    });
-    const structuredPayload = await structuredResponse.json().catch(() => ({}));
-    if (!structuredResponse.ok) {
-      console.warn("OpenRouteService structured geocoding request failed; trying text search:", {
-        status: structuredResponse.status,
-        detail: providerErrorDetail(structuredPayload) || null,
+    try {
+      const structuredResponse = await fetch(ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString(), {
+        headers: { Authorization: apiKey },
       });
-    } else {
-      structuredFeatures = Array.isArray(structuredPayload?.features) ? structuredPayload.features : [];
-      feature = structuredFeatures.find(validFeature) || null;
-      if (feature) source = "structured";
+      const structuredPayload = await structuredResponse.json().catch(() => ({}));
+      if (!structuredResponse.ok) {
+        console.warn("OpenRouteService structured geocoding request failed; trying text search:", {
+          status: structuredResponse.status,
+          detail: providerErrorDetail(structuredPayload) || null,
+        });
+      } else {
+        structuredFeatures = Array.isArray(structuredPayload?.features) ? structuredPayload.features : [];
+        feature = structuredFeatures.find(validFeature) || null;
+        if (feature) source = "structured";
+      }
+    } catch (error) {
+      console.warn("OpenRouteService structured geocoding network error; trying text search:", {
+        detail: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
+      });
     }
   }
 

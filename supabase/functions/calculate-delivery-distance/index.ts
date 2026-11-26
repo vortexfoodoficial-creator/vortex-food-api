@@ -102,7 +102,12 @@ function parseStructuredAddress(address: string, settings: Record<string, unknow
   };
 }
 
-async function geocode(address: string, apiKey: string, settings: Record<string, unknown>): Promise<[number, number]> {
+async function geocode(
+  address: string,
+  apiKey: string,
+  settings: Record<string, unknown>,
+  context: { role: string; orderId?: string },
+): Promise<[number, number]> {
   const normalizedQuery = withRegion(address, settings);
   const validFeature = (item: any) => {
     const layer = String(item?.properties?.layer || "").toLowerCase();
@@ -137,6 +142,7 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
       const structuredPayload = await structuredResponse.json().catch(() => ({}));
       if (!structuredResponse.ok) {
         console.warn("OpenRouteService structured geocoding request failed; trying text search:", {
+          ...context,
           status: structuredResponse.status,
           detail: providerErrorDetail(structuredPayload) || null,
         });
@@ -147,6 +153,7 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
       }
     } catch (error) {
       console.warn("OpenRouteService structured geocoding network error; trying text search:", {
+        ...context,
         detail: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
       });
     }
@@ -164,7 +171,11 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("OpenRouteService geocoding failed:", response.status, providerErrorDetail(payload) || "no details");
+      console.error("OpenRouteService geocoding failed:", {
+        ...context,
+        status: response.status,
+        detail: providerErrorDetail(payload) || null,
+      });
       throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
     }
     const features = Array.isArray(payload?.features) ? payload.features : [];
@@ -173,7 +184,16 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
     if (!feature) {
       const fallback = features[0]?.properties || structuredFeatures[0]?.properties || {};
       console.warn("OpenRouteService did not return a street/address match:", {
+        ...context,
         requested_layer: "address,street",
+        parsed_address: {
+          has_street: Boolean(structured.address),
+          has_house_number: /,\\s*\\d+[A-Za-z]?$/.test(structured.address),
+          has_neighbourhood: Boolean(structured.neighbourhood),
+          has_locality: Boolean(structured.locality),
+          has_region: Boolean(structured.region),
+          has_postalcode: Boolean(structured.postalcode),
+        },
         structured_search: Boolean(structured.address && structured.locality),
         fallback_layer: fallback.layer || null,
         fallback_accuracy: fallback.accuracy || null,
@@ -188,6 +208,7 @@ async function geocode(address: string, apiKey: string, settings: Record<string,
   const coordinates = feature.geometry.coordinates;
   const properties = feature.properties || {};
   console.info("OpenRouteService geocoding candidate:", {
+    ...context,
     source,
     name: properties.name || null,
     street: properties.street || null,
@@ -280,8 +301,12 @@ Deno.serve(async (req: Request) => {
 
       const coordinates: [number, number][] = [];
       try {
-        coordinates.push(await geocode(originRaw, orsApiKey, settings));
-        for (const address of addresses) coordinates.push(await geocode(address, orsApiKey, settings));
+        coordinates.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
+        for (let index = 0; index < addresses.length; index++) {
+          coordinates.push(await geocode(addresses[index], orsApiKey, settings, {
+            role: "customer_destination", orderId: orderIds[index],
+          }));
+        }
       } catch (error) {
         return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços." });
       }
@@ -344,8 +369,12 @@ Deno.serve(async (req: Request) => {
 
       const coordinates: [number, number][] = [];
       try {
-        coordinates.push(await geocode(originRaw, orsApiKey, settings));
-        for (const address of addresses) coordinates.push(await geocode(address, orsApiKey, settings));
+        coordinates.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
+        for (let index = 0; index < addresses.length; index++) {
+          coordinates.push(await geocode(addresses[index], orsApiKey, settings, {
+            role: "customer_destination", orderId: orderIds[index],
+          }));
+        }
       } catch (error) {
         return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços da rota." });
       }
@@ -444,8 +473,8 @@ Deno.serve(async (req: Request) => {
     if (!destinationRaw) return respond(422, { error: "O pedido não possui um endereço de entrega completo." });
 
     const [originCoordinates, destinationCoordinates] = await Promise.all([
-      geocode(originRaw, orsApiKey, settings),
-      geocode(destinationRaw, orsApiKey, settings),
+      geocode(originRaw, orsApiKey, settings, { role: "store_origin" }),
+      geocode(destinationRaw, orsApiKey, settings, { role: "customer_destination", orderId }),
     ]);
     const route = await orsRequest("/openrouteservice/v2/directions/" + ORS_PROFILE + "/json", orsApiKey, {
       method: "POST",

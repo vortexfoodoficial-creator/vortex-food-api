@@ -261,6 +261,46 @@ BEGIN
 END;
 $function$;
 
+-- A rota só pode sair quando a remuneração estiver definida em qualquer modalidade.
+-- No modo por quilômetro, a distância real também é obrigatória.
+CREATE OR REPLACE FUNCTION public.vortex_require_courier_distance_before_route_start()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_mode text;
+BEGIN
+  IF OLD.status='assigned' AND NEW.status='in_route' THEN
+    SELECT mode INTO v_mode
+    FROM public.vortex_delivery_courier_payment_rules
+    WHERE store_id=NEW.store_id;
+
+    IF v_mode IS NULL OR v_mode NOT IN ('fixed','per_km','neighborhood') THEN
+      RAISE EXCEPTION 'Não é possível iniciar a rota: configure a remuneração dos motoboys.';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM public.vortex_delivery_route_stops s
+      WHERE s.store_id=NEW.store_id
+        AND s.route_id=NEW.id
+        AND s.status IN ('assigned','in_progress','occurrence')
+        AND (
+          s.courier_payment_amount IS NULL
+          OR (v_mode='per_km' AND s.distance_km IS NULL)
+        )
+    ) THEN
+      RAISE EXCEPTION 'Não é possível iniciar a rota: ainda existem entregas sem remuneração calculada ou, no modo por quilômetro, sem distância real. Confira as regras e os endereços.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.vortex_require_courier_distance_before_route_start() FROM PUBLIC,anon,authenticated;
+
 REVOKE ALL ON FUNCTION public.vortex_copy_order_delivery_estimate_to_stop() FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.rpc_recalculate_pending_delivery_courier_stop_payments(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.rpc_recalculate_pending_delivery_courier_stop_payments(uuid,uuid) TO authenticated;

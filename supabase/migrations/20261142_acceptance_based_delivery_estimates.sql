@@ -214,7 +214,7 @@ BEGIN
     ELSIF v_mode='per_km' AND v_stop.distance_km IS NOT NULL THEN
       SELECT item.value INTO v_match
       FROM jsonb_array_elements(COALESCE(v_distance_ranges,'[]'::jsonb)) AS item(value)
-      WHERE v_stop.distance_km >= (item.value->>'kmStart')::numeric
+      WHERE v_stop.distance_km > (item.value->>'kmStart')::numeric
         AND v_stop.distance_km <= (item.value->>'kmEnd')::numeric
       ORDER BY (item.value->>'kmStart')::numeric DESC
       LIMIT 1;
@@ -244,7 +244,11 @@ BEGIN
   FROM public.vortex_delivery_route_stops s
   WHERE s.store_id=p_store_id AND s.route_id=p_route_id
     AND s.status IN ('assigned','in_progress','occurrence')
-    AND s.courier_payment_amount IS NULL;
+    AND s.courier_payment_amount IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM public.vortex_delivery_courier_ledger l
+      WHERE l.store_id=s.store_id AND l.stop_id=s.id AND l.payout_status='paid'
+    );
 
   IF v_updated > 0 THEN
     UPDATE public.vortex_delivery_routes

@@ -8,7 +8,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="supabase.js?v=20261123-openrouteservice-3"></script>
+  <script src="supabase.js?v=20261127-hybrid-destination-precision-1"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -1217,7 +1217,7 @@
           if (host) host.textContent = 'O mapa abriu em uma visão geral do Brasil. Aproxime e toque no local correto.';
           if (navigator.geolocation?.getCurrentPosition) {
             navigator.geolocation.getCurrentPosition(position => {
-              if (!manualLocationContext || manualLocationContext.routeId !== String(routeId)) return;
+              if (!manualLocationContext || manualLocationContext.routeId !== String(routeId) || manualLocationContext.orderId !== String(orderId)) return;
               const point = [position.coords.latitude, position.coords.longitude];
               manualLocationMap.setView(point, 16);
             }, () => {}, { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 });
@@ -1413,7 +1413,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
           const eventNames = {
             route_assigned:'Rota atribuída',route_started:'Saída registrada',
             delivery_occurrence:'Ocorrência registrada',delivery_confirmed:'Entrega confirmada',
-            route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_distance_updated:'Distância da entrega atualizada',occurrence_retry:'Nova tentativa autorizada',
+            route_transferred:'Rota transferida',route_stops_updated:'Paradas/ordem atualizadas',delivery_distance_updated:'Distância da entrega atualizada',delivery_location_manual_set:'Localização corrigida manualmente',occurrence_retry:'Nova tentativa autorizada',
             delivery_returned:'Pedido retornou',delivery_payment_updated:'Pagamento do pedido atualizado',route_cancelled:'Rota cancelada'
           };
           const pendingCalculationStops = stops.filter(stop =>

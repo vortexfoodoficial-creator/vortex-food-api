@@ -730,6 +730,16 @@ async function dbCalculateDeliveryRouteDistances(routeId, orderIds) {
   });
 }
 
+async function dbResolveDeliveryRouteLocations(routeId, orderIds) {
+  const supabase = getSupabase();
+  if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
+  const ids = Array.from(new Set((Array.isArray(orderIds) ? orderIds : []).map(id => String(id || '').trim()).filter(Boolean)));
+  if (!routeId || !ids.length || ids.length > 24) return { data: null, error: new Error('Informe uma rota e entre 1 e 24 entregas para localizar.') };
+  return await supabase.functions.invoke('calculate-delivery-distance', {
+    body: { action: 'resolve_route_locations', route_id: String(routeId), order_ids: ids }
+  });
+}
+
 async function dbSetDeliveryStopManualLocation(routeId, orderId, latitude, longitude) {
   const storeId = await vortexGetCurrentStoreId();
   if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
@@ -850,6 +860,7 @@ window.VortexDelivery = {
   recalculatePendingCourierStopPayments: dbRecalculatePendingDeliveryCourierStopPayments,
   calculateStopDistance: dbCalculateDeliveryStopDistance,
   calculateRouteDistances: dbCalculateDeliveryRouteDistances,
+  resolveRouteLocations: dbResolveDeliveryRouteLocations,
   setStopManualLocation: dbSetDeliveryStopManualLocation,
   optimizeRoute: dbOptimizeDeliveryRoute,
   resolveOccurrence: dbResolveDeliveryOccurrence,

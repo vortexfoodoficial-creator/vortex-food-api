@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Vortex Food - Delivery & Logística Inteligente</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- SDK do Supabase e Conexão Central -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
   <script src="supabase.js?v=20261123-openrouteservice-3"></script>
@@ -534,6 +536,20 @@
       <div style="font-size:1.25rem; font-weight:bold; margin-bottom:10px;" id="noticeTitle">Sucesso!</div>
       <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;" id="noticeDesc">Pedido enviado.</div>
       <button class="btn-modal-primary" onclick="closeNoticeModal()" style="margin:0;">Entendido</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="manualLocationModal">
+    <div class="custom-modal-card" style="max-width:900px;width:100%;">
+      <div class="card-title"><span>📍 Corrigir ponto de entrega</span><button class="btn-secondary" type="button" onclick="closeManualLocationModal()">✕</button></div>
+      <p id="manualLocationAddress" style="font-size:.84rem;color:var(--text-muted);margin-bottom:10px;"></p>
+      <p style="font-size:.76rem;color:var(--warning);margin-bottom:10px;">Arraste o marcador até a entrada correta do imóvel ou toque no mapa. A posição do aparelho, se utilizada para abrir o mapa, serve apenas como ponto inicial.</p>
+      <div id="manualLocationMap" style="height:min(58vh,520px);min-height:320px;border:1px solid var(--border);border-radius:12px;z-index:1;"></div>
+      <div id="manualLocationCoordinates" style="font-size:.78rem;color:var(--text-muted);margin-top:9px;">Selecione o ponto de entrega no mapa.</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn-secondary" type="button" style="flex:1;" onclick="closeManualLocationModal()">Cancelar</button>
+        <button class="btn-modal-primary" id="manualLocationConfirmButton" type="button" style="flex:1;margin-top:0;" onclick="confirmManualDeliveryLocation()">Confirmar ponto de entrega</button>
+      </div>
     </div>
   </div>
 
@@ -1114,6 +1130,118 @@
     let dispatchRoutesCache = [];
     let dispatchCourierPaymentMode = 'per_km';
 
+    let manualLocationMap = null;
+    let manualLocationMarker = null;
+    let manualLocationContext = null;
+    let manualLocationPoint = null;
+
+    function updateManualLocationPoint(latlng) {
+      manualLocationPoint = { latitude: Number(latlng.lat), longitude: Number(latlng.lng) };
+      const host = document.getElementById('manualLocationCoordinates');
+      if (host) host.textContent = 'Latitude: ' + manualLocationPoint.latitude.toFixed(6) + ' · Longitude: ' + manualLocationPoint.longitude.toFixed(6);
+    }
+
+    function closeManualLocationModal() {
+      document.getElementById('manualLocationModal')?.classList.remove('active');
+      manualLocationContext = null;
+    }
+
+    function openManualLocationModal(routeId, orderId) {
+      const route = dispatchRoutesCache.find(item => String(item.id) === String(routeId));
+      const stop = route?.stops?.find(item => String(item.order_id) === String(orderId));
+      if (!route || route.status !== 'assigned' || !stop || stop.status !== 'assigned') {
+        showNoticeModal('Correção indisponível','A localização só pode ser ajustada antes de o motoboy iniciar a rota.','⚠️');
+        return;
+      }
+      if (!window.L) {
+        showNoticeModal('Mapa indisponível','Não foi possível carregar o mapa. Verifique sua conexão e tente novamente.','⚠️');
+        return;
+      }
+      manualLocationContext = { routeId: String(routeId), orderId: String(orderId) };
+      manualLocationPoint = null;
+      const addressHost = document.getElementById('manualLocationAddress');
+      if (addressHost) addressHost.textContent = 'Pedido #' + (stop.display_id || stop.order_id) + ' · ' + (stop.address || 'Endereço não informado');
+      document.getElementById('manualLocationModal').classList.add('active');
+
+      const existingPoint = stop.destination_latitude != null && stop.destination_longitude != null
+        ? [Number(stop.destination_latitude), Number(stop.destination_longitude)] : null;
+      const initialCenter = existingPoint || [-15.78, -47.93];
+      const initialZoom = existingPoint ? 17 : 4;
+
+      setTimeout(() => {
+        if (!manualLocationMap) {
+          manualLocationMap = window.L.map('manualLocationMap').setView(initialCenter, initialZoom);
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+          }).addTo(manualLocationMap);
+          manualLocationMap.on('click', event => {
+            if (!manualLocationMarker) {
+              manualLocationMarker = window.L.marker(event.latlng, { draggable: true }).addTo(manualLocationMap);
+              manualLocationMarker.on('dragend', () => updateManualLocationPoint(manualLocationMarker.getLatLng()));
+            } else {
+              manualLocationMarker.setLatLng(event.latlng);
+            }
+            updateManualLocationPoint(event.latlng);
+          });
+        } else {
+          manualLocationMap.setView(initialCenter, initialZoom);
+        }
+        if (manualLocationMarker) {
+          manualLocationMap.removeLayer(manualLocationMarker);
+          manualLocationMarker = null;
+        }
+        if (existingPoint) {
+          manualLocationMarker = window.L.marker(existingPoint, { draggable: true }).addTo(manualLocationMap);
+          manualLocationMarker.on('dragend', () => updateManualLocationPoint(manualLocationMarker.getLatLng()));
+          updateManualLocationPoint({ lat: existingPoint[0], lng: existingPoint[1] });
+        } else {
+          const host = document.getElementById('manualLocationCoordinates');
+          if (host) host.textContent = 'O mapa abriu em uma visão geral do Brasil. Aproxime e toque no local correto.';
+          if (navigator.geolocation?.getCurrentPosition) {
+            navigator.geolocation.getCurrentPosition(position => {
+              if (!manualLocationContext || manualLocationContext.routeId !== String(routeId)) return;
+              const point = [position.coords.latitude, position.coords.longitude];
+              manualLocationMap.setView(point, 16);
+            }, () => {}, { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 });
+          }
+        }
+        setTimeout(() => manualLocationMap?.invalidateSize(), 100);
+      }, 120);
+    }
+
+    async function confirmManualDeliveryLocation() {
+      if (!manualLocationContext || !manualLocationPoint) {
+        showNoticeModal('Marque o ponto no mapa','Toque no mapa ou arraste o marcador até a entrada do imóvel.','⚠️');
+        return;
+      }
+      const context = { ...manualLocationContext };
+      const button = document.getElementById('manualLocationConfirmButton');
+      if (button) { button.disabled = true; button.textContent = 'Salvando localização...'; }
+      try {
+        const saved = await window.VortexDelivery.setStopManualLocation(
+          context.routeId, context.orderId, manualLocationPoint.latitude, manualLocationPoint.longitude
+        );
+        if (saved.error) throw saved.error;
+        if (!saved.data || saved.data.success !== true) throw new Error(saved.data?.message || 'O servidor não confirmou o ponto manual.');
+        closeManualLocationModal();
+        const calculation = await calculateCourierRouteDistances(context.routeId, [context.orderId]);
+        await loadDispatchRoutes();
+        if (calculation.failures?.length) {
+          showNoticeModal('Ponto salvo; cálculo pendente','A localização manual foi salva, mas a distância ou remuneração ainda precisa ser recalculada: ' + (calculation.failures[0].error || 'tente novamente.'),'⚠️');
+        } else if (calculation.paymentPending?.length) {
+          showNoticeModal('Ponto salvo; remuneração pendente','A localização manual foi confirmada, mas não existe uma faixa de remuneração correspondente. Ajuste as faixas antes de iniciar a rota.','⚠️');
+        } else {
+          showNoticeModal('Localização corrigida','O ponto manual foi salvo. A navegação do motoboy e, quando aplicável, a distância e a remuneração foram atualizadas.','✅');
+        }
+      } catch (error) {
+        showNoticeModal('Não foi possível salvar o ponto',error.message || 'Tente novamente.','⚠️');
+      } finally {
+        if (button) { button.disabled = false; button.textContent = 'Confirmar ponto de entrega'; }
+      }
+    }
+
+
     function deliveryEventLabel(eventType) {
       const labels = {
         route_created:'Rota criada',route_started:'Rota iniciada',route_transferred:'Rota transferida',
@@ -1313,10 +1441,18 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
                   '<button class="btn-secondary" type="button" title="Mover para baixo" ' + (stopIndex===activeAssignedStops.length-1?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',1)">↓</button>' +
+                  '<button class="btn-secondary" type="button" onclick="openManualLocationModal(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">📍 Ajustar ponto no mapa</button>' +
                   '<button class="btn-secondary" type="button" style="color:var(--danger);" onclick="removeDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\')">Remover da rota</button></div>' : '';
               const deliveryEstimateMarkup = stop.promised_delivery_at
                 ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega: ' + dispatchDate(stop.promised_delivery_at) + '</div>'
                 : '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Previsão de entrega ainda não registrada no aceite da loja.</div>';
+              const locationPrecisionMarkup = stop.location_precision === 'exact'
+                ? '<div style="font-size:.7rem;color:var(--success);margin-top:4px;">✓ Localização exata do endereço</div>'
+                : stop.location_precision === 'street_segment'
+                  ? '<div style="font-size:.7rem;color:var(--warning);margin-top:4px;">⚠ Localização aproximada: trecho da rua. O número informado continua sendo a referência para o motoboy.</div>'
+                  : stop.location_precision === 'manual_pin'
+                    ? '<div style="font-size:.7rem;color:var(--success);margin-top:4px;">✓ Ponto de entrega confirmado manualmente</div>'
+                    : '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;">Localização ainda não calculada</div>';
               return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:.78rem;">' +
                 '<div><strong>#' + escapeDeliveryHtml(stop.display_id || stop.order_id) + '</strong> · ' +
                 escapeDeliveryHtml(stop.customer_name || 'Cliente') + ' <span style="color:var(--text-muted);">· ' + stopLabel + '</span></div>' +
@@ -1329,7 +1465,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
                 '</div>' +
                 (stop.distance_km != null ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Distância registrada: ' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div>' : '') +
                 (stopTimeline ? '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.7rem;font-weight:800;">Linha do tempo</summary>' + stopTimeline + '</details>' : '') +
-                deliveryEstimateMarkup + stopControls + occurrenceActions + '</div>';
+                deliveryEstimateMarkup + locationPrecisionMarkup + stopControls + occurrenceActions + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +

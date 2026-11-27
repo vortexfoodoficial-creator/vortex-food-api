@@ -335,23 +335,35 @@ async function geoapifyGeocode(
       );
       const coordinatesAreValid = isValidCoordinatePair(item?.lon, item?.lat);
 
+      // Alguns provedores podem devolver um CEP divergente mesmo quando identificam
+      // com alta confiança o prédio, número, rua, cidade e país. Nesse caso, o CEP
+      // informado pelo cadastro não deve invalidar sozinho uma correspondência predial
+      // exata; a exceção nunca vale para resultados de rua/localidade ou número aproximado.
+      const postcodeConflictWithExactBuilding = postcodeConflicts &&
+        exactBuilding &&
+        streetMatches &&
+        cityMatches &&
+        regionMatches &&
+        locationQuality &&
+        coordinatesAreValid;
       const accepted = (exactBuilding || exactStreet) &&
         country === "br" &&
         streetMatches &&
         (cityMatches || postcodeMatches) &&
-        !postcodeConflicts &&
+        (!postcodeConflicts || postcodeConflictWithExactBuilding) &&
         regionMatches &&
         locationQuality &&
         coordinatesAreValid;
 
       return {
         item,
+        postcode_conflict_accepted: postcodeConflictWithExactBuilding,
         accepted,
         reason: !(exactBuilding || exactStreet) ? "result_type_or_house_number_mismatch"
           : country !== "br" ? "country_mismatch"
           : !streetMatches ? "street_mismatch"
           : !(cityMatches || postcodeMatches) ? "city_or_postcode_not_confirmed"
-          : postcodeConflicts ? "postcode_mismatch"
+          : postcodeConflicts && !postcodeConflictWithExactBuilding ? "postcode_mismatch"
           : !regionMatches ? "state_mismatch"
           : !locationQuality ? "low_address_component_confidence"
           : !coordinatesAreValid ? "invalid_coordinates"
@@ -364,7 +376,9 @@ async function geoapifyGeocode(
           building_confidence: Number.isFinite(buildingConfidence) ? buildingConfidence : null,
           street_matches: streetMatches,
           city_matches: cityMatches,
+          region_matches: regionMatches,
           postcode_matches: postcodeMatches,
+          postcode_conflict_accepted: postcodeConflictWithExactBuilding,
           house_number_matches: Boolean(requestedHouse && returnedHouse === requestedHouse),
           has_street_field: Boolean(item?.street),
           has_address_line1: Boolean(item?.address_line1),
@@ -381,6 +395,9 @@ async function geoapifyGeocode(
         confidence: candidate.rank?.confidence ?? null,
         street_confidence: candidate.rank?.confidence_street_level ?? null,
         building_confidence: candidate.rank?.confidence_building_level ?? null,
+        postcode_conflict_accepted: Boolean(
+          candidate.postcode_conflict_accepted
+        ),
         match_type: candidate.rank?.match_type || null,
       });
       return [Number(candidate.lon), Number(candidate.lat)];

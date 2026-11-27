@@ -238,6 +238,18 @@ BEGIN
   FROM public.vortex_delivery_route_stops s
   WHERE s.store_id=p_store_id AND s.route_id=p_route_id
     AND s.order_id=o.id AND o.store_id=s.store_id
+    AND s.status='in_progress' AND o.status NOT IN ('finished','cancelled');
+
+  UPDATE public.vortex_delivery_courier_presence
+  SET status='in_route',updated_at=now()
+  WHERE store_id=p_store_id AND courier_user_id=auth.uid();
+
+  INSERT INTO public.vortex_delivery_route_events(store_id,route_id,actor_user_id,event_type,details)
+  VALUES (p_store_id,p_route_id,auth.uid(),'route_started',jsonb_build_object('started_at',now()));
+
+  RETURN jsonb_build_object('success',true,'route_id',p_route_id,'started_at',now());
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.rpc_set_delivery_stop_manual_location(
   p_store_id uuid,

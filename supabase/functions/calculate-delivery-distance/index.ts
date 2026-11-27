@@ -37,6 +37,14 @@ function withRegion(address: string, settings: Record<string, unknown>) {
   );
   return [normalized, ...suffix].join(", ");
 }
+function normalizeGeocodeLabel(value: unknown): string {
+  return cleanAddress(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/^(rua|r|avenida|av|travessa|tv|estrada|est|rodovia|rod)\\.?\\s+/i, "")
+    .replace(/[^a-z0-9]/g, "");
+}
 function providerErrorDetail(payload: any): string {
   const candidate = payload?.error?.message || payload?.error?.code ||
     payload?.message || payload?.detail ||
@@ -149,29 +157,69 @@ async function geoapifyGeocode(
         continue;
       }
       const results = Array.isArray(payload?.results) ? payload.results : [];
-      const candidate = results.find((item: any) => {
+      const requestedStreet = normalizeGeocodeLabel(street);
+      const requestedCity = normalizeGeocodeLabel(structured.locality);
+      const requestedHouseNumber = houseNumber.toLowerCase();
+      const evaluated = results.map((item: any) => {
         const type = String(item?.result_type || "").toLowerCase();
         const country = String(item?.country_code || "").toLowerCase();
         const returnedHouseNumber = cleanAddress(item?.housenumber).toLowerCase();
-        const requestedHouseNumber = houseNumber.toLowerCase();
+        const returnedStreet = normalizeGeocodeLabel(item?.street || item?.name);
+        const returnedCity = normalizeGeocodeLabel(item?.city || item?.municipality);
+        const confidence = Number(item?.rank?.confidence);
         const exactBuilding = Boolean(requestedHouseNumber) &&
           type === "building" &&
           returnedHouseNumber === requestedHouseNumber;
         const acceptableStreet = !requestedHouseNumber && type === "street";
-        return (exactBuilding || acceptableStreet) &&
-          country === "br" &&
-          Number.isFinite(Number(item?.lon)) &&
+        const streetMatches = Boolean(requestedStreet && returnedStreet === requestedStreet);
+        const cityMatches = Boolean(!requestedCity || !returnedCity || returnedCity === requestedCity);
+        const confidenceIsAdequate = Number.isFinite(confidence) && confidence >= 0.5;
+        const coordinatesAreValid = Number.isFinite(Number(item?.lon)) &&
           Number.isFinite(Number(item?.lat));
+        const accepted = (exactBuilding || acceptableStreet) &&
+          country === "br" &&
+          streetMatches &&
+          cityMatches &&
+          confidenceIsAdequate &&
+          coordinatesAreValid;
+        return {
+          item,
+          accepted,
+          reason: !exactBuilding && !acceptableStreet ? "result_type_or_house_number_mismatch"
+            : country !== "br" ? "country_mismatch"
+            : !streetMatches ? "street_mismatch"
+            : !cityMatches ? "city_mismatch"
+            : !confidenceIsAdequate ? "low_or_missing_confidence"
+            : !coordinatesAreValid ? "invalid_coordinates"
+            : null,
+        };
       });
+      const candidate = evaluated.find((entry: any) => entry.accepted)?.item;
       if (candidate) {
-        console.info("Geoapify geocoding candidate:", {
+        console.info("Geoapify geocoding candidate accepted:", {
           ...context,
           search: index === 0 && requests.length > 1 ? "structured" : "text",
           result_type: candidate.result_type || null,
           rank_confidence: candidate.rank?.confidence ?? null,
-          has_house_number: Boolean(candidate.housenumber),
+          street_match: true,
+          city_match: true,
+          house_number_match: Boolean(requestedHouseNumber),
         });
         return [Number(candidate.lon), Number(candidate.lat)];
+      }
+      if (evaluated.length) {
+        console.warn("Geoapify geocoding candidates rejected:", {
+          ...context,
+          search: index === 0 && requests.length > 1 ? "structured" : "text",
+          candidates: evaluated.slice(0, 5).map((entry: any) => ({
+            result_type: entry.item?.result_type || null,
+            rank_confidence: entry.item?.rank?.confidence ?? null,
+            reason: entry.reason,
+          })),
+        });
+        // Não recorrer a outro provedor quando a Geoapify encontrou candidatos,
+        // mas nenhum corresponde com segurança ao endereço solicitado.
+        throw new Error("A localização encontrada para o endereço não passou na validação de rua, número, cidade ou confiança. Confira o endereço do estabelecimento/cliente antes de calcular a rota.");
       }
     } catch (error) {
       console.warn("Geoapify geocoding network error:", {

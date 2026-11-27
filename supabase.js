@@ -730,6 +730,21 @@ async function dbCalculateDeliveryRouteDistances(routeId, orderIds) {
   });
 }
 
+async function dbSetDeliveryStopManualLocation(routeId, orderId, latitude, longitude) {
+  const storeId = await vortexGetCurrentStoreId();
+  if (!storeId) return { data: null, error: new Error('Estabelecimento ativo não identificado.') };
+  if (!routeId || !orderId || !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+    return { data: null, error: new Error('Informe a rota, o pedido e uma posição válida no mapa.') };
+  }
+  return await vortexDeliveryRpc('rpc_set_delivery_stop_manual_location', {
+    p_store_id: storeId,
+    p_route_id: String(routeId),
+    p_order_id: String(orderId),
+    p_latitude: Number(latitude),
+    p_longitude: Number(longitude)
+  });
+}
+
 async function dbOptimizeDeliveryRoute(orderIds) {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Conexão com Supabase indisponível.') };
@@ -835,6 +850,7 @@ window.VortexDelivery = {
   recalculatePendingCourierStopPayments: dbRecalculatePendingDeliveryCourierStopPayments,
   calculateStopDistance: dbCalculateDeliveryStopDistance,
   calculateRouteDistances: dbCalculateDeliveryRouteDistances,
+  setStopManualLocation: dbSetDeliveryStopManualLocation,
   optimizeRoute: dbOptimizeDeliveryRoute,
   resolveOccurrence: dbResolveDeliveryOccurrence,
   cancelRoute: dbCancelDeliveryRoute,

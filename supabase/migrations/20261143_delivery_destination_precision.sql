@@ -169,6 +169,75 @@ BEGIN
     AND (r.status IN ('assigned','in_route') OR r.assigned_at>now()-interval '30 days');
 
 -- Despacho pode corrigir manualmente o ponto de uma parada antes da saída.
+CREATE OR REPLACE FUNCTION public.rpc_start_delivery_route(p_store_id uuid,p_route_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $function$
+DECLARE
+  v_route public.vortex_delivery_routes%ROWTYPE;
+  v_stop_count integer;
+  v_invalid_count integer;
+  v_missing_location_count integer;
+BEGIN
+  IF auth.uid() IS NULL
+     OR NOT public.vortex_user_has_permission(p_store_id,'delivery.route_start') THEN
+    RAISE EXCEPTION 'Seu perfil não pode iniciar rotas.';
+  END IF;
+
+  SELECT * INTO v_route
+  FROM public.vortex_delivery_routes
+  WHERE store_id=p_store_id AND id=p_route_id
+    AND courier_user_id=auth.uid()
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Esta rota não está atribuída à sua conta.';
+  END IF;
+  IF v_route.status<>'assigned' THEN
+    RAISE EXCEPTION 'Somente uma rota aguardando saída pode ser iniciada.';
+  END IF;
+
+  SELECT count(*) INTO v_stop_count
+  FROM public.vortex_delivery_route_stops s
+  WHERE s.store_id=p_store_id AND s.route_id=p_route_id AND s.status='assigned';
+
+  SELECT count(*) INTO v_invalid_count
+  FROM public.vortex_delivery_route_stops s
+  JOIN public.vortex_kds_orders o ON o.store_id=s.store_id AND o.id=s.order_id
+  WHERE s.store_id=p_store_id AND s.route_id=p_route_id
+    AND s.status='assigned' AND o.status IN ('finished','cancelled');
+
+  IF v_stop_count=0 OR v_invalid_count>0 THEN
+    RAISE EXCEPTION 'Esta rota não possui entregas pendentes válidas. Atualize a rota com o estabelecimento.';
+  END IF;
+
+  SELECT count(*) INTO v_missing_location_count
+  FROM public.vortex_delivery_route_stops s
+  WHERE s.store_id=p_store_id AND s.route_id=p_route_id AND s.status='assigned'
+    AND (
+      s.destination_latitude IS NULL OR s.destination_longitude IS NULL
+      OR s.location_precision NOT IN ('exact','street_segment','manual_pin')
+    );
+  IF v_missing_location_count>0 THEN
+    RAISE EXCEPTION 'Uma ou mais entregas ainda não possuem localização confirmada. Peça ao estabelecimento para corrigir o ponto no mapa antes de iniciar a rota.';
+  END IF;
+
+  UPDATE public.vortex_delivery_routes
+  SET status='in_route',started_at=now(),updated_at=now()
+  WHERE store_id=p_store_id AND id=p_route_id;
+
+  UPDATE public.vortex_delivery_route_stops
+  SET status='in_progress',started_at=now(),updated_at=now()
+  WHERE store_id=p_store_id AND route_id=p_route_id AND status='assigned';
+
+  UPDATE public.vortex_kds_orders o
+  SET status='delivering',updated_at=now()
+  FROM public.vortex_delivery_route_stops s
+  WHERE s.store_id=p_store_id AND s.route_id=p_route_id
+    AND s.order_id=o.id AND o.store_id=s.store_id
+
 CREATE OR REPLACE FUNCTION public.rpc_set_delivery_stop_manual_location(
   p_store_id uuid,
   p_route_id uuid,

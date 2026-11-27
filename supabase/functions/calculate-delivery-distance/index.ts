@@ -609,6 +609,116 @@ Deno.serve(async (req: Request) => {
     const originRaw = cleanAddress(settings.storeAddress || settings.address || settings.endereco);
     if (!originRaw) return respond(422, { error: "Cadastre o endereço completo do estabelecimento nas Configurações do Sistema." });
 
+    // Resolve e persiste somente a localização das paradas quando o modo de remuneração
+    // não depende de quilometragem. A proteção de início de rota exige um ponto confirmado.
+    if (body.action === "resolve_route_locations") {
+      const routeId = String(body.route_id || "").trim();
+      const rawIds = Array.isArray(body.order_ids) ? body.order_ids : [];
+      const orderIds = Array.from(new Set(rawIds.map(value => String(value || "").trim()).filter(Boolean)));
+      if (!routeId || !orderIds.length || orderIds.length > 24) {
+        return respond(400, { error: "Informe uma rota e entre 1 e 24 entregas válidas." });
+      }
+      const { data: stops, error: stopsError } = await admin
+        .from("vortex_delivery_route_stops")
+        .select("id,store_id,route_id,order_id,status,destination_longitude,destination_latitude,location_precision,location_source")
+        .eq("store_id", storeId).eq("route_id", routeId).in("order_id", orderIds)
+        .in("status", ["assigned", "in_progress", "occurrence"]);
+      if (stopsError || !Array.isArray(stops) || stops.length !== orderIds.length) {
+        return respond(422, { error: "Uma ou mais entregas não estão ativas nesta rota." });
+      }
+      const { data: orders, error: ordersError } = await admin
+        .from("vortex_kds_orders").select("id,address")
+        .eq("store_id", storeId).in("id", orderIds);
+      if (ordersError || !Array.isArray(orders) || orders.length !== orderIds.length) {
+        return respond(422, { error: "Não foi possível localizar os endereços dos pedidos." });
+      }
+      const orderById = new Map(orders.map(order => [String(order.id), order]));
+      const stopByOrderId = new Map(stops.map((stop: any) => [String(stop.order_id), stop]));
+      let originLocation: GeocodeLocation;
+      try {
+        originLocation = await geocode(originRaw, orsApiKey, settings, { role: "store_origin" });
+      } catch (error) {
+        return respond(422, { error: error instanceof Error ? error.message : "Não foi possível validar a origem do estabelecimento." });
+      }
+
+      const resolved: { orderId: string; location: GeocodeLocation }[] = [];
+      const results: Record<string, unknown>[] = [];
+      for (const orderId of orderIds) {
+        const stop: any = stopByOrderId.get(orderId);
+        const address = cleanAddress(orderById.get(orderId)?.address);
+        if (!address) {
+          results.push({ order_id: orderId, success: false, error: "O pedido não possui endereço de entrega." });
+          continue;
+        }
+        try {
+          const hasManualPin = stop?.location_precision === "manual_pin" &&
+            isValidCoordinatePair(stop?.destination_longitude, stop?.destination_latitude);
+          const location = hasManualPin
+            ? { coordinates: [Number(stop.destination_longitude), Number(stop.destination_latitude)] as [number, number], precision: "manual_pin" as const, source: "manual" as const }
+            : await geocode(address, orsApiKey, settings, { role: "customer_destination", orderId });
+          resolved.push({ orderId, location });
+        } catch (error) {
+          results.push({
+            order_id: orderId, success: false,
+            error: error instanceof Error ? error.message : "Não foi possível localizar o destino. Confirme o ponto manualmente.",
+          });
+        }
+      }
+
+      if (resolved.length) {
+        const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
+          method: "POST",
+          body: JSON.stringify({
+            locations: [originLocation.coordinates, ...resolved.map(item => item.location.coordinates)],
+            sources: ["0"], destinations: resolved.map((_, index) => String(index + 1)),
+            metrics: ["distance"], units: "m", resolve_locations: true,
+          }),
+        });
+        const distances = matrix?.distances?.[0];
+        const resolvedOrigin = matrix?.sources?.[0] || null;
+        const resolvedDestinations = Array.isArray(matrix?.destinations) ? matrix.destinations : [];
+        if (!Array.isArray(distances) || distances.length !== resolved.length) {
+          return respond(502, { error: "O serviço de mapas não confirmou os trajetos dos destinos." });
+        }
+        const originSnapTooFar = Number.isFinite(Number(resolvedOrigin?.snapped_distance)) &&
+          Number(resolvedOrigin.snapped_distance) > 250;
+        for (let index = 0; index < resolved.length; index++) {
+          const item = resolved[index];
+          const meters = distances[index] == null ? NaN : Number(distances[index]);
+          const destinationSnap = resolvedDestinations[index]?.snapped_distance;
+          const destinationSnapTooFar = Number.isFinite(Number(destinationSnap)) && Number(destinationSnap) > 250;
+          if (originSnapTooFar || destinationSnapTooFar || !Number.isFinite(meters) || meters <= 0) {
+            results.push({
+              order_id: item.orderId, success: false,
+              error: "O mapa não encontrou um trajeto viário confiável para este destino. Ajuste o ponto manualmente.",
+            });
+            continue;
+          }
+          const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
+            .update({
+              destination_longitude: item.location.coordinates[0],
+              destination_latitude: item.location.coordinates[1],
+              location_precision: item.location.precision,
+              location_source: item.location.source,
+            })
+            .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", item.orderId)
+            .in("status", ["assigned", "in_progress", "occurrence"]);
+          if (locationSaveError) {
+            results.push({ order_id: item.orderId, success: false, error: "Não foi possível salvar a localização desta entrega." });
+            continue;
+          }
+          results.push({
+            order_id: item.orderId, success: true,
+            location_precision: item.location.precision, location_source: item.location.source,
+          });
+        }
+      }
+      return respond(200, {
+        success: results.length === orderIds.length && results.every(item => item.success === true),
+        route_id: routeId, results,
+      });
+    }
+
     // O otimizador consulta a matriz viária do mesmo provedor usado para calcular cada remuneração.
     if (body.action === "optimize") {
       const rawIds = Array.isArray(body.order_ids) ? body.order_ids : [];

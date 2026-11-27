@@ -137,11 +137,12 @@ BEGIN
           'occurrence_at',s.occurrence_at,'promised_delivery_at',s.promised_delivery_at,
           'started_at',s.started_at,'delivered_at',s.delivered_at,
           'display_id',o."displayId",
-          'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\),''),
+          'customer_name',regexp_replace(COALESCE(o.client,''),' \([^()]*\)$',''),
           'address',o.address,
-          'destination_longitude',s.destination_longitude,'destination_latitude',s.destination_latitude,
-          'location_precision',s.location_precision,'location_source',s.location_source,
-          'location_confirmed_at',s.location_confirmed_at,'location_confirmed_by',s.location_confirmed_by,
+          'destination_longitude',s.destination_longitude,
+          'destination_latitude',s.destination_latitude,
+          'location_precision',s.location_precision,
+          'location_source',s.location_source,
           'order_status',o.status
         ) ORDER BY s.sequence_number)
         FROM public.vortex_delivery_route_stops s
@@ -169,7 +170,11 @@ BEGIN
   WHERE r.store_id=p_store_id
     AND (r.status IN ('assigned','in_route') OR r.assigned_at>now()-interval '30 days');
 
--- Despacho pode corrigir manualmente o ponto de uma parada antes da saída.
+  RETURN v_result;
+END;
+$function$;
+
+
 CREATE OR REPLACE FUNCTION public.rpc_start_delivery_route(p_store_id uuid,p_route_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql

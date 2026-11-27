@@ -109,6 +109,7 @@ function providerFailureMessage(operation: string, status: number, payload: any)
 async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   const response = await fetch(ORS_BASE + path, {
     ...init,
+    signal: init.signal || AbortSignal.timeout(15000),
     headers: { Authorization: apiKey, "Content-Type": "application/json", ...(init.headers || {}) },
   });
   const payload = await response.json().catch(() => ({}));

@@ -152,8 +152,14 @@ async function geoapifyGeocode(
       const candidate = results.find((item: any) => {
         const type = String(item?.result_type || "").toLowerCase();
         const country = String(item?.country_code || "").toLowerCase();
-        return (type === "building" || type === "street") &&
-          (!country || country === "br") &&
+        const returnedHouseNumber = cleanAddress(item?.housenumber).toLowerCase();
+        const requestedHouseNumber = houseNumber.toLowerCase();
+        const exactBuilding = Boolean(requestedHouseNumber) &&
+          type === "building" &&
+          returnedHouseNumber === requestedHouseNumber;
+        const acceptableStreet = !requestedHouseNumber && type === "street";
+        return (exactBuilding || acceptableStreet) &&
+          country === "br" &&
           Number.isFinite(Number(item?.lon)) &&
           Number.isFinite(Number(item?.lat));
       });

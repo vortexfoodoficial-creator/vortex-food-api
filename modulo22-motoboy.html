@@ -483,8 +483,16 @@
       const whatsappMessage = 'Olá, ' + (stop.customer_name || 'tudo bem') + '! Aqui é o entregador do pedido #' + display + '. Estou entrando em contato sobre sua entrega.';
       const whatsappUrl = whatsappNumber ? 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(whatsappMessage) : '';
       const address = String(stop.address || '');
-      const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address);
-      const waze = 'https://waze.com/ul?q=' + encodeURIComponent(address) + '&navigate=yes';
+      const hasCoordinates = stop.destination_latitude != null && stop.destination_longitude != null &&
+        Number.isFinite(Number(stop.destination_latitude)) && Number.isFinite(Number(stop.destination_longitude));
+      const navigationTarget = hasCoordinates ? Number(stop.destination_latitude) + ',' + Number(stop.destination_longitude) : address;
+      const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(navigationTarget);
+      const waze = 'https://waze.com/ul?q=' + encodeURIComponent(navigationTarget) + '&navigate=yes';
+      const locationNotice = stop.location_precision === 'street_segment'
+        ? '<div class="small" style="color:var(--warning);margin-top:8px">⚠ Localização aproximada: o marcador indica um trecho da rua. Procure o número informado no endereço.</div>'
+        : stop.location_precision === 'manual_pin'
+          ? '<div class="small" style="color:var(--success);margin-top:8px">✓ Ponto de entrega confirmado manualmente.</div>'
+          : '';
       const occurrence = status === 'occurrence'
         ? '<div class="small" style="color:var(--warning);margin-top:9px">⚠️ ' + escapeHtml(stop.occurrence_notes || statusLabel(status)) + '</div>'
         : '';
@@ -509,6 +517,7 @@
             <span class="status-pill ${status === 'delivered' ? 'status-completed' : status === 'occurrence' ? 'status-occurrence' : 'status-in_route'}">${statusLabel(status)}</span>
           </div>
           <div class="stop-address">📍 ${escapeHtml(address || 'Endereço não informado')}</div>
+          ${locationNotice}
           <div class="stop-details">
             <div class="detail"><div class="detail-label">Forma de pagamento</div><div class="detail-value">${escapeHtml(stop.payment_method || 'Não informado')}</div></div>
             <div class="detail"><div class="detail-label">${String(stop.payment_method || '').toLowerCase() === 'pix' && stop.payment_status === 'paid' ? 'Pagamento recebido' : 'Valor a cobrar do cliente'}</div><div class="detail-value">${String(stop.payment_method || '').toLowerCase() === 'pix' && stop.payment_status === 'paid' ? 'Já pago via Pix' : money(stop.amount_due)}</div></div>

@@ -289,7 +289,6 @@ async function geoapifyGeocode(
     }
 
     const results = Array.isArray(payload?.results) ? payload.results : [];
-    const requestedStreet = normalizeGeocodeLabel(street);
     const requestedCity = normalizeGeocodeLabel(structured.locality);
     const requestedHouse = houseNumber.toLowerCase();
     const requestedPostcode = structured.postalcode.replace(/\D/g, "");

@@ -462,7 +462,7 @@
         route_stops_updated:'Paradas da rota atualizadas',route_cancelled:'Rota cancelada',
         delivery_occurrence:'Ocorrência registrada',occurrence_retry:'Nova tentativa autorizada',
         delivery_returned:'Pedido retornado',delivery_payment_updated:'Pagamento do pedido atualizado',
-        delivery_distance_updated:'Distância da entrega atualizada',delivery_deadline_updated:'Prazo de entrega atualizado',
+        delivery_distance_updated:'Distância da entrega atualizada',delivery_location_manual_set:'Localização corrigida manualmente',delivery_deadline_updated:'Prazo de entrega atualizado',
         delivery_confirmed:'Entrega confirmada',courier_payment_settled:'Repasse ao motoboy registrado',
         delivery_manual_confirmed:'Entrega confirmada manualmente'
       };
@@ -492,7 +492,9 @@
         ? '<div class="small" style="color:var(--warning);margin-top:8px">⚠ Localização aproximada: o marcador indica um trecho da rua. Procure o número informado no endereço.</div>'
         : stop.location_precision === 'manual_pin'
           ? '<div class="small" style="color:var(--success);margin-top:8px">✓ Ponto de entrega confirmado manualmente.</div>'
-          : '';
+          : stop.location_precision === 'exact'
+            ? '<div class="small" style="color:var(--success);margin-top:8px">✓ Endereço localizado com precisão.</div>'
+            : '<div class="small" style="color:var(--warning);margin-top:8px">⚠ Sem ponto de mapa confirmado. Utilize o endereço escrito e confirme a localização com a loja.</div>';
       const occurrence = status === 'occurrence'
         ? '<div class="small" style="color:var(--warning);margin-top:9px">⚠️ ' + escapeHtml(stop.occurrence_notes || statusLabel(status)) + '</div>'
         : '';

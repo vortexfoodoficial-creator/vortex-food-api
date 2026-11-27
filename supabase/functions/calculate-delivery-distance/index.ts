@@ -124,7 +124,7 @@ async function geoapifyGeocode(
       apiKey,
     });
     if (houseNumber) params.set("housenumber", houseNumber);
-    if (structured.neighbourhood) params.set("suburb", structured.neighbourhood);
+    params.set("lang", "pt");
     if (structured.region) params.set("state", structured.region);
     if (structured.postalcode) params.set("postcode", structured.postalcode);
     requests.push(params);

@@ -42,7 +42,7 @@ function normalizeGeocodeLabel(value: unknown): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/^(rua|r|avenida|av|travessa|tv|estrada|est|rodovia|rod)\\.?\\s+/i, "")
+    .replace(/^(rua|r|avenida|av|travessa|tv|estrada|est|rodovia|rod)\.?\s+/i, "")
     .replace(/[^a-z0-9]/g, "");
 }
 function providerErrorDetail(payload: any): string {

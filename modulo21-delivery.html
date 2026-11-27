@@ -835,7 +835,7 @@
         showNoticeModal(
           'Não foi possível otimizar a rota',
           (error.message || 'O serviço de mapas não conseguiu calcular as distâncias.') +
-          ' Confira a chave do OpenRouteService, os limites de uso e os endereços dos pedidos. Nenhuma sequência aproximada será apresentada como otimizada.',
+          ' Confira a chaves do Geoapify e do OpenRouteService, os limites de uso e os endereços dos pedidos. Nenhuma sequência aproximada será apresentada como otimizada.',
           '⚠️'
         );
         return;
@@ -865,7 +865,7 @@
       if (codeResults) { codeResults.style.display = 'none'; codeResults.innerHTML = ''; }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência sugerida pela menor distância viária sucessiva (OpenRouteService).</span>`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência sugerida pela menor distância viária sucessiva (OpenRouteService). Geocodificação: <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Powered by Geoapify</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</span>`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';

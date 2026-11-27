@@ -213,9 +213,8 @@ function parseStructuredAddress(
     ? parts.slice(cityIndex + 1).find((part) => /^[A-Z]{2}$/i.test(part))
     : "";
   const region = configuredRegion || regionFromAddress || "";
-  const neighbourhood = neighbourhoodParts.length
-    ? (cityIndex >= 0 ? neighbourhoodParts.join(", ") : neighbourhoodParts[0])
-    : "";
+  // O primeiro segmento após rua/número é o bairro; os seguintes podem ser complemento/referência.
+  const neighbourhood = neighbourhoodParts[0] || "";
 
   return {
     address: [street, houseNumber].filter(Boolean).join(", "),

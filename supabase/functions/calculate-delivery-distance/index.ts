@@ -23,7 +23,8 @@ function cleanAddress(value: unknown): string {
 function normalizeAddressForGeocoding(address: string): string {
   return cleanAddress(address)
     .replace(/\s*\|\s*CEP\s*:\s*/i, ", ")
-    .replace(/\bN[º°o]\s*/gi, "")
+    // Reconhece somente marcadores de número ("Nº", "N°" ou "No."), nunca o início de "Nova".
+    .replace(/\bN(?:º|°|o\.)\s*/gi, "")
     .replace(/\s+-\s+/g, ", ")
     .replace(/\s*,\s*/g, ", ")
     .replace(/(?:,\s*){2,}/g, ", ")
@@ -165,7 +166,7 @@ function parseStructuredAddress(
   if (useStoreProfile) {
     const street = cleanAddress(settings.street || settings.logradouro);
     const houseNumber = cleanAddress(settings.streetNumber || settings.number || settings.numero)
-      .replace(/^N[º°o]\s*/i, "");
+      .replace(/^N(?:º|°|o\.?)\s*/i, "");
     const streetLooksLikeSingleField = street && !street.includes(",") &&
       (Boolean(houseNumber) || !/\d/.test(street));
     if (streetLooksLikeSingleField && configuredCity) {
@@ -196,12 +197,12 @@ function parseStructuredAddress(
   let houseNumber = "";
   let remainingStart = 1;
 
-  const numberInFirstPart = street.match(/^(.*?)[,\s]+(?:N[º°o]\s*)?(\d+[A-Za-z]?)$/i);
+  const numberInFirstPart = street.match(/^(.*?)[,\s]+(?:N(?:º|°|o\.?)\s*)?(\d+[A-Za-z]?)$/i);
   if (numberInFirstPart?.[1]) {
     street = numberInFirstPart[1].trim();
     houseNumber = numberInFirstPart[2];
-  } else if (parts[1] && /^(?:N[º°o]\s*)?\d+[A-Za-z]?$/i.test(parts[1])) {
-    houseNumber = parts[1].replace(/^N[º°o]\s*/i, "");
+  } else if (parts[1] && /^(?:N(?:º|°|o\.?)\s*)?\d+[A-Za-z]?$/i.test(parts[1])) {
+    houseNumber = parts[1].replace(/^N(?:º|°|o\.?)\s*/i, "");
     remainingStart = 2;
   }
 

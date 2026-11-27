@@ -10,6 +10,9 @@ const corsHeaders = {
 
 const ORS_BASE = "https://api.heigit.org";
 const ORS_PROFILE = "driving-car"; // Perfil viário disponível; não é um perfil exclusivo para motocicletas.
+const GEOCODE_CACHE_TTL_MS = 15 * 60 * 1000;
+const GEOCODE_CACHE_MAX_ENTRIES = 500;
+const geocodeCache = new Map<string, { coordinates: [number, number]; expiresAt: number }>();
 
 function respond(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
@@ -90,6 +93,31 @@ function normalizeBrazilianRegion(value: unknown): string {
     distritofederal: "df", df: "df",
   };
   return aliases[normalized] || normalized;
+}
+function geocodeCacheKey(address: ReturnType<typeof parseStructuredAddress>): string {
+  return [
+    address.street, address.houseNumber, address.neighbourhood,
+    address.locality, address.region, address.postalcode,
+  ].map((part) => normalizeGeocodeLabel(part)).join("|");
+}
+function getCachedGeocode(key: string): [number, number] | null {
+  const cached = geocodeCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    geocodeCache.delete(key);
+    return null;
+  }
+  return [cached.coordinates[0], cached.coordinates[1]];
+}
+function setCachedGeocode(key: string, coordinates: [number, number]) {
+  if (geocodeCache.size >= GEOCODE_CACHE_MAX_ENTRIES) {
+    const oldestKey = geocodeCache.keys().next().value;
+    if (oldestKey) geocodeCache.delete(oldestKey);
+  }
+  geocodeCache.set(key, {
+    coordinates: [coordinates[0], coordinates[1]],
+    expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS,
+  });
 }
 function providerErrorDetail(payload: any): string {
   const candidate = payload?.error?.message || payload?.error?.code ||
@@ -406,11 +434,20 @@ async function geocode(
   if (!structured.street || !structured.locality) {
     throw new Error("Endereço incompleto para geolocalização. Confira rua e cidade no cadastro do estabelecimento ou do pedido.");
   }
+  const cacheKey = geocodeCacheKey(structured);
+  const cachedCoordinates = getCachedGeocode(cacheKey);
+  if (cachedCoordinates) {
+    console.info("Using recently verified geocoding result:", { ...context, cache_hit: true });
+    return cachedCoordinates;
+  }
 
   const geoapifyApiKey = Deno.env.get("GEOAPIFY_API_KEY");
   if (geoapifyApiKey) {
     const coordinates = await geoapifyGeocode(address, geoapifyApiKey, settings, context);
-    if (coordinates) return coordinates;
+    if (coordinates) {
+      setCachedGeocode(cacheKey, coordinates);
+      return coordinates;
+    }
   }
 
   let structuredFeatures: any[] = [];
@@ -469,7 +506,9 @@ async function geocode(
           locality_verified: true,
         });
         const [longitude, latitude] = candidate.geometry.coordinates;
-        return [Number(longitude), Number(latitude)];
+        const coordinates: [number, number] = [Number(longitude), Number(latitude)];
+        setCachedGeocode(cacheKey, coordinates);
+        return coordinates;
       }
 
       if (features.length) {

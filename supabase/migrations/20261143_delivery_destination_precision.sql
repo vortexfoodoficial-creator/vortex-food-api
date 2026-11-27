@@ -24,7 +24,8 @@ BEGIN
     ALTER TABLE public.vortex_delivery_route_stops ADD CONSTRAINT vortex_delivery_route_stops_location_coordinates_check
       CHECK (
         (destination_longitude IS NULL AND destination_latitude IS NULL)
-        OR (destination_longitude BETWEEN -180 AND 180 AND destination_latitude BETWEEN -90 AND 90)
+        OR (destination_longitude IS NOT NULL AND destination_latitude IS NOT NULL
+          AND destination_longitude BETWEEN -180 AND 180 AND destination_latitude BETWEEN -90 AND 90)
       );
   END IF;
 END $$;

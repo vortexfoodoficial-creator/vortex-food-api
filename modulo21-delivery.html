@@ -1118,8 +1118,9 @@
         const routeResult = await ensureCourierRoute(courier,eligible.map(order => String(order.id)));
         const resultHost = document.getElementById('routeCodeResults');
         const paymentPendingCount = routeResult.paymentPending ? routeResult.paymentPending.length : 0;
+        const locationOrDistanceLabel = dispatchCourierPaymentMode === 'per_km' ? 'distância' : 'localização';
         const distanceWarning = routeResult.distanceFailures.length
-          ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + routeResult.distanceFailures.length + ' entrega(s) ainda não tiveram a distância registrada. Confira o serviço de mapas e os endereços.</div>'
+          ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + routeResult.distanceFailures.length + ' entrega(s) ainda não tiveram a ' + locationOrDistanceLabel + ' confirmada. Confira os endereços ou ajuste o ponto manualmente no mapa.</div>'
           : paymentPendingCount
             ? '<div style="font-size:.76rem;color:var(--warning);margin-top:8px;">' + paymentPendingCount + ' remuneração(ões) ainda não puderam ser definidas pelas regras cadastradas. Revise a configuração antes de iniciar a rota.</div>'
             : '<div style="font-size:.76rem;color:var(--success);margin-top:8px;">Localizações e remunerações processadas para todas as paradas; a distância é calculada quando o modo por quilômetro exige.</div>';
@@ -1130,9 +1131,9 @@
         }
         window.vortexOptimizedDeliveryRoute = [];
         if (button) button.style.display = 'none';
-        showNoticeModal(routeResult.distanceFailures.length ? 'Rota enviada com pendência de distância' : paymentPendingCount ? 'Rota enviada com remuneração pendente' : 'Rota enviada ao motoboy',
+        showNoticeModal(routeResult.distanceFailures.length ? (dispatchCourierPaymentMode === 'per_km' ? 'Rota enviada com pendência de distância' : 'Rota enviada com localização pendente') : paymentPendingCount ? 'Rota enviada com remuneração pendente' : 'Rota enviada ao motoboy',
           routeResult.distanceFailures.length
-            ? 'A rota foi criada, mas ' + routeResult.distanceFailures.length + ' distância(s) não puderam ser registradas. Verifique os endereços e o serviço de mapas.'
+            ? 'A rota foi criada, mas ' + routeResult.distanceFailures.length + ' destino(s) ainda não possuem ' + locationOrDistanceLabel + ' confirmada. Verifique os endereços ou ajuste o ponto manualmente no mapa.'
             : paymentPendingCount
               ? 'As distâncias foram registradas, mas ' + paymentPendingCount + ' remuneração(ões) precisam de uma faixa correspondente. A rota não poderá ser iniciada até o ajuste.'
               : 'A rota foi criada e as remunerações e, quando aplicável, as distâncias reais foram calculadas automaticamente.','🛵');

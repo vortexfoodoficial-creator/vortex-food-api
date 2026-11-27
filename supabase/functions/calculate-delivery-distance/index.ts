@@ -386,7 +386,8 @@ async function geoapifyGeocode(
       };
     });
 
-    const candidate = evaluated.find((entry: any) => entry.accepted)?.item;
+    const candidateEntry = evaluated.find((entry: any) => entry.accepted);
+    const candidate = candidateEntry?.item;
     if (candidate) {
       console.info("Geoapify geocoding candidate accepted:", {
         ...context,
@@ -395,9 +396,7 @@ async function geoapifyGeocode(
         confidence: candidate.rank?.confidence ?? null,
         street_confidence: candidate.rank?.confidence_street_level ?? null,
         building_confidence: candidate.rank?.confidence_building_level ?? null,
-        postcode_conflict_accepted: Boolean(
-          candidate.postcode_conflict_accepted
-        ),
+        postcode_conflict_accepted: candidateEntry?.postcode_conflict_accepted === true,
         match_type: candidate.rank?.match_type || null,
       });
       return [Number(candidate.lon), Number(candidate.lat)];

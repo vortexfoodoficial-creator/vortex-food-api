@@ -96,9 +96,13 @@ function normalizeBrazilianRegion(value: unknown): string {
 }
 function geocodeCacheKey(address: ReturnType<typeof parseStructuredAddress>): string {
   return [
-    address.street, address.houseNumber, address.neighbourhood,
-    address.locality, address.region, address.postalcode,
-  ].map((part) => normalizeGeocodeLabel(part)).join("|");
+    normalizeGeocodeLabel(address.street),
+    cleanAddress(address.houseNumber).toLowerCase(),
+    normalizeGeocodeLabel(address.neighbourhood),
+    normalizeGeocodeLabel(address.locality),
+    normalizeBrazilianRegion(address.region),
+    cleanAddress(address.postalcode).replace(/\D/g, ""),
+  ].join("|");
 }
 function getCachedGeocode(key: string): [number, number] | null {
   const cached = geocodeCache.get(key);

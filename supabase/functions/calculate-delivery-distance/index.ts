@@ -58,6 +58,41 @@ function isValidCoordinatePair(lon: unknown, lat: unknown): boolean {
   return Number.isFinite(longitude) && Number.isFinite(latitude) &&
     longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90;
 }
+function normalizeBrazilianRegion(value: unknown): string {
+  const normalized = normalizeGeocodeLabel(value);
+  const aliases: Record<string, string> = {
+    saopaulo: "sp", sp: "sp",
+    riodejaneiro: "rj", rj: "rj",
+    minasgerais: "mg", mg: "mg",
+    esp santos: "es",
+    espiritosanto: "es", es: "es",
+    parana: "pr", pr: "pr",
+    santacatarina: "sc", sc: "sc",
+    riograndedosul: "rs", rs: "rs",
+    bahia: "ba", ba: "ba",
+    goias: "go", go: "go",
+    matogrossodosul: "ms", ms: "ms",
+    matogrosso: "mt", mt: "mt",
+    tocantins: "to", to: "to",
+    acre: "ac", ac: "ac",
+    amap a: "ap", ap: "ap",
+    amazonas: "am", am: "am",
+    para: "pa", pa: "pa",
+    rondonia: "ro", ro: "ro",
+    roraima: "rr", rr: "rr",
+    amapa: "ap",
+    maranhao: "ma", ma: "ma",
+    piaui: "pi", pi: "pi",
+    ceara: "ce", ce: "ce",
+    riograndedonorte: "rn", rn: "rn",
+    paraiba: "pb", pb: "pb",
+    pernambuco: "pe", pe: "pe",
+    alagoas: "al", al: "al",
+    sergipe: "se", se: "se",
+    distritofederal: "df", df: "df",
+  };
+  return aliases[normalized] || normalized;
+}
 function providerErrorDetail(payload: any): string {
   const candidate = payload?.error?.message || payload?.error?.code ||
     payload?.message || payload?.detail ||
@@ -226,7 +261,7 @@ async function geoapifyGeocode(
     const requestedCity = normalizeGeocodeLabel(structured.locality);
     const requestedHouse = houseNumber.toLowerCase();
     const requestedPostcode = structured.postalcode.replace(/\D/g, "");
-    const requestedRegion = normalizeGeocodeLabel(structured.region);
+    const requestedRegion = normalizeBrazilianRegion(structured.region);
 
     const evaluated = results.map((item: any) => {
       const type = String(item?.result_type || "").toLowerCase();
@@ -234,7 +269,7 @@ async function geoapifyGeocode(
       const returnedHouse = cleanAddress(item?.housenumber).toLowerCase();
       const returnedCity = normalizeGeocodeLabel(item?.city || item?.municipality);
       const returnedPostcode = cleanAddress(item?.postcode).replace(/\D/g, "");
-      const returnedRegion = normalizeGeocodeLabel(item?.state_code || item?.state);
+      const returnedRegion = normalizeBrazilianRegion(item?.state_code || item?.state);
       const rank = item?.rank || {};
       const confidence = Number(rank.confidence);
       const streetConfidence = Number(rank.confidence_street_level);
@@ -351,8 +386,8 @@ function orsFeatureMatches(item: any, structured: ReturnType<typeof parseStructu
   if (country && country !== "BR") return false;
   if (!country && !/\b(brasil|brazil)\b/i.test(String(properties.country || ""))) return false;
 
-  const requestedRegion = normalizeGeocodeLabel(structured.region);
-  const returnedRegion = normalizeGeocodeLabel(properties.region_a || properties.region || properties.state);
+  const requestedRegion = normalizeBrazilianRegion(structured.region);
+  const returnedRegion = normalizeBrazilianRegion(properties.region_a || properties.region || properties.state);
   if (requestedRegion && returnedRegion && requestedRegion !== returnedRegion) return false;
 
   const confidence = Number(properties.confidence);
@@ -661,30 +696,15 @@ Deno.serve(async (req: Request) => {
         const meters = rawMeters == null ? NaN : Number(rawMeters);
         if (!Number.isFinite(meters) || meters <= 0) {
           const resolvedDestination = matrix?.destinations?.[index] || null;
-          const originLabel = String(resolvedOrigin?.name || "").trim();
-          const destinationLabel = String(resolvedDestination?.name || "").trim();
-          const sourceSnap = Array.isArray(resolvedOrigin?.location) ? resolvedOrigin.location : null;
-          const destinationSnap = Array.isArray(resolvedDestination?.location) ? resolvedDestination.location : null;
-          const originalDestination = coordinates[index + 1];
-          const locationDetails = [
-            originLabel ? "Origem reconhecida pelo mapa: " + originLabel : "",
-            destinationLabel ? "Destino reconhecido pelo mapa: " + destinationLabel : "",
-            sourceSnap ? "Ponto viário da loja (longitude, latitude): " + sourceSnap.join(", ") : "",
-            destinationSnap ? "Ponto viário do cliente (longitude, latitude): " + destinationSnap.join(", ") : "",
-            originalDestination ? "Coordenada localizada para o cliente (longitude, latitude): " + originalDestination.join(", ") : "",
-            Number.isFinite(Number(resolvedDestination?.snapped_distance))
-              ? "Ajuste até a via: " + Number(resolvedDestination.snapped_distance).toFixed(1) + " m" : "",
-          ].filter(Boolean).join(". ");
           console.warn("OpenRouteService returned no road distance for delivery:", {
             order_id: orderIds[index],
-            origin: resolvedOrigin ? { name: resolvedOrigin.name, location: resolvedOrigin.location } : null,
-            destination: resolvedDestination ? { name: resolvedDestination.name, location: resolvedDestination.location } : null,
+            origin_snap_distance: resolvedOrigin?.snapped_distance ?? null,
+            destination_snap_distance: resolvedDestination?.snapped_distance ?? null,
           });
           results.push({
             order_id: orderIds[index],
             success: false,
-            error: "O mapa localizou os pontos, mas não encontrou ligação viária entre eles." +
-              (locationDetails ? " " + locationDetails : " Confira se o ponto indicado pelo mapa corresponde ao endereço informado."),
+            error: "O mapa localizou os endereços, mas não encontrou uma ligação viária válida entre eles. Confira os endereços ou tente novamente.",
           });
           continue;
         }

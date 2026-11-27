@@ -222,7 +222,7 @@ function parseStructuredAddress(
     neighbourhood,
     locality,
     region,
-    postalcode: postalMatch?.[0] || configuredPostal,
+    postalcode: postalMatch?.[0] || (useStoreProfile ? configuredPostal : ""),
   };
 }
 

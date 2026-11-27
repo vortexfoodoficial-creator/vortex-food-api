@@ -134,7 +134,9 @@ function parseStructuredAddress(
     const street = cleanAddress(settings.street || settings.logradouro);
     const houseNumber = cleanAddress(settings.streetNumber || settings.number || settings.numero)
       .replace(/^N[º°o]\s*/i, "");
-    if (street && configuredCity) {
+    const streetLooksLikeSingleField = street && !street.includes(",") &&
+      (Boolean(houseNumber) || !/\d/.test(street));
+    if (streetLooksLikeSingleField && configuredCity) {
       return {
         address: [street, houseNumber].filter(Boolean).join(", "),
         street,

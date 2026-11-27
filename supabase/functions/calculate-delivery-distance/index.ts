@@ -618,6 +618,12 @@ Deno.serve(async (req: Request) => {
       if (!routeId || !orderIds.length || orderIds.length > 24) {
         return respond(400, { error: "Informe uma rota e entre 1 e 24 entregas válidas." });
       }
+      const { data: targetRoute, error: targetRouteError } = await admin
+        .from("vortex_delivery_routes").select("id,status")
+        .eq("store_id", storeId).eq("id", routeId).maybeSingle();
+      if (targetRouteError || !targetRoute || targetRoute.status !== "assigned") {
+        return respond(409, { error: "A localização das entregas só pode ser resolvida antes de iniciar a rota." });
+      }
       const { data: stops, error: stopsError } = await admin
         .from("vortex_delivery_route_stops")
         .select("id,store_id,route_id,order_id,status,destination_longitude,destination_latitude,location_precision,location_source")

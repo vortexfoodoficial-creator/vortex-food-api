@@ -320,7 +320,19 @@ async function geoapifyGeocode(
         Number.isFinite(cityConfidence) && cityConfidence >= 0.85 &&
         (!requestedHouse || (Number.isFinite(buildingConfidence) && buildingConfidence >= 0.85));
       const overallConfidence = Number.isFinite(confidence) && confidence >= 0.65;
-      const locationQuality = overallConfidence || componentConfidence;
+      // Um score geral alto não pode compensar uma confiança de prédio explicitamente baixa.
+      const buildingConfidenceAdequate = !requestedHouse ||
+        (Number.isFinite(buildingConfidence) ? buildingConfidence >= 0.85 : confidence >= 0.9);
+      const streetConfidenceAdequate = Number.isFinite(streetConfidence)
+        ? streetConfidence >= 0.75 : confidence >= 0.9;
+      const cityConfidenceAdequate = Number.isFinite(cityConfidence)
+        ? cityConfidence >= 0.75 : confidence >= 0.9;
+      const locationQuality = componentConfidence || (
+        overallConfidence &&
+        buildingConfidenceAdequate &&
+        streetConfidenceAdequate &&
+        cityConfidenceAdequate
+      );
       const coordinatesAreValid = isValidCoordinatePair(item?.lon, item?.lat);
 
       const accepted = (exactBuilding || exactStreet) &&

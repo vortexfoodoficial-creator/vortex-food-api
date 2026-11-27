@@ -42,8 +42,21 @@ function normalizeGeocodeLabel(value: unknown): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/^(rua|r|avenida|av|travessa|tv|estrada|est|rodovia|rod)\.?\s+/i, "")
-    .replace(/[^a-z0-9]/g, "");
+    .replace(/\b(?:rua|r|avenida|av|travessa|tv|estrada|est|rodovia|rod)\.?\b/g, " ")
+    .replace(/\b\d+[a-z]?\b/gi, " ")
+    .replace(/[^a-z]/g, "");
+}
+function geocodeStreetMatches(item: any, requestedStreet: string): boolean {
+  const expected = normalizeGeocodeLabel(requestedStreet);
+  if (!expected) return false;
+  const candidates = [item?.street, item?.address_line1, item?.name, item?.label];
+  return candidates.some((candidate) => normalizeGeocodeLabel(candidate) === expected);
+}
+function isValidCoordinatePair(lon: unknown, lat: unknown): boolean {
+  const longitude = Number(lon);
+  const latitude = Number(lat);
+  return Number.isFinite(longitude) && Number.isFinite(latitude) &&
+    longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90;
 }
 function providerErrorDetail(payload: any): string {
   const candidate = payload?.error?.message || payload?.error?.code ||
@@ -72,27 +85,59 @@ async function orsRequest(path: string, apiKey: string, init: RequestInit) {
   }
   return payload;
 }
-function parseStructuredAddress(address: string, settings: Record<string, unknown>) {
-  const normalized = normalizeAddressForGeocoding(address);
-  const postalMatch = normalized.match(/\b\d{5}-?\d{3}\b/);
-  const withoutPostal = normalized.replace(/\bCEP\s*:?\s*\d{5}-?\d{3}\b/i, "").trim();
-  const parts = withoutPostal.split(",").map((part) => part.trim()).filter(Boolean);
+function parseStructuredAddress(
+  address: string,
+  settings: Record<string, unknown>,
+  useStoreProfile = false,
+) {
   const configuredCity = cleanAddress(settings.city);
   const configuredRegion = cleanAddress(settings.uf || settings.state);
+  const configuredPostal = cleanAddress(settings.cep || settings.postalcode).match(/\b\d{5}-?\d{3}\b/)?.[0] || "";
+
+  // Para a origem, preferimos os campos separados já salvos pelo cadastro do estabelecimento.
+  // Isso evita depender da interpretação do endereço concatenado em uma única string.
+  if (useStoreProfile) {
+    const street = cleanAddress(settings.street || settings.logradouro);
+    const houseNumber = cleanAddress(settings.streetNumber || settings.number || settings.numero)
+      .replace(/^N[º°o]\s*/i, "");
+    if (street && configuredCity) {
+      return {
+        address: [street, houseNumber].filter(Boolean).join(", "),
+        street,
+        houseNumber,
+        neighbourhood: cleanAddress(settings.neighborhood || settings.bairro),
+        locality: configuredCity,
+        region: configuredRegion,
+        postalcode: configuredPostal,
+      };
+    }
+  }
+
+  const normalized = normalizeAddressForGeocoding(address);
+  const postalMatch = normalized.match(/\b\d{5}-?\d{3}\b/);
+  const withoutPostal = normalized
+    .replace(/,?\s*CEP\s*:?\s*\d{5}-?\d{3}\b/i, "")
+    .replace(/,?\s*\b\d{5}-?\d{3}\b\s*$/i, "")
+    .trim();
+  const parts = withoutPostal.split(",").map((part) => part.trim()).filter(Boolean);
   const cityIndex = configuredCity
-    ? parts.findIndex((part) => part.toLowerCase() === configuredCity.toLowerCase())
+    ? parts.findIndex((part) => normalizeGeocodeLabel(part) === normalizeGeocodeLabel(configuredCity))
     : -1;
 
-  let addressPart = parts[0] || "";
+  let street = parts[0] || "";
+  let houseNumber = "";
   let remainingStart = 1;
-  if (parts[1] && /^\d+[A-Za-z]?$/.test(parts[1])) {
-    addressPart += ", " + parts[1];
+
+  const numberInFirstPart = street.match(/^(.*?)[,\s]+(?:N[º°o]\s*)?(\d+[A-Za-z]?)$/i);
+  if (numberInFirstPart?.[1]) {
+    street = numberInFirstPart[1].trim();
+    houseNumber = numberInFirstPart[2];
+  } else if (parts[1] && /^(?:N[º°o]\s*)?\d+[A-Za-z]?$/i.test(parts[1])) {
+    houseNumber = parts[1].replace(/^N[º°o]\s*/i, "");
     remainingStart = 2;
   }
 
-  const locality = cityIndex >= 0
-    ? parts[cityIndex]
-    : configuredCity;
+  const locality = cityIndex >= 0 ? parts[cityIndex] : configuredCity;
   const neighbourhoodParts = cityIndex >= 0
     ? parts.slice(remainingStart, cityIndex)
     : parts.slice(remainingStart).filter((part) => !/^[A-Z]{2}$/i.test(part));
@@ -100,13 +145,18 @@ function parseStructuredAddress(address: string, settings: Record<string, unknow
     ? parts.slice(cityIndex + 1).find((part) => /^[A-Z]{2}$/i.test(part))
     : "";
   const region = configuredRegion || regionFromAddress || "";
+  const neighbourhood = neighbourhoodParts.length
+    ? (cityIndex >= 0 ? neighbourhoodParts.join(", ") : neighbourhoodParts[0])
+    : "";
 
   return {
-    address: addressPart,
-    neighbourhood: neighbourhoodParts.join(", "),
+    address: [street, houseNumber].filter(Boolean).join(", "),
+    street,
+    houseNumber,
+    neighbourhood,
     locality,
     region,
-    postalcode: postalMatch?.[0] || "",
+    postalcode: postalMatch?.[0] || configuredPostal,
   };
 }
 
@@ -116,12 +166,11 @@ async function geoapifyGeocode(
   settings: Record<string, unknown>,
   context: { role: string; orderId?: string },
 ): Promise<[number, number] | null> {
-  const structured = parseStructuredAddress(address, settings);
-  const houseMatch = structured.address.match(/^(.*?),\s*(\d+[A-Za-z]?)$/);
-  const street = houseMatch?.[1] || structured.address;
-  const houseNumber = houseMatch?.[2] || "";
+  const structured = parseStructuredAddress(address, settings, context.role === "store_origin");
+  const street = structured.street;
+  const houseNumber = structured.houseNumber;
+  const requests: { label: string; params: URLSearchParams }[] = [];
 
-  const requests: URLSearchParams[] = [];
   if (street && structured.locality) {
     const params = new URLSearchParams({
       street,
@@ -130,107 +179,185 @@ async function geoapifyGeocode(
       format: "json",
       limit: "5",
       apiKey,
+      lang: "pt",
     });
     if (houseNumber) params.set("housenumber", houseNumber);
-    params.set("lang", "pt");
     if (structured.region) params.set("state", structured.region);
     if (structured.postalcode) params.set("postcode", structured.postalcode);
-    requests.push(params);
+    requests.push({ label: "structured", params });
   }
-  requests.push(new URLSearchParams({
-    text: withRegion(address, settings),
-    format: "json",
-    limit: "5",
-    apiKey,
-  }));
 
-  for (let index = 0; index < requests.length; index++) {
+  requests.push({
+    label: "text",
+    params: new URLSearchParams({
+      text: withRegion(address, settings),
+      format: "json",
+      limit: "5",
+      apiKey,
+      lang: "pt",
+    }),
+  });
+
+  for (const request of requests) {
+    let payload: any;
     try {
-      const response = await fetch("https://api.geoapify.com/v1/geocode/search?" + requests[index].toString());
-      const payload = await response.json().catch(() => ({}));
+      const response = await fetch(
+        "https://api.geoapify.com/v1/geocode/search?" + request.params.toString(),
+        { signal: AbortSignal.timeout(9000) },
+      );
+      payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         console.warn("Geoapify geocoding request failed:", {
-          ...context,
-          search: index === 0 && requests.length > 1 ? "structured" : "text",
-          status: response.status,
+          ...context, search: request.label, status: response.status,
         });
         continue;
       }
-      const results = Array.isArray(payload?.results) ? payload.results : [];
-      const requestedStreet = normalizeGeocodeLabel(street);
-      const requestedCity = normalizeGeocodeLabel(structured.locality);
-      const requestedHouseNumber = houseNumber.toLowerCase();
-      const evaluated = results.map((item: any) => {
-        const type = String(item?.result_type || "").toLowerCase();
-        const country = String(item?.country_code || "").toLowerCase();
-        const returnedHouseNumber = cleanAddress(item?.housenumber).toLowerCase();
-        const returnedStreet = normalizeGeocodeLabel(item?.street || item?.name);
-        const returnedCity = normalizeGeocodeLabel(item?.city || item?.municipality);
-        const confidence = Number(item?.rank?.confidence);
-        const exactBuilding = Boolean(requestedHouseNumber) &&
-          type === "building" &&
-          returnedHouseNumber === requestedHouseNumber;
-        const acceptableStreet = !requestedHouseNumber && type === "street";
-        const streetMatches = Boolean(requestedStreet && returnedStreet === requestedStreet);
-        const cityMatches = Boolean(!requestedCity || !returnedCity || returnedCity === requestedCity);
-        const confidenceIsAdequate = Number.isFinite(confidence) && confidence >= 0.5;
-        const coordinatesAreValid = Number.isFinite(Number(item?.lon)) &&
-          Number.isFinite(Number(item?.lat));
-        const accepted = (exactBuilding || acceptableStreet) &&
-          country === "br" &&
-          streetMatches &&
-          cityMatches &&
-          confidenceIsAdequate &&
-          coordinatesAreValid;
-        return {
-          item,
-          accepted,
-          reason: !exactBuilding && !acceptableStreet ? "result_type_or_house_number_mismatch"
-            : country !== "br" ? "country_mismatch"
-            : !streetMatches ? "street_mismatch"
-            : !cityMatches ? "city_mismatch"
-            : !confidenceIsAdequate ? "low_or_missing_confidence"
-            : !coordinatesAreValid ? "invalid_coordinates"
-            : null,
-        };
-      });
-      const candidate = evaluated.find((entry: any) => entry.accepted)?.item;
-      if (candidate) {
-        console.info("Geoapify geocoding candidate accepted:", {
-          ...context,
-          search: index === 0 && requests.length > 1 ? "structured" : "text",
-          result_type: candidate.result_type || null,
-          rank_confidence: candidate.rank?.confidence ?? null,
-          street_match: true,
-          city_match: true,
-          house_number_match: Boolean(requestedHouseNumber),
-        });
-        return [Number(candidate.lon), Number(candidate.lat)];
-      }
-      if (evaluated.length) {
-        console.warn("Geoapify geocoding candidates rejected:", {
-          ...context,
-          search: index === 0 && requests.length > 1 ? "structured" : "text",
-          candidates: evaluated.slice(0, 5).map((entry: any) => ({
-            result_type: entry.item?.result_type || null,
-            rank_confidence: entry.item?.rank?.confidence ?? null,
-            reason: entry.reason,
-          })),
-        });
-        // Não recorrer a outro provedor quando a Geoapify encontrou candidatos,
-        // mas nenhum corresponde com segurança ao endereço solicitado.
-        throw new Error("A localização encontrada para o endereço não passou na validação de rua, número, cidade ou confiança. Confira o endereço do estabelecimento/cliente antes de calcular a rota.");
-      }
     } catch (error) {
-      console.warn("Geoapify geocoding network error:", {
+      console.warn("Geoapify geocoding transport failure:", {
         ...context,
-        search: index === 0 && requests.length > 1 ? "structured" : "text",
-        detail: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
+        search: request.label,
+        detail: error instanceof Error ? error.message.slice(0, 120) : "unknown error",
+      });
+      continue;
+    }
+
+    const results = Array.isArray(payload?.results) ? payload.results : [];
+    const requestedStreet = normalizeGeocodeLabel(street);
+    const requestedCity = normalizeGeocodeLabel(structured.locality);
+    const requestedHouse = houseNumber.toLowerCase();
+    const requestedPostcode = structured.postalcode.replace(/\D/g, "");
+    const requestedRegion = normalizeGeocodeLabel(structured.region);
+
+    const evaluated = results.map((item: any) => {
+      const type = String(item?.result_type || "").toLowerCase();
+      const country = String(item?.country_code || "").toLowerCase();
+      const returnedHouse = cleanAddress(item?.housenumber).toLowerCase();
+      const returnedCity = normalizeGeocodeLabel(item?.city || item?.municipality);
+      const returnedPostcode = cleanAddress(item?.postcode).replace(/\D/g, "");
+      const returnedRegion = normalizeGeocodeLabel(item?.state_code || item?.state);
+      const rank = item?.rank || {};
+      const confidence = Number(rank.confidence);
+      const streetConfidence = Number(rank.confidence_street_level);
+      const cityConfidence = Number(rank.confidence_city_level);
+      const buildingConfidence = Number(rank.confidence_building_level);
+
+      const exactBuilding = Boolean(requestedHouse) &&
+        type === "building" && returnedHouse === requestedHouse;
+      const exactStreet = !requestedHouse && type === "street";
+      const streetMatches = geocodeStreetMatches(item, street);
+      const cityMatches = Boolean(requestedCity && returnedCity && returnedCity === requestedCity);
+      const postcodeMatches = Boolean(requestedPostcode && returnedPostcode === requestedPostcode);
+      const postcodeConflicts = Boolean(requestedPostcode && returnedPostcode && !postcodeMatches);
+      const regionMatches = !requestedRegion || !returnedRegion || returnedRegion === requestedRegion;
+      const componentConfidence = Number.isFinite(streetConfidence) && streetConfidence >= 0.85 &&
+        Number.isFinite(cityConfidence) && cityConfidence >= 0.85 &&
+        (!requestedHouse || (Number.isFinite(buildingConfidence) && buildingConfidence >= 0.85));
+      const overallConfidence = Number.isFinite(confidence) && confidence >= 0.65;
+      const locationQuality = overallConfidence || componentConfidence;
+      const coordinatesAreValid = isValidCoordinatePair(item?.lon, item?.lat);
+
+      const accepted = (exactBuilding || exactStreet) &&
+        country === "br" &&
+        streetMatches &&
+        (cityMatches || postcodeMatches) &&
+        !postcodeConflicts &&
+        regionMatches &&
+        locationQuality &&
+        coordinatesAreValid;
+
+      return {
+        item,
+        accepted,
+        reason: !(exactBuilding || exactStreet) ? "result_type_or_house_number_mismatch"
+          : country !== "br" ? "country_mismatch"
+          : !streetMatches ? "street_mismatch"
+          : !(cityMatches || postcodeMatches) ? "city_or_postcode_not_confirmed"
+          : postcodeConflicts ? "postcode_mismatch"
+          : !regionMatches ? "state_mismatch"
+          : !locationQuality ? "low_address_component_confidence"
+          : !coordinatesAreValid ? "invalid_coordinates"
+          : null,
+        diagnostics: {
+          result_type: type || null,
+          confidence: Number.isFinite(confidence) ? confidence : null,
+          street_confidence: Number.isFinite(streetConfidence) ? streetConfidence : null,
+          city_confidence: Number.isFinite(cityConfidence) ? cityConfidence : null,
+          building_confidence: Number.isFinite(buildingConfidence) ? buildingConfidence : null,
+          street_matches: streetMatches,
+          city_matches: cityMatches,
+          postcode_matches: postcodeMatches,
+          house_number_matches: Boolean(requestedHouse && returnedHouse === requestedHouse),
+          has_street_field: Boolean(item?.street),
+          has_address_line1: Boolean(item?.address_line1),
+        },
+      };
+    });
+
+    const candidate = evaluated.find((entry: any) => entry.accepted)?.item;
+    if (candidate) {
+      console.info("Geoapify geocoding candidate accepted:", {
+        ...context,
+        search: request.label,
+        result_type: candidate.result_type || null,
+        confidence: candidate.rank?.confidence ?? null,
+        street_confidence: candidate.rank?.confidence_street_level ?? null,
+        building_confidence: candidate.rank?.confidence_building_level ?? null,
+        match_type: candidate.rank?.match_type || null,
+      });
+      return [Number(candidate.lon), Number(candidate.lat)];
+    }
+
+    if (evaluated.length) {
+      console.warn("Geoapify candidates did not satisfy address verification:", {
+        ...context,
+        search: request.label,
+        candidates: evaluated.slice(0, 5).map((entry: any) => ({
+          ...entry.diagnostics,
+          reason: entry.reason,
+        })),
       });
     }
   }
-  console.warn("Geoapify did not return a street/building match; trying OpenRouteService:", context);
+
+  console.warn("Geoapify could not confirm the requested street/building; trying validated OpenRouteService geocoding:", context);
   return null;
+}
+
+function orsFeatureMatches(item: any, structured: ReturnType<typeof parseStructuredAddress>): boolean {
+  const properties = item?.properties || {};
+  const layer = String(properties.layer || "").toLowerCase();
+  const point = item?.geometry?.coordinates;
+  const hasHouseNumber = Boolean(structured.houseNumber);
+  const layerMatches = hasHouseNumber ? layer === "address" : (layer === "address" || layer === "street");
+  if (!layerMatches || !Array.isArray(point) || point.length < 2 ||
+      !isValidCoordinatePair(point[0], point[1])) return false;
+
+  const returnedHouse = cleanAddress(properties.housenumber).toLowerCase();
+  if (hasHouseNumber && returnedHouse !== structured.houseNumber.toLowerCase()) return false;
+
+  const returnedStreet = properties.street || properties.name || properties.label;
+  if (!geocodeStreetMatches({ street: returnedStreet }, structured.street)) return false;
+
+  const returnedCity = normalizeGeocodeLabel(properties.locality || properties.city || properties.localadmin);
+  const requestedCity = normalizeGeocodeLabel(structured.locality);
+  const returnedPostcode = cleanAddress(properties.postalcode || properties.postcode).replace(/\D/g, "");
+  const requestedPostcode = cleanAddress(structured.postalcode).replace(/\D/g, "");
+  const cityMatches = Boolean(requestedCity && returnedCity && requestedCity === returnedCity);
+  const postcodeMatches = Boolean(requestedPostcode && returnedPostcode === requestedPostcode);
+  if (!(cityMatches || postcodeMatches)) return false;
+  if (requestedPostcode && returnedPostcode && !postcodeMatches) return false;
+
+  const country = String(properties.country_a || properties.country_code || "").toUpperCase();
+  if (country && country !== "BR") return false;
+  if (!country && !/\b(brasil|brazil)\b/i.test(String(properties.country || ""))) return false;
+
+  const requestedRegion = normalizeGeocodeLabel(structured.region);
+  const returnedRegion = normalizeGeocodeLabel(properties.region_a || properties.region || properties.state);
+  if (requestedRegion && returnedRegion && requestedRegion !== returnedRegion) return false;
+
+  const confidence = Number(properties.confidence);
+  if (Number.isFinite(confidence) && confidence < 0.5) return false;
+  return true;
 }
 
 async function geocode(
@@ -239,121 +366,109 @@ async function geocode(
   settings: Record<string, unknown>,
   context: { role: string; orderId?: string },
 ): Promise<[number, number]> {
-  const normalizedQuery = withRegion(address, settings);
+  const structured = parseStructuredAddress(address, settings, context.role === "store_origin");
+  if (!structured.street || !structured.locality) {
+    throw new Error("Endereço incompleto para geolocalização. Confira rua e cidade no cadastro do estabelecimento ou do pedido.");
+  }
+
   const geoapifyApiKey = Deno.env.get("GEOAPIFY_API_KEY");
   if (geoapifyApiKey) {
-    const geoapifyCoordinates = await geoapifyGeocode(address, geoapifyApiKey, settings, context);
-    if (geoapifyCoordinates) return geoapifyCoordinates;
+    const coordinates = await geoapifyGeocode(address, geoapifyApiKey, settings, context);
+    if (coordinates) return coordinates;
   }
-  const validFeature = (item: any) => {
-    const layer = String(item?.properties?.layer || "").toLowerCase();
-    const point = item?.geometry?.coordinates;
-    return (layer === "address" || layer === "street") &&
-      Array.isArray(point) && point.length >= 2 &&
-      Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1]));
-  };
 
-  let feature: any = null;
-  let source = "text";
   let structuredFeatures: any[] = [];
-  const structured = parseStructuredAddress(address, settings);
+  const structuredQuery = new URLSearchParams({
+    address: structured.address,
+    locality: structured.locality,
+    country: "Brasil",
+    "boundary.country": "BR",
+    layers: "address,street",
+    size: "5",
+  });
+  if (structured.neighbourhood) structuredQuery.set("neighbourhood", structured.neighbourhood);
+  if (structured.region) structuredQuery.set("region", structured.region);
+  if (structured.postalcode) structuredQuery.set("postalcode", structured.postalcode);
 
-  if (structured.address && structured.locality) {
-    const structuredQuery = new URLSearchParams({
-      address: structured.address,
-      locality: structured.locality,
-      country: "Brasil",
-      "boundary.country": "BR",
-      layers: "address,street",
-      size: "5",
-    });
-    if (structured.neighbourhood) structuredQuery.set("neighbourhood", structured.neighbourhood);
-    if (structured.region) structuredQuery.set("region", structured.region);
-    if (structured.postalcode) structuredQuery.set("postalcode", structured.postalcode);
+  const textQuery = new URLSearchParams({
+    text: withRegion(address, settings),
+    "boundary.country": "BR",
+    layers: "address,street",
+    size: "5",
+  });
 
+  const searches = [
+    { label: "structured", url: ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString() },
+    { label: "text", url: ORS_BASE + "/pelias/v1/search?" + textQuery.toString() },
+  ];
+
+  for (const search of searches) {
     try {
-      const structuredResponse = await fetch(ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString(), {
+      const response = await fetch(search.url, {
         headers: { Authorization: apiKey },
+        signal: AbortSignal.timeout(9000),
       });
-      const structuredPayload = await structuredResponse.json().catch(() => ({}));
-      if (!structuredResponse.ok) {
-        console.warn("OpenRouteService structured geocoding request failed; trying text search:", {
-          ...context,
-          status: structuredResponse.status,
-          detail: providerErrorDetail(structuredPayload) || null,
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.warn("OpenRouteService geocoding request failed:", {
+          ...context, search: search.label, status: response.status,
+          detail: providerErrorDetail(payload) || null,
         });
-      } else {
-        structuredFeatures = Array.isArray(structuredPayload?.features) ? structuredPayload.features : [];
-        feature = structuredFeatures.find(validFeature) || null;
-        if (feature) source = "structured";
+        continue;
+      }
+
+      const features = Array.isArray(payload?.features) ? payload.features : [];
+      if (search.label === "structured") structuredFeatures = features;
+      const candidate = features.find((item: any) => orsFeatureMatches(item, structured));
+      if (candidate) {
+        const properties = candidate.properties || {};
+        console.info("OpenRouteService geocoding candidate accepted:", {
+          ...context,
+          search: search.label,
+          layer: properties.layer || null,
+          confidence: properties.confidence ?? null,
+          match_type: properties.match_type || null,
+          exact_house_number: Boolean(structured.houseNumber),
+          street_verified: true,
+          locality_verified: true,
+        });
+        const [longitude, latitude] = candidate.geometry.coordinates;
+        return [Number(longitude), Number(latitude)];
+      }
+
+      if (features.length) {
+        console.warn("OpenRouteService candidates rejected by address verification:", {
+          ...context,
+          search: search.label,
+          candidate_count: features.length,
+          candidate_layers: features.slice(0, 5).map((item: any) => item?.properties?.layer || null),
+          candidate_confidences: features.slice(0, 5).map((item: any) => item?.properties?.confidence ?? null),
+        });
       }
     } catch (error) {
-      console.warn("OpenRouteService structured geocoding network error; trying text search:", {
+      console.warn("OpenRouteService geocoding transport failure:", {
         ...context,
-        detail: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
+        search: search.label,
+        detail: error instanceof Error ? error.message.slice(0, 120) : "unknown error",
       });
     }
   }
 
-  if (!feature) {
-    const query = new URLSearchParams({
-      text: normalizedQuery,
-      "boundary.country": "BR",
-      layers: "address,street",
-      size: "5",
-    });
-    const response = await fetch(ORS_BASE + "/pelias/v1/search?" + query.toString(), {
-      headers: { Authorization: apiKey },
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error("OpenRouteService geocoding failed:", {
-        ...context,
-        status: response.status,
-        detail: providerErrorDetail(payload) || null,
-      });
-      throw new Error(providerFailureMessage("localização de endereço", response.status, payload));
-    }
-    const features = Array.isArray(payload?.features) ? payload.features : [];
-    feature = features.find(validFeature) || null;
-    if (feature) source = "text";
-    if (!feature) {
-      const fallback = features[0]?.properties || structuredFeatures[0]?.properties || {};
-      console.warn("OpenRouteService did not return a street/address match:", {
-        ...context,
-        requested_layer: "address,street",
-        parsed_address: {
-          has_street: Boolean(structured.address),
-          has_house_number: /,\s*\d+[A-Za-z]?$/.test(structured.address),
-          has_neighbourhood: Boolean(structured.neighbourhood),
-          has_locality: Boolean(structured.locality),
-          has_region: Boolean(structured.region),
-          has_postalcode: Boolean(structured.postalcode),
-        },
-        structured_search: Boolean(structured.address && structured.locality),
-        fallback_layer: fallback.layer || null,
-        fallback_accuracy: fallback.accuracy || null,
-        fallback_match_type: fallback.match_type || null,
-        fallback_name: fallback.name || null,
-        fallback_confidence: fallback.confidence ?? null,
-      });
-      throw new Error("O mapa não reconheceu a rua ou o endereço informado. Não foi usada a localização genérica da cidade. Confira rua, número, bairro e CEP.");
-    }
-  }
-
-  const coordinates = feature.geometry.coordinates;
-  const properties = feature.properties || {};
-  console.info("OpenRouteService geocoding candidate:", {
+  const fallback = structuredFeatures[0]?.properties || {};
+  console.warn("No provider returned an address-level match; refusing approximate coordinates:", {
     ...context,
-    source,
-    confidence: properties.confidence ?? null,
-    match_type: properties.match_type || null,
-    accuracy: properties.accuracy || null,
-    layer: properties.layer || null,
+    has_street: Boolean(structured.street),
+    has_house_number: Boolean(structured.houseNumber),
+    has_neighbourhood: Boolean(structured.neighbourhood),
+    has_locality: Boolean(structured.locality),
+    has_region: Boolean(structured.region),
+    has_postalcode: Boolean(structured.postalcode),
+    fallback_layer: fallback.layer || null,
+    fallback_accuracy: fallback.accuracy || null,
+    fallback_match_type: fallback.match_type || null,
   });
-  return [Number(coordinates[0]), Number(coordinates[1])];
+  throw new Error("Não foi possível confirmar a rua e o número deste endereço nos serviços de mapas. Confira o cadastro. Nenhum centro de cidade ou ponto aproximado foi utilizado.");
 }
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return respond(405, { error: "Método não permitido." });
@@ -441,11 +556,20 @@ Deno.serve(async (req: Request) => {
       }
       const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
         method: "POST",
-        body: JSON.stringify({ locations: coordinates, metrics: ["distance"], units: "m" }),
+        body: JSON.stringify({
+          locations: coordinates, metrics: ["distance"], units: "m", resolve_locations: true,
+        }),
       });
       const distances = matrix?.distances;
       if (!Array.isArray(distances) || distances.length !== coordinates.length) {
         return respond(502, { error: "O serviço de mapas não retornou uma matriz de distâncias válida." });
+      }
+      const resolvedPoints = [...(matrix?.sources || []), ...(matrix?.destinations || [])];
+      const excessiveSnap = resolvedPoints.find((point: any) =>
+        Number.isFinite(Number(point?.snapped_distance)) && Number(point.snapped_distance) > 250
+      );
+      if (excessiveSnap) {
+        return respond(422, { error: "Um ou mais endereços ficaram distantes demais da via reconhecida pelo mapa. Confira os endereços antes de otimizar a rota." });
       }
       const remaining = new Set(orderIds.map((_, index) => index + 1));
       const optimizedIds: string[] = [];
@@ -522,6 +646,13 @@ Deno.serve(async (req: Request) => {
       const resolvedOrigin = matrix?.sources?.[0] || null;
       if (!Array.isArray(distances) || distances.length !== orderIds.length) {
         return respond(502, { error: "O serviço de mapas não retornou todas as distâncias da rota." });
+      }
+      const resolvedDestinations = Array.isArray(matrix?.destinations) ? matrix.destinations : [];
+      const excessiveSnap = [resolvedOrigin, ...resolvedDestinations].find((point: any) =>
+        Number.isFinite(Number(point?.snapped_distance)) && Number(point.snapped_distance) > 250
+      );
+      if (excessiveSnap) {
+        return respond(422, { error: "O mapa posicionou um endereço a mais de 250 metros da via reconhecida. A distância e o pagamento não foram registrados. Confira o endereço." });
       }
 
       const results: Record<string, unknown>[] = [];

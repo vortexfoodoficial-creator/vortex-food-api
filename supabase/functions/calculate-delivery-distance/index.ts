@@ -12,7 +12,8 @@ const ORS_BASE = "https://api.heigit.org";
 const ORS_PROFILE = "driving-car"; // Perfil viário disponível; não é um perfil exclusivo para motocicletas.
 const GEOCODE_CACHE_TTL_MS = 15 * 60 * 1000;
 const GEOCODE_CACHE_MAX_ENTRIES = 500;
-const geocodeCache = new Map<string, { coordinates: [number, number]; expiresAt: number }>();
+ type GeocodeLocation = { coordinates: [number, number]; precision: "exact" | "street_segment" | "manual_pin"; source: "geoapify" | "openrouteservice" | "manual" };
+const geocodeCache = new Map<string, { location: GeocodeLocation; expiresAt: number }>();
 
 function respond(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
@@ -105,22 +106,19 @@ function geocodeCacheKey(address: ReturnType<typeof parseStructuredAddress>): st
     cleanAddress(address.postalcode).replace(/\D/g, ""),
   ].join("|");
 }
-function getCachedGeocode(key: string): [number, number] | null {
+function getCachedGeocode(key: string): GeocodeLocation | null {
   const cached = geocodeCache.get(key);
   if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
-    geocodeCache.delete(key);
-    return null;
-  }
-  return [cached.coordinates[0], cached.coordinates[1]];
+  if (cached.expiresAt <= Date.now()) { geocodeCache.delete(key); return null; }
+  return { ...cached.location, coordinates: [...cached.location.coordinates] as [number, number] };
 }
-function setCachedGeocode(key: string, coordinates: [number, number]) {
+function setCachedGeocode(key: string, location: GeocodeLocation) {
   if (geocodeCache.size >= GEOCODE_CACHE_MAX_ENTRIES) {
     const oldestKey = geocodeCache.keys().next().value;
     if (oldestKey) geocodeCache.delete(oldestKey);
   }
   geocodeCache.set(key, {
-    coordinates: [coordinates[0], coordinates[1]],
+    location: { ...location, coordinates: [...location.coordinates] as [number, number] },
     expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS,
   });
 }
@@ -339,31 +337,24 @@ async function geoapifyGeocode(
       // com alta confiança o prédio, número, rua, cidade e país. Nesse caso, o CEP
       // informado pelo cadastro não deve invalidar sozinho uma correspondência predial
       // exata; a exceção nunca vale para resultados de rua/localidade ou número aproximado.
-      const postcodeConflictWithExactBuilding = postcodeConflicts &&
-        exactBuilding &&
-        streetMatches &&
-        cityMatches &&
-        regionMatches &&
-        locationQuality &&
-        coordinatesAreValid;
-      const accepted = (exactBuilding || exactStreet) &&
-        country === "br" &&
-        streetMatches &&
-        (cityMatches || postcodeMatches) &&
-        (!postcodeConflicts || postcodeConflictWithExactBuilding) &&
+      const postcodeConflictWithVerifiedLocation = postcodeConflicts &&
+        (exactBuilding || exactStreet) && streetMatches && cityMatches && regionMatches &&
+        locationQuality && coordinatesAreValid;
+      const accepted = (exactBuilding || exactStreet) && country === "br" && streetMatches &&
+        (cityMatches || postcodeMatches) && (!postcodeConflicts || postcodeConflictWithVerifiedLocation) &&
         regionMatches &&
         locationQuality &&
         coordinatesAreValid;
 
       return {
         item,
-        postcode_conflict_accepted: postcodeConflictWithExactBuilding,
+        postcode_conflict_accepted: postcodeConflictWithVerifiedLocation,
         accepted,
         reason: !(exactBuilding || exactStreet) ? "result_type_or_house_number_mismatch"
           : country !== "br" ? "country_mismatch"
           : !streetMatches ? "street_mismatch"
           : !(cityMatches || postcodeMatches) ? "city_or_postcode_not_confirmed"
-          : postcodeConflicts && !postcodeConflictWithExactBuilding ? "postcode_mismatch"
+          : postcodeConflicts && !postcodeConflictWithVerifiedLocation ? "postcode_mismatch"
           : !regionMatches ? "state_mismatch"
           : !locationQuality ? "low_address_component_confidence"
           : !coordinatesAreValid ? "invalid_coordinates"
@@ -378,7 +369,7 @@ async function geoapifyGeocode(
           city_matches: cityMatches,
           region_matches: regionMatches,
           postcode_matches: postcodeMatches,
-          postcode_conflict_accepted: postcodeConflictWithExactBuilding,
+          postcode_conflict_accepted: postcodeConflictWithVerifiedLocation,
           house_number_matches: Boolean(requestedHouse && returnedHouse === requestedHouse),
           has_street_field: Boolean(item?.street),
           has_address_line1: Boolean(item?.address_line1),
@@ -418,12 +409,12 @@ async function geoapifyGeocode(
   return null;
 }
 
-function orsFeatureMatches(item: any, structured: ReturnType<typeof parseStructuredAddress>): boolean {
+function orsFeatureMatches(item: any, structured: ReturnType<typeof parseStructuredAddress>, streetFallbackOnly = false): boolean {
   const properties = item?.properties || {};
   const layer = String(properties.layer || "").toLowerCase();
   const point = item?.geometry?.coordinates;
   const hasHouseNumber = Boolean(structured.houseNumber);
-  const layerMatches = hasHouseNumber ? layer === "address" : (layer === "address" || layer === "street");
+  const layerMatches = streetFallbackOnly ? layer === "street" : hasHouseNumber ? layer === "address" : (layer === "address" || layer === "street");
   if (!layerMatches || !Array.isArray(point) || point.length < 2 ||
       !isValidCoordinatePair(point[0], point[1])) return false;
 
@@ -440,7 +431,7 @@ function orsFeatureMatches(item: any, structured: ReturnType<typeof parseStructu
   const cityMatches = Boolean(requestedCity && returnedCity && requestedCity === returnedCity);
   const postcodeMatches = Boolean(requestedPostcode && returnedPostcode === requestedPostcode);
   if (!(cityMatches || postcodeMatches)) return false;
-  if (requestedPostcode && returnedPostcode && !postcodeMatches) return false;
+  if (requestedPostcode && returnedPostcode && !postcodeMatches && !(streetFallbackOnly && cityMatches)) return false;
 
   const country = String(properties.country_a || properties.country_code || "").toUpperCase();
   if (country && country !== "BR") return false;
@@ -459,48 +450,41 @@ async function geocode(
   address: string,
   apiKey: string,
   settings: Record<string, unknown>,
-  context: { role: string; orderId?: string },
-): Promise<[number, number]> {
+  context: { role: string; orderId?: string; streetFallbackAttempt?: boolean },
+): Promise<GeocodeLocation> {
   const structured = parseStructuredAddress(address, settings, context.role === "store_origin");
   if (!structured.street || !structured.locality) {
     throw new Error("Endereço incompleto para geolocalização. Confira rua e cidade no cadastro do estabelecimento ou do pedido.");
   }
+
   const cacheKey = geocodeCacheKey(structured);
-  const cachedCoordinates = getCachedGeocode(cacheKey);
-  if (cachedCoordinates) {
-    console.info("Using recently verified geocoding result:", { ...context, cache_hit: true });
-    return cachedCoordinates;
+  const cached = getCachedGeocode(cacheKey);
+  if (cached) {
+    console.info("Using recently verified geocoding result:", { ...context, cache_hit: true, location_precision: cached.precision });
+    return cached;
   }
 
   const geoapifyApiKey = Deno.env.get("GEOAPIFY_API_KEY");
   if (geoapifyApiKey) {
     const coordinates = await geoapifyGeocode(address, geoapifyApiKey, settings, context);
     if (coordinates) {
-      setCachedGeocode(cacheKey, coordinates);
-      return coordinates;
+      const location: GeocodeLocation = { coordinates, precision: structured.houseNumber ? "exact" : "street_segment", source: "geoapify" };
+      setCachedGeocode(cacheKey, location);
+      return location;
     }
   }
 
   let structuredFeatures: any[] = [];
   const structuredQuery = new URLSearchParams({
-    address: structured.address,
-    locality: structured.locality,
-    country: "Brasil",
-    "boundary.country": "BR",
-    layers: "address,street",
-    size: "5",
+    address: structured.address, locality: structured.locality, country: "Brasil",
+    "boundary.country": "BR", layers: "address,street", size: "5",
   });
   if (structured.neighbourhood) structuredQuery.set("neighbourhood", structured.neighbourhood);
   if (structured.region) structuredQuery.set("region", structured.region);
   if (structured.postalcode) structuredQuery.set("postalcode", structured.postalcode);
-
   const textQuery = new URLSearchParams({
-    text: withRegion(address, settings),
-    "boundary.country": "BR",
-    layers: "address,street",
-    size: "5",
+    text: withRegion(address, settings), "boundary.country": "BR", layers: "address,street", size: "5",
   });
-
   const searches = [
     { label: "structured", url: ORS_BASE + "/pelias/v1/search/structured?" + structuredQuery.toString() },
     { label: "text", url: ORS_BASE + "/pelias/v1/search?" + textQuery.toString() },
@@ -508,72 +492,66 @@ async function geocode(
 
   for (const search of searches) {
     try {
-      const response = await fetch(search.url, {
-        headers: { Authorization: apiKey },
-        signal: AbortSignal.timeout(9000),
-      });
+      const response = await fetch(search.url, { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(9000) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.warn("OpenRouteService geocoding request failed:", {
-          ...context, search: search.label, status: response.status,
-          detail: providerErrorDetail(payload) || null,
-        });
+        console.warn("OpenRouteService geocoding request failed:", { ...context, search: search.label, status: response.status, detail: providerErrorDetail(payload) || null });
         continue;
       }
-
       const features = Array.isArray(payload?.features) ? payload.features : [];
       if (search.label === "structured") structuredFeatures = features;
-      const candidate = features.find((item: any) => orsFeatureMatches(item, structured));
+      const candidate = features.find((item: any) => orsFeatureMatches(item, structured, context.streetFallbackAttempt === true));
       if (candidate) {
         const properties = candidate.properties || {};
         console.info("OpenRouteService geocoding candidate accepted:", {
-          ...context,
-          search: search.label,
-          layer: properties.layer || null,
-          confidence: properties.confidence ?? null,
-          match_type: properties.match_type || null,
-          exact_house_number: Boolean(structured.houseNumber),
-          street_verified: true,
-          locality_verified: true,
+          ...context, search: search.label, layer: properties.layer || null,
+          confidence: properties.confidence ?? null, match_type: properties.match_type || null,
+          exact_house_number: Boolean(structured.houseNumber), street_verified: true, locality_verified: true,
         });
         const [longitude, latitude] = candidate.geometry.coordinates;
-        const coordinates: [number, number] = [Number(longitude), Number(latitude)];
-        setCachedGeocode(cacheKey, coordinates);
-        return coordinates;
+        const location: GeocodeLocation = {
+          coordinates: [Number(longitude), Number(latitude)],
+          precision: structured.houseNumber ? "exact" : "street_segment",
+          source: "openrouteservice",
+        };
+        setCachedGeocode(cacheKey, location);
+        return location;
       }
-
       if (features.length) {
         console.warn("OpenRouteService candidates rejected by address verification:", {
-          ...context,
-          search: search.label,
-          candidate_count: features.length,
+          ...context, search: search.label, candidate_count: features.length,
           candidate_layers: features.slice(0, 5).map((item: any) => item?.properties?.layer || null),
           candidate_confidences: features.slice(0, 5).map((item: any) => item?.properties?.confidence ?? null),
         });
       }
     } catch (error) {
       console.warn("OpenRouteService geocoding transport failure:", {
-        ...context,
-        search: search.label,
+        ...context, search: search.label,
         detail: error instanceof Error ? error.message.slice(0, 120) : "unknown error",
       });
     }
   }
 
+  if (context.role === "customer_destination" && structured.houseNumber && !context.streetFallbackAttempt) {
+    const streetOnlyAddress = [
+      structured.street, structured.neighbourhood, structured.locality, structured.region,
+      structured.postalcode ? "CEP: " + structured.postalcode : "",
+    ].filter(Boolean).join(", ");
+    console.info("Exact customer address not found; retrying verified street-only geocoding:", context);
+    return await geocode(streetOnlyAddress, apiKey, settings, { ...context, streetFallbackAttempt: true });
+  }
+
   const fallback = structuredFeatures[0]?.properties || {};
   console.warn("No provider returned an address-level match; refusing approximate coordinates:", {
-    ...context,
-    has_street: Boolean(structured.street),
-    has_house_number: Boolean(structured.houseNumber),
-    has_neighbourhood: Boolean(structured.neighbourhood),
-    has_locality: Boolean(structured.locality),
-    has_region: Boolean(structured.region),
-    has_postalcode: Boolean(structured.postalcode),
-    fallback_layer: fallback.layer || null,
-    fallback_accuracy: fallback.accuracy || null,
+    ...context, has_street: Boolean(structured.street), has_house_number: Boolean(structured.houseNumber),
+    has_neighbourhood: Boolean(structured.neighbourhood), has_locality: Boolean(structured.locality),
+    has_region: Boolean(structured.region), has_postalcode: Boolean(structured.postalcode),
+    fallback_layer: fallback.layer || null, fallback_accuracy: fallback.accuracy || null,
     fallback_match_type: fallback.match_type || null,
   });
-  throw new Error("Não foi possível confirmar a rua e o número deste endereço nos serviços de mapas. Confira o cadastro. Nenhum centro de cidade ou ponto aproximado foi utilizado.");
+  throw new Error(context.streetFallbackAttempt
+    ? "Não foi possível confirmar nem mesmo um trecho confiável desta rua. Solicite a confirmação manual da localização."
+    : "Não foi possível confirmar a rua e o número deste endereço nos serviços de mapas. Confira o cadastro. Nenhum centro de cidade ou ponto aproximado foi utilizado.");
 }
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -649,17 +627,16 @@ Deno.serve(async (req: Request) => {
       const addresses = orderedOrders.map(order => cleanAddress(order?.address));
       if (addresses.some(address => !address)) return respond(422, { error: "Um ou mais pedidos não possuem endereço completo para otimização." });
 
-      const coordinates: [number, number][] = [];
+      const locations: GeocodeLocation[] = [];
       try {
-        coordinates.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
+        locations.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
         for (let index = 0; index < addresses.length; index++) {
-          coordinates.push(await geocode(addresses[index], orsApiKey, settings, {
-            role: "customer_destination", orderId: orderIds[index],
-          }));
+          locations.push(await geocode(addresses[index], orsApiKey, settings, { role: "customer_destination", orderId: orderIds[index] }));
         }
       } catch (error) {
         return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços." });
       }
+      const coordinates = locations.map(location => location.coordinates);
       const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
         method: "POST",
         body: JSON.stringify({
@@ -707,7 +684,7 @@ Deno.serve(async (req: Request) => {
       }
       const { data: stops, error: stopsError } = await admin
         .from("vortex_delivery_route_stops")
-        .select("id,store_id,route_id,order_id,status")
+        .select("id,store_id,route_id,order_id,status,destination_longitude,destination_latitude,location_precision,location_source")
         .eq("store_id", storeId).eq("route_id", routeId).in("order_id", orderIds)
         .in("status", ["assigned", "in_progress", "occurrence"]);
       if (stopsError || !Array.isArray(stops) || stops.length !== orderIds.length) {
@@ -726,17 +703,22 @@ Deno.serve(async (req: Request) => {
         return respond(422, { error: "Uma ou mais entregas não possuem endereço completo para calcular a remuneração." });
       }
 
-      const coordinates: [number, number][] = [];
+      const stopByOrderId = new Map(stops.map((stop: any) => [String(stop.order_id), stop]));
+      const locations: GeocodeLocation[] = [];
       try {
-        coordinates.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
+        locations.push(await geocode(originRaw, orsApiKey, settings, { role: "store_origin" }));
         for (let index = 0; index < addresses.length; index++) {
-          coordinates.push(await geocode(addresses[index], orsApiKey, settings, {
-            role: "customer_destination", orderId: orderIds[index],
-          }));
+          const stop: any = stopByOrderId.get(orderIds[index]);
+          const hasManualPin = stop?.location_precision === "manual_pin" &&
+            isValidCoordinatePair(stop?.destination_longitude, stop?.destination_latitude);
+          locations.push(hasManualPin
+            ? { coordinates: [Number(stop.destination_longitude), Number(stop.destination_latitude)], precision: "manual_pin", source: "manual" }
+            : await geocode(addresses[index], orsApiKey, settings, { role: "customer_destination", orderId: orderIds[index] }));
         }
       } catch (error) {
         return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços da rota." });
       }
+      const coordinates = locations.map(location => location.coordinates);
       const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
         method: "POST",
         body: JSON.stringify({
@@ -780,6 +762,18 @@ Deno.serve(async (req: Request) => {
           continue;
         }
         const distanceKm = Math.ceil(meters / 10) / 100;
+        const location = locations[index + 1];
+        const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
+          .update({
+            destination_longitude: location.coordinates[0], destination_latitude: location.coordinates[1],
+            location_precision: location.precision, location_source: location.source,
+          })
+          .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", orderIds[index])
+          .in("status", ["assigned", "in_progress", "occurrence"]);
+        if (locationSaveError) {
+          results.push({ order_id: orderIds[index], success: false, error: "Não foi possível salvar a localização validada desta entrega." });
+          continue;
+        }
         const { data: saved, error: saveError } = await caller.rpc("rpc_set_delivery_stop_distance", {
           p_store_id: storeId, p_route_id: routeId, p_order_id: orderIds[index], p_distance_km: distanceKm,
         });
@@ -792,6 +786,8 @@ Deno.serve(async (req: Request) => {
             courier_payment_amount: saved.courier_payment_amount,
             payment_pending: saved.payment_pending === true,
             rule_label: saved.rule_label,
+            location_precision: location.precision,
+            location_source: location.source,
           });
         }
       }
@@ -811,7 +807,7 @@ Deno.serve(async (req: Request) => {
     }
     const { data: stop, error: stopError } = await admin
       .from("vortex_delivery_route_stops")
-      .select("id,store_id,route_id,order_id,status")
+      .select("id,store_id,route_id,order_id,status,destination_longitude,destination_latitude,location_precision,location_source")
       .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", orderId)
       .in("status", ["assigned", "in_progress", "occurrence"]).maybeSingle();
     if (stopError || !stop) return respond(404, { error: "A parada ativa não foi encontrada nesta rota." });
@@ -823,19 +819,28 @@ Deno.serve(async (req: Request) => {
     const destinationRaw = cleanAddress(order.address);
     if (!destinationRaw) return respond(422, { error: "O pedido não possui um endereço de entrega completo." });
 
-    const [originCoordinates, destinationCoordinates] = await Promise.all([
-      geocode(originRaw, orsApiKey, settings, { role: "store_origin" }),
-      geocode(destinationRaw, orsApiKey, settings, { role: "customer_destination", orderId }),
-    ]);
+    const originLocation = await geocode(originRaw, orsApiKey, settings, { role: "store_origin" });
+    const destinationLocation: GeocodeLocation = stop.location_precision === "manual_pin" &&
+      isValidCoordinatePair(stop.destination_longitude, stop.destination_latitude)
+      ? { coordinates: [Number(stop.destination_longitude), Number(stop.destination_latitude)], precision: "manual_pin", source: "manual" }
+      : await geocode(destinationRaw, orsApiKey, settings, { role: "customer_destination", orderId });
     const route = await orsRequest("/openrouteservice/v2/directions/" + ORS_PROFILE + "/json", orsApiKey, {
       method: "POST",
-      body: JSON.stringify({ coordinates: [originCoordinates, destinationCoordinates], instructions: false, units: "m" }),
+      body: JSON.stringify({ coordinates: [originLocation.coordinates, destinationLocation.coordinates], instructions: false, units: "m" }),
     });
     const meters = Number(route?.routes?.[0]?.summary?.distance);
     if (!Number.isFinite(meters) || meters <= 0) {
       return respond(422, { error: "Não foi encontrada uma rota viária válida entre o estabelecimento e o cliente." });
     }
     const distanceKm = Math.ceil(meters / 10) / 100;
+    const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
+      .update({
+        destination_longitude: destinationLocation.coordinates[0], destination_latitude: destinationLocation.coordinates[1],
+        location_precision: destinationLocation.precision, location_source: destinationLocation.source,
+      })
+      .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", orderId)
+      .in("status", ["assigned", "in_progress", "occurrence"]);
+    if (locationSaveError) return respond(409, { error: "A localização foi encontrada, mas não pôde ser salva na entrega." });
     const { data: saved, error: saveError } = await caller.rpc("rpc_set_delivery_stop_distance", {
       p_store_id: storeId, p_route_id: routeId, p_order_id: orderId, p_distance_km: distanceKm,
     });
@@ -852,6 +857,8 @@ Deno.serve(async (req: Request) => {
       courier_payment_amount: saved.courier_payment_amount,
       payment_pending: saved.payment_pending === true,
       rule_label: saved.rule_label,
+      location_precision: destinationLocation.precision,
+      location_source: destinationLocation.source,
     });
   } catch (error) {
     console.error("calculate-delivery-distance:", error);

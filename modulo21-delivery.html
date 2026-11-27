@@ -924,6 +924,17 @@
       }
       if (rulesResult.data?.mode !== 'per_km') {
         try {
+          const locationResponse = await window.VortexDelivery.resolveRouteLocations(routeId,ids);
+          if (locationResponse.error) throw locationResponse.error;
+          const locationRows = Array.isArray(locationResponse.data?.results) ? locationResponse.data.results : [];
+          if (locationRows.length !== ids.length) throw new Error(locationResponse.data?.error || 'O serviço de mapas não retornou a localização de todas as entregas.');
+          const locationFailures = locationRows.filter(item => item.success !== true).map(item => ({
+            orderId:String(item.order_id),
+            success:false,
+            error:item.error || 'Não foi possível localizar este destino. Confirme o ponto manualmente.'
+          }));
+          if (locationFailures.length) return {results:locationFailures,failures:locationFailures,paymentPending:[]};
+
           const recovery = await window.VortexDelivery.recalculatePendingCourierStopPayments(routeId);
           if (recovery.error) throw recovery.error;
           const pendingIds = Array.isArray(recovery.data?.pending_order_ids) ? recovery.data.pending_order_ids.map(String) : [];
@@ -933,7 +944,7 @@
             paymentPending:pendingIds.filter(orderId=>ids.includes(orderId)).map(orderId=>({orderId,paymentPending:true}))
           };
         } catch (error) {
-          const failures = ids.map(orderId=>({orderId,success:false,error:error.message || 'Não foi possível recuperar a remuneração pendente.'}));
+          const failures = ids.map(orderId=>({orderId,success:false,error:error.message || 'Não foi possível localizar os destinos e recuperar a remuneração.'}));
           return {results:failures,failures,paymentPending:[]};
         }
       }
@@ -970,9 +981,13 @@
       }
       const pendingStops = (route.stops || []).filter(stop =>
         ['assigned','in_progress','occurrence'].includes(stop.status) &&
-        (dispatchCourierPaymentMode === 'per_km'
-          ? (stop.distance_km == null || stop.courier_payment_amount == null)
-          : stop.courier_payment_amount == null)
+        (
+          stop.destination_latitude == null || stop.destination_longitude == null ||
+          !['exact','street_segment','manual_pin'].includes(stop.location_precision) ||
+          (dispatchCourierPaymentMode === 'per_km'
+            ? (stop.distance_km == null || stop.courier_payment_amount == null)
+            : stop.courier_payment_amount == null)
+        )
       );
       if (!pendingStops.length) {
         showNoticeModal('Tudo certo','Esta rota não possui entregas com cálculos pendentes.','✅');
@@ -1060,7 +1075,9 @@
       if (!missingIds.length) {
         const pendingDistanceIds = (activeRoute.stops || [])
           .filter(stop => ['assigned','in_progress','occurrence'].includes(stop.status) &&
-            (stop.distance_km == null || stop.courier_payment_amount == null))
+            (stop.destination_latitude == null || stop.destination_longitude == null ||
+             !['exact','street_segment','manual_pin'].includes(stop.location_precision) ||
+             stop.distance_km == null || stop.courier_payment_amount == null))
           .map(stop => String(stop.order_id));
         const distanceResult = await calculateCourierRouteDistances(activeRoute.id,pendingDistanceIds);
         return {routeId:activeRoute.id,distanceFailures:distanceResult.failures,paymentPending:distanceResult.paymentPending};
@@ -1401,9 +1418,13 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
           };
           const pendingCalculationStops = stops.filter(stop =>
             ['assigned','in_progress','occurrence'].includes(stop.status) &&
-            (dispatchCourierPaymentMode === 'per_km'
-              ? (stop.distance_km == null || stop.courier_payment_amount == null)
-              : stop.courier_payment_amount == null)
+            (
+              stop.destination_latitude == null || stop.destination_longitude == null ||
+              !['exact','street_segment','manual_pin'].includes(stop.location_precision) ||
+              (dispatchCourierPaymentMode === 'per_km'
+                ? (stop.distance_km == null || stop.courier_payment_amount == null)
+                : stop.courier_payment_amount == null)
+            )
           );
           const activeRoute = ['assigned','in_route'].includes(route.status);
           const statusText = route.status === 'assigned' ? 'Aguardando saída' : route.status === 'in_route' ? 'Em rota' : route.status === 'completed' ? 'Concluída' : 'Cancelada';

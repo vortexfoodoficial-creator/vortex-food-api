@@ -843,6 +843,7 @@
       }
 
       let optimizationResult;
+      let optimizationFallbackMessage = '';
       try {
         optimizationResult = await window.VortexDelivery.optimizeRoute(readyOrders.map(order => String(order.id)));
         if (optimizationResult.error) throw optimizationResult.error;
@@ -852,13 +853,12 @@
           throw new Error(optimizationResult.data?.error || 'O serviço de mapas não confirmou a sequência otimizada.');
         }
       } catch (error) {
-        showNoticeModal(
-          'Não foi possível otimizar a rota',
-          (error.message || 'O serviço de mapas não conseguiu calcular as distâncias.') +
-          ' Confira a chaves do Geoapify e do OpenRouteService, os limites de uso e os endereços dos pedidos. Nenhuma sequência aproximada será apresentada como otimizada.',
-          '⚠️'
-        );
-        return;
+        // Uma falha de geocodificação de uma parada não deve impedir a criação da rota.
+        // Mantém a ordem de chegada; a central resolverá cada destino e permitirá ponto manual.
+        optimizationFallbackMessage = 'A otimização viária não ficou disponível. Os pedidos serão mantidos na ordem de chegada e cada endereço será confirmado individualmente na central de rotas.';
+        optimizationResult = {
+          data: { success: true, optimized_order_ids: readyOrders.map(order => String(order.id)) }
+        };
       }
 
       const ordersById = new Map(readyOrders.map(order => [String(order.id), order]));
@@ -885,7 +885,7 @@
       if (codeResults) { codeResults.style.display = 'none'; codeResults.innerHTML = ''; }
 
       document.getElementById('smartRouteModalTitle').innerText = `🚀 Sugestão de Rotas para: ${selectedCourier}`;
-      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">Sequência sugerida pela menor distância viária sucessiva (OpenRouteService). Geocodificação: <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Powered by Geoapify</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</span>`;
+      document.getElementById('smartRouteSubtitle').innerHTML = `Partida do Estabelecimento: <strong>${escapeDeliveryHtml(storeAddress)}</strong><br><span style="font-size:.78rem;color:var(--text-muted);">${optimizationFallbackMessage ? escapeDeliveryHtml(optimizationFallbackMessage) : 'Sequência sugerida pela menor distância viária sucessiva (OpenRouteService).' } Geocodificação: <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Powered by Geoapify</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</span>`;
 
       const container = document.getElementById('smartRouteListContainer');
       container.innerHTML = '';

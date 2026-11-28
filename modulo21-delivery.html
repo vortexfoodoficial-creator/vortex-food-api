@@ -269,6 +269,10 @@
       <div id="couriersListSummary" style="font-size: 0.85rem; color: var(--text-muted);">Nenhum entregador ativo no momento.</div>
     </div>
 
+    <section class="card-box" id="dispatchReadyOrdersPanel" style="margin-top:18px;">
+      <div class="card-title"><span>📦 Pedidos prontos para despacho</span></div>
+      <div id="dispatchReadyOrdersList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">Carregando pedidos prontos...</div>
+    </section>
     <section class="card-box" id="dispatchRoutesPanel" style="margin-top:18px;">
       <div class="card-title">
         <span>📍 Central de Operações das Rotas</span>
@@ -1348,6 +1352,30 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
       await submitDispatchStopOrder(routeId,ids,'A nova sequência foi salva e será sincronizada com o motoboy.');
     }
 
+    let dispatchAutoResolveInFlight = false;
+    function renderDispatchReadyOrders() {
+      const host = document.getElementById('dispatchReadyOrdersList'); if (!host) return;
+      const permissions = window.VORTEX_AUTH_CONTEXT?.permissions || [];
+      if (!permissions.includes('delivery.dispatch') || !permissions.includes('delivery.assign')) { host.textContent = 'Seu perfil não pode despachar pedidos.'; return; }
+      const activeIds = new Set(dispatchRoutesCache.filter(r => ['assigned','in_route'].includes(r.status)).flatMap(r => (r.stops || []).filter(s => ['assigned','in_progress','occurrence'].includes(s.status)).map(s => String(s.order_id))));
+      const ready = readLocalKdsOrders().filter(o => o.origin && String(o.origin).includes('Delivery') && o.status === 'ready' && !activeIds.has(String(o.id)));
+      if (!ready.length) { host.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);">Nenhum pedido pronto aguardando despacho.</div>'; return; }
+      host.innerHTML = ready.map(o => `<article style="border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--bg-main);"><strong>Pedido #${escapeDeliveryHtml(getVisibleDeliveryOrderNumber(o))}</strong><div>${escapeDeliveryHtml(o.client || 'Cliente')}</div><div style="font-size:.72rem;color:var(--text-muted);">${escapeDeliveryHtml(o.address || 'Endereço não informado')}</div><div style="font-size:.72rem;">Motoboy: ${escapeDeliveryHtml(o.courier || document.getElementById('selectCourierForRoute')?.value || 'Selecione acima')}</div><button class="action-btn-delivery btn-dispatch" type="button" onclick="dispatchOrderDirect('${escapeDeliveryHtml(o.id)}')">Despachar pedido 🛵</button></article>`).join('');
+    }
+    async function processAutomaticDispatchCalculations() {
+      if (dispatchAutoResolveInFlight || !window.VORTEX_AUTH_CONTEXT?.permissions?.includes('delivery.dispatch_manage')) return;
+      const route = dispatchRoutesCache.find(r => r.status === 'assigned' && (r.stops || []).some(s => s.status === 'assigned' && (s.destination_latitude == null || s.destination_longitude == null || !['exact','street_segment','manual_pin'].includes(s.location_precision) || s.courier_payment_amount == null || (dispatchCourierPaymentMode === 'per_km' && s.distance_km == null))));
+      if (!route) return;
+      const pending = route.stops.filter(s => s.status === 'assigned' && (s.destination_latitude == null || s.destination_longitude == null || !['exact','street_segment','manual_pin'].includes(s.location_precision) || s.courier_payment_amount == null || (dispatchCourierPaymentMode === 'per_km' && s.distance_km == null)));
+      const key = 'vortex_delivery_auto_calc_' + route.id; let next = 0;
+      try { next = Number(localStorage.getItem(key) || 0); } catch (e) {}
+      if (next > Date.now()) return;
+      try { localStorage.setItem(key, String(Date.now() + 120000)); } catch (e) {}
+      dispatchAutoResolveInFlight = true;
+      try { await calculateCourierRouteDistances(route.id, pending.map(s => String(s.order_id))); window.setTimeout(loadDispatchRoutes, 900); }
+      catch (e) { console.warn('Vortex auto route calculation:', e); }
+      finally { dispatchAutoResolveInFlight = false; }
+    }
     async function loadDispatchRoutes() {
       const host = document.getElementById('dispatchRoutesList');
       const summary = document.getElementById('dispatchRoutesSummary');
@@ -1370,6 +1398,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
         if (rulesResult.error) throw rulesResult.error;
         dispatchCourierPaymentMode = rulesResult.data?.mode || 'per_km';
         dispatchRoutesCache = Array.isArray(result.data) ? result.data : [];
+        renderDispatchReadyOrders();
         const courierHost = document.getElementById('dispatchCouriersList');
         const dispatchCouriers = Array.isArray(courierResult.data) ? courierResult.data : [];
         if (courierHost) courierHost.innerHTML = dispatchCouriers.length ? dispatchCouriers.map(courier => {
@@ -1396,6 +1425,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
           return;
         }
         const canManage = permissions.includes('delivery.dispatch_manage');
+        const canManualFinish = permissions.includes('delivery.manual_finish');
         const couriers = dispatchCouriers.map(courier => ({
           authUserId: courier.user_id,
           name: courier.name || 'Motoboy'
@@ -1460,6 +1490,9 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
               const stopEventLabels = {delivery_occurrence:'Ocorrência',occurrence_retry:'Nova tentativa',delivery_returned:'Retorno',delivery_payment_updated:'Pagamento alterado',delivery_confirmed:'Entrega confirmada'};
               const stopTimeline = (Array.isArray(stop.events)?stop.events:[]).slice(-5).map(event => '<div style="font-size:.68rem;color:var(--text-muted);margin-top:3px;">• ' + escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) + (event.actor_name ? ' · por ' + escapeDeliveryHtml(event.actor_name) : '') + '</div>').join('');
               const stopIndex = activeAssignedStops.findIndex(item => String(item.order_id) === String(stop.order_id));
+              const deliveryFinishAction = canManualFinish && route.status === 'in_route' && stop.status === 'in_progress'
+                ? `<button class="action-btn-delivery btn-deliver" type="button" onclick="finishDeliveryOrder('${escapeDeliveryHtml(stop.order_id)}')">Marcar como entregue</button>`
+                : '';
               const stopControls = editableStops && stop.status === 'assigned'
                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">' +
                   '<button class="btn-secondary" type="button" title="Mover para cima" ' + (stopIndex===0?'disabled':'') + ' onclick="moveDispatchStop(\'' + escapeDeliveryHtml(route.id) + '\',\'' + escapeDeliveryHtml(stop.order_id) + '\',-1)">↑</button>' +
@@ -1488,7 +1521,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
                 '</div>' +
                 (stop.distance_km != null ? '<div style="font-size:.7rem;color:var(--text-muted);margin-top:3px;">Distância registrada: ' + Number(stop.distance_km).toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km</div>' : '') +
                 (stopTimeline ? '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.7rem;font-weight:800;">Linha do tempo</summary>' + stopTimeline + '</details>' : '') +
-                deliveryEstimateMarkup + locationPrecisionMarkup + stopControls + occurrenceActions + '</div>';
+                deliveryEstimateMarkup + locationPrecisionMarkup + stopControls + occurrenceActions + deliveryFinishAction + '</div>';
             }).join('') +
             (editableStops ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:6px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;" for="addStop_' + escapeDeliveryHtml(route.id) + '">Adicionar pedido pronto à rota</label>' +
@@ -1502,10 +1535,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
                 escapeDeliveryHtml(deliveryEventLabel(event.event_type)) + ' · ' + dispatchDate(event.created_at) +
                 (event.details && event.details.reason ? ' · ' + escapeDeliveryHtml(event.details.reason) : '') +
                 '</div>').join('') + '</div>' : '') +
-            (canManage && route.status === 'assigned' && pendingCalculationStops.length ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
-              '<div style="font-size:.74rem;color:var(--warning);margin-bottom:7px;">' + pendingCalculationStops.length + ' entrega(s) aguardando cálculo automático.</div>' +
-              '<button id="retryRouteCalc_' + escapeDeliveryHtml(route.id) + '" class="btn-secondary" type="button" style="width:100%;" onclick="retryDispatchRouteCalculations(\'' + escapeDeliveryHtml(route.id) + '\')">Tentar novamente</button>' +
-              '<div style="font-size:.68rem;color:var(--text-muted);margin-top:5px;">Use somente se o sistema não conseguir concluir os cálculos automaticamente.</div></div>' : '') +
+            (canManage && route.status === 'assigned' && pendingCalculationStops.length ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;"><div style="font-size:.74rem;color:var(--warning);">O sistema está processando automaticamente ' + pendingCalculationStops.length + ' entrega(s). Se necessário, ajuste o ponto no mapa.</div></div>' : '') +
             (canManage && activeRoute ? '<div style="border-top:1px solid var(--border);padding-top:9px;margin-top:5px;">' +
               '<label style="display:block;font-size:.72rem;margin-bottom:5px;">Transferir rota para outro motoboy</label>' +
               '<div style="display:flex;gap:6px;"><select id="transferCourier_' + escapeDeliveryHtml(route.id) + '" style="min-width:0;flex:1;"><option value="">Selecione...</option>' + courierOptions + '</select>' +
@@ -1518,6 +1548,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
         if (summary) summary.textContent = 'Não foi possível atualizar a central: ' + (error.message || 'erro de conexão');
       } finally {
         dispatchRoutesFetchInFlight = false;
+        window.setTimeout(processAutomaticDispatchCalculations, 0);
       }
     }
 
@@ -2559,10 +2590,10 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--warning); text-align:center; margin-top:4px;">Em produção pela cozinha...</div>`;
         } else if (o.status === 'ready') {
           statusClass = 'status-ready'; statusText = 'Pronto na Cozinha 🟢';
-          actionAreaHtml = canDispatch ? `<button class="action-btn-delivery btn-dispatch" onclick="dispatchOrderDirect('${o.id}')">Despachar Pedido 🛵</button>` : `<div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:4px;">Aguardando usuário autorizado para despachar.</div>`;
+          actionAreaHtml = '<div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:4px;">Pronto para despacho na aba Rotas & Entregadores.</div>';
         } else if (o.status === 'delivering') {
-          statusClass = 'status-route'; statusText = `Em Rota (${o.courier || 'Sem Motoboy'}) 🛵`;
-          actionAreaHtml = `<div style="margin-top:6px;">${canManualFinish ? `<button class="action-btn-delivery btn-deliver" style="margin-top:6px;" onclick="finishDeliveryOrder('${o.id}')">Marcar como Entregue</button>` : `<div style="font-size:0.78rem;color:var(--text-muted);">Aguardando confirmação manual por usuário autorizado.</div>`}</div>`;
+          statusClass = 'status-route'; statusText = 'Em Rota (' + (o.courier || 'Sem Motoboy') + ') 🛵';
+          actionAreaHtml = '<div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:4px;">Acompanhe e finalize esta entrega na aba Rotas & Entregadores.</div>';
         } else if (o.status === 'finished') {
           statusClass = 'status-finished'; statusText = 'Entregue / Concluído ✅';
           actionAreaHtml = `<div style="font-size:0.78rem; color:var(--success); text-align:center; margin-top:4px;">Pedido finalizado com sucesso.</div>`;
@@ -2574,7 +2605,7 @@ async function submitDispatchStopOrder(routeId,orderIds,successMessage) {
           ? `<br>💵 Troco para: <strong>R$ ${cashGiven.toFixed(2).replace('.', ',')}</strong> | 🪙 Levar Troco: <strong style="color:var(--warning);">${change.toFixed(2).replace('.', ',')}</strong>` : '';
         const pixStatusLabel = String(o.payment || '').toLowerCase() === 'pix' ? (o.payment_status === 'paid' ? ' · Pix já pago' : o.payment_status === 'pending' ? ' · Pix a cobrar na entrega' : ' · Situação do Pix não informada') : '';
         const paymentEditButton = canManagePayment && o.status !== 'finished' ? `<button class="btn-secondary" style="padding:3px 7px;font-size:.7rem;margin-left:6px;" onclick="openDeliveryPaymentModal('${o.id}')">✏️ Editar pagamento</button>` : '';
-        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span> ${canAssign ? `<button class="btn-secondary" style="padding:2px 6px; font-size:0.7rem; margin-left:6px;" onclick="openEditCourierModal('${o.id}')">✏️ Alterar</button>` : ''}<br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${pixStatusLabel}${changeInfoHtml}${paymentEditButton}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
+        return `<div class="order-card"><div class="order-header"><span class="order-id">#${visibleNum} - ${o.client || 'Cliente'}</span><span class="order-status ${statusClass}">${statusText}</span></div><div style="font-size:0.82rem; color:var(--text-muted);">📍 <strong>Endereço:</strong> ${o.address || ''}<br>🍔 ${itemsText}<br>🛵 <strong>Motoboy:</strong> <span style="color:var(--primary); font-weight:bold;">${o.courier || 'Nenhum atribuído'}</span><br>${o.observation ? `<span style="color:var(--warning);">⚠️ Obs: ${o.observation}</span><br>` : ''}💰 Total: <strong>R$ ${Number(o.total || 0).toFixed(2).replace('.', ',')}</strong> (${o.payment || 'Não informado'})${pixStatusLabel}${changeInfoHtml}${paymentEditButton}</div>${actionAreaHtml}<button class="btn-print-ticket" onclick="printDeliveryTicket('${o.id}')">🖨️ Imprimir Comanda Delivery</button></div>`;
       }).join('');
       container.innerHTML = cardsHtml;
     }

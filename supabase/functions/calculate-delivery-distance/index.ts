@@ -607,7 +607,11 @@ Deno.serve(async (req: Request) => {
     const settings = settingsDoc?.data && typeof settingsDoc.data === "object"
       ? settingsDoc.data as Record<string, unknown> : {};
     const originRaw = cleanAddress(settings.storeAddress || settings.address || settings.endereco);
-    if (!originRaw) return respond(422, { error: "Cadastre o endereço completo do estabelecimento nas Configurações do Sistema." });
+    // A localização do cliente é independente da origem. Modos fixo/bairro não
+    // precisam geocodificar o endereço da loja para confirmar um ponto de entrega.
+    if (!originRaw && body.action !== "resolve_route_locations") {
+      return respond(422, { error: "Cadastre o endereço completo do estabelecimento nas Configurações do Sistema." });
+    }
 
     // Resolve e persiste somente a localização das paradas quando o modo de remuneração
     // não depende de quilometragem. A proteção de início de rota exige um ponto confirmado.
@@ -640,13 +644,6 @@ Deno.serve(async (req: Request) => {
       }
       const orderById = new Map(orders.map(order => [String(order.id), order]));
       const stopByOrderId = new Map(stops.map((stop: any) => [String(stop.order_id), stop]));
-      let originLocation: GeocodeLocation;
-      try {
-        originLocation = await geocode(originRaw, orsApiKey, settings, { role: "store_origin" });
-      } catch (error) {
-        return respond(422, { error: error instanceof Error ? error.message : "Não foi possível validar a origem do estabelecimento." });
-      }
-
       const resolved: { orderId: string; location: GeocodeLocation }[] = [];
       const results: Record<string, unknown>[] = [];
       for (const orderId of orderIds) {
@@ -671,53 +668,21 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (resolved.length) {
-        const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
-          method: "POST",
-          body: JSON.stringify({
-            locations: [originLocation.coordinates, ...resolved.map(item => item.location.coordinates)],
-            sources: ["0"], destinations: resolved.map((_, index) => String(index + 1)),
-            metrics: ["distance"], units: "m", resolve_locations: true,
-          }),
-        });
-        const distances = matrix?.distances?.[0];
-        const resolvedOrigin = matrix?.sources?.[0] || null;
-        const resolvedDestinations = Array.isArray(matrix?.destinations) ? matrix.destinations : [];
-        if (!Array.isArray(distances) || distances.length !== resolved.length) {
-          return respond(502, { error: "O serviço de mapas não confirmou os trajetos dos destinos." });
-        }
-        const originSnapTooFar = Number.isFinite(Number(resolvedOrigin?.snapped_distance)) &&
-          Number(resolvedOrigin.snapped_distance) > 250;
-        for (let index = 0; index < resolved.length; index++) {
-          const item = resolved[index];
-          const meters = distances[index] == null ? NaN : Number(distances[index]);
-          const destinationSnap = resolvedDestinations[index]?.snapped_distance;
-          const destinationSnapTooFar = Number.isFinite(Number(destinationSnap)) && Number(destinationSnap) > 250;
-          if (originSnapTooFar || destinationSnapTooFar || !Number.isFinite(meters) || meters <= 0) {
-            results.push({
-              order_id: item.orderId, success: false,
-              error: "O mapa não encontrou um trajeto viário confiável para este destino. Ajuste o ponto manualmente.",
-            });
-            continue;
-          }
-          const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
-            .update({
-              destination_longitude: item.location.coordinates[0],
-              destination_latitude: item.location.coordinates[1],
-              location_precision: item.location.precision,
-              location_source: item.location.source,
-            })
-            .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", item.orderId)
-            .in("status", ["assigned", "in_progress", "occurrence"]);
-          if (locationSaveError) {
-            results.push({ order_id: item.orderId, success: false, error: "Não foi possível salvar a localização desta entrega." });
-            continue;
-          }
-          results.push({
-            order_id: item.orderId, success: true,
-            location_precision: item.location.precision, location_source: item.location.source,
-          });
-        }
+      // Persistir coordenadas não depende de haver uma matriz viária disponível.
+      // Em modos fixo/bairro, o ponto confirmado é suficiente para navegação e início.
+      for (const item of resolved) {
+        const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
+          .update({
+            destination_longitude: item.location.coordinates[0],
+            destination_latitude: item.location.coordinates[1],
+            location_precision: item.location.precision,
+            location_source: item.location.source,
+          })
+          .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", item.orderId)
+          .in("status", ["assigned", "in_progress", "occurrence"]);
+        results.push(locationSaveError
+          ? { order_id: item.orderId, success: false, error: "A localização foi encontrada, mas não pôde ser salva na entrega." }
+          : { order_id: item.orderId, success: true, location_precision: item.location.precision, location_source: item.location.source });
       }
       return respond(200, {
         success: results.length === orderIds.length && results.every(item => item.success === true),
@@ -835,6 +800,21 @@ Deno.serve(async (req: Request) => {
         return respond(422, { error: error instanceof Error ? error.message : "Não foi possível localizar os endereços da rota." });
       }
       const coordinates = locations.map(location => location.coordinates);
+      // Salva os pontos encontrados antes de tentar calcular distâncias. Assim,
+      // uma falha temporária da matriz não apaga nem invalida a localização.
+      for (let index = 0; index < orderIds.length; index++) {
+        const location = locations[index + 1];
+        const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
+          .update({
+            destination_longitude: location.coordinates[0], destination_latitude: location.coordinates[1],
+            location_precision: location.precision, location_source: location.source,
+          })
+          .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", orderIds[index])
+          .in("status", ["assigned", "in_progress", "occurrence"]);
+        if (locationSaveError) {
+          return respond(409, { error: "Não foi possível salvar a localização da entrega #" + orderIds[index] + "." });
+        }
+      }
       const matrix = await orsRequest("/openrouteservice/v2/matrix/" + ORS_PROFILE, orsApiKey, {
         method: "POST",
         body: JSON.stringify({
@@ -852,11 +832,14 @@ Deno.serve(async (req: Request) => {
         return respond(502, { error: "O serviço de mapas não retornou todas as distâncias da rota." });
       }
       const resolvedDestinations = Array.isArray(matrix?.destinations) ? matrix.destinations : [];
-      const excessiveSnap = [resolvedOrigin, ...resolvedDestinations].find((point: any) =>
+      const originSnapTooFar = Number.isFinite(Number(resolvedOrigin?.snapped_distance)) &&
+        Number(resolvedOrigin.snapped_distance) > 250;
+      const destinationSnapTooFar = resolvedDestinations.some((point: any, index: number) =>
+        locations[index + 1]?.precision !== "manual_pin" &&
         Number.isFinite(Number(point?.snapped_distance)) && Number(point.snapped_distance) > 250
       );
-      if (excessiveSnap) {
-        return respond(422, { error: "O mapa posicionou um endereço a mais de 250 metros da via reconhecida. A distância e o pagamento não foram registrados. Confira o endereço." });
+      if (originSnapTooFar || destinationSnapTooFar) {
+        return respond(422, { error: "O mapa encontrou a localização, mas o ponto está distante da via reconhecida. A localização foi preservada; a distância por quilômetro ficará pendente até corrigir o ponto ou a via." });
       }
 
       const results: Record<string, unknown>[] = [];
@@ -879,17 +862,6 @@ Deno.serve(async (req: Request) => {
         }
         const distanceKm = Math.ceil(meters / 10) / 100;
         const location = locations[index + 1];
-        const { error: locationSaveError } = await admin.from("vortex_delivery_route_stops")
-          .update({
-            destination_longitude: location.coordinates[0], destination_latitude: location.coordinates[1],
-            location_precision: location.precision, location_source: location.source,
-          })
-          .eq("store_id", storeId).eq("route_id", routeId).eq("order_id", orderIds[index])
-          .in("status", ["assigned", "in_progress", "occurrence"]);
-        if (locationSaveError) {
-          results.push({ order_id: orderIds[index], success: false, error: "Não foi possível salvar a localização validada desta entrega." });
-          continue;
-        }
         const { data: saved, error: saveError } = await caller.rpc("rpc_set_delivery_stop_distance", {
           p_store_id: storeId, p_route_id: routeId, p_order_id: orderIds[index], p_distance_km: distanceKm,
         });
